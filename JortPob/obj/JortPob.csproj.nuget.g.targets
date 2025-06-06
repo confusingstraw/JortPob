@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
-<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <Import Project="$(NuGetPackageRoot)teximpnet\1.4.3\build\TeximpNet.targets" Condition="Exists('$(NuGetPackageRoot)teximpnet\1.4.3\build\TeximpNet.targets')" />
-    <Import Project="$(NuGetPackageRoot)sharpassimp\6.0.5\build\SharpAssimp.targets" Condition="Exists('$(NuGetPackageRoot)sharpassimp\6.0.5\build\SharpAssimp.targets')" />
-  </ImportGroup>
-</Project>
