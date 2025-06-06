@@ -5,6 +5,7 @@ using SoulsFormats;
 using SoulsFormats.Formats.Other.MWC;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Numerics;
 
@@ -14,7 +15,7 @@ namespace JortPob.Model
     {
         public static ModelInfo FBXtoFLVER(AssimpContext assimpContext, MaterialContext materialContext, ModelInfo modelInfo, string fbxFilename, string outputFilename)
         {
-            Console.WriteLine($"Converting FBX: {fbxFilename}");
+            //Console.WriteLine($"Converting FBX: {fbxFilename}");
 
             /* Load FBX file via Assimp */
             Scene fbx = assimpContext.ImportFile(fbxFilename, PostProcessSteps.CalculateTangentSpace);
@@ -110,16 +111,33 @@ namespace JortPob.Model
                 else if (fbxMesh.TextureCoordinateChannelCount > 1) { Console.WriteLine($"## WARNING ## {rootNode.Name}->{fbxMesh.Name} has multiple UV channels!"); }
 
                 /* Convert vert/face data */
+                if(fbxMesh.Tangents.Count <= 0)
+                {
+                    Console.WriteLine($"## WARNING ## {rootNode.Name}->{fbxMesh.Name} has no tangent data!");
+                }
                 foreach (Face fbxFace in fbxMesh.Faces)          // @TODO: possible optimization of reusing duplicate vertices, for now just making all indices 1 to 1 for simplicity
                 {
                     for(int i=0;i<3;i++)
                     {
                         FLVER.Vertex flverVertex = new();
 
-                        /* Grab vertice position */
+                        /* Grab vertice position + normals/tangents */
                         Vector3 pos = fbxMesh.Vertices[fbxFace.Indices[i]];
+                        Vector3 norm = fbxMesh.Normals[fbxFace.Indices[i]];
+                        Vector3 tang;
+                        Vector3 bitang;
+                        if (fbxMesh.Tangents.Count > 0)
+                        {
+                            tang = fbxMesh.Tangents[fbxFace.Indices[i]];
+                            bitang = fbxMesh.BiTangents[fbxFace.Indices[i]];
+                        }
+                        else
+                        {
+                            tang = new Vector3(1, 0, 0);
+                            bitang = new Vector3(0, 0, 1);
+                        }
 
-                        /* Collapse transformations */
+                        /* Collapse transformations on positions and collapse rotations on normals/tangents */
                         Node parent = node;
                         while(parent != null)
                         {
@@ -136,27 +154,32 @@ namespace JortPob.Model
                             Matrix4x4 mt = Matrix4x4.CreateTranslation(translation);
 
                             pos = Vector3.Transform(pos, ms*mr*mt);
+                            norm = Vector3.TransformNormal(norm, mr);
+                            tang = Vector3.TransformNormal(tang, mr);
+                            bitang = Vector3.TransformNormal(bitang, mr);
 
                             parent = parent.Parent;
                         }
 
+                        // Fromsoftware lives in the mirror dimension. I do not know why.
                         pos = pos * Const.GLOBAL_SCALE;
-                        pos.X *= -1f; // Fromsoftware lives in the mirror dimension. I do not know why.
+                        pos.X *= -1f; 
+                        norm.X *= -1f;
+                        tang.X *= -1f;
+                        bitang.X *= -1f;
 
                         /* Rotate Y 180 degrees because... */
-                        float cosDegrees = (float)Math.Cos(Math.PI);
-                        float sinDegrees = (float)Math.Sin(Math.PI);
+                        Matrix4x4 rotateY180Matrix = Matrix4x4.CreateRotationY((float)Math.PI);
+                        pos = Vector3.Transform(pos, rotateY180Matrix);
 
-                        float x = (pos.X * cosDegrees) + (pos.Z * sinDegrees);
-                        float z = (pos.X * -sinDegrees) + (pos.Z * cosDegrees);
-
-                        pos.X = x;
-                        pos.Z = z;
+                        /* Rotate normals/tangents to match */
+                        norm = Vector3.Normalize( Vector3.TransformNormal(norm, rotateY180Matrix));
+                        tang = Vector3.Normalize(Vector3.TransformNormal(tang, rotateY180Matrix));
+                        bitang = Vector3.Normalize(Vector3.TransformNormal(bitang, rotateY180Matrix));
 
                         // Set ...
                         flverVertex.Position = pos;
-
-                        flverVertex.Normal = fbxMesh.Normals[fbxFace.Indices[i]];
+                        flverVertex.Normal = norm;
                         if(fbxMesh.TextureCoordinateChannelCount <= 0)
                         {
                             flverVertex.UVs.Add(new Vector3(0,0,0));
@@ -166,8 +189,17 @@ namespace JortPob.Model
                             uvw.Y *= -1f;
                             flverVertex.UVs.Add(uvw);
                         }
-                        flverVertex.Tangents.Add(new Vector4(1, 0, 0, 1));  // @TODO: WRONG!
-                        flverVertex.Colors.Add(new FLVER.VertexColor(255, 255, 255, 255));
+                        flverVertex.Bitangent = new Vector4(bitang.X, bitang.Y, bitang.Z, 0);
+                        flverVertex.Tangents.Add(new Vector4(tang.X, tang.Y, tang.Z, 0));
+                        if (fbxMesh.HasVertexColors(0))
+                        {
+                            Vector4 color = fbxMesh.VertexColorChannels[0][fbxFace.Indices[i]];
+                            flverVertex.Colors.Add(new FLVER.VertexColor(color.W, color.X, color.Y, color.Z));
+                        }
+                        else
+                        {
+                            flverVertex.Colors.Add(new FLVER.VertexColor(255, 255, 255, 255));
+                        }
 
                         flverMesh.Vertices.Add(flverVertex);
                         flverFaces.Indices.Add(flverMesh.Vertices.Count-1);
@@ -213,9 +245,6 @@ namespace JortPob.Model
 
             /* Write to file for testing! */
             flver.Write(outputFilename);
-
-            //Console.WriteLine("DEBUG");
-
 
             return modelInfo;
         }
@@ -280,18 +309,22 @@ namespace JortPob.Model
                     FLVER.Vertex flverVertex = new();
                     Landscape.Vertex vertex = landscape.vertices[index];
 
-                    /* Grab vertice position */
+                    /* Grab vertice position + normal */
                     Vector3 pos = new(vertex.position.X, vertex.position.Y, vertex.position.Z);
-                    pos.X *= -1f; // Fromsoftware lives in the mirror dimension. I do not know why.
+                    Vector3 norm = new(vertex.normal.X, vertex.normal.Y, vertex.normal.Z);
+
+                    // Fromsoftware lives in the mirror dimension. I do not know why.
+                    pos.X *= -1f;
+                    norm.X *= -1f;
 
                     // Set ...
                     flverVertex.Position = pos;
+                    flverVertex.Normal = norm;
 
-                    flverVertex.Normal = vertex.normal;
-                    Vector3 uvw = new(vertex.coordinate.X, vertex.coordinate.Y, 0);
-                    uvw.Y *= -1f;
+                    Vector3 uvw = new(vertex.coordinate.X *16f, -vertex.coordinate.Y * 16f, 0);
                     flverVertex.UVs.Add(uvw);
-                    
+
+                    flverVertex.Bitangent = new Vector4(0, 0, 1, 1);  // @TODO: WRONG!
                     flverVertex.Tangents.Add(new Vector4(1, 0, 0, 1));  // @TODO: WRONG!
                     flverVertex.Colors.Add(new FLVER.VertexColor(vertex.color.x, vertex.color.y, vertex.color.z, vertex.color.w));
 

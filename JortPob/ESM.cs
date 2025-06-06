@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Worker;
 using SharpAssimp;
 using System;
 using System.Collections.Generic;
@@ -55,23 +56,49 @@ namespace JortPob
 
             Console.WriteLine("  Done!"); 
 
-            Console.Write($"Parsing cells ...");
+            Console.Write($"Parsing cells ... t[{Const.THREAD_COUNT}]");
 
             interior = new();
             exterior = new();
 
-            foreach (JsonNode node in records[Type.Cell])
-            {
-                //if (!(node["name"] != null && node["name"].ToString() == "Seyda Neen")) { continue; } // DEBUG!!!!!!!!!!!
+            /* Multi threading to speed this up... */
+            int partition = (int)Math.Ceiling(records[Type.Cell].Count / (float)Const.THREAD_COUNT);
+            List<CellWorker> workers = new();
 
-                Cell cell = new(this, node);
-                if(Math.Abs(cell.coordinate.x) > Const.CELL_EXTERIOR_BOUNDS || Math.Abs(cell.coordinate.y) > Const.CELL_EXTERIOR_BOUNDS)
+            for(int i=0;i<Const.THREAD_COUNT;i++)
+            {
+                int start = i * partition;
+                int end = start + partition;
+                CellWorker worker = new(this, records[Type.Cell], start, end);
+                workers.Add(worker);
+            }
+
+            /* Wait for threads to finish */
+            while(true)
+            {
+                bool done = true;
+                foreach (CellWorker worker in workers)
                 {
-                    interior.Add(cell);
+                    done &= worker.IsDone;
                 }
-                else
+
+                if (done)
+                    break;
+            }
+
+            /* Grab all parsed cells from threads and put em in lists */
+            foreach (CellWorker worker in workers)
+            {
+                foreach (Cell cell in worker.cells)
                 {
-                    exterior.Add(cell);
+                    if (Math.Abs(cell.coordinate.x) > Const.CELL_EXTERIOR_BOUNDS || Math.Abs(cell.coordinate.y) > Const.CELL_EXTERIOR_BOUNDS)
+                    {
+                        interior.Add(cell);
+                    }
+                    else
+                    {
+                        exterior.Add(cell);
+                    }
                 }
 
             }

@@ -140,6 +140,7 @@ namespace JortPob
                 }
 
                 materialContext.WriteAll();
+                assimpContext.Dispose();
 
                 /* Assign resource ID numbers */
                 int nextM = 0, nextA = 0, nextO = 5000;
@@ -233,12 +234,16 @@ namespace JortPob
 
         public string AssetPath()
         {
-            return $"aeg999\\aeg999_{id.ToString("D4")}";
+            int v1 = 900 + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}\\aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
         }
 
         public string AssetName()
         {
-            return $"aeg999_{id.ToString("D4")}";
+            int v1 = 900 + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
         }
     }
 

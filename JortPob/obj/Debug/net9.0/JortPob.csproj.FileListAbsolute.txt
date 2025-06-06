@@ -110,3 +110,4 @@ I:\Dev\JortPob\JortPob\obj\Debug\net9.0\refint\JortPob.dll
 I:\Dev\JortPob\JortPob\obj\Debug\net9.0\JortPob.pdb
 I:\Dev\JortPob\JortPob\obj\Debug\net9.0\JortPob.genruntimeconfig.cache
 I:\Dev\JortPob\JortPob\obj\Debug\net9.0\ref\JortPob.dll
+I:\Dev\JortPob\JortPob\obj\Debug\net9.0\JortPob.sourcelink.json

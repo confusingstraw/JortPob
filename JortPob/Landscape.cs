@@ -86,7 +86,7 @@ namespace JortPob
                         color = new Byte4(b64Color[bC++], b64Color[bC++], b64Color[bC++], byte.MaxValue);
                     }
 
-                    vertices.Add(new Vertex(position, grid, Vector3.Normalize(new Vector3(iii, jjj, kkk)), new Vector2(xx * (1f / Const.CELL_GRID_SIZE), yy * (1f / Const.CELL_GRID_SIZE)), color, ltex[Math.Min((xx) / 4, 15), Math.Min((Const.CELL_GRID_SIZE - yy) / 4, 15)]));
+                    vertices.Add(new Vertex(position, grid, Vector3.Normalize(new Vector3(iii, kkk, jjj)), new Vector2(xx * (1f / Const.CELL_GRID_SIZE), yy * (1f / Const.CELL_GRID_SIZE)), color, ltex[Math.Min((xx) / 4, 15), Math.Min((Const.CELL_GRID_SIZE - yy) / 4, 15)]));
                 }
                 last = lastEdge;
             }

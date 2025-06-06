@@ -18,12 +18,9 @@ namespace JortPob
     {
         static void Main(string[] args)
         {
-            string TEMP_MORROWIND_PATH = @"I:\SteamLibrary\steamapps\common\Morrowind\";
-            string TEMP_OUTPUT_PATH = @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\";
-
-            string morrowindPath = TEMP_MORROWIND_PATH + @"Data Files\";
-            string modPath = TEMP_OUTPUT_PATH;
-            string cachePath = TEMP_OUTPUT_PATH + @"cache\";
+            string morrowindPath = Const.MORROWIND_PATH + @"Data Files\";
+            string modPath = Const.OUTPUT_PATH;
+            string cachePath = modPath + @"cache\";
 
             ESM esm = new ESM(morrowindPath + @"Morrowind.json");
             Cache cache = Cache.Load(esm, cachePath, morrowindPath);
@@ -33,7 +30,7 @@ namespace JortPob
             /* Generate msbs from layout */
             Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
             Vector3 TEST_OFFSET2 = new(0, -15, 0);
-            short TEST_PART_DRAW = 1000;
+            short TEST_PART_DRAW = 1001;
             int INSTANCETEST = 0;
             List<Tuple<BaseTile, MSBE>> msbs = new();
             foreach (BaseTile tile in layout.all)

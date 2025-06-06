@@ -10,6 +10,11 @@ namespace JortPob.Common
 {
     public static class Const
     {
+        #region Paths
+        public static readonly string MORROWIND_PATH = @"I:\SteamLibrary\steamapps\common\Morrowind\";
+        public static readonly string OUTPUT_PATH = @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\";
+        #endregion
+
         #region General
         public static readonly float GLOBAL_SCALE = 0.01f;
         public static readonly int CELL_EXTERIOR_BOUNDS = 30;
@@ -22,6 +27,12 @@ namespace JortPob.Common
 
         public static readonly float CONTENT_SIZE_BIG = 7f;
         public static readonly float CONTENT_SIZE_HUGE = 20f;
+
+        public static readonly int THREAD_COUNT = 16;
+        #endregion
+
+        #region Debug
+        public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
         #endregion
     }
 }
