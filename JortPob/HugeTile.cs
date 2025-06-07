@@ -47,12 +47,32 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public void AddContent(AssetContent content)
+        public void AddContent(AssetContent content, ModelInfo modelInfo)
         {
-            float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-            float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            assets.Add(content);
+            if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE)
+            {
+                float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                assets.Add(content);
+            }
+            else
+            {
+                BigTile big = GetBigTile(content.position);
+                if (big != null) { big.AddContent(content, modelInfo); }
+            }
+        }
+
+        public BigTile GetBigTile(Vector3 position)
+        {
+            foreach (BigTile big in bigs)
+            {
+                if (big.PositionInside(position))
+                {
+                    return big;
+                }
+            }
+            return null;
         }
 
         public void AddBig(BigTile big)

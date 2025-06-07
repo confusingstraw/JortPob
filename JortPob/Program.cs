@@ -18,6 +18,8 @@ namespace JortPob
     {
         static void Main(string[] args)
         {
+            MSBE TESTO = MSBE.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\mapstudio\m60_42_36_00.msb.dcx");
+
             string morrowindPath = Const.MORROWIND_PATH + @"Data Files\";
             string modPath = Const.OUTPUT_PATH;
             string cachePath = modPath + @"cache\";
@@ -25,7 +27,6 @@ namespace JortPob
             ESM esm = new ESM(morrowindPath + @"Morrowind.json");
             Cache cache = Cache.Load(esm, cachePath, morrowindPath);
             Layout layout = new(cache, esm);
-
 
             /* Generate msbs from layout */
             Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
@@ -36,13 +37,13 @@ namespace JortPob
             foreach (BaseTile tile in layout.all)
             {
                 if(tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
-                Console.WriteLine($"Generating MSB m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block}");
+                Console.WriteLine($"Generating MSB m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block} DEBUG -> NPC[{tile.npcs.Count}]");
 
                 /* Generate msb from tile */
                 MSBE msb = new();
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
-                /* TEST big flat piece of collision */
+                /* TEST big flat piece of collision */  // Just need something to stand on so I can walk around and test stuff
                 if (tile.GetType() == typeof(Tile))
                 {
                     MSBE.Part.Collision collision = new();
@@ -50,6 +51,29 @@ namespace JortPob
                     collision.ModelName = $"h{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00";
                     collision.MapStudioLayer = 4294967295;
                     collision.Position = new Vector3(0, -65.574f, 0) + TEST_OFFSET1;
+                    collision.PlayRegionID = -1;
+                    collision.LocationTextID = -1;
+                    collision.InstanceID = -1;
+                    collision.TileLoad.CullingHeightBehavior = -1;
+                    collision.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+                    collision.TileLoad.Unk0C = -1;
+                    collision.Unk1.UnkC4 = -1;
+                    collision.Unk2.Condition = -1;
+                    collision.Unk2.Unk26 = -1;
+                    collision.UnkE0F = 1;
+                    collision.UnkE3C = -1;
+                    collision.UnkT01 = 255;
+                    collision.UnkT02 = 255;
+                    collision.UnkT04 = 64.8087158f;
+                    collision.UnkT14 = -1;
+                    collision.UnkT1C = -1;
+                    collision.UnkT24 = -1;
+                    collision.UnkT30 = -1;
+                    collision.UnkT35 = 255;
+                    collision.UnkT3C = -1;
+                    collision.UnkT3E = -1;
+                    collision.UnkT4E = -1;
+
                     msb.Parts.Collisions.Add(collision);
                 }
 
@@ -96,7 +120,34 @@ namespace JortPob
                     msb.Parts.Assets.Add(asset);
                 }
 
-                /* Test players */
+                /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
+                foreach(NpcContent npc in tile.npcs)
+                {
+                    MSBE.Part.Enemy enemy = (MSBE.Part.Enemy)TESTO.Parts.Enemies[0].DeepCopy();
+                    enemy.Name = $"c0000_{npc.id.Replace(" ", "")}";
+                    enemy.Position = new Vector3(npc.relative.X, 3, npc.relative.Z) + TEST_OFFSET1;
+                    enemy.Rotation = npc.rotation;
+                    enemy.InstanceID = -1;
+                    enemy.EntityID = 0;
+
+                    msb.Parts.Enemies.Add(enemy);
+                }
+
+                /* TEST Creatures */  // make some goats where enemies would spawn just as a test
+                foreach (CreatureContent creature in tile.creatures)
+                {
+                    MSBE.Part.Enemy enemy = (MSBE.Part.Enemy)TESTO.Parts.Enemies[35].DeepCopy();
+                    enemy.Name = $"c6060_{creature.id.Replace(" ", "")}";
+                    enemy.Position = new Vector3(creature.relative.X, 3, creature.relative.Z) + TEST_OFFSET1;
+                    enemy.Rotation = creature.rotation;
+                    enemy.InstanceID = -1;
+                    enemy.ModelName = "c6060";
+                    enemy.WalkRouteName = "";
+
+                    msb.Parts.Enemies.Add(enemy);
+                }
+
+                /* TEST players */  // Generic player spawn point at the center of the cell for testing purposes
                 if (tile.GetType() == typeof(Tile))
                 {
                     MSBE.Part.Player player_0 = new();
@@ -106,7 +157,7 @@ namespace JortPob
                     player_0.MapStudioLayer = 4294967295;
                     player_0.Unk1.DisplayGroups[0] = 16;
                     player_0.Position = TEST_OFFSET1;
-                    msb.Parts.Add(player_0);
+                    msb.Parts.Players.Add(player_0);
                 }
 
                 /* Auto resource */

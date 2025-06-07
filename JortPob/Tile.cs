@@ -71,6 +71,22 @@ namespace JortPob
             content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             emitters.Add(content);
         }
+
+        public void AddContent(CreatureContent content)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            creatures.Add(content);
+        }
+
+        public void AddContent(NpcContent content)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            npcs.Add(content);
+        }
     }
 
 
@@ -85,6 +101,8 @@ namespace JortPob
         public readonly List<AssetContent> assets;
         public readonly List<LightContent> lights;
         public readonly List<EmitterContent> emitters;
+        public readonly List<CreatureContent> creatures;
+        public readonly List<NpcContent> npcs;
 
         public BaseTile(int m, int x, int y, int b)
         {
@@ -98,6 +116,8 @@ namespace JortPob
             assets = new();
             emitters = new();
             lights = new();
+            creatures = new();
+            npcs = new();
         }
     }
 }

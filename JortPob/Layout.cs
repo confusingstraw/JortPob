@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Worker;
 using SoulsFormats.Formats.Morpheme.MorphemeBundle;
 using System;
 using System.Collections.Generic;
@@ -19,12 +20,16 @@ namespace JortPob
         public List<BigTile> bigs;
         public List<Tile> tiles;
 
+        public List<InteriorGroup> interiors;
+
         public Layout(Cache cache, ESM esm)
         {
             all = new();
             huges = new();
             bigs = new();
             tiles = new();
+
+            interiors = new();
 
             /* Generate tiles based off base game msb info... */
             string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
@@ -117,6 +122,22 @@ namespace JortPob
                 }
             }
 
+            /* Generate Interior Groups */
+            foreach(string msb in msblist)
+            {
+                string[] split = msb.Split(",");
+                int m = int.Parse(split[0]);
+                int a = int.Parse(split[1]);
+                int u = int.Parse(split[2]);
+                int b = int.Parse(split[3]);
+
+                if ((m == 30 || m == 31 || m == 32) && u == 0 && b == 0)
+                {
+                    InteriorGroup group = new InteriorGroup(m, a, u, b);
+                    interiors.Add(group);
+                }
+            }
+
             /* Subdivide all cell content into tiles */
             foreach (Cell cell in esm.exterior)
             {
@@ -133,21 +154,8 @@ namespace JortPob
                 {
                     ModelInfo modelInfo = cache.GetModel(content.mesh);
 
-                    if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE)
-                    {
-                        HugeTile huge = GetHugeTile(content.position);
-                        if (huge != null) { huge.AddContent(content); }
-                    }
-                    else if (modelInfo.size * content.scale > Const.CONTENT_SIZE_BIG)
-                    {
-                        BigTile big = GetBigTile(content.position);
-                        if (big != null) { big.AddContent(content); }
-                    }
-                    else
-                    {
-                        Tile tile = GetTile(content.position);
-                        if (tile != null) { tile.AddContent(content); }
-                    }
+                    HugeTile huge = GetHugeTile(content.position);
+                    if (huge != null) { huge.AddContent(content, modelInfo); }
                 }
                 foreach (EmitterContent content in cell.emitters)
                 {
@@ -165,6 +173,37 @@ namespace JortPob
                         tile.AddContent(content);
                     }
                 }
+                foreach (NpcContent content in cell.npcs)
+                {
+                    Tile tile = GetTile(content.position);
+                    if (tile != null)
+                    {
+                        tile.AddContent(content);
+                    }
+                }
+                foreach (CreatureContent content in cell.creatures)
+                {
+                    Tile tile = GetTile(content.position);
+                    if (tile != null)
+                    {
+                        tile.AddContent(content);
+                    }
+                }
+            }
+
+            /* Subdivide all interior cells into groups */
+            int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
+            int start = 0, end = partition;
+            foreach (InteriorGroup group in interiors)
+            {
+                for(int i=start; i<Math.Min(end, esm.interior.Count); i++)
+                {
+                    Cell cell = esm.interior[i];
+                    group.AddCell(cell);
+                }
+
+                start += partition;
+                end += partition;
             }
 
             /* Render an ASCII image of the tiles for verification! */

@@ -3,6 +3,7 @@ using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO.Pipes;
 using System.Linq;
 using System.Numerics;
 using System.Reflection.Metadata;
@@ -22,6 +23,8 @@ namespace JortPob
         public readonly Int2 coordinate;  // Position on the cell grid
         public readonly Vector3 center;
 
+        public readonly List<CreatureContent> creatures;
+        public readonly List<NpcContent> npcs;
         public readonly List<AssetContent> assets;
         public readonly List<LightContent> lights;
         public readonly List<EmitterContent> emitters;
@@ -39,6 +42,8 @@ namespace JortPob
             center = new Vector3((Const.CELL_SIZE * coordinate.x) + (Const.CELL_SIZE * 0.5f), 0.0f, (Const.CELL_SIZE * coordinate.y) + (Const.CELL_SIZE * 0.5f));
 
             /* Cell Content Data */
+            creatures = new();
+            npcs = new();
             assets = new();
             emitters = new();
             lights = new();
@@ -62,6 +67,13 @@ namespace JortPob
                     case ESM.Type.Light:
                         if (mesh == null) { lights.Add(new LightContent(reference, record)); }
                         else { emitters.Add(new EmitterContent(reference, record)); }
+                        break;
+                    case ESM.Type.Npc:
+                        npcs.Add(new NpcContent(reference, record));
+                        break;
+                    case ESM.Type.Creature:
+                    case ESM.Type.LevelledCreature:
+                        creatures.Add(new CreatureContent(reference, record));
                         break;
                 }
             }

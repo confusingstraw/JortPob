@@ -16,13 +16,17 @@ namespace JortPob
     {
         public readonly string id;
 
+        public readonly ESM.Type type;
+
         public Vector3 relative;
         public readonly Vector3 position, rotation;
         public readonly float scale;
 
-        public Content(JsonNode json)
+        public Content(JsonNode json, Record record)
         {
             id = json["id"].ToString();
+
+            type = record.type;
 
             float x = float.Parse(json["translation"][0].ToString());
             float z = float.Parse(json["translation"][1].ToString());
@@ -74,15 +78,31 @@ namespace JortPob
         }
     }
 
+    /* npcs, humanoid only */
+    public class NpcContent : Content
+    {
+        public NpcContent(JsonNode json, Record record) : base(json, record)
+        {
+            // Kinda stubby for now
+        }
+    }
+
+    /* creatures, both leveled and non-leveled */
+    public class CreatureContent : Content
+    {
+        public CreatureContent(JsonNode json, Record record) : base(json, record)
+        {
+            // Kinda stubby for now
+        }
+    }
+
     /* static meshes to be converted to assets */
     public class AssetContent : Content
     {
-        public readonly ESM.Type type;
         public readonly string mesh;
 
-        public AssetContent(JsonNode json, Record record) : base(json)
+        public AssetContent(JsonNode json, Record record) : base(json, record)
         {
-            type = record.type;
             mesh = record.json["mesh"].ToString().ToLower();
         }
     }
@@ -90,12 +110,10 @@ namespace JortPob
     /* static meshes that have emitters/lights EX: candles/campfires -- converted to assets but also generates ffx files and params to make them work */
     public class EmitterContent : Content
     {
-        public readonly ESM.Type type;
         public readonly string mesh;
 
-        public EmitterContent(JsonNode json, Record record) : base(json)
+        public EmitterContent(JsonNode json, Record record) : base(json, record)
         {
-            type = record.type;
             mesh = record.json["mesh"].ToString().ToLower();
         }
     }
@@ -103,11 +121,9 @@ namespace JortPob
     /* invisible lights with no static mesh associated */
     public class LightContent : Content 
     {
-        public readonly ESM.Type type;
-
-        public LightContent(JsonNode json, Record record) : base(json)
+        public LightContent(JsonNode json, Record record) : base(json, record)
         {
-            type = record.type;
+
         }
     }
 }
