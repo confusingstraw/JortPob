@@ -1,6 +1,7 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -46,20 +47,26 @@ namespace JortPob
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
         }
 
-        /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public void AddContent(AssetContent content, ModelInfo modelInfo)
+        /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
+        public new void AddContent(Cache cache, Content content)
         {
-            if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE)
+            switch (content.GetType().ToString())   // How the fuck is there not a better way to do this. for fucks sake C#
             {
-                float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                assets.Add(content);
-            }
-            else
-            {
-                BigTile big = GetBigTile(content.position);
-                if (big != null) { big.AddContent(content, modelInfo); }
+                case "JortPob.AssetContent":
+                    AssetContent asset = (AssetContent)content;
+                    ModelInfo modelInfo = cache.GetModel(asset.mesh);
+                    if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE) {
+                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        base.AddContent(cache,content);
+                        break;
+                    }
+                    goto default;
+                default:
+                    BigTile big = GetBigTile(content.position);
+                    big.AddContent(cache, content);
+                    break;
             }
         }
 

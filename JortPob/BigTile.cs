@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -39,19 +40,25 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public void AddContent(AssetContent content, ModelInfo modelInfo)
+        public new void AddContent(Cache cache, Content content)
         {
-            if (modelInfo.size * content.scale > Const.CONTENT_SIZE_BIG)
+            switch (content.GetType().ToString())
             {
-                float x = (coordinate.x * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
-                float y = (coordinate.y * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
-                content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                assets.Add(content);
-            }
-            else
-            {
-                Tile tile = GetTile(content.position);
-                if (tile != null) { tile.AddContent(content); }
+                case "JortPob.AssetContent":
+                    AssetContent asset = (AssetContent)content;
+                    ModelInfo modelInfo = cache.GetModel(asset.mesh);
+                    if (modelInfo.size * content.scale > Const.CONTENT_SIZE_BIG) {
+                        float x = (coordinate.x * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
+                        float y = (coordinate.y * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
+                        content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        base.AddContent(cache, content);
+                        break;
+                    }
+                    goto default;
+                default:
+                    Tile tile = GetTile(content.position);
+                    tile.AddContent(cache, content);
+                    break;
             }
         }
 

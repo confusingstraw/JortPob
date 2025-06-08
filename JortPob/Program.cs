@@ -3,6 +3,7 @@ using JortPob.Model;
 using PortJob;
 using SharpAssimp;
 using SoulsFormats;
+using SoulsFormats.KF4;
 using System;
 using System.Collections.Generic;
 using System.Drawing.Drawing2D;
@@ -28,16 +29,16 @@ namespace JortPob
             Cache cache = Cache.Load(esm, cachePath, morrowindPath);
             Layout layout = new(cache, esm);
 
-            /* Generate msbs from layout */
+            /* Generate exterior msbs from layout */
             Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
             Vector3 TEST_OFFSET2 = new(0, -15, 0);
             short TEST_PART_DRAW = 1001;
             int INSTANCETEST = 0;
-            List<Tuple<BaseTile, MSBE>> msbs = new();
+            List<Tuple<BaseTile, MSBE>> exts = new();
             foreach (BaseTile tile in layout.all)
             {
                 if(tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
-                Console.WriteLine($"Generating MSB m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block} DEBUG -> NPC[{tile.npcs.Count}]");
+                Console.WriteLine($"Generating MSB m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block}");
 
                 /* Generate msb from tile */
                 MSBE msb = new();
@@ -164,7 +165,122 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Done */
-                msbs.Add(new Tuple<BaseTile, MSBE>(tile, msb));
+                exts.Add(new Tuple<BaseTile, MSBE>(tile, msb));
+            }
+
+            /* Generate exterior msbs from interiorgroups */
+            List<Tuple<InteriorGroup, MSBE>> ints = new();
+            foreach(InteriorGroup group in layout.interiors)
+            {
+                if (group.chunks.Count <= 0 && group.chunks.Count <= 0) { continue; }   // Skip empty groups.
+                Console.WriteLine($"Generating MSB m{group.map} - {group.area} :: b{group.block}");
+
+                /* Generate msb from group */
+                MSBE msb = new();
+                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+
+                /* TEST big flat piece of collision */  // Just need something to stand on so I can walk around and test stuff
+                MSBE.Part.Collision collision = new();
+                collision.Name = $"h{group.area.ToString("D2")}{group.unk.ToString("D2")}00_test";
+                collision.ModelName = $"h{group.area.ToString("D2")}{group.unk.ToString("D2")}00";
+                collision.MapStudioLayer = 4294967295;
+                collision.Position = new Vector3(0, -65.574f, 0) + TEST_OFFSET1;
+                collision.PlayRegionID = -1;
+                collision.LocationTextID = -1;
+                collision.InstanceID = -1;
+                collision.TileLoad.CullingHeightBehavior = -1;
+                collision.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+                collision.TileLoad.Unk0C = -1;
+                collision.Unk1.UnkC4 = -1;
+                collision.Unk2.Condition = -1;
+                collision.Unk2.Unk26 = -1;
+                collision.UnkE0F = 1;
+                collision.UnkE3C = -1;
+                collision.UnkT01 = 255;
+                collision.UnkT02 = 255;
+                collision.UnkT04 = 64.8087158f;
+                collision.UnkT14 = -1;
+                collision.UnkT1C = -1;
+                collision.UnkT24 = -1;
+                collision.UnkT30 = -1;
+                collision.UnkT35 = 255;
+                collision.UnkT3C = -1;
+                collision.UnkT3E = -1;
+                collision.UnkT4E = -1;
+
+                msb.Parts.Collisions.Add(collision);
+
+                /* Handle chunks */
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    /* Add assets */
+                    foreach (AssetContent content in chunk.assets)
+                    {
+                        // Grab da thing
+                        ModelInfo modelInfo = cache.GetModel(content.mesh);
+
+                        // Make da thing
+                        MSBE.Part.Asset asset = new();
+                        asset.Name = $"{modelInfo.AssetName().ToUpper()}_test";
+                        asset.ModelName = modelInfo.AssetName().ToUpper();
+                        asset.MapStudioLayer = 4294967295;
+
+                        asset.isUsePartsDrawParamID = 1;
+                        asset.PartsDrawParamID = TEST_PART_DRAW;
+
+                        asset.Unk1.DisplayGroups[0] = 16;
+
+                        asset.InstanceID = INSTANCETEST++;
+
+                        asset.Position = content.relative + TEST_OFFSET1 + TEST_OFFSET2;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(content.scale);
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
+                    foreach (NpcContent npc in chunk.npcs)
+                    {
+                        MSBE.Part.Enemy enemy = (MSBE.Part.Enemy)TESTO.Parts.Enemies[0].DeepCopy();
+                        enemy.Name = $"c0000_{npc.id.Replace(" ", "")}";
+                        enemy.Position = new Vector3(npc.relative.X, 3, npc.relative.Z) + TEST_OFFSET1;
+                        enemy.Rotation = npc.rotation;
+                        enemy.InstanceID = -1;
+                        enemy.EntityID = 0;
+
+                        msb.Parts.Enemies.Add(enemy);
+                    }
+
+                    /* TEST Creatures */  // make some goats where enemies would spawn just as a test
+                    foreach (CreatureContent creature in chunk.creatures)
+                    {
+                        MSBE.Part.Enemy enemy = (MSBE.Part.Enemy)TESTO.Parts.Enemies[35].DeepCopy();
+                        enemy.Name = $"c6060_{creature.id.Replace(" ", "")}";
+                        enemy.Position = new Vector3(creature.relative.X, 3, creature.relative.Z) + TEST_OFFSET1;
+                        enemy.Rotation = creature.rotation;
+                        enemy.InstanceID = -1;
+                        enemy.ModelName = "c6060";
+                        enemy.WalkRouteName = "";
+
+                        msb.Parts.Enemies.Add(enemy);
+                    }
+                }
+
+                /* TEST players */  // Generic player spawn point at the center of the cell for testing purposes
+                MSBE.Part.Player player_0 = new();
+                player_0.Name = "c0000_9001";
+                player_0.ModelName = "c0000";
+                player_0.InstanceID = 9001;
+                player_0.MapStudioLayer = 4294967295;
+                player_0.Unk1.DisplayGroups[0] = 16;
+                player_0.Position = TEST_OFFSET1;
+                msb.Parts.Players.Add(player_0);
+
+                /* Auto resource */
+                AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
+
+                /* Done */
+                ints.Add(new Tuple<InteriorGroup, MSBE>(group, msb));
             }
 
             /* Bind and write all materials and textures */
@@ -179,11 +295,12 @@ namespace JortPob
                 Bind.BindAsset(mod, cachePath, $"{modPath}asset\\aeg\\{mod.AssetPath()}.geombnd.dcx");
             }
 
-            /* Write msbs */
-            foreach (Tuple<BaseTile, MSBE> tuple in msbs)
+            /* Write ext msbs */
+            foreach (Tuple<BaseTile, MSBE> tuple in exts)
             {
                 BaseTile tile = tuple.Item1;
                 MSBE msb = tuple.Item2;
+                string map = $"{tile.map.ToString("D2")}";
                 string name = $"{tile.map.ToString("D2")}_{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}_{tile.block.ToString("D2")}";
 
                 Console.WriteLine($"Writing files for -> m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block}");
@@ -216,17 +333,47 @@ namespace JortPob
                 foreach (BinderFile file in TEST.Files)
                 {
                     file.Name = file.Name.Replace("43_36", $"{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}");
+                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}").Replace("m60", $"m{map}").Replace("h60", $"h{map}");
                 }
-                TEST.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m60\\m{name}\\h{name}.hkxbdt");
+                TEST.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
 
                 BXF4 TEST2 = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbdt");
                 foreach (BinderFile file in TEST2.Files)
                 {
                     file.Name = file.Name.Replace("43_36", $"{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}");
+                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}").Replace("m60", $"m{map}").Replace("l60", $"l{map}");
                 }
-                TEST2.Write($"{modPath}map\\m60\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m60\\m{name}\\l{name}.hkxbdt");
+                TEST2.Write($"{modPath}map\\m60\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
+            }
+
+            /* Write int msbs */
+            foreach (Tuple<InteriorGroup, MSBE> tuple in ints)
+            {
+                InteriorGroup group = tuple.Item1;
+                MSBE msb = tuple.Item2;
+                string map = $"{group.map.ToString("D2")}";
+                string name = $"{group.map.ToString("D2")}_{group.area.ToString("D2")}_{group.unk.ToString("D2")}_{group.block.ToString("D2")}";
+
+                Console.WriteLine($"Writing files for -> m{group.map} [{group.area},{group.unk}] :: b{group.block}");
+
+                msb.Write($"{modPath}map\\mapstudio\\m{name}.msb.dcx");
+
+                /* Write TEST hkx binds */
+                BXF4 TEST = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbdt");
+                foreach (BinderFile file in TEST.Files)
+                {
+                    file.Name = file.Name.Replace("43_36", $"{group.area.ToString("D2")}_{group.unk.ToString("D2")}");
+                    file.Name = file.Name.Replace("4336", $"{group.area.ToString("D2")}{group.unk.ToString("D2")}").Replace("h60", $"h{map}").Replace("m60", $"m{map}");
+                }
+                TEST.Write($"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
+
+                BXF4 TEST2 = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbdt");
+                foreach (BinderFile file in TEST2.Files)
+                {
+                    file.Name = file.Name.Replace("43_36", $"{group.area.ToString("D2")}_{group.unk.ToString("D2")}");
+                    file.Name = file.Name.Replace("4336", $"{group.area.ToString("D2")}{group.unk.ToString("D2")}").Replace("l60", $"l{map}").Replace("m60", $"m{map}");
+                }
+                TEST2.Write($"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
             }
 
             Console.WriteLine("## Nice! ##");

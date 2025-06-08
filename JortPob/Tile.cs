@@ -39,53 +39,13 @@ namespace JortPob
             return false;
         }
 
-        public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
-        {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
-            Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
-        }
-
-        /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public void AddContent(AssetContent content)
+        public new void AddContent(Cache cache, Content content)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
             float y = (coordinate.y * Const.TILE_SIZE);
             content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            assets.Add(content);
-        }
 
-        public void AddContent(LightContent content)
-        {
-            float x = (coordinate.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y = (coordinate.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            lights.Add(content);
-        }
-
-        public void AddContent(EmitterContent content)
-        {
-            float x = (coordinate.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y = (coordinate.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            emitters.Add(content);
-        }
-
-        public void AddContent(CreatureContent content)
-        {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
-            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            creatures.Add(content);
-        }
-
-        public void AddContent(NpcContent content)
-        {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
-            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            npcs.Add(content);
+            base.AddContent(cache, content);
         }
     }
 
@@ -118,6 +78,32 @@ namespace JortPob
             lights = new();
             creatures = new();
             npcs = new();
+        }
+
+
+        /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
+        public void AddContent(Cache cache, Content content)
+        {
+            if (content.GetType() == typeof(AssetContent))
+            {
+                assets.Add((AssetContent)content);
+            }
+            else if (content.GetType() == typeof(EmitterContent))
+            {
+                emitters.Add((EmitterContent)content);
+            }
+            else if (content.GetType() == typeof(LightContent))
+            {
+                lights.Add((LightContent)content);
+            }
+            else if (content.GetType() == typeof(CreatureContent))
+            {
+                creatures.Add((CreatureContent)content);
+            }
+            else if (content.GetType() == typeof(NpcContent))
+            {
+                npcs.Add((NpcContent)content);
+            }
         }
     }
 }

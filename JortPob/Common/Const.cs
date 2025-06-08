@@ -15,6 +15,10 @@ namespace JortPob.Common
         public static readonly string OUTPUT_PATH = @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\";
         #endregion
 
+        #region Optimization
+        public static readonly int THREAD_COUNT = 16;
+        #endregion
+
         #region General
         public static readonly float GLOBAL_SCALE = 0.01f;
         public static readonly int CELL_EXTERIOR_BOUNDS = 30;
@@ -25,14 +29,16 @@ namespace JortPob.Common
         /* Calculated... ESM lowest cell is [-20,-20]~ on the grid. MSB lowest value is [+33,+40]~. Offset so they overlap */
         public static readonly Vector3 LAYOUT_COORDINATE_OFFSET = new((20*CELL_SIZE)+(35*TILE_SIZE), 0, (20*CELL_SIZE)+(38*TILE_SIZE));
 
+        public static int CHUNK_PARTITION_SIZE = 6;
+
         public static readonly float CONTENT_SIZE_BIG = 7f;
         public static readonly float CONTENT_SIZE_HUGE = 20f;
-
-        public static readonly int THREAD_COUNT = 16;
         #endregion
 
         #region Debug
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
+
+
         #endregion
     }
 }

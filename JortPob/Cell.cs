@@ -22,7 +22,10 @@ namespace JortPob
         public readonly string region;
         public readonly Int2 coordinate;  // Position on the cell grid
         public readonly Vector3 center;
+        public readonly Vector3 boundsMin;
+        public readonly Vector3 boundsMax;
 
+        public readonly List<Content> contents;            // All of this
         public readonly List<CreatureContent> creatures;
         public readonly List<NpcContent> npcs;
         public readonly List<AssetContent> assets;
@@ -42,6 +45,7 @@ namespace JortPob
             center = new Vector3((Const.CELL_SIZE * coordinate.x) + (Const.CELL_SIZE * 0.5f), 0.0f, (Const.CELL_SIZE * coordinate.y) + (Const.CELL_SIZE * 0.5f));
 
             /* Cell Content Data */
+            contents = new();
             creatures = new();
             npcs = new();
             assets = new();
@@ -77,6 +81,27 @@ namespace JortPob
                         break;
                 }
             }
+
+            contents.AddRange(creatures);
+            contents.AddRange(npcs);
+            contents.AddRange(assets);
+            contents.AddRange(emitters);
+            contents.AddRange(lights);
+
+
+            /* Calculate bounding box */
+            float x1 = float.MaxValue, y1 = float.MaxValue, z1 = float.MaxValue, x2 = float.MinValue, y2 = float.MinValue, z2 = float.MinValue;
+            foreach (Content content in contents)
+            {
+                x1 = Math.Min(x1, content.position.X);
+                y1 = Math.Min(y1, content.position.Y);
+                z1 = Math.Min(z1, content.position.Z);
+                x2 = Math.Max(x2, content.position.X);
+                y2 = Math.Max(y2, content.position.Y);
+                z2 = Math.Max(z2, content.position.Z);
+            }
+            boundsMin = new Vector3(x1, y1, z1);
+            boundsMax = new Vector3(x2, y2, z2);
         }
     }
 }

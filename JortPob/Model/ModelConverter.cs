@@ -25,8 +25,6 @@ namespace JortPob.Model
             flver.Header.Version = 131098; // Elden Ring FLVER Version Number
             flver.Header.Unk5D = 0;        // Unk
             flver.Header.Unk68 = 4;        // Unk
-            flver.Header.BoundingBoxMin = new Vector3(-10, -10, -10); // @TODO: DEBUG!
-            flver.Header.BoundingBoxMax = new Vector3(10, 10, 10);
 
             /* Add bones and nodes for FLVER */
             FLVER.Node rootNode = new();
@@ -38,9 +36,6 @@ namespace JortPob.Model
             skeletonSet.BaseSkeleton.Add(rootBone);
             flver.Nodes.Add(rootNode);
             flver.Skeletons = skeletonSet;
-
-            rootNode.BoundingBoxMin = new Vector3(-10, -10, -10); // @TODO: DEBUG!
-            rootNode.BoundingBoxMax = new Vector3(10, 10, 10);
 
             /* Generate material data */
             List<MaterialContext.MaterialInfo> materialInfo = materialContext.GenerateMaterials(fbx.Materials);
@@ -210,11 +205,11 @@ namespace JortPob.Model
             }
 
             /* Calculate bounding boxes */
-            float X1 = 0f, X2 = 0f, Y1 = 0f, Y2 = 0f, Z1 = 0f, Z2 = 0f;
+            float X1 = float.MaxValue, X2 = float.MinValue, Y1 = float.MaxValue, Y2 = float.MinValue, Z1 = float.MaxValue, Z2 = float.MinValue;
             foreach (FLVER2.Mesh mesh in flver.Meshes)
             {
-                float x1 = 0f, x2 = 0f, y1 = 0f, y2 = 0f, z1 = 0f, z2 = 0f;
-                foreach(FLVER.Vertex vert in mesh.Vertices)
+                float x1 = float.MaxValue, x2 = float.MinValue, y1 = float.MaxValue, y2 = float.MinValue, z1 = float.MaxValue, z2 = float.MinValue;
+                foreach (FLVER.Vertex vert in mesh.Vertices)
                 {
                     x1 = Math.Min(vert.Position.X, x1);
                     y1 = Math.Min(vert.Position.Y, y1);
@@ -238,6 +233,8 @@ namespace JortPob.Model
             }
             rootNode.BoundingBoxMin = new Vector3(X1, Y1, Z1);
             rootNode.BoundingBoxMax = new Vector3(X2, Y2, Z2);
+            flver.Header.BoundingBoxMin = rootNode.BoundingBoxMin;
+            flver.Header.BoundingBoxMax = rootNode.BoundingBoxMax;
 
             /* Calculate model size */
             float size = Vector3.Distance(rootNode.BoundingBoxMin, rootNode.BoundingBoxMax);
@@ -258,8 +255,6 @@ namespace JortPob.Model
             flver.Header.Version = 131098; // Elden Ring FLVER Version Number
             flver.Header.Unk5D = 0;        // Unk
             flver.Header.Unk68 = 4;        // Unk
-            flver.Header.BoundingBoxMin = new Vector3(-10, -10, -10); // @TODO: DEBUG!
-            flver.Header.BoundingBoxMax = new Vector3(10, 10, 10);
 
             /* Add bones and nodes for FLVER */
             FLVER.Node rootNode = new();
@@ -271,9 +266,6 @@ namespace JortPob.Model
             skeletonSet.BaseSkeleton.Add(rootBone);
             flver.Nodes.Add(rootNode);
             flver.Skeletons = skeletonSet;
-
-            rootNode.BoundingBoxMin = new Vector3(-10, -10, -10); // @TODO: DEBUG!
-            rootNode.BoundingBoxMax = new Vector3(10, 10, 10);
 
             /* Generate material data */
             List<MaterialContext.MaterialInfo> materialInfo = materialContext.GenerateMaterials(landscape);
@@ -293,11 +285,6 @@ namespace JortPob.Model
                 flverFaces.Unk06 = 1;
                 flverMesh.NodeIndex = 0; // attach to rootnode
                 flverMesh.MaterialIndex = 0;
-
-                /* DEBUG @TODO: BOUNDING BOX */
-                flverMesh.BoundingBox = new FLVER2.Mesh.BoundingBoxes();
-                flverMesh.BoundingBox.Min = new Vector3(-10, -10, -10);
-                flverMesh.BoundingBox.Max = new Vector3(10, 10, 10);
 
                 /* Setup Vertex Buffer */
                 FLVER2.VertexBuffer flverBuffer = new(0);
@@ -335,10 +322,10 @@ namespace JortPob.Model
                 flver.Meshes.Add(flverMesh);
 
             /* Calculate bounding boxes */
-            float X1 = 0f, X2 = 0f, Y1 = 0f, Y2 = 0f, Z1 = 0f, Z2 = 0f;
+            float X1 = float.MaxValue, X2 = float.MinValue, Y1 = float.MaxValue, Y2 = float.MinValue, Z1 = float.MaxValue, Z2 = float.MinValue;
             foreach (FLVER2.Mesh mesh in flver.Meshes)
             {
-                float x1 = 0f, x2 = 0f, y1 = 0f, y2 = 0f, z1 = 0f, z2 = 0f;
+                float x1 = float.MaxValue, x2 = float.MinValue, y1 = float.MaxValue, y2 = float.MinValue, z1 = float.MaxValue, z2 = float.MinValue;
                 foreach (FLVER.Vertex vert in mesh.Vertices)
                 {
                     x1 = Math.Min(vert.Position.X, x1);
@@ -363,6 +350,8 @@ namespace JortPob.Model
             }
             rootNode.BoundingBoxMin = new Vector3(X1, Y1, Z1);
             rootNode.BoundingBoxMax = new Vector3(X2, Y2, Z2);
+            flver.Header.BoundingBoxMin = rootNode.BoundingBoxMin;
+            flver.Header.BoundingBoxMax = rootNode.BoundingBoxMax;
 
             /* Write to file for testing! */
             flver.Write(outputFilename);

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -139,55 +140,21 @@ namespace JortPob
             }
 
             /* Subdivide all cell content into tiles */
-            foreach (Cell cell in esm.exterior)
+            foreach(Cell cell in esm.exterior)
             {
                 TerrainInfo terrain = cache.GetTerrain(cell.coordinate);
-                if(terrain != null)
+                if (terrain != null)
                 {
                     HugeTile huge = GetHugeTile(cell.center);
-                    if(huge != null)
-                    {
-                        huge.AddTerrain(cell.center, terrain);
-                    }
+                    if (huge != null) { huge.AddTerrain(cell.center, terrain); }
+                    else { Console.WriteLine($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}"); }
                 }
-                foreach(AssetContent content in cell.assets)
-                {
-                    ModelInfo modelInfo = cache.GetModel(content.mesh);
 
+                foreach(Content content in cell.contents)
+                {
                     HugeTile huge = GetHugeTile(content.position);
-                    if (huge != null) { huge.AddContent(content, modelInfo); }
-                }
-                foreach (EmitterContent content in cell.emitters)
-                {
-                    Tile tile = GetTile(content.position);
-                    if (tile != null)
-                    {
-                        tile.AddContent(content);
-                    }
-                }
-                foreach (LightContent content in cell.lights)
-                {
-                    Tile tile = GetTile(content.position);
-                    if (tile != null)
-                    {
-                        tile.AddContent(content);
-                    }
-                }
-                foreach (NpcContent content in cell.npcs)
-                {
-                    Tile tile = GetTile(content.position);
-                    if (tile != null)
-                    {
-                        tile.AddContent(content);
-                    }
-                }
-                foreach (CreatureContent content in cell.creatures)
-                {
-                    Tile tile = GetTile(content.position);
-                    if (tile != null)
-                    {
-                        tile.AddContent(content);
-                    }
+                    if(huge != null) { huge.AddContent(cache, content); }
+                    else { Console.WriteLine($" ## WARNING ## Content fell outside of reality {cell.coordinate} -- {content.id}"); }
                 }
             }
 
