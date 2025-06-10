@@ -21,8 +21,8 @@ namespace JortPob
         static void Main(string[] args)
         {
             // Bunch of debugging and research garbage code. Ignore */
-            /*
             MSBE TESTO = MSBE.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\mapstudio\m60_42_36_00.msb.dcx");
+            /*
             FLVER2 GUHTEST = FLVER2.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\asset\aeg\aeg001\aeg001_178-geombnd-dcx\GR\data\INTERROOT_win64\asset\aeg\AEG001\AEG001_178\sib\AEG001_178.flver");
             MATBIN BUHTEST = MATBIN.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\material\allmaterial-matbinbnd-dcx\GR\data\INTERROOT_win64\material\matbin\Map_Preset\matxml\Field_01_Grass_base.matbin");
             MATBIN GRUH = MATBIN.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\material\allmaterial-matbinbnd-dcx\GR\data\INTERROOT_win64\material\matbin\Map_m10_00\matxml\m10_00_027.matbin");

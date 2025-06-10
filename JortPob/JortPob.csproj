@@ -15,6 +15,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="HKLib">
+      <HintPath>..\..\HKLib\HKLib\bin\Debug\net7.0\HKLib.dll</HintPath>
+    </Reference>
+    <Reference Include="HKLib.Reflection">
+      <HintPath>..\..\HKLib\HKLib.Serialization\bin\Debug\net7.0\HKLib.Reflection.dll</HintPath>
+    </Reference>
+    <Reference Include="HKLib.Serialization">
+      <HintPath>..\..\HKLib\HKLib.Serialization\bin\Debug\net7.0\HKLib.Serialization.dll</HintPath>
+    </Reference>
     <Reference Include="SoulsFormats">
       <HintPath>..\..\SoulsFormatsNEXT\SoulsFormats\bin\Debug\net48\SoulsFormats.dll</HintPath>
     </Reference>
