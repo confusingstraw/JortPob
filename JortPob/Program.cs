@@ -1,5 +1,6 @@
 ﻿using JortPob.Common;
 using JortPob.Model;
+using JortPob.Worker;
 using PortJob;
 using SharpAssimp;
 using SoulsFormats;
@@ -19,7 +20,24 @@ namespace JortPob
     {
         static void Main(string[] args)
         {
+            // Bunch of debugging and research garbage code. Ignore */
+            /*
             MSBE TESTO = MSBE.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\mapstudio\m60_42_36_00.msb.dcx");
+            FLVER2 GUHTEST = FLVER2.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\asset\aeg\aeg001\aeg001_178-geombnd-dcx\GR\data\INTERROOT_win64\asset\aeg\AEG001\AEG001_178\sib\AEG001_178.flver");
+            MATBIN BUHTEST = MATBIN.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\material\allmaterial-matbinbnd-dcx\GR\data\INTERROOT_win64\material\matbin\Map_Preset\matxml\Field_01_Grass_base.matbin");
+            MATBIN GRUH = MATBIN.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\material\allmaterial-matbinbnd-dcx\GR\data\INTERROOT_win64\material\matbin\Map_m10_00\matxml\m10_00_027.matbin");
+
+            foreach(FLVER.Vertex vert in GUHTEST.Meshes[0].Vertices)
+            {
+                if (vert.Colors[0].R != 1f || vert.Colors[0].A != 1f || vert.Colors[0].G != 0f || vert.Colors[0].B != 0f)
+                {
+                    Console.WriteLine("HI");
+                }
+                if (vert.UVs[2].X != 0f || vert.UVs[2].Y != 0f || vert.UVs[2].Z != 0f) {
+                    Console.WriteLine("REEEEEEEEEEEEE");
+                }
+            }
+            */
 
             string morrowindPath = Const.MORROWIND_PATH + @"Data Files\";
             string modPath = Const.OUTPUT_PATH;
@@ -34,7 +52,8 @@ namespace JortPob
             Vector3 TEST_OFFSET2 = new(0, -15, 0);
             short TEST_PART_DRAW = 1001;
             int INSTANCETEST = 0;
-            List<Tuple<BaseTile, MSBE>> exts = new();
+            List<ResourcePool> msbs = new();
+
             foreach (BaseTile tile in layout.all)
             {
                 if(tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
@@ -165,13 +184,14 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Done */
-                exts.Add(new Tuple<BaseTile, MSBE>(tile, msb));
+                msbs.Add(new ResourcePool(tile, msb));
             }
 
-            /* Generate exterior msbs from interiorgroups */
-            List<Tuple<InteriorGroup, MSBE>> ints = new();
+            /* Generate interior msbs from interiorgroups */
             foreach(InteriorGroup group in layout.interiors)
             {
+                if (Const.DEBUG_SKIP_INTERIOR) { break; }
+
                 if (group.chunks.Count <= 0 && group.chunks.Count <= 0) { continue; }   // Skip empty groups.
                 Console.WriteLine($"Generating MSB m{group.map} - {group.area} :: b{group.block}");
 
@@ -280,104 +300,78 @@ namespace JortPob
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
 
                 /* Done */
-                ints.Add(new Tuple<InteriorGroup, MSBE>(group, msb));
+                msbs.Add(new ResourcePool(group, msb));
             }
 
             /* Bind and write all materials and textures */
-            Console.WriteLine($"Writing materials and textures...");
+            Console.WriteLine($"Binding materials...");
             Bind.BindMaterials(cachePath, $"{modPath}material\\allmaterial.matbinbnd.dcx");
+            Console.WriteLine($"Binding texture...");
             Bind.BindTPF(cache, cachePath, $"{modPath}map\\m60\\common\\m60_0000");
 
-            /* Bind all assets */
-            Console.WriteLine($"Writing assets...");
-            foreach (ModelInfo mod in cache.assets)
+            /* Bind all assets */    // Multithreaded because slow
+            Console.WriteLine($"Binding {cache.assets.Count} assets...  t[{Const.THREAD_COUNT}]");
+            Bind.BindAssets(cache, cachePath, modPath);
+
+            /* Write msbs */    // Multithreaded because insanely slow
+            Console.WriteLine($"Writing {msbs.Count} msbs...  t[{Const.THREAD_COUNT}]");
+            int partition = (int)Math.Ceiling(msbs.Count / (float)Const.THREAD_COUNT);
+            List<MsbWorker> workers = new();
+
+            for (int i = 0; i < Const.THREAD_COUNT; i++)
             {
-                Bind.BindAsset(mod, cachePath, $"{modPath}asset\\aeg\\{mod.AssetPath()}.geombnd.dcx");
+                int start = i * partition;
+                int end = start + partition;
+                MsbWorker worker = new(msbs, cachePath, modPath, start, end);
+                workers.Add(worker);
             }
 
-            /* Write ext msbs */
-            foreach (Tuple<BaseTile, MSBE> tuple in exts)
+            /* Wait for threads to finish */
+            while (true)
             {
-                BaseTile tile = tuple.Item1;
-                MSBE msb = tuple.Item2;
-                string map = $"{tile.map.ToString("D2")}";
-                string name = $"{tile.map.ToString("D2")}_{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}_{tile.block.ToString("D2")}";
-
-                Console.WriteLine($"Writing files for -> m{tile.map} [{tile.coordinate.x},{tile.coordinate.y}] :: b{tile.block}");
-
-                msb.Write($"{modPath}map\\mapstudio\\m{name}.msb.dcx");
-
-                /* Write terrain */
-                foreach (Tuple<Vector3, TerrainInfo> tup in tile.terrain)
+                bool done = true;
+                foreach (MsbWorker worker in workers)
                 {
-                    TerrainInfo terrainInfo = tup.Item2;
-                    FLVER2 flver = FLVER2.Read($"{cachePath}{terrainInfo.path}");
-
-                    BND4 bnd = new();
-                    bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
-                    bnd.Version = "07D7R6";
-
-                    BinderFile file = new();
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                    file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
-                    file.ID = 200;
-                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{name}\\m{name}_{terrainInfo.id.ToString("D8")}\\Model\\m{name}_{terrainInfo.id.ToString("D8")}.flver";
-                    file.Bytes = flver.Write();
-                    bnd.Files.Add(file);
-
-                    bnd.Write($"{modPath}map\\m60\\m{name}\\m{name}_{terrainInfo.id.ToString("D8")}.mapbnd.dcx");
+                    done &= worker.IsDone;
                 }
 
-                /* Write TEST hkx binds */
-                 BXF4 TEST = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST.Files)
-                {
-                    file.Name = file.Name.Replace("43_36", $"{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}").Replace("m60", $"m{map}").Replace("h60", $"h{map}");
-                }
-                TEST.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
-
-                BXF4 TEST2 = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST2.Files)
-                {
-                    file.Name = file.Name.Replace("43_36", $"{tile.coordinate.x.ToString("D2")}_{tile.coordinate.y.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}").Replace("m60", $"m{map}").Replace("l60", $"l{map}");
-                }
-                TEST2.Write($"{modPath}map\\m60\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
-            }
-
-            /* Write int msbs */
-            foreach (Tuple<InteriorGroup, MSBE> tuple in ints)
-            {
-                InteriorGroup group = tuple.Item1;
-                MSBE msb = tuple.Item2;
-                string map = $"{group.map.ToString("D2")}";
-                string name = $"{group.map.ToString("D2")}_{group.area.ToString("D2")}_{group.unk.ToString("D2")}_{group.block.ToString("D2")}";
-
-                Console.WriteLine($"Writing files for -> m{group.map} [{group.area},{group.unk}] :: b{group.block}");
-
-                msb.Write($"{modPath}map\\mapstudio\\m{name}.msb.dcx");
-
-                /* Write TEST hkx binds */
-                BXF4 TEST = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST.Files)
-                {
-                    file.Name = file.Name.Replace("43_36", $"{group.area.ToString("D2")}_{group.unk.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{group.area.ToString("D2")}{group.unk.ToString("D2")}").Replace("h60", $"h{map}").Replace("m60", $"m{map}");
-                }
-                TEST.Write($"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
-
-                BXF4 TEST2 = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST2.Files)
-                {
-                    file.Name = file.Name.Replace("43_36", $"{group.area.ToString("D2")}_{group.unk.ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{group.area.ToString("D2")}{group.unk.ToString("D2")}").Replace("l60", $"l{map}").Replace("m60", $"m{map}");
-                }
-                TEST2.Write($"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
+                if (done)
+                    break;
             }
 
             Console.WriteLine("## Nice! ##");
 
+        }
+    }
+
+    public class ResourcePool
+    {
+        public int[] id;
+        public List<TerrainInfo> terrain;
+        public MSBE msb;
+
+        public ResourcePool(BaseTile tile, MSBE msb)
+        {
+            id = new int[]
+            {
+                    tile.map, tile.coordinate.x, tile.coordinate.y, tile.block
+            };
+            terrain = new();
+            foreach (Tuple<Vector3, TerrainInfo> t in tile.terrain)
+            {
+                terrain.Add(t.Item2);
+            }
+            this.msb = msb;
+        }
+
+        public ResourcePool(InteriorGroup group, MSBE msb)
+        {
+            id = new int[]
+            {
+                    group.map, group.area, group.unk, group.block
+            };
+            terrain = new();
+            this.msb = msb;
         }
     }
 }

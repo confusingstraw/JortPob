@@ -37,6 +37,7 @@ namespace JortPob.Common
 
         #region Debug
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
+        public static readonly bool DEBUG_SKIP_INTERIOR = true;
 
 
         #endregion

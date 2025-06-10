@@ -164,7 +164,7 @@ namespace JortPob
 
                 if (coordinate.x == x && coordinate.y == y)
                 {
-                    return new Landscape(coordinate, json);
+                    return new Landscape(coordinate, json, records);
                 }
             }
             return null;

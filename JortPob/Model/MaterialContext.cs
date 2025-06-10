@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -170,7 +171,8 @@ namespace JortPob.Model
         public Dictionary<string, string> matbinTemplates = new() {
             { "static[a]opaque", "AEG006_030_ID001" },      // simple opaque albedo material
             { "static[a]alpha", null },                     // same but alpha tested
-            { "static[a]transparent", null }                // same but transparent
+            { "static[a]transparent", null },               // same but transparent
+            { "static[a]multi[2]", "m10_00_027" }           // blendy multimaterial for terrain
         };
 
         /* Create a full suite of a custom matbin, textures, and layout/gx/material info for a flver and return them all in a container */
@@ -217,8 +219,8 @@ namespace JortPob.Model
                 material.MTD = matbin.SourcePath;
                 material.Name = $"{matbinName}";
 
-                TextureInfo info = new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx");
-
+                List<TextureInfo> info = new();
+                info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
 
                 materialInfo.Add(new MaterialInfo(material, gx, layout, matbin, info));
             }
@@ -230,21 +232,36 @@ namespace JortPob.Model
         {
             int index = 0;
             List<MaterialInfo> materialInfo = new();
-                // @TOOD: currently writing materials 1 to 1 but should probably check material usage and cull materials that are not needed like collision material
-                string diffuseTextureSourcePath = Utility.ResourcePath(@"textures\tx_missing.dds");
-                string diffuseTexture;
-                if (genTextures.ContainsKey(diffuseTextureSourcePath))
+            foreach (Landscape.Mesh mesh in landscape.meshes)
+            {
+                string diffuseTextureSourcePathA = mesh.textures[0].path;
+                string diffuseTextureSourcePathB = mesh.textures[1].path;
+                string normalTextureSourcePath = Utility.ResourcePath(@"textures\tx_flat.dds");
+                string blendTextureSourcePath = Utility.ResourcePath(@"textures\tx_grey.dds");
+                string diffuseTextureA, diffuseTextureB, normalTexture, blendTexture;
+                string AddTexture(string diffuseTextureSourcePath)
                 {
-                    diffuseTexture = genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                    if (genTextures.ContainsKey(diffuseTextureSourcePath))
+                    {
+                        return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                    }
+                    else
+                    {
+                        string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                        genTextures.Add(diffuseTextureSourcePath, n);
+                        return n;
+                    }
                 }
-                else
-                {
-                    diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
-                    genTextures.Add(diffuseTextureSourcePath, diffuseTexture);
-                }
+                diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
+                diffuseTextureB = AddTexture(diffuseTextureSourcePathB);
+                normalTexture = AddTexture(normalTextureSourcePath);
+                blendTexture = AddTexture(blendTextureSourcePath);
 
-                string matbinTemplate = matbinTemplates["static[a]opaque"];   // @TODO: actually look at values of textures and determine template type
-                string matbinName = diffuseTexture.StartsWith("tx_") ? $"mat_{diffuseTexture.Substring(3)}" : $"mat_{diffuseTexture}";
+                string matbinTemplate = matbinTemplates["static[a]multi[2]"];
+                string matbinName = "mat_landscape_";
+                matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
+                matbinName += "-";
+                matbinName += diffuseTextureB.StartsWith("tx_") ? diffuseTextureB.Substring(3) : diffuseTextureB;
 
                 MATBIN matbin;
                 string matbinkey = $"{matbinTemplate}::{matbinName}";
@@ -255,7 +272,18 @@ namespace JortPob.Model
                 else
                 {
                     matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
-                    matbin.Samplers[0].Path = $"{diffuseTexture}";
+                    matbin.Samplers[0].Path = diffuseTextureA;
+                    matbin.Samplers[0].Unk14 = new Vector2(13f, 13f);
+                    matbin.Samplers[1].Path = diffuseTextureB;
+                    matbin.Samplers[1].Unk14 = new Vector2(13f, 13f);
+                    matbin.Samplers[2].Path = normalTexture;
+                    matbin.Samplers[2].Unk14 = new Vector2(0f, 0f);
+                    matbin.Samplers[3].Path = normalTexture;
+                    matbin.Samplers[3].Unk14 = new Vector2(0f, 0f);
+                    matbin.Samplers[4].Path = normalTexture;
+                    matbin.Samplers[4].Unk14 = new Vector2(0f, 0f);
+                    matbin.Samplers[5].Path = blendTexture;
+                    matbin.Samplers[5].Unk14 = new Vector2(0f, 0f);
                     matbin.SourcePath = $"{matbinName}.matxml";
                     genMATBINs.Add(matbinkey, matbin);
                 }
@@ -266,10 +294,14 @@ namespace JortPob.Model
                 material.MTD = matbin.SourcePath;
                 material.Name = $"{matbinName}";
 
-                TextureInfo info = new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx");
-
+                List<TextureInfo> info = new();
+                info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
+                info.Add(new(diffuseTextureB, $"textures\\{diffuseTextureB}.tpf.dcx"));
+                info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
+                info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
 
                 materialInfo.Add(new MaterialInfo(material, gx, layout, matbin, info));
+            }
             return materialInfo;
         }
 
@@ -307,9 +339,9 @@ namespace JortPob.Model
             public FLVER2.GXList gx;
             public FLVER2.BufferLayout layout;
             public MATBIN matbin;
-            public TextureInfo info; // used by cache
+            public List<TextureInfo> info; // used by cache
 
-            public MaterialInfo(FLVER2.Material material, FLVER2.GXList gx, FLVER2.BufferLayout layout, MATBIN matbin, TextureInfo info)
+            public MaterialInfo(FLVER2.Material material, FLVER2.GXList gx, FLVER2.BufferLayout layout, MATBIN matbin, List<TextureInfo> info)
             {
                 this.material = material;
                 this.gx = gx;

@@ -21,7 +21,11 @@ namespace JortPob
         public readonly List<Vertex> vertices;
         public readonly List<int> indices;
 
-        public Landscape(Int2 coordinate, JsonNode json)
+        public List<Texture> textures;
+
+        public List<Mesh> meshes;
+
+        public Landscape(Int2 coordinate, JsonNode json, Dictionary<ESM.Type, List<JsonNode>> records)
         {
             this.coordinate = coordinate;
             flags = json["landscape_flags"].ToString();
@@ -51,6 +55,45 @@ namespace JortPob
                             ltex[xx + xxx, yy + yyy] = texIndex;
                         }
                     }
+                }
+            }
+
+            textures = new();
+            textures.Add(new Texture("Missing Texture", Utility.ResourcePath("textures\\tx_missing.dds"), 65535));   // I don't really know what ID 65535 means but I assume it's a missing textures or smth. Guh.
+            JsonNode GetLandscapeTextureRecord(int id)
+            {
+                foreach (JsonNode j in records[ESM.Type.LandscapeTexture])
+                {
+                    if (int.Parse(j["index"].ToString()) == id)
+                    {
+                        return j;
+                    }
+                }
+                return null;
+            }
+            
+            bool HasTexture(ushort id)
+            {
+                foreach(Texture t in textures)
+                {
+                    if (t.index == id) { return true; }
+                }
+                return false;
+            }
+
+            foreach (ushort id in ltex)
+            {
+                if (HasTexture(id)) { continue; }
+
+                JsonNode ltjson = GetLandscapeTextureRecord(id);
+
+                if(ltjson != null)
+                {
+                    textures.Add(new Texture(ltjson["id"].ToString().ToLower(), $"{Const.MORROWIND_PATH}Data Files\\textures\\{ltjson["file_name"].ToString().ToLower().Substring(0, ltjson["file_name"].ToString().Length-4)}.dds", id));
+                }
+                else
+                {
+                    Console.WriteLine($" ## WARNING ## INVALID LANDSCAPE TEXTURE INDEX IN LANDSCAPE DATA: {id}");
                 }
             }
 
@@ -126,6 +169,76 @@ namespace JortPob
                     }
                 }
             }
+
+            /* Now that we've built the terrain mesh, let's subdivide it into multiple meshes based on what textures it uses */
+            /* Elden Ring shaders can only render like 2 or 3 textures on a mesh, while morrowind can do dozens. So this subdivision is to allow use to do this */
+
+            Mesh GetMesh(Texture a, Texture b)
+            {
+                foreach (Mesh mesh in meshes)
+                {
+                    if (mesh.textures.Contains(a) && mesh.textures.Contains(b))
+                    {
+                        return mesh;
+                    }
+                }
+
+                Mesh nu = new(a, b);
+                meshes.Add(nu);
+                return nu;
+            }
+
+            Texture GetTexture(ushort id)
+            {
+                foreach (Texture tex in textures)
+                {
+                    if (tex.index == id)
+                    {
+                        return tex;
+                    }
+                }
+                Console.WriteLine("# ## WARNING ## Missing texture index in landscape mesh!");
+                return null;
+            }
+
+            meshes = new();
+            for (int itr = 0; itr < indices.Count; itr += 3)
+            {
+                int i = indices[itr];
+                int j = indices[itr + 1];
+                int k = indices[itr + 2];
+
+                Vertex a = vertices[i];
+                Vertex b = vertices[j];
+                Vertex c = vertices[k];
+
+                List<Texture> texs = new();
+                texs.Add(GetTexture(a.texture));
+                if (!texs.Contains(GetTexture(b.texture))) { texs.Add(GetTexture(b.texture)); }
+                if (!texs.Contains(GetTexture(c.texture))) { texs.Add(GetTexture(c.texture)); }
+
+                Mesh mesh = GetMesh(texs[0], texs[Math.Min(1, texs.Count - 1)]);
+
+                mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(a);
+                mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(b);
+                mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(c);
+            }
+        }
+
+        public class Mesh
+        {
+            public List<Texture> textures;
+            public List<int> indices;
+            public List<Vertex> vertices;
+
+            public Mesh(Texture a, Texture b)
+            {
+                textures = new();
+                textures.Add(a);
+                textures.Add(b);
+                indices = new();
+                vertices = new();
+            }
         }
 
         public class Vertex
@@ -151,12 +264,13 @@ namespace JortPob
 
         public class Texture
         {
-            public string texture;
+            public string name;
+            public string path;
             public ushort index;
 
-            public Texture(string texture, ushort index)
+            public Texture(string name, string path, ushort index)
             {
-                this.texture = texture; this.index = index;
+                this.name = name;  this.path = path; this.index = index;
             }
         }
     }

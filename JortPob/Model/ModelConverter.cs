@@ -44,7 +44,10 @@ namespace JortPob.Model
                 flver.Materials.Add(mat.material);
                 flver.GXLists.Add(mat.gx);
                 flver.BufferLayouts.Add(mat.layout);
-                modelInfo.textures.Add(mat.info);
+                foreach (TextureInfo info in mat.info)
+                {
+                    modelInfo.textures.Add(info);
+                }
             }
 
             /* Iterate scene hierarchy and identify and sort collision and render meshes and also identify and collect useful nodes for use as dummies */
@@ -274,27 +277,33 @@ namespace JortPob.Model
                 flver.Materials.Add(mat.material);
                 flver.GXLists.Add(mat.gx);
                 flver.BufferLayouts.Add(mat.layout);
-                terrainInfo.textures.Add(mat.info);
+                foreach (TextureInfo info in mat.info)
+                {
+                    terrainInfo.textures.Add(info);
+                }
             }
 
             /* Generate blank flver mesh and faceset */
+            int i = 0;
+            foreach (Landscape.Mesh landMesh in landscape.meshes)
+            {
                 FLVER2.Mesh flverMesh = new();
                 FLVER2.FaceSet flverFaces = new();
                 flverMesh.FaceSets.Add(flverFaces);
                 flverFaces.CullBackfaces = true;
                 flverFaces.Unk06 = 1;
                 flverMesh.NodeIndex = 0; // attach to rootnode
-                flverMesh.MaterialIndex = 0;
+                flverMesh.MaterialIndex = i++;
 
                 /* Setup Vertex Buffer */
                 FLVER2.VertexBuffer flverBuffer = new(0);
                 flverMesh.VertexBuffers.Add(flverBuffer);
 
                 /* Convert vert/face data */
-                foreach (int index in landscape.indices)
+                foreach (int index in landMesh.indices)
                 {
                     FLVER.Vertex flverVertex = new();
-                    Landscape.Vertex vertex = landscape.vertices[index];
+                    Landscape.Vertex vertex = landMesh.vertices[index];
 
                     /* Grab vertice position + normal */
                     Vector3 pos = new(vertex.position.X, vertex.position.Y, vertex.position.Z);
@@ -308,18 +317,26 @@ namespace JortPob.Model
                     flverVertex.Position = pos;
                     flverVertex.Normal = norm;
 
-                    Vector3 uvw = new(vertex.coordinate.X *16f, -vertex.coordinate.Y * 16f, 0);
+                    Vector3 uvw = new(vertex.coordinate.X, -vertex.coordinate.Y, 0);
+                    float blend = vertex.texture == landMesh.textures[0].index ? 0f : 1f;  // @TODO: could calculate this earlier and do more gradual blends over multiple verts
+                    Vector3 uvw_blend = new(blend, 0, 0);
+                    Vector3 blank = new(0, 0, 0);
                     flverVertex.UVs.Add(uvw);
+                    flverVertex.UVs.Add(uvw_blend);  // Second UV channel is just used as a blender for the multimaterial.
+                    flverVertex.UVs.Add(blank);      // I don't know why we need a third channel but SoulsFormat complains if it's not there so here ya go!
 
                     flverVertex.Bitangent = new Vector4(0, 0, 1, 1);  // @TODO: WRONG!
                     flverVertex.Tangents.Add(new Vector4(1, 0, 0, 1));  // @TODO: WRONG!
-                    flverVertex.Colors.Add(new FLVER.VertexColor(vertex.color.x, vertex.color.y, vertex.color.z, vertex.color.w));
+
+                    FLVER.VertexColor color = new(vertex.color.w, vertex.color.x, vertex.color.y, vertex.color.z); // Doesn't seem to do anything @TODO: replace with mult overlay
+                    flverVertex.Colors.Add(color);
 
                     flverMesh.Vertices.Add(flverVertex);
                     flverFaces.Indices.Add(flverMesh.Vertices.Count - 1);
                 }
 
                 flver.Meshes.Add(flverMesh);
+            }
 
             /* Calculate bounding boxes */
             float X1 = float.MaxValue, X2 = float.MinValue, Y1 = float.MaxValue, Y2 = float.MinValue, Z1 = float.MaxValue, Z2 = float.MinValue;

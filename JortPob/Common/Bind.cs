@@ -1,4 +1,5 @@
-﻿using SoulsFormats;
+﻿using JortPob.Worker;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,33 @@ namespace JortPob.Common
             }
 
             bnd.Write(outPath);
+        }
+
+        /* Binds all assets to correct asset directories */
+        public static void BindAssets(Cache cache, string cachePath, string outPath)
+        {
+            int partition = (int)Math.Ceiling(cache.assets.Count / (float)Const.THREAD_COUNT);
+            List<BindWorker> workers = new();
+            for (int i = 0; i < Const.THREAD_COUNT; i++)
+            {
+                int start = i * partition;
+                int end = start + partition;
+                BindWorker worker = new(cache, cachePath, outPath, start, end);
+                workers.Add(worker);
+            }
+
+            /* Wait for threads to finish */
+            while (true)
+            {
+                bool done = true;
+                foreach (BindWorker worker in workers)
+                {
+                    done &= worker.IsDone;
+                }
+
+                if (done)
+                    break;
+            }
         }
 
         public static void BindAsset(ModelInfo modelInfo, string cachePath, string outPath)
@@ -71,6 +99,15 @@ namespace JortPob.Common
             foreach (ModelInfo mod in cache.assets)
             {
                 foreach(TextureInfo tex in mod.textures)
+                {
+                    if (TextureExists(tex)) { continue; }
+                    textures.Add(tex);
+                }
+            }
+
+            foreach(TerrainInfo terrain in cache.terrains)
+            {
+                foreach(TextureInfo tex in terrain.textures)
                 {
                     if (TextureExists(tex)) { continue; }
                     textures.Add(tex);

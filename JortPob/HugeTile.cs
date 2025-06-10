@@ -50,11 +50,10 @@ namespace JortPob
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
         public new void AddContent(Cache cache, Content content)
         {
-            switch (content.GetType().ToString())   // How the fuck is there not a better way to do this. for fucks sake C#
+            switch (content)   // How the fuck is there not a better way to do this. for fucks sake C#
             {
-                case "JortPob.AssetContent":
-                    AssetContent asset = (AssetContent)content;
-                    ModelInfo modelInfo = cache.GetModel(asset.mesh);
+                case AssetContent a:
+                    ModelInfo modelInfo = cache.GetModel(a.mesh);
                     if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE) {
                         float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);

@@ -92,7 +92,7 @@ namespace JortPob
                     }
                 }
                 ScoopEmUp(esm.exterior);
-                ScoopEmUp(esm.interior);
+                if (!Const.DEBUG_SKIP_INTERIOR) { ScoopEmUp(esm.interior); }
 
                 Console.WriteLine($"Generating new cache... m[{meshes.Count}]");
 

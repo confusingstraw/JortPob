@@ -42,11 +42,10 @@ namespace JortPob
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public new void AddContent(Cache cache, Content content)
         {
-            switch (content.GetType().ToString())
+            switch (content)
             {
-                case "JortPob.AssetContent":
-                    AssetContent asset = (AssetContent)content;
-                    ModelInfo modelInfo = cache.GetModel(asset.mesh);
+                case AssetContent a:
+                    ModelInfo modelInfo = cache.GetModel(a.mesh);
                     if (modelInfo.size * content.scale > Const.CONTENT_SIZE_BIG) {
                         float x = (coordinate.x * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
                         float y = (coordinate.y * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);

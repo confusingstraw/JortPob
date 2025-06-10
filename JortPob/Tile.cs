@@ -84,25 +84,20 @@ namespace JortPob
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public void AddContent(Cache cache, Content content)
         {
-            if (content.GetType() == typeof(AssetContent))
+            switch(content)
             {
-                assets.Add((AssetContent)content);
-            }
-            else if (content.GetType() == typeof(EmitterContent))
-            {
-                emitters.Add((EmitterContent)content);
-            }
-            else if (content.GetType() == typeof(LightContent))
-            {
-                lights.Add((LightContent)content);
-            }
-            else if (content.GetType() == typeof(CreatureContent))
-            {
-                creatures.Add((CreatureContent)content);
-            }
-            else if (content.GetType() == typeof(NpcContent))
-            {
-                npcs.Add((NpcContent)content);
+                case AssetContent a:
+                    assets.Add(a); break;
+                case EmitterContent e:
+                    emitters.Add(e); break;
+                case LightContent l:
+                    lights.Add(l); break;
+                case NpcContent n:
+                    npcs.Add(n); break;
+                case CreatureContent c:
+                    creatures.Add(c); break;
+                default:
+                    Console.WriteLine(" ## WARNING ## Unhandled Content class fell through AddContent()"); break;
             }
         }
     }

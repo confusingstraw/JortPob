@@ -34,6 +34,7 @@ namespace JortPob
 
         // Fugly code <3
         /* Process an interior cell into a chunk and add it to this group */
+        /* This function is awful looking but it does an important bit of math to bound and align the chunk into a grid with other chunks in this group */
         public void AddCell(Cell cell)
         {
             Vector3 root;
@@ -104,25 +105,20 @@ namespace JortPob
 
             public void AddContent(Content content)
             {
-                if(content.GetType() == typeof(AssetContent))
+                switch (content)
                 {
-                    assets.Add((AssetContent)content);
-                }
-                else if(content.GetType() == typeof(EmitterContent))
-                {
-                    emitters.Add((EmitterContent)content);
-                }
-                else if (content.GetType() == typeof(LightContent))
-                {
-                    lights.Add((LightContent)content);
-                }
-                else if (content.GetType() == typeof(CreatureContent))
-                {
-                    creatures.Add((CreatureContent)content);
-                }
-                else if (content.GetType() == typeof(NpcContent))
-                {
-                    npcs.Add((NpcContent)content);
+                    case AssetContent a:
+                        assets.Add(a); break;
+                    case EmitterContent e:
+                        emitters.Add(e); break;
+                    case LightContent l:
+                        lights.Add(l); break;
+                    case NpcContent n:
+                        npcs.Add(n); break;
+                    case CreatureContent c:
+                        creatures.Add(c); break;
+                    default:
+                        Console.WriteLine(" ## WARNING ## Unhandled Content class fell through AddContent()"); break;
                 }
             }
         }
