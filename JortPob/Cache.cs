@@ -5,6 +5,7 @@ using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -139,8 +140,50 @@ namespace JortPob
                     nu.terrains.Add(terrainInfo);
                 }
 
+                /* Write textures */
                 materialContext.WriteAll();
                 assimpContext.Dispose();
+
+                /* Convert collision */
+                foreach (TerrainInfo terrainInfo in nu.terrains)
+                {
+                    ModelConverter.OBJtoHKX($"{cachePath}{terrainInfo.collision.obj}", $"{cachePath}{terrainInfo.collision.path}");
+                }
+
+
+                /// Old style
+                /*Console.WriteLine($"Converting collision... t[{Const.THREAD_COUNT}]");  // Apocalyptically slow. @TODO: implement dropoff code
+                List<Process> processes = new();
+                foreach (TerrainInfo terrainInfo in nu.terrains)
+                {
+                    while(processes.Count >= Const.THREAD_COUNT)
+                    {
+                        foreach(Process p in processes)
+                        {
+                            if(p.HasExited)
+                            {
+                                p.CloseMainWindow();
+                                p.Close();
+                                processes.Remove(p);
+                            }
+                        }
+                    }
+
+                    Process process = new Process();
+                    process.StartInfo.FileName = @"cmd.exe";
+                    process.StartInfo.Arguments = $"/C echo. | E:\\Downloads\\Bruh\\ER_OBJ2HKX.exe \"{cachePath}{terrainInfo.collision.obj}\"";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                }
+
+                foreach (Process p in processes)
+                {
+                    p.WaitForExit();
+                    p.CloseMainWindow();
+                    p.Close();
+                    processes.Remove(p);
+                }*/
 
                 /* Assign resource ID numbers */
                 int nextM = 0, nextA = 0, nextO = 5000;
@@ -152,12 +195,10 @@ namespace JortPob
                 foreach (ModelInfo modelInfo in nu.maps)
                 {
                     modelInfo.id = nextM++;
-                    foreach (CollisionInfo collisionInfo in modelInfo.collisions) { collisionInfo.id = -1; }
                 }
                 foreach (ModelInfo modelInfo in nu.assets)
                 {
                     modelInfo.id = nextA++;
-                    foreach (CollisionInfo collisionInfo in modelInfo.collisions) { collisionInfo.id = -1; }
                 }
                 foreach (ObjectInfo objectInfo in nu.objects)
                 {
@@ -252,17 +293,12 @@ namespace JortPob
         public string name; // Original nif name, for lookup from ESM records
         public string obj;  // Relative path from the 'cache' folder to the converted obj file
         public string path; // Relative path from the 'cache' folder to the converted hkx file
-        public int scale;   // Scale value of this collision. HKX collision can't be scaled in engine so we hard scale the models and have multiple versions. Using ints for accuracy. 100 = 1.0f
 
-        public int id; // Collision ID number, the last 6 digits in a collision filename. EXAMPLE: h30_00_00_00_000228.hkx.dcx
-        public CollisionInfo(string name, string path, int scale)
+        public CollisionInfo(string name, string path)
         {
             this.name = name.ToLower();
             this.obj = path;
-            this.path = path.Replace(".obj", ".hkx.dcx");
-            this.scale = scale;
-
-            id = -1;
+            this.path = path.Replace(".obj", ".hkx");
         }
     }
 

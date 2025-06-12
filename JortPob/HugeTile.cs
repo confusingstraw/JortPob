@@ -45,6 +45,9 @@ namespace JortPob
             float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
+
+            Tile tile = GetTile(position);
+            tile.AddTerrain(position, terrainInfo);
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
@@ -76,6 +79,18 @@ namespace JortPob
                 if (big.PositionInside(position))
                 {
                     return big;
+                }
+            }
+            return null;
+        }
+
+        public Tile GetTile(Vector3 position)
+        {
+            foreach (Tile tile in tiles)
+            {
+                if (tile.PositionInside(position))
+                {
+                    return tile;
                 }
             }
             return null;

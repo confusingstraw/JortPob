@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using HKLib.hk2018;
+using JortPob.Common;
 using SoulsFormats;
 
 namespace JortPob.Worker
@@ -66,26 +69,51 @@ namespace JortPob.Worker
                     bnd.Write($"{modPath}map\\m60\\m{name}\\m{name}_{t.id.ToString("D8")}.mapbnd.dcx");
                 }
 
-                /* Write TEST hkx binds */
-                BXF4 TEST = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\h60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST.Files)
+                BXF4 bxfH = new();
+                bxfH.Version = "07D7R6";
+                BinderFile comH = new();
+                comH.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                comH.Name = $"m{name}\\h{name}.compendium.dcx";
+                comH.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), DCX.Type.DCX_KRAK);
+                comH.ID = 0;
+                bxfH.Files.Add(comH);
+                int id = 1;
+                foreach (Tuple<string, CollisionInfo> tuple in pool.collisionIndices)
                 {
-                    file.Name = file.Name.Replace("43_36", $"{pool.id[1].ToString("D2")}_{pool.id[2].ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{pool.id[1].ToString("D2")}{pool.id[2].ToString("D2")}");
-                    file.Name = file.Name.Replace("m60", $"m{map}");
-                    file.Name = file.Name.Replace("h60", $"h{map}");
-                }
-                TEST.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
+                    string index = tuple.Item1;
+                    CollisionInfo collisionInfo = tuple.Item2;
 
-                BXF4 TEST2 = BXF4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbhd", @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_43_36_00\l60_43_36_00.hkxbdt");
-                foreach (BinderFile file in TEST2.Files)
-                {
-                    file.Name = file.Name.Replace("43_36", $"{pool.id[1].ToString("D2")}_{pool.id[2].ToString("D2")}");
-                    file.Name = file.Name.Replace("4336", $"{pool.id[1].ToString("D2")}{pool.id[2].ToString("D2")}");
-                    file.Name = file.Name.Replace("m60", $"m{map}");
-                    file.Name = file.Name.Replace("h60", $"l{map}");
+                    BinderFile testH = new();
+                    testH.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    testH.Name = $"m{name}\\h{name}_{index}.hkx.dcx";
+                    testH.Bytes = DCX.Compress(File.ReadAllBytes($"{cachePath}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testH.ID = id++;
+                    bxfH.Files.Add(testH);
                 }
-                TEST2.Write($"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
+                bxfH.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
+
+                BXF4 bxfL = new();
+                bxfL.Version = "07D7R6";
+                BinderFile comL = new();
+                comL.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                comL.Name = $"m{name}\\l{name}.compendium.dcx";
+                comL.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), DCX.Type.DCX_KRAK);
+                comL.ID = 0;
+                bxfL.Files.Add(comL);
+                id = 1;
+                foreach (Tuple<string, CollisionInfo> tuple in pool.collisionIndices)
+                {
+                    string index = tuple.Item1;
+                    CollisionInfo collisionInfo = tuple.Item2;
+
+                    BinderFile testL = new();
+                    testL.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    testL.Name = $"m{name}\\l{name}_{index}.hkx.dcx";
+                    testL.Bytes = DCX.Compress(File.ReadAllBytes($"{cachePath}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testL.ID = id++;
+                    bxfL.Files.Add(testL);
+                }
+                bxfL.Write($"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
             }
 
             IsDone = true;

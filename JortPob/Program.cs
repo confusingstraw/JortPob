@@ -64,13 +64,13 @@ namespace JortPob
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* TEST big flat piece of collision */  // Just need something to stand on so I can walk around and test stuff
-                if (tile.GetType() == typeof(Tile))
+                /*if (tile.GetType() == typeof(Tile))
                 {
                     MSBE.Part.Collision collision = new();
                     collision.Name = $"h{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00_test";
-                    collision.ModelName = $"h{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00";
+                    collision.ModelName = $"h{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}02";
                     collision.MapStudioLayer = 4294967295;
-                    collision.Position = new Vector3(0, -65.574f, 0) + TEST_OFFSET1;
+                    collision.Position = new Vector3(0, -5, 0) + TEST_OFFSET1;
                     collision.PlayRegionID = -1;
                     collision.LocationTextID = -1;
                     collision.InstanceID = -1;
@@ -95,7 +95,11 @@ namespace JortPob
                     collision.UnkT4E = -1;
 
                     msb.Parts.Collisions.Add(collision);
-                }
+                }*/
+
+                /* Collision index */
+                int nextcol = 0;
+                List<Tuple<string, CollisionInfo>> collisionIndices = new();
 
                 /* Add terrain */
                 foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)
@@ -103,16 +107,54 @@ namespace JortPob
                     Vector3 position = tuple.Item1;
                     TerrainInfo terrainInfo = tuple.Item2;
 
-                    MSBE.Part.MapPiece map = new();
-                    map.Name = $"m{terrainInfo.id.ToString("D8")}_test";
-                    map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
-                    map.MapStudioLayer = 4294967295;
+                    if (tile.GetType() == typeof(HugeTile))
+                    {
+                        MSBE.Part.MapPiece map = new();
+                        map.Name = $"m{terrainInfo.id.ToString("D8")}_test";
+                        map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
+                        map.MapStudioLayer = 4294967295;
 
-                    map.isUsePartsDrawParamID = 1;
-                    map.PartsDrawParamID = TEST_PART_DRAW;
+                        map.isUsePartsDrawParamID = 1;
+                        map.PartsDrawParamID = TEST_PART_DRAW;
 
-                    map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
-                    msb.Parts.MapPieces.Add(map);
+                        map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                        msb.Parts.MapPieces.Add(map);
+                    }
+                    else if (tile.GetType() == typeof(Tile))
+                    {
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextcol++.ToString("D2")}";
+
+                        MSBE.Part.Collision collision = new();
+                        collision.Name = $"h{collisionIndex}_test";
+                        collision.ModelName = $"h{collisionIndex}";
+                        collision.MapStudioLayer = 4294967295;
+                        collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                        collision.PlayRegionID = -1;
+                        collision.LocationTextID = -1;
+                        collision.InstanceID = -1;
+                        collision.TileLoad.CullingHeightBehavior = -1;
+                        collision.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+                        collision.TileLoad.Unk0C = -1;
+                        collision.Unk1.UnkC4 = -1;
+                        collision.Unk2.Condition = -1;
+                        collision.Unk2.Unk26 = -1;
+                        collision.UnkE0F = 1;
+                        collision.UnkE3C = -1;
+                        collision.UnkT01 = 255;
+                        collision.UnkT02 = 255;
+                        collision.UnkT04 = 64.8087158f;
+                        collision.UnkT14 = -1;
+                        collision.UnkT1C = -1;
+                        collision.UnkT24 = -1;
+                        collision.UnkT30 = -1;
+                        collision.UnkT35 = 255;
+                        collision.UnkT3C = -1;
+                        collision.UnkT3E = -1;
+                        collision.UnkT4E = -1;
+
+                        msb.Parts.Collisions.Add(collision);
+                        collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, terrainInfo.collision));
+                    }
                 }
 
                 /* Add assets */
@@ -184,7 +226,7 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Done */
-                msbs.Add(new ResourcePool(tile, msb));
+                msbs.Add(new ResourcePool(tile, msb, collisionIndices));
             }
 
             /* Generate interior msbs from interiorgroups */
@@ -349,8 +391,9 @@ namespace JortPob
         public int[] id;
         public List<TerrainInfo> terrain;
         public MSBE msb;
+        public List<Tuple<string, CollisionInfo>> collisionIndices;
 
-        public ResourcePool(BaseTile tile, MSBE msb)
+        public ResourcePool(BaseTile tile, MSBE msb, List<Tuple<string, CollisionInfo>> collisionIndices)
         {
             id = new int[]
             {
@@ -362,6 +405,7 @@ namespace JortPob
                 terrain.Add(t.Item2);
             }
             this.msb = msb;
+            this.collisionIndices = collisionIndices;
         }
 
         public ResourcePool(InteriorGroup group, MSBE msb)
@@ -372,6 +416,7 @@ namespace JortPob
             };
             terrain = new();
             this.msb = msb;
+            collisionIndices = new();
         }
     }
 }

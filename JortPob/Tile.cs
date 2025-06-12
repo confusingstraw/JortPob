@@ -39,6 +39,14 @@ namespace JortPob
             return false;
         }
 
+        public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+            Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
+        }
+
         public new void AddContent(Cache cache, Content content)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
