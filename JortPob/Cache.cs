@@ -1,5 +1,6 @@
 ﻿using JortPob.Common;
 using JortPob.Model;
+using JortPob.Worker;
 using SharpAssimp;
 using SoulsFormats;
 using System;
@@ -11,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static HKLib.hk2018.hkaSkeleton;
 
 namespace JortPob
 {
@@ -102,88 +104,48 @@ namespace JortPob
                 AssimpContext assimpContext = new();
                 MaterialContext materialContext = new(cachePath);
 
-                bool ModelExists(string name)
-                {
-                    foreach (ModelInfo mod in nu.assets)
-                    {
-                        if (name.ToLower() == mod.name) { return true; }
-                    }
-                    foreach (ModelInfo mod in nu.maps)
-                    {
-                        if (name.ToLower() == mod.name) { return true; }
-                    }
-                    return false;
-                }
-
                 /* Convert models/textures for models */
-                foreach (string mesh in meshes)
-                {
-                    if (ModelExists(mesh)) { continue; }
-
-                    string meshIn = $"{morrowindPath}meshes\\{mesh.ToLower().Replace(".nif", ".fbx")}";
-                    string meshOut = $"{meshPath}{mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}";
-                    ModelInfo modelInfo = new(mesh, $"meshes\\{mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}");
-                    modelInfo = ModelConverter.FBXtoFLVER(assimpContext, materialContext, modelInfo, meshIn, meshOut);
-
-                    nu.assets.Add(modelInfo);
-                }
+                nu.assets = FlverWorker.Go(materialContext, meshes, morrowindPath, cachePath);
 
                 /* Convert models/textures for terrain */
-                foreach(Cell cell in esm.exterior)
-                {
-                    Landscape landscape = esm.GetLandscape(cell.coordinate);
-                    if(landscape == null) { continue; }
-
-                    TerrainInfo terrainInfo = new(landscape.coordinate, $"terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}.flver");
-                    terrainInfo = ModelConverter.LANDSCAPEtoFLVER(materialContext, terrainInfo, landscape, $"{terrainPath}ext{landscape.coordinate.x},{landscape.coordinate.y}.flver");
-
-                    nu.terrains.Add(terrainInfo);
-                }
+                nu.terrains = LandscapeWorker.Go(materialContext, esm, cachePath);
 
                 /* Write textures */
                 materialContext.WriteAll();
                 assimpContext.Dispose();
 
                 /* Convert collision */
-                foreach (TerrainInfo terrainInfo in nu.terrains)
+                List<CollisionInfo> collisions = new();
+                foreach(TerrainInfo terrain in nu.terrains)
                 {
-                    ModelConverter.OBJtoHKX($"{cachePath}{terrainInfo.collision.obj}", $"{cachePath}{terrainInfo.collision.path}");
+                    collisions.Add(terrain.collision);
                 }
 
-
-                /// Old style
-                /*Console.WriteLine($"Converting collision... t[{Const.THREAD_COUNT}]");  // Apocalyptically slow. @TODO: implement dropoff code
-                List<Process> processes = new();
-                foreach (TerrainInfo terrainInfo in nu.terrains)
+                Console.WriteLine($"Converting {collisions.Count} collision... t[{Const.THREAD_COUNT}]"); // Very slow, multithreaded to make less terrible
+                int partition = 999999; //(int)Math.Ceiling(collisions.Count / (float)Const.THREAD_COUNT);
+                List<HkxWorker> workers = new();
+                for (int i = 0; i < Const.THREAD_COUNT; i++)
                 {
-                    while(processes.Count >= Const.THREAD_COUNT)
+                    int start = i * partition;
+                    int end = start + partition;
+                    HkxWorker worker = new(collisions, cachePath, start, end);
+                    workers.Add(worker);
+                }
+
+                /* Wait for threads to finish */
+                while (true)
+                {
+                    bool done = true;
+                    foreach (HkxWorker worker in workers)
                     {
-                        foreach(Process p in processes)
-                        {
-                            if(p.HasExited)
-                            {
-                                p.CloseMainWindow();
-                                p.Close();
-                                processes.Remove(p);
-                            }
-                        }
+                        done &= worker.IsDone;
                     }
 
-                    Process process = new Process();
-                    process.StartInfo.FileName = @"cmd.exe";
-                    process.StartInfo.Arguments = $"/C echo. | E:\\Downloads\\Bruh\\ER_OBJ2HKX.exe \"{cachePath}{terrainInfo.collision.obj}\"";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.Start();
+                    if (done)
+                        break;
                 }
 
-                foreach (Process p in processes)
-                {
-                    p.WaitForExit();
-                    p.CloseMainWindow();
-                    p.Close();
-                    processes.Remove(p);
-                }*/
+                ModelConverter.HKXDispose();
 
                 /* Assign resource ID numbers */
                 int nextM = 0, nextA = 0, nextO = 5000;

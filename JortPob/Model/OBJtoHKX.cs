@@ -10,7 +10,8 @@ using System.IO;
 using System.Xml.Linq;
 
 /* Code here is courtesy of Dropoff */
-/* This is a modified version of build of this program ER_OBJ2HKX */
+/* Also uses some stuff by Hork & 12th I think */
+/* This is a modified version of ER_OBJ2HKX */
 namespace JortPob.Model
 {
     partial class ModelConverter
@@ -19,7 +20,7 @@ namespace JortPob.Model
         {
             string tempDir = $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\tools\\ER_OBJ2HKX\\";
 
-            ClearTempDir(tempDir);
+            //ClearTempDir(tempDir);
             Console.WriteLine(objPath);
 
             byte[] hkx = ObjToHkx(tempDir, objPath);
@@ -27,6 +28,12 @@ namespace JortPob.Model
 
             Console.WriteLine(hkxPath);
             File.WriteAllBytes(hkxPath, hkx);
+            //ClearTempDir(tempDir);
+        }
+
+        public static void HKXDispose()
+        {
+            string tempDir = $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\tools\\ER_OBJ2HKX\\";
             ClearTempDir(tempDir);
         }
 

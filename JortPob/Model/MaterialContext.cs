@@ -2,6 +2,7 @@
 using SoulsFormats;
 using SoulsFormats.KF4;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -16,7 +17,7 @@ using System.Xml.Serialization;
 
 namespace JortPob.Model
 {
-    internal class MaterialContext
+    public class MaterialContext
     {
 
         public XmlDocument xmlMaterialInfo;
@@ -162,8 +163,8 @@ namespace JortPob.Model
         /* For the materialcontexts lifetime it collects a list of textures and matbins used by models being converted. */
         /* Once we are done converting models the write() method for the material context should be called and it will write all tpfs and matbins and bind them up into the appropriate bnds */
         /* The reason we collect everything and then write at the end is so we can reuse tps/matbins easily and so we can easily make the bnds at the end of the process */
-        public Dictionary<string, MATBIN> genMATBINs;   // template id + texture, matbin
-        public Dictionary<string, string> genTextures;  // original texture path, tpf output
+        public ConcurrentDictionary<string, MATBIN> genMATBINs;   // template id + texture, matbin
+        public ConcurrentDictionary<string, string> genTextures;  // original texture path, tpf output
 
         /* List of template matbins which we use as a base for our custom materials */
         /* filenames for templates stored without extension or path. files are in Resources/matbins and the extension is .matbin but is stored as.matxml in flvers so guh */
@@ -193,7 +194,7 @@ namespace JortPob.Model
                 else
                 {
                     diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
-                    genTextures.Add(diffuseTextureSourcePath, diffuseTexture);
+                    genTextures.TryAdd(diffuseTextureSourcePath, diffuseTexture);
                 }
 
                 string matbinTemplate = matbinTemplates["static[a]opaque"];   // @TODO: actually look at values of textures and determine template type
@@ -210,7 +211,7 @@ namespace JortPob.Model
                     matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
                     matbin.Samplers[0].Path = $"{diffuseTexture}";
                     matbin.SourcePath = $"{matbinName}.matxml";
-                    genMATBINs.Add(matbinkey, matbin);
+                    genMATBINs.TryAdd(matbinkey, matbin);
                 }
 
                 FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
@@ -248,7 +249,7 @@ namespace JortPob.Model
                     else
                     {
                         string n = Utility.PathToFileName(diffuseTextureSourcePath);
-                        genTextures.Add(diffuseTextureSourcePath, n);
+                        genTextures.TryAdd(diffuseTextureSourcePath, n);
                         return n;
                     }
                 }
@@ -285,7 +286,7 @@ namespace JortPob.Model
                     matbin.Samplers[5].Path = blendTexture;
                     matbin.Samplers[5].Unk14 = new Vector2(0f, 0f);
                     matbin.SourcePath = $"{matbinName}.matxml";
-                    genMATBINs.Add(matbinkey, matbin);
+                    genMATBINs.TryAdd(matbinkey, matbin);
                 }
 
                 FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
