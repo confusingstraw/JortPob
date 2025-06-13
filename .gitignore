@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Settings file for project
+settings.json
+
 # User-specific files
 *.rsuser
 *.suo
@@ -397,3 +400,4 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 /CommonFunc/Resources/settings.json
+/JortPob/settings.json
