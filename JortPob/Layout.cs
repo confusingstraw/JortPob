@@ -35,6 +35,10 @@ namespace JortPob
             /* Generate tiles based off base game msb info... */
             string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
             string[] msblist = msbdata.Split(";");
+
+            Lort.Log("Generating layout...", Lort.Type.Main);
+            Lort.NewTask("Generating Layout", msblist.Length+esm.exterior.Count+esm.interior.Count);
+
             foreach (string msb in msblist)
             {
                 string[] split = msb.Split(",");
@@ -49,6 +53,8 @@ namespace JortPob
                     tiles.Add(tile);
                     all.Add(tile);
                 }
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             /* Generate BigTiles... */
@@ -79,6 +85,8 @@ namespace JortPob
                     bigs.Add(big);
                     all.Add(big);
                 }
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             /* Generate HugeTiles... */
@@ -121,6 +129,8 @@ namespace JortPob
                     huges.Add(huge);
                     all.Add(huge);
                 }
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             /* Generate Interior Groups */
@@ -137,6 +147,8 @@ namespace JortPob
                     InteriorGroup group = new InteriorGroup(m, a, u, b);
                     interiors.Add(group);
                 }
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             /* Subdivide all cell content into tiles */
@@ -147,15 +159,17 @@ namespace JortPob
                 {
                     HugeTile huge = GetHugeTile(cell.center);
                     if (huge != null) { huge.AddTerrain(cell.center, terrain); }
-                    else { Console.WriteLine($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}"); }
+                    else { Lort.Log($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}", Lort.Type.Debug); }
                 }
 
                 foreach(Content content in cell.contents)
                 {
                     HugeTile huge = GetHugeTile(content.position);
                     if(huge != null) { huge.AddContent(cache, content); }
-                    else { Console.WriteLine($" ## WARNING ## Content fell outside of reality {cell.coordinate} -- {content.id}"); }
+                    else { Lort.Log($" ## WARNING ## Content fell outside of reality {cell.coordinate} -- {content.id}", Lort.Type.Debug); }
                 }
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             /* Subdivide all interior cells into groups */
@@ -167,6 +181,8 @@ namespace JortPob
                 {
                     Cell cell = esm.interior[i];
                     group.AddCell(cell);
+
+                    Lort.TaskIterate(); // Progress bar update
                 }
 
                 start += partition;
@@ -174,22 +190,21 @@ namespace JortPob
             }
 
             /* Render an ASCII image of the tiles for verification! */
-            Console.WriteLine("Drawing ASCII map of worldspace map...\n");
+            Lort.Log("Drawing ASCII map of worldspace map...", Lort.Type.Debug);
             for (int y = 66; y >= 28; y--)
             {
+                string line = "";
                 for (int x = 30; x < 64; x++)
                 {
                     Tile tile = GetTile(new Int2(x, y));
-                    if(tile == null) { Console.Write("-"); }
+                    if(tile == null) { line += "-"; }
                     else
                     {
-                        Console.Write(tile.assets.Count > 0 ? "X" : "~");
+                        line += tile.assets.Count > 0 ? "X" : "~";
                     }
                 }
-                Console.Write("\n");
+                Lort.Log(line, Lort.Type.Debug);
             }
-
-            Console.WriteLine("DEBUG");
         }
 
         public HugeTile GetHugeTile(Vector3 position)

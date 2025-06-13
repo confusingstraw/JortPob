@@ -118,7 +118,7 @@ namespace JortPob
                     case CreatureContent c:
                         creatures.Add(c); break;
                     default:
-                        Console.WriteLine(" ## WARNING ## Unhandled Content class fell through AddContent()"); break;
+                        Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
                 }
             }
         }

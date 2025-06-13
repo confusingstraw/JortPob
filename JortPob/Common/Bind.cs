@@ -1,4 +1,5 @@
-﻿using JortPob.Worker;
+﻿using HKLib.hk2018.hkaiCollisionAvoidance;
+using JortPob.Worker;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -11,12 +12,12 @@ namespace JortPob.Common
 {
     public class Bind
     {
-        public static void BindMaterials(string cachePath, string outPath)
+        public static void BindMaterials(string outPath)
         {
             BND4 bnd = BND4.Read(Utility.ResourcePath($"matbins\\allmaterial.matbinbnd.dcx"));
 
             /* Grab all matbin files */
-            string[] fileList = Directory.GetFiles($"{cachePath}materials");
+            string[] fileList = Directory.GetFiles($"{Const.CACHE_PATH}materials");
             int i = 15102; // appending our new file indexes after all the base game ones
             foreach (string file in fileList)
             {
@@ -34,7 +35,7 @@ namespace JortPob.Common
         }
 
         /* Binds all assets to correct asset directories */
-        public static void BindAssets(Cache cache, string cachePath, string outPath)
+        public static void BindAssets(Cache cache)
         {
             int partition = (int)Math.Ceiling(cache.assets.Count / (float)Const.THREAD_COUNT);
             List<BindWorker> workers = new();
@@ -42,7 +43,7 @@ namespace JortPob.Common
             {
                 int start = i * partition;
                 int end = start + partition;
-                BindWorker worker = new(cache, cachePath, outPath, start, end);
+                BindWorker worker = new(cache, start, end);
                 workers.Add(worker);
             }
 
@@ -60,30 +61,58 @@ namespace JortPob.Common
             }
         }
 
-        public static void BindAsset(ModelInfo modelInfo, string cachePath, string outPath)
+        public static void BindAsset(ModelInfo modelInfo, string outPath)
         {
-            BND4 bnd = new();
-            bnd.Compression = SoulsFormats.DCX.Type.DCX_DFLT_11000_44_9;
-            bnd.Extended = 4;
-            bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-            bnd.Unicode = true;
-            bnd.Version = "07D7R6";
 
-            FLVER2 flver = FLVER2.Read($"{cachePath}{modelInfo.path}");
+            // Bind up asset flver
+            {
+                BND4 bnd = new();
+                bnd.Compression = SoulsFormats.DCX.Type.DCX_DFLT_11000_44_9;
+                bnd.Extended = 4;
+                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
+                bnd.Unicode = true;
+                bnd.Version = "07D7R6";
 
-            BinderFile file = new();
-            file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-            file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
-            file.ID = 200;
-            file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath()}\\sib\\{modelInfo.AssetName()}.flver";
-            file.Bytes = flver.Write();
+                FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{modelInfo.path}");
 
-            bnd.Files.Add(file);
+                BinderFile file = new();
+                file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
+                file.ID = 200;
+                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath()}\\sib\\{modelInfo.AssetName()}.flver";
+                file.Bytes = flver.Write();
 
-            bnd.Write(outPath);
+                bnd.Files.Add(file);
+                bnd.Write(outPath);
+            }
+
+            // If this asset has collision we bind that up as well
+            if(modelInfo.collision != null)
+            {
+                BND4 bnd = new();
+                bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                bnd.Extended = 4;
+                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
+                bnd.Unicode = true;
+                bnd.Version = "07D7R6";
+
+                BinderFile file = new();
+                file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
+                file.ID = 300;
+                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath().ToUpper()}\\hkx_L\\{modelInfo.AssetName().ToUpper()}_L.hkx";
+                file.Bytes = File.ReadAllBytes($"{Const.CACHE_PATH}{modelInfo.collision.path}");
+
+                bnd.Files.Add(file);
+                bnd.Write(outPath.Replace(".geombnd.dcx", "_l.geomhkxbnd.dcx"));
+
+                // Probs dont need this
+                //file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath().ToUpper()}\\hkx_H\\{modelInfo.AssetName().ToUpper()}_H.hkx";
+                //bnd.Write(outPath.Replace(".geombnd.dcx", "_h.geomhkxbnd.dcx"));
+            }
         }
 
-        public static void BindTPF(Cache cache, string cachePath, string outPath)
+        public static void BindTPF(Cache cache, string outPath)
         {
             /* Collect all textures, kind of brute force, could optimize later */
             List<TextureInfo> textures = new();
@@ -123,7 +152,7 @@ namespace JortPob.Common
             int index = 0;
             foreach (TextureInfo tex in textures)
             {
-                TPF tpf = TPF.Read($"{cachePath}{tex.path}");
+                TPF tpf = TPF.Read($"{Const.CACHE_PATH}{tex.path}");
 
                 BinderFile bf = new();
                 bf.CompressionType = DCX.Type.None;

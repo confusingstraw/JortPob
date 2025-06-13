@@ -23,17 +23,13 @@ namespace JortPob.Model
         public XmlDocument xmlMaterialInfo;
         public XmlNodeList xmlMaterials, xmlExamples;
 
-        public string cachePath;
-
-        public MaterialContext(string cachePath)
+        public MaterialContext()
         {
             xmlMaterialInfo = new();
             xmlMaterialInfo.Load(Utility.ResourcePath(@"matbins\MaterialInfo.xml"));
 
             xmlMaterials = xmlMaterialInfo.ChildNodes[1].ChildNodes[0].ChildNodes;
             xmlExamples = xmlMaterialInfo.ChildNodes[1].ChildNodes[2].ChildNodes;
-
-            this.cachePath = cachePath;
 
             genTextures = new();
             genMATBINs = new();
@@ -74,7 +70,7 @@ namespace JortPob.Model
                 }
             }
 
-            Console.WriteLine($"## ERROR ## Failed to find bufferlayout for {mtd}");
+            Lort.Log($"## ERROR ## Failed to find bufferlayout for {mtd}", Lort.Type.Debug);
             return null;
         }
 
@@ -107,7 +103,7 @@ namespace JortPob.Model
                 }
             }
 
-            Console.WriteLine($"## ERROR ## Failed to find gxlists for {mtd}");
+            Lort.Log($"## ERROR ## Failed to find gxlists for {mtd}", Lort.Type.Debug);
             return null;
         }
 
@@ -156,7 +152,7 @@ namespace JortPob.Model
 
             }
 
-            Console.WriteLine($"## ERROR ## Failed to find {mtd}");
+            Lort.Log($"## ERROR ## Failed to find {mtd}", Lort.Type.Debug);
             return null;
         }
 
@@ -312,7 +308,7 @@ namespace JortPob.Model
             foreach(KeyValuePair<string, MATBIN> kvp in genMATBINs)
             {
                 string outFileName = $"{Utility.PathToFileName(kvp.Value.SourcePath)}.matbin";
-                kvp.Value.Write($"{cachePath}materials\\{outFileName}");
+                kvp.Value.Write($"{Const.CACHE_PATH}materials\\{outFileName}");
             }
 
             foreach (KeyValuePair<string, string> kvp in genTextures)
@@ -329,7 +325,7 @@ namespace JortPob.Model
                 TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
                 tpf.Textures.Add(tex);
 
-                tpf.Write($"{cachePath}textures\\{kvp.Value}.tpf.dcx");
+                tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
             }
         }
 

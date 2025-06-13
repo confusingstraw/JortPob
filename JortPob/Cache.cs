@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKX2;
+using JortPob.Common;
 using JortPob.Model;
 using JortPob.Worker;
 using SharpAssimp;
@@ -60,24 +61,19 @@ namespace JortPob
         }
 
         /* Big stupid load function */
-        public static Cache Load(ESM esm, string cachePath, string morrowindPath)
+        public static Cache Load(ESM esm)
         {
-            string manifestPath = cachePath + @"cache.json";
+            string manifestPath = Const.CACHE_PATH + @"cache.json";
 
             /* Cache Exists ? */
             if (File.Exists(manifestPath))
             {
-                Console.WriteLine($"Using cache: {manifestPath}");
-                Console.WriteLine($"Delete this file if you want to regenerate models/textures/collision and cache!");
+                Lort.Log($"Using cache: {manifestPath}", Lort.Type.Main);
+                Lort.Log($"Delete this file if you want to regenerate models/textures/collision and cache!", Lort.Type.Main);
             }
+            /* Generate new cache! */
             else
             {
-                /* Generate new cache! */
-                string meshPath = cachePath + @"meshes\";
-                string terrainPath = cachePath + @"terrain\";
-                string texturePath = cachePath + @"textures\";
-                string materialPath = cachePath + @"materials\";
-
                 /* Grab all the models we want to convert */
                 List<string> meshes = new();
                 void ScoopEmUp(List<Cell> cells)
@@ -97,18 +93,18 @@ namespace JortPob
                 ScoopEmUp(esm.exterior);
                 if (!Const.DEBUG_SKIP_INTERIOR) { ScoopEmUp(esm.interior); }
 
-                Console.WriteLine($"Generating new cache... m[{meshes.Count}]");
+                Lort.Log($"Generating new cache...", Lort.Type.Main);
 
                 Cache nu = new();
 
                 AssimpContext assimpContext = new();
-                MaterialContext materialContext = new(cachePath);
+                MaterialContext materialContext = new();
 
                 /* Convert models/textures for models */
-                nu.assets = FlverWorker.Go(materialContext, meshes, morrowindPath, cachePath);
+                nu.assets = FlverWorker.Go(materialContext, meshes);
 
                 /* Convert models/textures for terrain */
-                nu.terrains = LandscapeWorker.Go(materialContext, esm, cachePath);
+                nu.terrains = LandscapeWorker.Go(materialContext, esm);
 
                 /* Write textures */
                 materialContext.WriteAll();
@@ -116,36 +112,16 @@ namespace JortPob
 
                 /* Convert collision */
                 List<CollisionInfo> collisions = new();
-                foreach(TerrainInfo terrain in nu.terrains)
+                foreach (ModelInfo modelInfo in nu.assets)
+                {
+                    if (modelInfo.collision == null) { continue; }
+                    collisions.Add(modelInfo.collision);
+                }
+                foreach (TerrainInfo terrain in nu.terrains)
                 {
                     collisions.Add(terrain.collision);
                 }
-
-                Console.WriteLine($"Converting {collisions.Count} collision... t[{Const.THREAD_COUNT}]"); // Very slow, multithreaded to make less terrible
-                int partition = 999999; //(int)Math.Ceiling(collisions.Count / (float)Const.THREAD_COUNT);
-                List<HkxWorker> workers = new();
-                for (int i = 0; i < Const.THREAD_COUNT; i++)
-                {
-                    int start = i * partition;
-                    int end = start + partition;
-                    HkxWorker worker = new(collisions, cachePath, start, end);
-                    workers.Add(worker);
-                }
-
-                /* Wait for threads to finish */
-                while (true)
-                {
-                    bool done = true;
-                    foreach (HkxWorker worker in workers)
-                    {
-                        done &= worker.IsDone;
-                    }
-
-                    if (done)
-                        break;
-                }
-
-                ModelConverter.HKXDispose();
+                HkxWorker.Go(collisions);
 
                 /* Assign resource ID numbers */
                 int nextM = 0, nextA = 0, nextO = 5000;
@@ -170,7 +146,7 @@ namespace JortPob
                 /* Write new cache file */
                 string jsonOutput = JsonSerializer.Serialize<Cache>(nu, new JsonSerializerOptions { IncludeFields = true });
                 File.WriteAllText(manifestPath, jsonOutput);
-                Console.WriteLine($"Generated new cache: {cachePath}");
+                Lort.Log($"Generated new cache: {Const.CACHE_PATH}", Lort.Type.Main);
             }
 
             /* Load cache manifest */
@@ -215,7 +191,7 @@ namespace JortPob
     {
         public string name; // Original nif name, for lookup from ESM records
         public readonly string path; // Relative path from the 'cache' folder to the converted flver file
-         public List<CollisionInfo> collisions; // All generated HKX collision files
+        public CollisionInfo collision; // Generated HKX file or null if no collision exists
         public List<TextureInfo> textures; // All generated tpf files
 
         public Dictionary<string, short> dummies; // Dummies and their ids
@@ -227,7 +203,6 @@ namespace JortPob
         {
             this.name = name.ToLower();
             this.path = path;
-            collisions = new();
             textures = new();
             dummies = new();
 

@@ -3,6 +3,7 @@ using HKLib.hk2018;
 using HKLib.Reflection.hk2018;
 using HKLib.Serialization.hk2018.Binary;
 using HKLib.Serialization.hk2018.Xml;
+using JortPob.Common;
 using SoulsFormats;
 using System;
 using System.Diagnostics;
@@ -20,21 +21,29 @@ namespace JortPob.Model
         {
             string tempDir = $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\tools\\ER_OBJ2HKX\\";
 
-            //ClearTempDir(tempDir);
-            Console.WriteLine(objPath);
-
+            /* Convert obj to hkx */
             byte[] hkx = ObjToHkx(tempDir, objPath);
             hkx = UpgradeHKX(tempDir, hkx);
-
-            Console.WriteLine(hkxPath);
             File.WriteAllBytes(hkxPath, hkx);
-            //ClearTempDir(tempDir);
-        }
 
-        public static void HKXDispose()
-        {
-            string tempDir = $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\tools\\ER_OBJ2HKX\\";
-            ClearTempDir(tempDir);
+            /* Delete temp files */   // Dropoffs method of deleting temp files just blanket yeeted all files of a given format. For multithreading i need it to be precise
+            string fileName = Utility.PathToFileName(objPath);
+            string[] tempFiles =
+            {
+                $"{tempDir}{fileName}.1",
+                $"{tempDir}{fileName}.obj.o2f",
+                $"{tempDir}{fileName}.obj",
+                $"{tempDir}{fileName}.mtl",
+                $"{tempDir}{fileName}.hkx",
+                $"{tempDir}{fileName}.1.hkx"
+            };
+            foreach (string file in tempFiles)
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
         }
 
         private static byte[] ObjToHkx(string tempDir, string objPath)
@@ -53,7 +62,8 @@ namespace JortPob.Model
             var startInfo = new ProcessStartInfo(@$"{tempDir}\obj2fsnp.exe", @$"{tempDir}\{fName}.obj")
             {
                 WorkingDirectory = @$"{tempDir}\",
-                UseShellExecute = false
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
             var process = Process.Start(startInfo);
             process.WaitForExit();
@@ -61,7 +71,8 @@ namespace JortPob.Model
             startInfo = new ProcessStartInfo(@$"{tempDir}\AssetCc2_fixed.exe", $@"--strip {tempDir}\{fName}.obj.o2f {tempDir}\{fName}.1")
             {
                 WorkingDirectory = @$"{tempDir}\",
-                UseShellExecute = false
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
             process = Process.Start(startInfo);
             process.WaitForExit();
@@ -69,27 +80,13 @@ namespace JortPob.Model
             startInfo = new ProcessStartInfo(@$"{tempDir}\hknp2fsnp.exe", $@"{tempDir}\{fName}.1")
             {
                 WorkingDirectory = @$"{tempDir}\",
-                UseShellExecute = false
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
             process = Process.Start(startInfo);
             process.WaitForExit();
 
             return File.ReadAllBytes($@"{tempDir}\{fName}.1.hkx");
-        }
-
-        private static void ClearTempDir(string tempDir)
-        {
-            foreach (var file in Directory.GetFiles(tempDir))
-            {
-                if (file.ToLower().EndsWith(".obj") ||
-                    file.ToLower().EndsWith(".mtl") ||
-                    file.ToLower().EndsWith(".obj.o2f") ||
-                    file.ToLower().EndsWith(".hkx") ||
-                    file.ToLower().EndsWith(".1"))
-                {
-                    File.Delete(file);
-                }
-            }
         }
 
         private static byte[] UpgradeHKX(string tempDir, byte[] bytes)

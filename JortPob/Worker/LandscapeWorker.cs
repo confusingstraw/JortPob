@@ -15,29 +15,26 @@ namespace JortPob.Worker
         private MaterialContext materialContext;
         private ESM esm;
 
-        private string cachePath;
-        private string morrowindPath;
         private int start;
         private int end;
 
         public List<TerrainInfo> terrains;
 
-        public LandscapeWorker(MaterialContext materialContext, ESM esm, string cachePath, int start, int end)
+        public LandscapeWorker(MaterialContext materialContext, ESM esm, int start, int end)
         {
             this.materialContext = materialContext;
             this.esm = esm;
-            this.cachePath = cachePath;
 
             this.start = start;
             this.end = end;
 
             terrains = new();
 
-            _thread = new Thread(Parse);
+            _thread = new Thread(Run);
             _thread.Start();
         }
 
-        private void Parse()
+        private void Run()
         {
             ExitCode = 1;
 
@@ -48,18 +45,21 @@ namespace JortPob.Worker
                 if (landscape == null) { continue; }
 
                 TerrainInfo terrainInfo = new(landscape.coordinate, $"terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}.flver");
-                terrainInfo = ModelConverter.LANDSCAPEtoFLVER(materialContext, terrainInfo, landscape, $"{cachePath}terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}.flver");
+                terrainInfo = ModelConverter.LANDSCAPEtoFLVER(materialContext, terrainInfo, landscape, $"{Const.CACHE_PATH}terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}.flver");
 
                 terrains.Add(terrainInfo);
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             IsDone = true;
             ExitCode = 0;
         }
 
-        public static List<TerrainInfo> Go(MaterialContext materialContext, ESM esm, string cachePath)
+        public static List<TerrainInfo> Go(MaterialContext materialContext, ESM esm)
         {
-            Console.WriteLine($"Converting {esm.exterior.Count} landscapes... t[{Const.THREAD_COUNT}]"); // Not that slow but multithreading good
+            Lort.Log($"Converting {esm.exterior.Count} landscapes...", Lort.Type.Main); // Not that slow but multithreading good
+            Lort.NewTask("Converting Landscape", esm.exterior.Count);
 
             int partition = (int)Math.Ceiling(esm.exterior.Count / (float)Const.THREAD_COUNT);
             List<LandscapeWorker> workers = new();
@@ -67,7 +67,7 @@ namespace JortPob.Worker
             {
                 int start = i * partition;
                 int end = start + partition;
-                LandscapeWorker worker = new(materialContext, esm, cachePath, start, end);
+                LandscapeWorker worker = new(materialContext, esm, start, end);
                 workers.Add(worker);
             }
 

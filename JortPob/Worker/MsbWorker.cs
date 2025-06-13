@@ -15,26 +15,22 @@ namespace JortPob.Worker
 {
     public class MsbWorker : Worker
     {
-        private string cachePath;
         private List<ResourcePool> msbs;
-        private string modPath;
         private int start;
         private int end;
 
-        public MsbWorker(List<ResourcePool> msbs, string cachePath, string modPath, int start, int end)
+        public MsbWorker(List<ResourcePool> msbs, int start, int end)
         {
             this.msbs = msbs;
-            this.cachePath = cachePath;
-            this.modPath = modPath;
 
             this.start = start;
             this.end = end;
 
-            _thread = new Thread(Parse);
+            _thread = new Thread(Run);
             _thread.Start();
         }
 
-        private void Parse()
+        private void Run()
         {
             ExitCode = 1;
 
@@ -45,14 +41,12 @@ namespace JortPob.Worker
                 string map = $"{pool.id[0].ToString("D2")}";
                 string name = $"{pool.id[0].ToString("D2")}_{pool.id[1].ToString("D2")}_{pool.id[2].ToString("D2")}_{pool.id[3].ToString("D2")}";
 
-                //Console.WriteLine($"Writing files for -> m{name}");
-
-                pool.msb.Write($"{modPath}map\\mapstudio\\m{name}.msb.dcx");
+                pool.msb.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m{name}.msb.dcx");
 
                 /* Write terrain */
                 foreach (TerrainInfo t in pool.terrain)
                 {
-                    FLVER2 flver = FLVER2.Read($"{cachePath}{t.path}");
+                    FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{t.path}");
 
                     BND4 bnd = new();
                     bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
@@ -66,7 +60,7 @@ namespace JortPob.Worker
                     file.Bytes = flver.Write();
                     bnd.Files.Add(file);
 
-                    bnd.Write($"{modPath}map\\m60\\m{name}\\m{name}_{t.id.ToString("D8")}.mapbnd.dcx");
+                    bnd.Write($"{Const.OUTPUT_PATH}map\\m60\\m{name}\\m{name}_{t.id.ToString("D8")}.mapbnd.dcx");
                 }
 
                 BXF4 bxfH = new();
@@ -86,11 +80,11 @@ namespace JortPob.Worker
                     BinderFile testH = new();
                     testH.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     testH.Name = $"m{name}\\h{name}_{index}.hkx.dcx";
-                    testH.Bytes = DCX.Compress(File.ReadAllBytes($"{cachePath}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testH.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
                     testH.ID = id++;
                     bxfH.Files.Add(testH);
                 }
-                bxfH.Write($"{modPath}map\\m60\\m{name}\\h{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\h{name}.hkxbdt");
+                bxfH.Write($"{Const.OUTPUT_PATH}map\\m60\\m{name}\\h{name}.hkxbhd", $"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\h{name}.hkxbdt");
 
                 BXF4 bxfL = new();
                 bxfL.Version = "07D7R6";
@@ -109,15 +103,46 @@ namespace JortPob.Worker
                     BinderFile testL = new();
                     testL.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     testL.Name = $"m{name}\\l{name}_{index}.hkx.dcx";
-                    testL.Bytes = DCX.Compress(File.ReadAllBytes($"{cachePath}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testL.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
                     testL.ID = id++;
                     bxfL.Files.Add(testL);
                 }
-                bxfL.Write($"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{modPath}map\\m{map}\\m{name}\\l{name}.hkxbdt");
+                bxfL.Write($"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\l{name}.hkxbhd", $"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\l{name}.hkxbdt");
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             IsDone = true;
             ExitCode = 0;
+        }
+
+        public static void Go(List<ResourcePool> msbs)
+        {
+            Lort.Log($"Writing {msbs.Count} msbs...", Lort.Type.Main); // Multithreaded because insanely slow
+            Lort.NewTask("Writing MSB", msbs.Count);
+            int partition = (int)Math.Ceiling(msbs.Count / (float)Const.THREAD_COUNT);
+            List<MsbWorker> workers = new();
+
+            for (int i = 0; i < Const.THREAD_COUNT; i++)
+            {
+                int start = i * partition;
+                int end = start + partition;
+                MsbWorker worker = new(msbs, start, end);
+                workers.Add(worker);
+            }
+
+            /* Wait for threads to finish */
+            while (true)
+            {
+                bool done = true;
+                foreach (MsbWorker worker in workers)
+                {
+                    done &= worker.IsDone;
+                }
+
+                if (done)
+                    break;
+            }
         }
     }
 }

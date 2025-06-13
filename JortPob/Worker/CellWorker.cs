@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using SharpAssimp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,11 +28,11 @@ namespace JortPob.Worker
 
             cells = new();
 
-            _thread = new Thread(Parse);
+            _thread = new Thread(Run);
             _thread.Start();
         }
 
-        private void Parse()
+        private void Run()
         {
             ExitCode = 1;
 
@@ -42,10 +43,63 @@ namespace JortPob.Worker
 
                 Cell cell = new(esm, node);
                 cells.Add(cell);
+
+                Lort.TaskIterate(); // Progress bar update
             }
 
             IsDone = true;
             ExitCode = 0;
+        }
+
+        public static List<List<Cell>> Go(ESM esm)
+        {
+            Lort.Log($"Parsing {esm.records[ESM.Type.Cell].Count} cells...", Lort.Type.Main);
+            Lort.NewTask("Parsing Cells", esm.records[ESM.Type.Cell].Count);
+
+            int partition = (int)Math.Ceiling(esm.records[ESM.Type.Cell].Count / (float)Const.THREAD_COUNT);
+            List<CellWorker> workers = new();
+
+            for (int i = 0; i < Const.THREAD_COUNT; i++)
+            {
+                int start = i * partition;
+                int end = start + partition;
+                CellWorker worker = new(esm, esm.records[ESM.Type.Cell], start, end);
+                workers.Add(worker);
+            }
+
+            /* Wait for threads to finish */
+            while (true)
+            {
+                bool done = true;
+                foreach (CellWorker worker in workers)
+                {
+                    done &= worker.IsDone;
+                }
+
+                if (done)
+                    break;
+            }
+
+            /* Grab all parsed cells from threads and put em in lists */
+            List<Cell> interior = new();
+            List<Cell> exterior = new();
+            foreach (CellWorker worker in workers)
+            {
+                foreach (Cell cell in worker.cells)
+                {
+                    if (Math.Abs(cell.coordinate.x) > Const.CELL_EXTERIOR_BOUNDS || Math.Abs(cell.coordinate.y) > Const.CELL_EXTERIOR_BOUNDS)
+                    {
+                        interior.Add(cell);
+                    }
+                    else
+                    {
+                        exterior.Add(cell);
+                    }
+                }
+
+            }
+
+            return new List<List<Cell>>() { exterior, interior };
         }
     }
 }

@@ -11,12 +11,13 @@ namespace JortPob.Common
     public static class Const
     {
         #region Paths
-        public static readonly string MORROWIND_PATH = @"I:\SteamLibrary\steamapps\common\Morrowind\";
-        public static readonly string OUTPUT_PATH = @"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\";
+        public static string MORROWIND_PATH = Settable.Get("MORROWIND_PATH");
+        public static string OUTPUT_PATH = Settable.Get("OUTPUT_PATH");
+        public static string CACHE_PATH = $"{OUTPUT_PATH}cache\\";
         #endregion
 
         #region Optimization
-        public static readonly int THREAD_COUNT = 16;
+        public static readonly int THREAD_COUNT = int.Parse(Settable.Get("THREAD_COUNT"));
         #endregion
 
         #region General
@@ -38,8 +39,6 @@ namespace JortPob.Common
         #region Debug
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
         public static readonly bool DEBUG_SKIP_INTERIOR = true;
-
-
         #endregion
     }
 }

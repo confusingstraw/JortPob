@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JortPob", "JortPob\JortPob.csproj", "{DDE52499-9E38-4B69-8699-EB017AB55551}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JortUX", "JortUX\JortUX.csproj", "{807E75F9-9521-49CF-8CA4-F55637CCD69C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{DDE52499-9E38-4B69-8699-EB017AB55551}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDE52499-9E38-4B69-8699-EB017AB55551}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDE52499-9E38-4B69-8699-EB017AB55551}.Release|Any CPU.Build.0 = Release|Any CPU
+		{807E75F9-9521-49CF-8CA4-F55637CCD69C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{807E75F9-9521-49CF-8CA4-F55637CCD69C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{807E75F9-9521-49CF-8CA4-F55637CCD69C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{807E75F9-9521-49CF-8CA4-F55637CCD69C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
