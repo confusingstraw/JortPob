@@ -20,7 +20,9 @@ namespace JortPob
 
         public Vector3 relative;
         public readonly Vector3 position, rotation;
-        public readonly float scale;
+        public readonly int scale;  // scale in converted to a int where 100 = 1.0f scale. IE:clamp to nearest 1%. this is to group scale for asset generation.
+
+        public string mesh;  // can be null!
 
         public Content(JsonNode json, Record record)
         {
@@ -74,7 +76,7 @@ namespace JortPob
             relative = new();
             position = new Vector3(x, y, z) * Const.GLOBAL_SCALE;
             rotation = eu * (float)(180 / Math.PI);
-            scale = json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f;
+            scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
     }
 
@@ -99,8 +101,6 @@ namespace JortPob
     /* static meshes to be converted to assets */
     public class AssetContent : Content
     {
-        public readonly string mesh;
-
         public AssetContent(JsonNode json, Record record) : base(json, record)
         {
             mesh = record.json["mesh"].ToString().ToLower();

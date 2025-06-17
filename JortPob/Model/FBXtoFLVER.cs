@@ -7,13 +7,14 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace JortPob.Model
 {
     public partial class ModelConverter
     {
-        public static ModelInfo FBXtoFLVER(AssimpContext assimpContext, MaterialContext materialContext, ModelInfo modelInfo, string fbxFilename, string outputFilename)
+        public static ModelInfo FBXtoFLVER(AssimpContext assimpContext, MaterialContext materialContext, ModelInfo modelInfo, bool forceCollision, string fbxFilename, string outputFilename)
         {
             /* Load FBX file via Assimp */
             Scene fbx = assimpContext.ImportFile(fbxFilename, PostProcessSteps.CalculateTangentSpace);
@@ -207,36 +208,7 @@ namespace JortPob.Model
             }
 
             /* Calculate bounding boxes */
-            float X1 = float.MaxValue, X2 = float.MinValue, Y1 = float.MaxValue, Y2 = float.MinValue, Z1 = float.MaxValue, Z2 = float.MinValue;
-            foreach (FLVER2.Mesh mesh in flver.Meshes)
-            {
-                float x1 = float.MaxValue, x2 = float.MinValue, y1 = float.MaxValue, y2 = float.MinValue, z1 = float.MaxValue, z2 = float.MinValue;
-                foreach (FLVER.Vertex vert in mesh.Vertices)
-                {
-                    x1 = Math.Min(vert.Position.X, x1);
-                    y1 = Math.Min(vert.Position.Y, y1);
-                    z1 = Math.Min(vert.Position.Z, z1);
-
-                    x2 = Math.Max(vert.Position.X, x2);
-                    y2 = Math.Max(vert.Position.Y, y2);
-                    z2 = Math.Max(vert.Position.Z, z2);
-
-                    X1 = Math.Min(vert.Position.X, X1);
-                    Y1 = Math.Min(vert.Position.Y, Y1);
-                    Z1 = Math.Min(vert.Position.Z, Z1);
-
-                    X2 = Math.Max(vert.Position.X, X2);
-                    Y2 = Math.Max(vert.Position.Y, Y2);
-                    Z2 = Math.Max(vert.Position.Z, Z2);
-                }
-                mesh.BoundingBox = new();
-                mesh.BoundingBox.Min = new Vector3(x1, y1, z1);
-                mesh.BoundingBox.Max = new Vector3(x2, y2, z2);
-            }
-            rootNode.BoundingBoxMin = new Vector3(X1, Y1, Z1);
-            rootNode.BoundingBoxMax = new Vector3(X2, Y2, Z2);
-            flver.Header.BoundingBoxMin = rootNode.BoundingBoxMin;
-            flver.Header.BoundingBoxMax = rootNode.BoundingBoxMax;
+            BoundingBoxSolver.FLVER(flver);
 
             /* Calculate model size */
             float size = Vector3.Distance(rootNode.BoundingBoxMin, rootNode.BoundingBoxMax);
@@ -245,11 +217,56 @@ namespace JortPob.Model
             /* Write flver */
             flver.Write(outputFilename);
 
-            /* Generate collision obj if the model contains a collision mesh */
-            if(fbxCollisions.Count > 0)
+            
+            /* Load overrides list for collision */
+            JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\static_collision.json")));
+            bool CheckOverride(string name)
             {
-                Obj obj = COLLISIONtoOBJ(fbxCollisions);
+                foreach(JsonNode node in json.AsArray())
+                {
+                    if (node.ToString().ToLower() == name) { return true; }
+                }
+                return false;
+            }
 
+            /* Generate collision obj if the model contains a collision mesh */
+            if ((fbxCollisions.Count > 0 || forceCollision) && !CheckOverride(modelInfo.name))
+            {
+                /* Best guess for collision material */
+                CollisionMaterial matguess = CollisionMaterial.None;
+                void Guess(string[] keys, CollisionMaterial type)
+                {
+                    if (matguess != CollisionMaterial.None) { return; }
+                    foreach (Material mat in fbx.Materials)
+                    {
+                        foreach (string key in keys)
+                        {
+                            if (Utility.PathToFileName(modelInfo.name).ToLower().Contains(key)) { matguess = type; return; }
+                            if (mat.Name.ToLower().Contains(key)) { matguess = type; return; }
+                            if (mat.TextureDiffuse.FilePath != null && Utility.PathToFileName(mat.TextureDiffuse.FilePath).ToLower().Contains(key)) { matguess = type; return; }
+                        }
+                    }
+                    return;
+                }
+
+                /* This is a hierarchy, first found keyword determines collision type, more obvious keywords at the top, niche ones at the bottom */
+                Guess(new string[] { "wood", "log", "bark" }, CollisionMaterial.Wood);
+                Guess(new string[] { "sand" }, CollisionMaterial.Sand);
+                Guess(new string[] { "rock", "stone", "boulder" }, CollisionMaterial.Rock);
+                Guess(new string[] { "dirt", "soil", "grass" }, CollisionMaterial.Dirt);
+                Guess(new string[] { "iron", "metal", "steel" }, CollisionMaterial.IronGrate);
+                Guess(new string[] { "mushroom", }, CollisionMaterial.ScarletMushroom);
+                Guess(new string[] { "statue", "adobe" }, CollisionMaterial.Rock);
+                Guess(new string[] { "dwrv", "daed" }, CollisionMaterial.Rock);
+
+                // Give up!
+                if (matguess == null) { matguess = CollisionMaterial.Stock; }
+
+                /* If the model doesnt have an explicit collision mesh but forceCollision is on because it's a static, we use the visual mesh as a collision mesh */
+                Obj obj = COLLISIONtoOBJ(fbxCollisions.Count > 0 ? fbxCollisions : fbxMeshes, matguess);
+                if (fbxCollisions.Count <= 0) { Lort.Log($"{modelInfo.name} had forced collision gen...", Lort.Type.Debug); }
+
+                /* Make obj file for collision. These will be converted to HKX later */
                 string objPath = outputFilename.Replace(".flver", ".obj");
                 CollisionInfo collisionInfo = new(modelInfo.name, $"meshes\\{Utility.PathToFileName(objPath)}.obj");
                 modelInfo.collision = collisionInfo;

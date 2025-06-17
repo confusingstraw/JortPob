@@ -21,6 +21,11 @@ namespace JortPob
 
         }
 
+        public override Tile GetContentTrueTile(Content content)
+        {
+            return this;
+        }
+
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
         {
@@ -88,6 +93,9 @@ namespace JortPob
             npcs = new();
         }
 
+        /* Returns which child tile the given content is actually inside */
+        /* Used during asset generation to congifure tile load. Assets in big/huge tiles need to tell the game which small tile to load when you save quit on them */
+        public abstract Tile GetContentTrueTile(Content content);
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public void AddContent(Cache cache, Content content)

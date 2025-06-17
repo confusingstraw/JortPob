@@ -21,6 +21,18 @@ namespace JortPob
             tiles = new();
         }
 
+        public override Tile GetContentTrueTile(Content content)
+        {
+            foreach(Tile tile in tiles)
+            {
+                if (tile.PositionInside(content.position))
+                {
+                    return tile;
+                }
+            }
+            return null;  // shouldnt happen but will crash if it does
+        }
+
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
         {
@@ -57,7 +69,7 @@ namespace JortPob
             {
                 case AssetContent a:
                     ModelInfo modelInfo = cache.GetModel(a.mesh);
-                    if (modelInfo.size * content.scale > Const.CONTENT_SIZE_HUGE) {
+                    if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE) {
                         float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);

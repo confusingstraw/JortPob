@@ -1,0 +1,249 @@
+﻿newmtl hkm_None_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Stock_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Rock_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Sand_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Wood_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Dirt_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Ore_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Lava_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_ScarletTree_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_9_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_10_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_IronGrate_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_ScarletMushroom_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_13_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Bone_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_15_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_16_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_17_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_18_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_19_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_20_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_Water_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.4 0.4 1.0
+Ks 0.0 0.0 0.0
+
+newmtl hkm_22_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_ShallowPoisonSwamp_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.6 0.4 0.6
+Ks 0.0 0.0 0.0
+
+newmtl hkm_PoisonSwamp_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.5 0.3 0.5
+Ks 0.0 0.0 0.0
+
+newmtl hkm_25_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_26_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_27_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_28_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_29_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_30_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_31_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_32_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_33_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_34_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_35_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_36_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_37_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_38_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_39_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_40_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_41_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_42_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_43_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_RainDirt_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.5 0.3 0.2
+Ks 0.0 0.0 0.0
+
+newmtl hkm_45_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_ScarletSwamp_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.6 0.2 0.2
+Ks 0.0 0.0 0.0
+
+newmtl hkm_47_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_48_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.8 0.8 0.8
+Ks 0.0 0.0 0.0
+
+newmtl hkm_LakeofRot_Safe1
+Ka 0.2 0.2 0.2
+Kd 0.4 0.0 0.4
+Ks 0.0 0.0 0.0

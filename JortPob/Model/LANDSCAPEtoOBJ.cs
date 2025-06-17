@@ -14,6 +14,8 @@ namespace JortPob.Model
         {
             Obj obj = new();
             ObjG g = new();    // @TODO: currently just doing on collision material. need to subdivide by vertex texture index later and map materials
+            g.name = CollisionMaterial.Dirt.ToString();   // @TODO: just defaulting rn because I need to rewrite this if i want to support collision mats properly
+            g.mtl = $"hkm_{g.name}_Safe1";
 
             List<ObjV> V = new();
             foreach (int index in landscape.indices)

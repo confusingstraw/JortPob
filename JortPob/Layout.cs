@@ -190,7 +190,7 @@ namespace JortPob
             }
 
             /* Render an ASCII image of the tiles for verification! */
-            Lort.Log("Drawing ASCII map of worldspace map...", Lort.Type.Debug);
+            Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
             for (int y = 66; y >= 28; y--)
             {
                 string line = "";

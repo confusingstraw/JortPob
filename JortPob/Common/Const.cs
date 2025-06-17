@@ -34,11 +34,15 @@ namespace JortPob.Common
 
         public static readonly float CONTENT_SIZE_BIG = 7f;
         public static readonly float CONTENT_SIZE_HUGE = 20f;
+
+        public static readonly int ASSET_BAKE_SCALE_CUTOFF = 5;  // how many assets need a scale before we bake it into a prescaled asset. otherwise dynamic scale is used
+        public static readonly int DYNAMIC_ASSET = int.MaxValue;
         #endregion
 
         #region Debug
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
         public static readonly bool DEBUG_SKIP_INTERIOR = true;
+        public static readonly string DEBUG_PRINT_LOCATION_INFO = "Seyda Neen"; // set to null if you don't need it. prints msb name of a named location at build done
         #endregion
     }
 }

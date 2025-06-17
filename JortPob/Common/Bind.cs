@@ -105,10 +105,6 @@ namespace JortPob.Common
 
                 bnd.Files.Add(file);
                 bnd.Write(outPath.Replace(".geombnd.dcx", "_l.geomhkxbnd.dcx"));
-
-                // Probs dont need this
-                //file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath().ToUpper()}\\hkx_H\\{modelInfo.AssetName().ToUpper()}_H.hkx";
-                //bnd.Write(outPath.Replace(".geombnd.dcx", "_h.geomhkxbnd.dcx"));
             }
         }
 

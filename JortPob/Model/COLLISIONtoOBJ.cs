@@ -11,7 +11,7 @@ namespace JortPob.Model
 {
     public partial class ModelConverter
     {
-        public static Obj COLLISIONtoOBJ(List<Tuple<Node, Mesh>> collisions)
+        public static Obj COLLISIONtoOBJ(List<Tuple<Node, Mesh>> collisions, CollisionMaterial material)
         {
             Obj obj = new();
 
@@ -21,6 +21,8 @@ namespace JortPob.Model
                 Mesh mesh = tuple.Item2;
 
                 ObjG g = new();
+                g.name = material.ToString();
+                g.mtl = $"hkm_{g.name}_Safe1";
 
                 /* Convert vert/face data */
                 foreach (Face face in mesh.Faces)
@@ -86,7 +88,7 @@ namespace JortPob.Model
                         V[i] = new(obj.vs.Count - 1, obj.vts.Count - 1, obj.vns.Count - 1);
                     }
 
-                    ObjF F = new(V[0], V[1], V[2]);
+                    ObjF F = new(V[2], V[1], V[0]);  // reverse indices going into collision. i don't know *why* but it works
                     g.fs.Add(F);
                 }
                 obj.gs.Add(g);

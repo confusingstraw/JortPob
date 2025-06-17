@@ -14,14 +14,14 @@ namespace JortPob.Worker
     public class FlverWorker : Worker
     {
         private MaterialContext materialContext;
-        private List<string> meshes;
+        private List<PreModel> meshes; // in
 
         private int start;
         private int end;
 
-        public List<ModelInfo> models;
+        public List<ModelInfo> models; // out
 
-        public FlverWorker(MaterialContext materialContext, List<string> meshes, int start, int end)
+        public FlverWorker(MaterialContext materialContext, List<PreModel> meshes, int start, int end)
         {
             this.materialContext= materialContext;
             this.meshes = meshes;
@@ -42,14 +42,53 @@ namespace JortPob.Worker
             AssimpContext assimpContext = new();
             for (int i = start; i < Math.Min(meshes.Count, end); i++)
             {
-                string mesh = meshes[i];
+                PreModel premodel = meshes[i];
 
-                string meshIn = $"{Const.MORROWIND_PATH}Data Files\\meshes\\{mesh.ToLower().Replace(".nif", ".fbx")}";
-                string meshOut = $"{Const.CACHE_PATH}meshes\\{mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}";
-                ModelInfo modelInfo = new(mesh, $"meshes\\{mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}");
-                modelInfo = ModelConverter.FBXtoFLVER(assimpContext, materialContext, modelInfo, meshIn, meshOut);
-
+                /* Generate the 100 scale version of the model. This is the baseline. After this we generate dynamics and baked scale versions from this */
+                string meshIn = $"{Const.MORROWIND_PATH}Data Files\\meshes\\{premodel.mesh.ToLower().Replace(".nif", ".fbx")}";
+                string meshOut = $"{Const.CACHE_PATH}meshes\\{premodel.mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}";
+                ModelInfo modelInfo = new(premodel.mesh, $"meshes\\{premodel.mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_")}", 100);
+                modelInfo = ModelConverter.FBXtoFLVER(assimpContext, materialContext, modelInfo, premodel.forceCollision, meshIn, meshOut);
                 models.Add(modelInfo);
+
+                /* if a model has no collision we don't need baked scale or dynamic versions. nocollide static meshes can just be scaled freely */
+                /* if the model does have collision though we need to generate dynamic and baked scale versions */
+                if (modelInfo.HasCollision())
+                {
+                    bool makeDynamic = false;
+                    foreach (KeyValuePair<int, int> kvp in premodel.scales)
+                    {
+                        int scale = kvp.Key;
+                        int count = kvp.Value;
+
+                        if (scale == 100) { continue; }  // Already done above;
+
+                        if (count <= Const.ASSET_BAKE_SCALE_CUTOFF)
+                        {
+                            makeDynamic = true;
+                        }
+                        else
+                        {
+                            ModelInfo baked = new(modelInfo.name, modelInfo.path.Replace(".flver", $"_s{scale}.flver"), scale);
+                            Scale.FLVER($"{Const.CACHE_PATH}{modelInfo.path}", $"{Const.CACHE_PATH}{baked.path}", scale * 0.01f);
+                            if (modelInfo.collision != null)
+                            {
+                                baked.collision = new(modelInfo.collision.name, modelInfo.collision.obj.Replace(".obj", $"_s{scale}.obj"));
+                                Obj obj = new($"{Const.CACHE_PATH}{modelInfo.collision.obj}");
+                                obj.scale(scale * 0.01f);
+                                obj.write($"{Const.CACHE_PATH}{baked.collision.obj}");
+                            }
+                            baked.size = modelInfo.size * (scale * 0.01f);
+                            models.Add(baked);
+                        }
+                    }
+                    if (makeDynamic)
+                    {
+                        ModelInfo dynamic = new(modelInfo.name, modelInfo.path, Const.DYNAMIC_ASSET);
+                        dynamic.collision = modelInfo.collision;
+                        models.Add(dynamic);
+                    }
+                }
 
                 Lort.TaskIterate(); // Progress bar update
             }
@@ -59,7 +98,7 @@ namespace JortPob.Worker
             ExitCode = 0;
         }
 
-        public static List<ModelInfo> Go(MaterialContext materialContext, List<string> meshes)
+        public static List<ModelInfo> Go(MaterialContext materialContext, List<PreModel> meshes)
         {
             Lort.Log($"Converting {meshes.Count} models...", Lort.Type.Main); // Not that slow but multithreading good
             Lort.NewTask("Converting FBX", meshes.Count);
