@@ -260,7 +260,7 @@ namespace JortPob.Model
                 Guess(new string[] { "dwrv", "daed" }, CollisionMaterial.Rock);
 
                 // Give up!
-                if (matguess == null) { matguess = CollisionMaterial.Stock; }
+                if (matguess == CollisionMaterial.None) { matguess = CollisionMaterial.Stock; }
 
                 /* If the model doesnt have an explicit collision mesh but forceCollision is on because it's a static, we use the visual mesh as a collision mesh */
                 Obj obj = COLLISIONtoOBJ(fbxCollisions.Count > 0 ? fbxCollisions : fbxMeshes, matguess);

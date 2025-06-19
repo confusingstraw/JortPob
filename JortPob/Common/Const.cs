@@ -40,9 +40,11 @@ namespace JortPob.Common
         #endregion
 
         #region Debug
+        /* when building for release everything in this group should be FALSE or NULL */
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
         public static readonly bool DEBUG_SKIP_INTERIOR = true;
-        public static readonly string DEBUG_PRINT_LOCATION_INFO = "Seyda Neen"; // set to null if you don't need it. prints msb name of a named location at build done
+        public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done
+        public static readonly bool DEBUG_HKX_FORCE_BINARY = true;   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
         #endregion
     }
 }

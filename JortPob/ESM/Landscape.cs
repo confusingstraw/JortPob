@@ -135,30 +135,44 @@ namespace JortPob
             }
 
             indices = new();
-            for (int yy = 0; yy < Const.CELL_GRID_SIZE; yy += 4)
+            bool flip = false;
+            for (int yy = 0; yy < Const.CELL_GRID_SIZE; yy += 1)
             {
-                for (int xx = 0; xx < Const.CELL_GRID_SIZE; xx += 4)
+                for (int xx = 0; xx < Const.CELL_GRID_SIZE; xx += 1)
                 {
                     int[] quad = {
                                 (yy * (Const.CELL_GRID_SIZE + 1)) + xx,
-                                (yy * (Const.CELL_GRID_SIZE + 1)) + (xx + 4),
-                                ((yy + 4) * (Const.CELL_GRID_SIZE + 1)) + (xx + 4),
-                                ((yy + 4) * (Const.CELL_GRID_SIZE + 1)) + xx
+                                (yy * (Const.CELL_GRID_SIZE + 1)) + (xx + 1),
+                                ((yy + 1) * (Const.CELL_GRID_SIZE + 1)) + (xx + 1),
+                                ((yy + 1) * (Const.CELL_GRID_SIZE + 1)) + xx
                             };
 
 
-                    int[,] tris = {
+                    int[,] tris = flip ?
+                        new int[,] {
                                 {
-                                    quad[(xx + (yy % 2) + 2) % 4],
-                                    quad[(xx + (yy % 2) + 1) % 4],
-                                    quad[(xx + (yy % 2) + 0) % 4]
+                                    quad[2],
+                                    quad[1],
+                                    quad[0]
                                 },
                                 {
-                                    quad[(xx + (yy % 2) + 0) % 4],
-                                    quad[(xx + (yy % 2) + 3) % 4],
-                                    quad[(xx + (yy % 2) + 2) % 4]
+                                    quad[0],
+                                    quad[3],
+                                    quad[2]
                                 }
-                            };
+                            }:
+                        new int[,] {
+                            {
+                                quad[3],
+                                quad[1],
+                                quad[0]
+                            },
+                            {
+                                quad[3],
+                                quad[2],
+                                quad[1]
+                            }
+                        };
 
                     for (int t = 0; t < 2; t++)
                     {
@@ -167,7 +181,10 @@ namespace JortPob
                             indices.Add(tris[t, i]);
                         }
                     }
+
+                    flip = !flip;
                 }
+                flip = !flip;
             }
 
             /* Now that we've built the terrain mesh, let's subdivide it into multiple meshes based on what textures it uses */
