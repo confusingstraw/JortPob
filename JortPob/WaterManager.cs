@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace JortPob
 {
-    /* Automagically generates water assets, and msb parts */
+    /* Automagically generates water assets for  the cache */
     public class WaterManager
     {
         /* Creates assetbnd, hkx file, and matbins for water */
@@ -24,49 +24,11 @@ namespace JortPob
 
             /* Further research on water meshes leads me to believe the best approach is a single water mesh for the entire world space. */
             /* Stupid as fuck solution but it is what it is */
-            int id = 0; // id for water mesh // just making the single one for now
+            int id = 0; // id for water mesh // just making the single one for now, maybe later we will generate more for other things
             {
-                /* Make water mesh */
+                /* Make water meshes */
                 FLVER2 flver = GenerateFlver(esm, materialContext);
-
-                /* generate obj for uses as water plane collision, these are per tile so its just a square */
-                Obj obj = new();
-                ObjG g = new();
-                g.name = CollisionMaterial.Water.ToString();
-                g.mtl = $"hkm_{g.name}_Safe1";
-
-                float half = Const.TILE_SIZE * .5f;
-                Vector3[] positions = new Vector3[]
-                {
-                    new Vector3(half, 0, half), new Vector3(half, 0, -half), new Vector3(-half, 0, -half), new Vector3(-half, 0, half)
-                };
-                Vector3 normal = new Vector3(0, 1, 0);
-                Vector3[] uvs = new Vector3[]
-                {
-                    new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(1, 1, 0), new Vector3(0, 1, 0)
-                };
-
-                for(int i = 0;i<positions.Length;i++)
-                {
-                    obj.vs.Add(positions[i]);
-                    obj.vns.Add(normal);
-                    obj.vts.Add(uvs[i]);
-                }
-                List<int> indices = new List<int>() { 0, 1, 2, 0, 2, 3 };
-                List<ObjV> V = new();
-                foreach (int index in indices)
-                {
-                    ObjV v = new(index, index, index);
-                    V.Add(v);
-
-                    if (V.Count >= 3)
-                    {
-                        ObjF f = new(V[0], V[1], V[2]);
-                        g.fs.Add(f);
-                        V.Clear();
-                    }
-                }
-                obj.gs.Add(g);
+                Obj obj = GenerateObj();
 
                 /* Files happen */
                 string name = $"meshes\\water{id}";
@@ -139,7 +101,7 @@ namespace JortPob
             FLVER.VertexColor color = new(255, 255, 255, 255);
             List<int> indiceOffsets = new List<int>() { 0, 1, 2, 0, 2, 3 };
 
-            // returns indice if exists, -1 if doesnt
+            // returns indice if exists, -1 if doesnt // normally i dont caare about optimizing verts/indices but this material really cares about connected verts so we doing it
             int GetVertex(Vector3 position)
             {
                 for(int i=0;i<mesh.Vertices.Count;i++)
@@ -217,6 +179,50 @@ namespace JortPob
             BoundingBoxSolver.FLVER(flver);
 
             return flver;
+        }
+
+        private static Obj GenerateObj()
+        {
+            /* generate obj for uses as water plane collision, these are per tile so its just a square */
+            Obj obj = new();
+            ObjG g = new();
+            g.name = CollisionMaterial.Water.ToString();
+            g.mtl = $"hkm_{g.name}_Safe1";
+
+            float half = Const.TILE_SIZE * .5f;
+            Vector3[] positions = new Vector3[]
+            {
+                    new Vector3(half, 0, half), new Vector3(half, 0, -half), new Vector3(-half, 0, -half), new Vector3(-half, 0, half)
+            };
+            Vector3 normal = new Vector3(0, 1, 0);
+            Vector3[] uvs = new Vector3[]
+            {
+                    new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(1, 1, 0), new Vector3(0, 1, 0)
+            };
+
+            for (int i = 0; i < positions.Length; i++)
+            {
+                obj.vs.Add(positions[i]);
+                obj.vns.Add(normal);
+                obj.vts.Add(uvs[i]);
+            }
+            List<int> indices = new List<int>() { 0, 1, 2, 0, 2, 3 };
+            List<ObjV> V = new();
+            foreach (int index in indices)
+            {
+                ObjV v = new(index, index, index);
+                V.Add(v);
+
+                if (V.Count >= 3)
+                {
+                    ObjF f = new(V[0], V[1], V[2]);
+                    g.fs.Add(f);
+                    V.Clear();
+                }
+            }
+            obj.gs.Add(g);
+
+            return obj;
         }
     }
 }
