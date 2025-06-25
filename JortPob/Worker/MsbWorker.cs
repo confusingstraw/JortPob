@@ -43,10 +43,13 @@ namespace JortPob.Worker
 
                 pool.msb.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m{name}.msb.dcx");
 
-                /* Write terrain */
-                foreach (TerrainInfo t in pool.terrain)
+                /* Write map pieces like terrain */
+                foreach (Tuple<int, string> mp in pool.mapIndices)
                 {
-                    FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{t.path}");
+                    int mpid = mp.Item1;
+                    string mppath = mp.Item2;
+
+                    FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{mppath}");
 
                     BND4 bnd = new();
                     bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
@@ -56,11 +59,11 @@ namespace JortPob.Worker
                     file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
                     file.ID = 200;
-                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{name}\\m{name}_{t.id.ToString("D8")}\\Model\\m{name}_{t.id.ToString("D8")}.flver";
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{name}\\m{name}_{mpid.ToString("D8")}\\Model\\m{name}_{mpid.ToString("D8")}.flver";
                     file.Bytes = flver.Write();
                     bnd.Files.Add(file);
 
-                    bnd.Write($"{Const.OUTPUT_PATH}map\\m60\\m{name}\\m{name}_{t.id.ToString("D8")}.mapbnd.dcx");
+                    bnd.Write($"{Const.OUTPUT_PATH}map\\m60\\m{name}\\m{name}_{mpid.ToString("D8")}.mapbnd.dcx");
                 }
 
                 BXF4 bxfH = new();
@@ -80,7 +83,7 @@ namespace JortPob.Worker
                     BinderFile testH = new();
                     testH.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     testH.Name = $"m{name}\\h{name}_{index}.hkx.dcx";
-                    testH.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testH.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), DCX.Type.DCX_KRAK);
                     testH.ID = id++;
                     bxfH.Files.Add(testH);
                 }
@@ -103,7 +106,7 @@ namespace JortPob.Worker
                     BinderFile testL = new();
                     testL.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     testL.Name = $"m{name}\\l{name}_{index}.hkx.dcx";
-                    testL.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.path}"), DCX.Type.DCX_KRAK);
+                    testL.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), DCX.Type.DCX_KRAK);
                     testL.ID = id++;
                     bxfL.Files.Add(testL);
                 }

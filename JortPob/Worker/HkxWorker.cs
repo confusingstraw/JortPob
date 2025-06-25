@@ -35,7 +35,7 @@ namespace JortPob.Worker
             for (int i = start; i < Math.Min(collisions.Count, end); i++)
             {
                 CollisionInfo collisionInfo = collisions[i];
-                ModelConverter.OBJtoHKX($"{Const.CACHE_PATH}{collisionInfo.obj}", $"{Const.CACHE_PATH}{collisionInfo.path}");
+                ModelConverter.OBJtoHKX($"{Const.CACHE_PATH}{collisionInfo.obj}", $"{Const.CACHE_PATH}{collisionInfo.hkx}");
 
                 Lort.TaskIterate(); // Progress bar update
             }
@@ -47,10 +47,10 @@ namespace JortPob.Worker
         public static void Go(List<CollisionInfo> collisions)
         {
             Lort.Log($"Converting {collisions.Count} collision...", Lort.Type.Main);                 // Egregiously slow, multithreaded to make less terrible
-            int partition = (int)Math.Ceiling(collisions.Count / (float)Const.THREAD_COUNT*2);       // Doubling threads for this since it has lots of random IO and process spinup downtine
+            int partition = (int)Math.Ceiling(collisions.Count / (float)Const.THREAD_COUNT);
             Lort.NewTask("Converting HKX", collisions.Count);
             List<HkxWorker> workers = new();
-            for (int i = 0; i < Const.THREAD_COUNT*2; i++)
+            for (int i = 0; i < Const.THREAD_COUNT; i++)
             {
                 int start = i * partition;
                 int end = start + partition;

@@ -69,50 +69,55 @@ namespace JortPob.Common
         /// filterFlags: LINEAR
         /// </summary>
         /// <returns>DDS texture as bytes.</returns>
+        public static Object _lock = new Object();
         public static byte[] MakeTextureFromPixelData(Byte4[] pixels, int width, int height, int? scaleX = null, int? scaleY = null,
             DirectXTexNet.DXGI_FORMAT format = DirectXTexNet.DXGI_FORMAT.BC2_UNORM_SRGB, TEX_COMPRESS_FLAGS texCompFlag = TEX_COMPRESS_FLAGS.DEFAULT, DDS_FLAGS ddsFlags = DDS_FLAGS.FORCE_DX10_EXT,
             TEX_FILTER_FLAGS filterFlags = TEX_FILTER_FLAGS.LINEAR)
         {
-            /* For some damn reason the System.Drawing.Common is a NuGet dll. Something something windows only something */
-            Bitmap img = new(width, height);
-            for (int x = 0; x < img.Width; x++)
-            {
-                for (int y = 0; y < img.Height; y++)
+            /* @TODO: Jank. This function is not thread safe and I don't really know why since the crash isn't in my code. */
+            /* At some point maybe fix this issue or have a single thread handler that does the dds conversions after the landscape workers finish */
+            lock(_lock) {
+
+                /* For some damn reason the System.Drawing.Common is a NuGet dll. Something something windows only something */
+                Bitmap img = new(width, height);
+                for (int x = 0; x < img.Width; x++)
                 {
-                    Byte4 color = pixels[y * img.Width + x];
-                    Color pixelColor = Color.FromArgb(color.w, color.x, color.y, color.z);
-                    img.SetPixel(x, y, pixelColor);
+                    for (int y = 0; y < img.Height; y++)
+                    {
+                        Byte4 color = pixels[y * img.Width + x];
+                        Color pixelColor = Color.FromArgb(color.w, color.x, color.y, color.z);
+                        img.SetPixel(x, y, pixelColor);
+                    }
                 }
+                /* Bitmap only supports saving to a file or a stream. Let's just save to a stream and get the stream as and array */
+                byte[] pngBytes;
+                using (MemoryStream stream = new())
+                {
+                    img.Save(stream, ImageFormat.Png);
+                    pngBytes = stream.ToArray();
+                }
+
+                /* pin the array to memory so the garbage collector can't mess with it, */
+                GCHandle pinnedArray = GCHandle.Alloc(pngBytes, GCHandleType.Pinned);
+                ScratchImage sImage = TexHelper.Instance.LoadFromWICMemory(pinnedArray.AddrOfPinnedObject(), pngBytes.Length, WIC_FLAGS.DEFAULT_SRGB);
+
+                if (scaleX != null && scaleY != null)
+                    sImage = sImage.Resize(0, scaleX.Value, scaleY.Value, filterFlags);
+
+                sImage = sImage.Compress(format, texCompFlag, 0.5f);
+                sImage.OverrideFormat(format);
+
+                /* Save the DDS to memory stream and then read the stream into a byte array. */
+                byte[] bytes;
+                using (UnmanagedMemoryStream uStream = sImage.SaveToDDSMemory(ddsFlags))
+                {
+                    bytes = new byte[uStream.Length];
+                    uStream.Read(bytes);
+                }
+
+                pinnedArray.Free(); //We have to manually free pinned stuff, or it will never be collected.
+                return bytes;
             }
-            /* Bitmap only supports saving to a file or a stream. Let's just save to a stream and get the stream as and array */
-            byte[] pngBytes;
-            using (MemoryStream stream = new())
-            {
-                img.Save(stream, ImageFormat.Png);
-                pngBytes = stream.ToArray();
-            }
-
-            /* pin the array to memory so the garbage collector can't mess with it, */
-            GCHandle pinnedArray = GCHandle.Alloc(pngBytes, GCHandleType.Pinned);
-            ScratchImage sImage = TexHelper.Instance.LoadFromWICMemory(pinnedArray.AddrOfPinnedObject(), pngBytes.Length, WIC_FLAGS.DEFAULT_SRGB);
-
-            if (scaleX != null && scaleY != null)
-                sImage = sImage.Resize(0, scaleX.Value, scaleY.Value, filterFlags);
-
-            sImage = sImage.Compress(format, texCompFlag, 0.5f);
-            sImage.OverrideFormat(format);
-
-            /* Save the DDS to memory stream and then read the stream into a byte array. */
-            byte[] bytes;
-            using (UnmanagedMemoryStream uStream = sImage.SaveToDDSMemory(ddsFlags))
-            {
-                bytes = new byte[uStream.Length];
-                uStream.Read(bytes);
-            }
-
-            pinnedArray.Free(); //We have to manually free pinned stuff, or it will never be collected.
-            return bytes;
-
         }
         public static bool IsAlpha(string texPath)
         {

@@ -25,6 +25,7 @@ namespace JortPob
         public List<ModelInfo> maps;        // Map pieces
         public List<ModelInfo> assets;
         public List<ObjectInfo> objects;
+        public List<WaterInfo> waters;
 
         public Cache()
         {
@@ -80,6 +81,11 @@ namespace JortPob
 
             /* Oh dear.. return null I guess! */
             return null;
+        }
+
+        public WaterInfo GetWater()
+        {
+            return waters[0];
         }
 
         public bool ModelHasCollision(string name)
@@ -156,9 +162,18 @@ namespace JortPob
                 /* Convert models/textures for terrain */
                 nu.terrains = LandscapeWorker.Go(materialContext, esm);
 
+                /* Generate stuff for water */
+                nu.waters = WaterManager.Generate(esm, materialContext);
+
                 /* Write textures */
                 materialContext.WriteAll();
                 assimpContext.Dispose();
+
+                /* Garbage collect after writing material data to file */
+                Lort.Log($"Writing matbins & tpfs...", Lort.Type.Main);
+                materialContext = null;
+                assimpContext = null;
+                GC.Collect();
 
                 /* Convert collision */
                 List<CollisionInfo> collisions = new();
@@ -169,7 +184,14 @@ namespace JortPob
                 }
                 foreach (TerrainInfo terrain in nu.terrains)
                 {
-                    collisions.Add(terrain.collision);
+                    foreach(CollisionInfo collision in terrain.collision)
+                    {
+                        collisions.Add(collision);
+                    }
+                }
+                foreach(WaterInfo water in nu.waters)
+                {
+                    collisions.Add(water.collision);
                 }
                 HkxWorker.Go(collisions);
 
@@ -178,7 +200,6 @@ namespace JortPob
                 foreach (TerrainInfo terrainInfo in nu.terrains)
                 {
                     terrainInfo.id = nextM++;
-                    //terrainInfo.collision.id = -1;
                 }
                 foreach (ModelInfo modelInfo in nu.maps)
                 {
@@ -210,7 +231,7 @@ namespace JortPob
     {
         public readonly Int2 coordinate;   // Location in world cell grid
         public readonly string path;
-        public CollisionInfo collision;
+        public List<CollisionInfo> collision;
         public List<TextureInfo> textures; // All generated tpf files
 
         public int id;
@@ -219,6 +240,7 @@ namespace JortPob
             this.coordinate = coordinate;
             this.path = path;
             textures = new();
+            collision = new();
 
             id = -1;
         }
@@ -265,21 +287,21 @@ namespace JortPob
 
         public string AssetPath()
         {
-            int v1 = 900 + (int)(id / 1000);
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
             int v2 = id % 1000;
             return $"aeg{v1.ToString("D3")}\\aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
         }
 
         public string AssetName()
         {
-            int v1 = 900 + (int)(id / 1000);
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
             int v2 = id % 1000;
             return $"aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
         }
 
         public int AssetRow()
         {
-            int v1 = 900 + (int)(id / 1000);
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
             int v2 = id % 1000;
             return int.Parse($"{v1.ToString("D3")}{v2.ToString("D3")}");  // yes i know this the wrong way to do this but guh
         }
@@ -300,17 +322,52 @@ namespace JortPob
         }
     }
 
+    /* contains info on type of water and it's files and filepaths */
+    public class WaterInfo
+    {
+        public int id;
+        public string path;
+        public CollisionInfo collision;   // Not true collision, just used for the water plane to have splashy splashers when you splash through it
+
+        public WaterInfo(int id, string path)
+        {
+            this.id = id;
+            this.path = path;
+        }
+
+        public string AssetPath()
+        {
+            int v1 = Const.WATER_ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}\\aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
+        }
+
+        public string AssetName()
+        {
+            int v1 = Const.WATER_ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
+        }
+
+        public int AssetRow()
+        {
+            int v1 = Const.WATER_ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return int.Parse($"{v1.ToString("D3")}{v2.ToString("D3")}");  // yes i know this the wrong way to do this but guh
+        }
+    }
+
     public class CollisionInfo
     {
         public string name; // Original nif name, for lookup from ESM records
         public string obj;  // Relative path from the 'cache' folder to the converted obj file
-        public string path; // Relative path from the 'cache' folder to the converted hkx file
+        public string hkx; // Relative path from the 'cache' folder to the converted hkx file
 
-        public CollisionInfo(string name, string path)
+        public CollisionInfo(string name, string obj)
         {
             this.name = name.ToLower();
-            this.obj = path;
-            this.path = path.Replace(".obj", ".hkx");
+            this.obj = obj;
+            this.hkx = obj.Replace(".obj", ".hkx");
         }
     }
 

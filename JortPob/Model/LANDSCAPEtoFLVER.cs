@@ -2,9 +2,11 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -79,17 +81,19 @@ namespace JortPob.Model
                     flverVertex.Normal = norm;
 
                     Vector3 uvw = new(vertex.coordinate.X, -vertex.coordinate.Y, 0);
-                    float blend = vertex.texture == landMesh.textures[0].index ? 0f : 1f;  // @TODO: could calculate this earlier and do more gradual blends over multiple verts
-                    Vector3 uvw_blend = new(blend, 0, 0);
+                    Vector3 blend = new(0f);
+                    if (landMesh.textures.Count() >= 2 && vertex.texture == landMesh.textures[1].index) { blend.X = 1f; }
+                    else if (landMesh.textures.Count() >= 3 && vertex.texture == landMesh.textures[2].index) { blend.Y = 1f; }
                     Vector3 blank = new(0, 0, 0);
                     flverVertex.UVs.Add(uvw);
-                    flverVertex.UVs.Add(uvw_blend);  // Second UV channel is just used as a blender for the multimaterial.
+                    flverVertex.UVs.Add(blend);  // Second UV channel is just used as a blender for the multimaterial.
                     flverVertex.UVs.Add(blank);      // I don't know why we need a third channel but SoulsFormat complains if it's not there so here ya go!
 
                     flverVertex.Bitangent = new Vector4(0, 0, 1, 1);  // @TODO: WRONG!
                     flverVertex.Tangents.Add(new Vector4(1, 0, 0, 1));  // @TODO: WRONG!
 
-                    FLVER.VertexColor color = new(vertex.color.w, vertex.color.x, vertex.color.y, vertex.color.z); // Doesn't seem to do anything @TODO: replace with mult overlay
+                    //FLVER.VertexColor color = new(vertex.color.w, vertex.color.x, vertex.color.y, vertex.color.z); // Doesn't seem to do anything @TODO: replace with mult overlay
+                    FLVER.VertexColor color = new(255, 255, 255, 255); // Generically set value, elden ring vertex color support is shit garbage. we use a texture to handle this
                     flverVertex.Colors.Add(color);
 
                     flverMesh.Vertices.Add(flverVertex);
@@ -107,12 +111,15 @@ namespace JortPob.Model
 
             /* Generate collision obj */
             Obj obj = LANDSCAPEtoOBJ(landscape);
+            List<Obj> objs = obj.split();            // due to an issue with OBJtoHKX we can only have one material per hkx so until that's fixed im splitting objs off their materials
 
-            string objPath = outputFilename.Replace(".flver", ".obj");
-            CollisionInfo collisionInfo = new($"ext{landscape.coordinate.x},{landscape.coordinate.y}", $"terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}.obj");
-            terrainInfo.collision = collisionInfo;
-
-            obj.write(objPath);
+            for (int j = 0; j < objs.Count; j++)
+            {
+                string objPath = outputFilename.Replace(".flver", $"_split{j}.obj");
+                CollisionInfo collisionInfo = new($"ext{landscape.coordinate.x},{landscape.coordinate.y}_split{j}", $"terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}_split{j}.obj");
+                terrainInfo.collision.Add(collisionInfo);
+                objs[j].write(objPath);
+            }
 
             return terrainInfo;
         }

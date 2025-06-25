@@ -101,13 +101,38 @@ namespace JortPob.Common
                 file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
                 file.ID = 300;
                 file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{modelInfo.AssetPath().ToUpper()}\\hkx_L\\{modelInfo.AssetName().ToUpper()}_L.hkx";
-                file.Bytes = File.ReadAllBytes($"{Const.CACHE_PATH}{modelInfo.collision.path}");
+                file.Bytes = File.ReadAllBytes($"{Const.CACHE_PATH}{modelInfo.collision.hkx}");
 
                 bnd.Files.Add(file);
                 bnd.Write(outPath.Replace(".geombnd.dcx", "_l.geomhkxbnd.dcx"));
             }
         }
 
+        public static void BindAsset(WaterInfo waterInfo, string outPath)
+        {
+
+            // Bind up asset flver
+            {
+                BND4 bnd = new();
+                bnd.Compression = SoulsFormats.DCX.Type.DCX_DFLT_11000_44_9;
+                bnd.Extended = 4;
+                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
+                bnd.Unicode = true;
+                bnd.Version = "07D7R6";
+
+                FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{waterInfo.path}");
+
+                BinderFile file = new();
+                file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
+                file.ID = 200;
+                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\asset\\aeg\\{waterInfo.AssetPath()}\\sib\\{waterInfo.AssetName()}.flver";
+                file.Bytes = flver.Write();
+
+                bnd.Files.Add(file);
+                bnd.Write(outPath);
+            }
+        }
         public static void BindTPF(Cache cache, string outPath)
         {
             /* Collect all textures, kind of brute force, could optimize later */

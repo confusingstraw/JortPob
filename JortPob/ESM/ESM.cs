@@ -1,7 +1,9 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018;
+using JortPob.Common;
 using JortPob.Worker;
 using SharpAssimp;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -26,6 +28,7 @@ namespace JortPob
 
         public Dictionary<Type, List<JsonNode>> records;
         public List<Cell> exterior, interior;
+        private ConcurrentBag<Landscape> landscapes;
 
         public ESM(string path)
         {
@@ -58,6 +61,7 @@ namespace JortPob
             List<List<Cell>> cells = CellWorker.Go(this);
             exterior = cells[0];
             interior = cells[1];
+            landscapes = new();
         }
 
         /* List of types that we should search for references */
@@ -111,6 +115,13 @@ namespace JortPob
 
         public Landscape GetLandscape(Int2 coordinate)
         {
+            if (GetCellByGrid(coordinate) == null) { return null; } // Performance hack.
+
+            foreach(Landscape landscape in landscapes)
+            {
+                if (landscape.coordinate == coordinate) { return landscape; }
+            }
+
             foreach (JsonNode json in records[Type.Landscape])
             {
                 int x = int.Parse(json["grid"][0].ToString());
@@ -118,7 +129,9 @@ namespace JortPob
 
                 if (coordinate.x == x && coordinate.y == y)
                 {
-                    return new Landscape(coordinate, json, records);
+                    Landscape landscape = new Landscape(coordinate, json, records);
+                    landscapes.Add(landscape);
+                    return landscape;
                 }
             }
             return null;

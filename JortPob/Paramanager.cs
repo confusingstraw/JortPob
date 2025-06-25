@@ -127,7 +127,6 @@ namespace JortPob
             PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
             foreach (ModelInfo asset in assets)
             {
-                
                 /* Dyanmic */
                 if (asset.IsDynamic())
                 {
@@ -164,6 +163,23 @@ namespace JortPob
                     row.Cells[4].Value = 1;           // BehaviourType, affects HKX scaling and breakability
                     assetParam.Rows.Add(row);
                 }
+            }
+        }
+
+        public void GenerateAssetRows(List<WaterInfo> assets)
+        {
+            PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
+            foreach (WaterInfo asset in assets)
+            {
+                // Clone a specific row as our baseline
+                PARAM.Row source = GetRow(97000, assetParam);   // 097000 is the ocean water around limgrave
+                PARAM.Row row = new(asset.AssetRow(), $"water{asset.id}", assetParam.AppliedParamdef);
+                for (int i = 0; i < source.Cells.Count; i++)
+                {
+                    PARAM.Cell src = source.Cells[i];
+                    row.Cells[i].Value = src.Value;
+                }
+                assetParam.Rows.Add(row);
             }
         }
     }

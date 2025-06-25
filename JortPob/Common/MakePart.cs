@@ -16,6 +16,7 @@ namespace JortPob.Common
     {
         public static Dictionary<ModelInfo, int> AssetInstances = new(); // counts instances of assets
         public static Dictionary<string, int> EnemyInstances = new();      // counts instances of enemies
+        public static Dictionary<WaterInfo, int> WaterInstances = new();
 
         /* Makes simple collideable asset */
         /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
@@ -109,6 +110,100 @@ namespace JortPob.Common
             return asset;
         }
 
+        /* Make water plane asset */
+        /* Values taken from AEG097_000_9900 in superoverworld */
+        public static MSBE.Part.Asset Asset(WaterInfo waterInfo)
+        {
+            //MSBE EXAMPLE = MSBE.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\mapstudio\m60_00_00_99.msb.dcx");
+
+            MSBE.Part.Asset asset = new();
+
+            /* Instance */
+            int inst;
+            if (WaterInstances.ContainsKey(waterInfo)) { inst = ++WaterInstances[waterInfo]; }
+            else { inst = 0; WaterInstances.Add(waterInfo, inst); }
+            asset.InstanceID = inst;
+
+            /* Model Stuff */
+            asset.Name = $"{waterInfo.AssetName().ToUpper()}_{inst.ToString("D4")}";
+            asset.ModelName = waterInfo.AssetName().ToUpper();
+
+            /* Top stuff */
+            asset.AssetSfxParamRelativeID = -1;
+            asset.MapStudioLayer = 4294967295;
+            asset.IsShadowDest = true;
+
+            /* Gparam */
+            asset.Gparam.FogParamID = 0;
+            asset.Gparam.LightSetID = 0;
+
+            /* Various Unks */
+            asset.UnkE0F = 1;
+            asset.UnkE3C = 2;
+            asset.UnkT12 = 255;
+            asset.UnkT1E = -1;
+            asset.UnkT24 = -1;
+            asset.UnkT30 = -1;
+            asset.UnkT34 = -1;
+
+            /* Display Groups */
+            asset.Unk1.DisplayGroups[0] = 16;
+            asset.Unk1.UnkC4 = -1;
+
+            /* Unk Groups */
+            asset.Unk2.Condition = -1;
+            asset.Unk2.Unk26 = -1;
+
+            /* TileLoad */
+            asset.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+            asset.TileLoad.Unk0C = -1;
+            asset.TileLoad.CullingHeightBehavior = -1;
+
+            /* Grass */
+            asset.Grass.Unk18 = -1;
+
+            /* Asset Partnames */
+            asset.UnkT54PartName = null;
+            asset.UnkModelMaskAndAnimID = -1;
+            asset.UnkT5C = -1;
+            asset.UnkT60 = -1;
+            asset.UnkT64 = -1;
+
+            /* AssetUnk1 */
+            asset.AssetUnk1.Unk1C = -1;
+            asset.AssetUnk1.Unk24 = -1;
+            asset.AssetUnk1.Unk26 = -1;
+            asset.AssetUnk1.Unk28 = -1;
+            asset.AssetUnk1.Unk2C = -1;
+
+            /* AssetUnk2 */
+            asset.AssetUnk2.Unk04 = -1;
+            asset.AssetUnk2.Unk14 = -1;
+            asset.AssetUnk2.Unk1C = 255;
+            asset.AssetUnk2.Unk1D = 255;
+            asset.AssetUnk2.Unk1E = 255;
+            asset.AssetUnk2.Unk1F = 255;
+
+            /* AssetUnk3 */
+            asset.AssetUnk3.Unk04 = 0f;
+            asset.AssetUnk3.Unk09 = 255;
+            asset.AssetUnk3.Unk0B = 255;
+            asset.AssetUnk3.Unk0C = -1;
+            asset.AssetUnk3.Unk10 = -1f;
+            asset.AssetUnk3.DisableWhenMapLoadedMapID = new sbyte[] { -1, -1, -1, -1 };
+            asset.AssetUnk3.Unk18 = -1;
+            asset.AssetUnk3.Unk1C = -1;
+            asset.AssetUnk3.Unk20 = -1;
+            asset.AssetUnk3.Unk24 = 255;
+
+            /* AssetUnk4 */
+            asset.AssetUnk4.Unk01 = 255;
+            asset.AssetUnk4.Unk02 = 255;
+
+            return asset;
+        }
+
+
         /* Make a map piece for use as terrain */
         public static MSBE.Part.MapPiece MapPiece()
         {
@@ -173,7 +268,45 @@ namespace JortPob.Common
 
             return collision;
         }
-    
+
+        /* Make a collision for use as water splashy */
+        public static MSBE.Part.Collision Collision(WaterInfo waterInfo)
+        {
+            MSBE.Part.Collision collision = new();
+
+            collision.Gparam.FogParamID = -1;
+            collision.Gparam.LightSetID = -1;
+            collision.SceneGparam.TransitionTime = -1;
+
+            collision.HitFilterID = SoulsFormats.MSBE.Part.Collision.HitFilterType.Unk16; // pretty sure this sets it to water splash collision
+
+            collision.MapStudioLayer = 4294967295;
+            collision.PlayRegionID = -1;
+            collision.LocationTextID = -1;
+            collision.InstanceID = -1;
+            collision.TileLoad.CullingHeightBehavior = -1;
+            collision.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+            collision.TileLoad.Unk0C = -1;
+            collision.Unk1.UnkC4 = -1;
+            collision.Unk2.Condition = -1;
+            collision.Unk2.Unk26 = -1;
+            collision.UnkE0F = 1;
+            collision.UnkE3C = -1;
+            collision.UnkT01 = 255;
+            collision.UnkT02 = 255;
+            collision.UnkT04 = 0;
+            collision.UnkT14 = -1;
+            collision.UnkT1C = -1;
+            collision.UnkT24 = -1;
+            collision.UnkT30 = -1;
+            collision.UnkT35 = 255;
+            collision.UnkT3C = -1;
+            collision.UnkT3E = -1;
+            collision.UnkT4E = -1;
+
+            return collision;
+        }
+
         /* Makes a c000 enemy part */
         public static MSBE.Part.Enemy Npc()
         {

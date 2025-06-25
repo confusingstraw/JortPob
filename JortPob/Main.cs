@@ -28,6 +28,8 @@ namespace JortPob
             ESM esm = new ESM($"{Const.MORROWIND_PATH}\\Data Files\\Morrowind.json");      // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             Layout layout = new(cache, esm);                                                 // Subdivides all content data from ESM into a more elden ring friendly format
+
+
             Paramanager param = new();                                                        // Class for managing PARAM files
 
             /* Generate exterior msbs from layout */
@@ -43,11 +45,11 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new();
+                ResourcePool pool = new(tile, msb);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
-                /* Collision index */
-                int nextcol = 0;
-                List<Tuple<string, CollisionInfo>> collisionIndices = new();
+                /* Collision Indices */
+                int nextC = 0;
 
                 /* Add terrain */
                 foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)
@@ -60,23 +62,27 @@ namespace JortPob
                     {
                         /* @TODO: This system for grabbing and packing terrain parts sucks, we should rework it at some point */
                         MSBE.Part.MapPiece map = MakePart.MapPiece();
-                        map.Name = $"m{terrainInfo.id.ToString("D8")}_test";
+                        map.Name = $"m{terrainInfo.id.ToString("D8")}_0000";
                         map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
                         map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
 
                         msb.Parts.MapPieces.Add(map);
+                        pool.mapIndices.Add(new Tuple<int, string>(terrainInfo.id, terrainInfo.path));
                     }
                     else if (tile.GetType() == typeof(Tile))
                     {
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextcol++.ToString("D2")}";
+                        foreach (CollisionInfo collisionInfo in terrainInfo.collision)
+                        {
+                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
 
-                        MSBE.Part.Collision collision = MakePart.Collision();
-                        collision.Name = $"h{collisionIndex}_test";
-                        collision.ModelName = $"h{collisionIndex}";
-                        collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                            MSBE.Part.Collision collision = MakePart.Collision();
+                            collision.Name = $"h{collisionIndex}_0000";
+                            collision.ModelName = $"h{collisionIndex}";
+                            collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
 
-                        msb.Parts.Collisions.Add(collision);
-                        collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, terrainInfo.collision));
+                            msb.Parts.Collisions.Add(collision);
+                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
+                        }
                     }
                 }
 
@@ -103,6 +109,28 @@ namespace JortPob
                     }
 
                     msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add Water */
+                // @TODO: test if we need a water plane or not, easy to figure out from landscape data (CURRENTLY: we are generating water across the tile not per cell. posibly later fix)
+                if (tile.GetType() == typeof(Tile)) {
+                    /* Grab WaterInfo */
+                    WaterInfo waterInfo = cache.GetWater();
+
+                    /* Make asset of visual water mesh */
+                    /*MSBE.Part.Asset asset = MakePart.Asset(waterInfo);
+                    asset.Position = TEST_OFFSET1 + TEST_OFFSET2;
+                    msb.Parts.Assets.Add(asset);*/
+
+                    /* Make collision for water splashing */
+                    string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                    MSBE.Part.Collision collision = MakePart.Collision(waterInfo);
+                    collision.Name = $"h{collisionIndex}_0000";
+                    collision.ModelName = $"h{collisionIndex}";
+                    collision.Position = TEST_OFFSET1 + TEST_OFFSET2;
+
+                    msb.Parts.Collisions.Add(collision);
+                    pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterInfo.collision));
                 }
 
                 /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
@@ -137,7 +165,7 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Done */
-                msbs.Add(new ResourcePool(tile, msb, collisionIndices));
+                msbs.Add(pool);
                 Lort.TaskIterate(); // Progress bar update
             }
 
@@ -152,6 +180,7 @@ namespace JortPob
 
                 /* Generate msb from group */
                 MSBE msb = new();
+                ResourcePool pool = new(group, msb);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Handle chunks */
@@ -217,13 +246,14 @@ namespace JortPob
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
 
                 /* Done */
-                msbs.Add(new ResourcePool(group, msb));
+                msbs.Add(pool);
                 Lort.TaskIterate(); // Progress bar update
             }
 
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
             param.GenerateAssetRows(cache.assets);
+            param.GenerateAssetRows(cache.waters);
             param.Write();
 
             /* Bind and write all materials and textures */
@@ -238,6 +268,14 @@ namespace JortPob
             Lort.Log($"Binding {cache.assets.Count} assets...", Lort.Type.Main);
             Lort.NewTask("Binding Assets", cache.assets.Count);
             Bind.BindAssets(cache);
+            foreach(WaterInfo water in cache.waters)  // bind up them waters toooooo
+            {
+                Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");
+            }
+
+            /* Generate overworld */
+            MSBE overworld = OverworldManager.Generate(esm, cache.GetWater());
+            overworld.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m60_00_00_99.msb.dcx");
 
             /* Write msbs */
             MsbWorker.Go(msbs);
@@ -266,23 +304,19 @@ namespace JortPob
     public class ResourcePool
     {
         public int[] id;
-        public List<TerrainInfo> terrain;
+        public List<Tuple<int, string>> mapIndices;
         public MSBE msb;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
-        public ResourcePool(BaseTile tile, MSBE msb, List<Tuple<string, CollisionInfo>> collisionIndices)
+        public ResourcePool(BaseTile tile, MSBE msb)
         {
             id = new int[]
             {
                     tile.map, tile.coordinate.x, tile.coordinate.y, tile.block
             };
-            terrain = new();
-            foreach (Tuple<Vector3, TerrainInfo> t in tile.terrain)
-            {
-                terrain.Add(t.Item2);
-            }
+            mapIndices = new();
+            collisionIndices = new();
             this.msb = msb;
-            this.collisionIndices = collisionIndices;
         }
 
         public ResourcePool(InteriorGroup group, MSBE msb)
@@ -291,9 +325,19 @@ namespace JortPob
             {
                     group.map, group.area, group.unk, group.block
             };
-            terrain = new();
+            mapIndices = new();
             this.msb = msb;
             collisionIndices = new();
+        }
+
+        public void Add(TerrainInfo terrain)
+        {
+            mapIndices.Add(new Tuple<int, string>(terrain.id, terrain.path));
+        }
+
+        public void Add(string index, CollisionInfo collision)
+        {
+            collisionIndices.Add(new Tuple<string, CollisionInfo>(index, collision));
         }
     }
 }

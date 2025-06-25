@@ -1,13 +1,17 @@
-﻿using JortPob.Common;
+﻿using DirectXTexNet;
+using gfoidl.Base64;
+using JortPob.Common;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using gfoidl.Base64;
+using System.Xml;
 
 
 namespace JortPob
@@ -25,10 +29,13 @@ namespace JortPob
 
         public List<Mesh> meshes;
 
+        public bool hasWater;
+
         public Landscape(Int2 coordinate, JsonNode json, Dictionary<ESM.Type, List<JsonNode>> records)
         {
             this.coordinate = coordinate;
             flags = json["landscape_flags"].ToString();
+            hasWater = false;  // cant trust esm flags, default false and check later in this constructor
 
             byte[] b64Height = Base64.Default.Decode(json["vertex_heights"]["data"].ToString());
             byte[] b64Normal = Base64.Default.Decode(json["vertex_normals"]["data"].ToString());
@@ -71,10 +78,10 @@ namespace JortPob
                 }
                 return null;
             }
-            
+
             bool HasTexture(ushort id)
             {
-                foreach(Texture t in textures)
+                foreach (Texture t in textures)
                 {
                     if (t.index == id) { return true; }
                 }
@@ -87,13 +94,13 @@ namespace JortPob
 
                 JsonNode ltjson = GetLandscapeTextureRecord(id);
 
-                if(ltjson != null)
+                if (ltjson != null)
                 {
-                    textures.Add(new Texture(ltjson["id"].ToString().ToLower(), $"{Const.MORROWIND_PATH}Data Files\\textures\\{ltjson["file_name"].ToString().ToLower().Substring(0, ltjson["file_name"].ToString().Length-4)}.dds", id));
+                    textures.Add(new Texture(ltjson["id"].ToString().ToLower(), $"{Const.MORROWIND_PATH}Data Files\\textures\\{ltjson["file_name"].ToString().ToLower().Substring(0, ltjson["file_name"].ToString().Length - 4)}.dds", id));
                 }
                 else
                 {
-                   Lort.Log($" ## WARNING ## INVALID LANDSCAPE TEXTURE INDEX IN LANDSCAPE DATA: {id}", Lort.Type.Debug);
+                    Lort.Log($" ## WARNING ## INVALID LANDSCAPE TEXTURE INDEX IN LANDSCAPE DATA: {id}", Lort.Type.Debug);
                 }
             }
 
@@ -160,7 +167,7 @@ namespace JortPob
                                     quad[3],
                                     quad[2]
                                 }
-                            }:
+                            } :
                         new int[,] {
                             {
                                 quad[3],
@@ -189,36 +196,60 @@ namespace JortPob
 
             /* Now that we've built the terrain mesh, let's subdivide it into multiple meshes based on what textures it uses */
             /* Elden Ring shaders can only render like 2 or 3 textures on a mesh, while morrowind can do dozens. So this subdivision is to allow use to do this */
+            /* Doing subdivision of 3 textures per mesh using an [Mb3] material */
 
-            Mesh GetMesh(Texture a, Texture b)
+            Mesh GetMesh(List<Texture> textures)
             {
                 foreach (Mesh mesh in meshes)
                 {
-                    if (mesh.textures.Contains(a) && mesh.textures.Contains(b))
+                    bool match = true;
+                    foreach (Texture tex in textures)
                     {
-                        return mesh;
+                        if (!mesh.textures.Contains(tex)) { match = false; break; }
                     }
+                    if (match) { return mesh; }
                 }
 
-                Mesh nu = new(a, b);
+                Mesh nu;
+                switch (textures.Count())
+                {
+                    case 1:
+                        nu = new(textures, "static[a]opaque");
+                        break;
+                    case 2:
+                        nu = new(textures, "static[a]multi[2]");
+                        break;
+                    case 3:
+                        nu = new(textures, "static[a]multi[3]");
+                        break;
+                    default:
+                        Lort.Log("## WARNING ## INVALID TEXTURE COUNT FOR MESH IN LANDSCAPE! WE WILL NOW CRASH!", Lort.Type.Debug);
+                        nu = null;
+                        break;
+
+                }
                 meshes.Add(nu);
                 return nu;
             }
 
-            Texture GetTexture(ushort id)
+            List<List<Texture>>[] texsets = new List<List<Texture>>[] { new(), new(), new() };  // lol, lmao even
+            void AddTexSet(List<Texture> ts)
             {
-                foreach (Texture tex in textures)
+                foreach (List<Texture> texset in texsets[ts.Count - 1])
                 {
-                    if (tex.index == id)
+                    bool match = true;
+                    foreach (Texture t in ts)
                     {
-                        return tex;
+                        if (!texset.Contains(t)) { match = false; break; }
                     }
+                    if (match) { return; }
                 }
-                Lort.Log("# ## WARNING ## Missing texture index in landscape mesh!", Lort.Type.Debug);
-                return null;
+
+                texsets[ts.Count - 1].Add(ts);
+                return;
             }
 
-            meshes = new();
+            /* First let's prepass the indices and optimize the number of meshes we need to do this */
             for (int itr = 0; itr < indices.Count; itr += 3)
             {
                 int i = indices[itr];
@@ -234,12 +265,97 @@ namespace JortPob
                 if (!texs.Contains(GetTexture(b.texture))) { texs.Add(GetTexture(b.texture)); }
                 if (!texs.Contains(GetTexture(c.texture))) { texs.Add(GetTexture(c.texture)); }
 
-                Mesh mesh = GetMesh(texs[0], texs[Math.Min(1, texs.Count - 1)]);
+                AddTexSet(texs);
+            }
+            
+            /* Condense and create meshes */
+            meshes = new();
+            foreach (List<Texture> texset in texsets[2])
+            {
+                GetMesh(texset);
+            }
+            foreach (List<Texture> texset in texsets[1])
+            {
+                GetMesh(texset);
+            }
+            foreach (List<Texture> texset in texsets[0])
+            {
+                GetMesh(texset);
+            }
+
+            /* Now that we've made the meshes we need fill out those indices */
+            for (int itr = 0; itr < indices.Count; itr += 3)
+            {
+                int i = indices[itr];
+                int j = indices[itr + 1];
+                int k = indices[itr + 2];
+
+                Vertex a = vertices[i];
+                Vertex b = vertices[j];
+                Vertex c = vertices[k];
+
+                List<Texture> texs = new();
+                texs.Add(GetTexture(a.texture));
+                if (!texs.Contains(GetTexture(b.texture))) { texs.Add(GetTexture(b.texture)); }
+                if (!texs.Contains(GetTexture(c.texture))) { texs.Add(GetTexture(c.texture)); }
+
+                Mesh mesh = GetMesh(texs);
 
                 mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(a);
                 mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(b);
                 mesh.indices.Add(mesh.indices.Count); mesh.vertices.Add(c);
             }
+
+            /* Now we generate a texture from the vertex color information. Elden Ring does not support vertex color properly so we masking that shit */
+            /* Generate dds texture using vertex color data */
+            Byte4[] colors = new Byte4[65 * 65];
+            int cc = 0;
+            for (int yy = Const.CELL_GRID_SIZE; yy >= 0; yy--)
+            {
+                for (int xx = 0; xx <= Const.CELL_GRID_SIZE; xx++)
+                {
+                    Vertex vert = vertices[(yy * (Const.CELL_GRID_SIZE + 1)) + xx];
+                    const float reduction = 0.2f;
+                    int r = byte.MaxValue - (byte)((byte.MaxValue - vert.color.x) * reduction);
+                    int g = byte.MaxValue - (byte)((byte.MaxValue - vert.color.y) * reduction);
+                    int b = byte.MaxValue - (byte)((byte.MaxValue - vert.color.z) * reduction);
+                    colors[cc++] = new Byte4(r, g, b, Byte.MaxValue);
+                }
+            }
+
+            string colorMapPath = $"{Const.CACHE_PATH}textures\\color{coordinate.x}m{coordinate.y}.dds";
+            byte[] colorMap = Common.DDS.MakeTextureFromPixelData(colors, 65, 65, 512, 512, filterFlags: TEX_FILTER_FLAGS.CUBIC);
+            Directory.CreateDirectory($"{Const.CACHE_PATH}textures");
+            File.WriteAllBytes(colorMapPath, colorMap);
+
+            /* Now that we created that color texture we generate a mesh for it to use */
+            Mesh colorMesh = new(new List<Texture>() { new Texture($"color_overlay{coordinate.x},{coordinate.y}", colorMapPath, 0)}, "static[a]overlay");
+            colorMesh.indices = indices;
+            foreach(Vertex vert in vertices)
+            {
+                colorMesh.vertices.Add(new Vertex(vert.position, vert.grid, vert.normal, vert.coordinate, vert.color, 0));
+            }
+
+            meshes.Add(colorMesh);
+
+            /* Check if this landscape ever goes low enough to have water */
+            foreach(Vertex v in vertices)
+            {
+                if(v.position.Y < Const.WATER_HEIGHT) { hasWater = true; break; }
+            }
+        }
+
+        public Texture GetTexture(ushort id)
+        {
+            foreach (Texture tex in textures)
+            {
+                if (tex.index == id)
+                {
+                    return tex;
+                }
+            }
+            Lort.Log("# ## WARNING ## Missing texture index in landscape mesh!", Lort.Type.Debug);
+            return null;
         }
 
         public class Mesh
@@ -248,13 +364,14 @@ namespace JortPob
             public List<int> indices;
             public List<Vertex> vertices;
 
-            public Mesh(Texture a, Texture b)
+            public string shader;
+
+            public Mesh(List<Texture> textures, string shader)
             {
-                textures = new();
-                textures.Add(a);
-                textures.Add(b);
+                this.textures = textures;
                 indices = new();
                 vertices = new();
+                this.shader = shader;
             }
         }
 

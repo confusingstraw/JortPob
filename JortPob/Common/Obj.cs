@@ -103,6 +103,40 @@ namespace JortPob.Common
             }
         }
 
+        /* Split an obj into multiple objs based of its 'g's. */
+        /* This is due to an hkx issue where having multiple materials in an obj just results in broken stuff. So we are splitting each material into its own obj and then it's own hkx */
+        public List<Obj> split()
+        {
+            List<Obj> objs = new();
+            foreach(ObjG g in gs)
+            {
+                Obj nuobj = new();
+                ObjG nug = new();
+                nug.name = g.name;
+                nug.mtl = g.mtl;
+
+                int c = 0;
+                foreach(ObjF f in g.fs)
+                {
+                    List<ObjV> V = new();
+                    for (int i = 0; i < 3; i++)
+                    {
+                        nuobj.vs.Add(vs[f.AsArray()[i].v]);
+                        nuobj.vns.Add(vs[f.AsArray()[i].vn]);
+                        nuobj.vts.Add(vs[f.AsArray()[i].vt]);
+                        V.Add(new ObjV(c, c, c));
+                        c++;
+                    }
+                    ObjF nuf = new(V[0], V[1], V[2]);
+                    nug.fs.Add(nuf);
+                }
+                nuobj.gs.Add(nug);
+                objs.Add(nuobj);
+            }
+
+            return objs;
+        }
+
         /* Takes data in this class and writes an obj file of it to the path specified */
         public void write(string outPath)
         {
@@ -197,6 +231,11 @@ namespace JortPob.Common
         public ObjF(ObjV a, ObjV b, ObjV c)
         {
             this.a = a; this.b = b; this.c = c;
+        }
+
+        public ObjV[] AsArray()
+        {
+            return new ObjV[] { a, b, c };
         }
 
         public void write(StringBuilder sb)

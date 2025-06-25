@@ -38,10 +38,15 @@ namespace JortPob.Model
         /* If isStatic is true we will skip any bufferlayouts with boneweights/indicies in them */
         private FLVER2.BufferLayout GetLayout(string mtd, bool isStatic)
         {
+            string Standardize(string guh)
+            {
+                return guh.ToLower().Replace(".mtd", "").Replace(".matxml", "");
+            }
+
             foreach (XmlElement xmlElement in xmlMaterials)
             {
                 string attrMtd = xmlElement.GetAttribute("mtd");
-                if(attrMtd == mtd)
+                if (Standardize(attrMtd) == Standardize(mtd))
                 {
                     foreach(XmlElement xmlBuffer in xmlElement.ChildNodes[0].ChildNodes)
                     {
@@ -77,10 +82,15 @@ namespace JortPob.Model
         /* Currently selects first example of a valid GXList for a given material. It might be a good idea to build a better system for this. */
         private FLVER2.GXList GetGXList(string mtd)
         {
+            string Standardize(string guh)
+            {
+                return guh.ToLower().Replace(".mtd", "").Replace(".matxml", "");
+            }
+
             foreach (XmlElement xmlElement in xmlExamples)
             {
                 string attrMtd = xmlElement.GetAttribute("mtd");
-                if (attrMtd == mtd)
+                if (Standardize(attrMtd) == Standardize(mtd))
                 {
 
                     FLVER2.GXList gxlist = new();
@@ -110,10 +120,15 @@ namespace JortPob.Model
         /* Currently copies the first example of the given material. It might be a good idea to build a better system for this. */
         private FLVER2.Material GetMaterial(string mtd, int index)
         {
+            string Standardize(string guh)
+            {
+                return guh.ToLower().Replace(".mtd", "").Replace(".matxml", "");
+            }
+
             foreach (XmlElement xmlElement in xmlExamples)
             {
                 string attrMtd = xmlElement.GetAttribute("mtd");
-                if (attrMtd == mtd)
+                if (Standardize(attrMtd) == Standardize(mtd))
                 {
                     XmlElement xmlMaterial = (XmlElement)xmlElement.ChildNodes[0];
                     FLVER2.Material material = new();
@@ -169,7 +184,10 @@ namespace JortPob.Model
             { "static[a]opaque", "AEG006_030_ID001" },      // simple opaque albedo material
             { "static[a]alpha", null },                     // same but alpha tested
             { "static[a]transparent", null },               // same but transparent
-            { "static[a]multi[2]", "m10_00_027" }           // blendy multimaterial for terrain
+            { "static[a]multi[2]", "m10_00_027" },          // blendy multimaterial for terrain
+            { "static[a]multi[3]", "m10_00_022" },          // VERY blendy multimaterial for terrain
+            { "static[a]overlay", "m10_00_003" },      // used for terrain vertex color masking
+            { "static[x]water", "Field_sea_05"}          // water shader, does not take any input textures
         };
 
         /* Create a full suite of a custom matbin, textures, and layout/gx/material info for a flver and return them all in a container */
@@ -231,86 +249,339 @@ namespace JortPob.Model
             List<MaterialInfo> materialInfo = new();
             foreach (Landscape.Mesh mesh in landscape.meshes)
             {
-                string diffuseTextureSourcePathA = mesh.textures[0].path;
-                string diffuseTextureSourcePathB = mesh.textures[1].path;
-                string normalTextureSourcePath = Utility.ResourcePath(@"textures\tx_flat.dds");
-                string blendTextureSourcePath = Utility.ResourcePath(@"textures\tx_grey.dds");
-                string diffuseTextureA, diffuseTextureB, normalTexture, blendTexture;
-                string AddTexture(string diffuseTextureSourcePath)
+                switch (mesh.shader)
                 {
-                    if (genTextures.ContainsKey(diffuseTextureSourcePath))
-                    {
-                        return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
-                    }
-                    else
-                    {
-                        string n = Utility.PathToFileName(diffuseTextureSourcePath);
-                        genTextures.TryAdd(diffuseTextureSourcePath, n);
-                        return n;
-                    }
+                    case "static[a]opaque":
+                        materialInfo.Add(GenerateMaterialSingle(mesh, index++));
+                        break;
+                    case "static[a]multi[2]":
+                        materialInfo.Add(GenerateMaterialMulti2(mesh, index++));
+                        break;
+                    case "static[a]multi[3]":
+                        materialInfo.Add(GenerateMaterialMulti3(mesh, index++));
+                        break;
+                    case "static[a]overlay":
+                        materialInfo.Add(GenerateMaterialOverlay(mesh, index++));
+                        break;
+                    default:
+                        Lort.Log($" ## ERROR ## INVALID MATERIAL TYPE DESIGNATOR ??? [{mesh.shader}] ", Lort.Type.Debug);
+                        break;
                 }
-                diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
-                diffuseTextureB = AddTexture(diffuseTextureSourcePathB);
-                normalTexture = AddTexture(normalTextureSourcePath);
-                blendTexture = AddTexture(blendTextureSourcePath);
+            }
+            return materialInfo;
+        }
 
-                string matbinTemplate = matbinTemplates["static[a]multi[2]"];
-                string matbinName = "mat_landscape_";
-                matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
-                matbinName += "-";
-                matbinName += diffuseTextureB.StartsWith("tx_") ? diffuseTextureB.Substring(3) : diffuseTextureB;
-
-                MATBIN matbin;
-                string matbinkey = $"{matbinTemplate}::{matbinName}";
-                if (genMATBINs.ContainsKey(matbinkey))
+        private MaterialInfo GenerateMaterialSingle(Landscape.Mesh mesh, int index)
+        {
+            string diffuseTextureSourcePathA = mesh.textures[0].path;
+            string diffuseTextureA;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
+                if (genTextures.ContainsKey(diffuseTextureSourcePath))
                 {
-                    matbin = genMATBINs.GetValueOrDefault(matbinkey);
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
                 }
                 else
                 {
-                    matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
-                    matbin.Samplers[0].Path = diffuseTextureA;
-                    matbin.Samplers[0].Unk14 = new Vector2(13f, 13f);
-                    matbin.Samplers[1].Path = diffuseTextureB;
-                    matbin.Samplers[1].Unk14 = new Vector2(13f, 13f);
-                    matbin.Samplers[2].Path = normalTexture;
-                    matbin.Samplers[2].Unk14 = new Vector2(0f, 0f);
-                    matbin.Samplers[3].Path = normalTexture;
-                    matbin.Samplers[3].Unk14 = new Vector2(0f, 0f);
-                    matbin.Samplers[4].Path = normalTexture;
-                    matbin.Samplers[4].Unk14 = new Vector2(0f, 0f);
-                    matbin.Samplers[5].Path = blendTexture;
-                    matbin.Samplers[5].Unk14 = new Vector2(0f, 0f);
-                    matbin.SourcePath = $"{matbinName}.matxml";
-                    genMATBINs.TryAdd(matbinkey, matbin);
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
                 }
-
-                FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
-                FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
-                FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index++);
-                material.MTD = matbin.SourcePath;
-                material.Name = $"{matbinName}";
-
-                List<TextureInfo> info = new();
-                info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
-                info.Add(new(diffuseTextureB, $"textures\\{diffuseTextureB}.tpf.dcx"));
-                info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
-                info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
-
-                materialInfo.Add(new MaterialInfo(material, gx, layout, matbin, info));
             }
-            return materialInfo;
+            diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
+
+            string matbinTemplate = matbinTemplates["static[a]opaque"];
+            string matbinName = "mat_landscape_";
+            matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.Params[10].Value = false;   // "Enable SSR" -- turning this off as we dont want reflections and i assume its screen space reflections (?)
+                matbin.Params[13].Value = new int[] { 0, 0 };  // "AlphaRef" -- dont know what this does but I'm gonna guess transparency control of some kind
+                matbin.Samplers[0].Path = diffuseTextureA;
+                matbin.Samplers[0].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        private MaterialInfo GenerateMaterialOverlay(Landscape.Mesh mesh, int index)
+        {
+            string diffuseTextureSourcePath = mesh.textures[0].path;
+            string diffuseTexture;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
+                if (genTextures.ContainsKey(diffuseTextureSourcePath))
+                {
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                }
+                else
+                {
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
+                }
+            }
+            diffuseTexture = AddTexture(diffuseTextureSourcePath);
+
+            string matbinTemplate = matbinTemplates["static[a]overlay"];
+            string matbinName = $"mat_{mesh.textures[0].name}";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                //matbin.Params[1].Value = true;  // decal mode (?) - not functional with the nolight material i guess
+                matbin.Params[4].Value = true;  // no shadowcast
+                matbin.Params[8].Value = true; // disable decals on this material (???)
+                matbin.Params[9].Value = true;  // no depth write
+                //matbin.Params[10].Value = true;  // SSR ??
+                matbin.Params[12].Value = 3;    // Multiply/Overlay composite mode. Not sure which hard to tell difference.
+                matbin.Params[15].Value = false; // forward rendering ?? def true
+                matbin.Params[16].Value = false; // emmissvie?? def true
+                matbin.Params[17].Value = false; // forceforward?? def true
+                matbin.Samplers[0].Path = diffuseTexture;
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        private MaterialInfo GenerateMaterialMulti2(Landscape.Mesh mesh, int index)
+        {
+            string diffuseTextureSourcePathA = mesh.textures[0].path;
+            string diffuseTextureSourcePathB = mesh.textures[1].path;
+            string normalTextureSourcePath = Utility.ResourcePath(@"textures\tx_flat.dds");
+            string blendTextureSourcePath = Utility.ResourcePath(@"textures\tx_grey.dds");
+            string diffuseTextureA, diffuseTextureB, normalTexture, blendTexture;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
+                if (genTextures.ContainsKey(diffuseTextureSourcePath))
+                {
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                }
+                else
+                {
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
+                }
+            }
+            diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
+            diffuseTextureB = AddTexture(diffuseTextureSourcePathB);
+            normalTexture = AddTexture(normalTextureSourcePath);
+            blendTexture = AddTexture(blendTextureSourcePath);
+
+            string matbinTemplate = matbinTemplates["static[a]multi[2]"];
+            string matbinName = "mat_landscape_";
+            matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
+            matbinName += "-";
+            matbinName += diffuseTextureB.StartsWith("tx_") ? diffuseTextureB.Substring(3) : diffuseTextureB;
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.Params[10].Value = false;   // "Enable SSR" -- turning this off as we dont want reflections and i assume its screen space reflections (?)
+                matbin.Params[15].Value = 0.36f;   // blend settings, same settings at multi3
+                matbin.Params[16].Value = 0.36f;
+                matbin.Samplers[0].Path = diffuseTextureA;
+                matbin.Samplers[0].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.Samplers[1].Path = diffuseTextureB;
+                matbin.Samplers[1].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.Samplers[2].Path = normalTexture;
+                matbin.Samplers[2].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[3].Path = normalTexture;
+                matbin.Samplers[3].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[4].Path = normalTexture;
+                matbin.Samplers[4].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[5].Path = blendTexture;
+                matbin.Samplers[5].Unk14 = new Vector2(0f, 0f);
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
+            info.Add(new(diffuseTextureB, $"textures\\{diffuseTextureB}.tpf.dcx"));
+            info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
+            info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        private MaterialInfo GenerateMaterialMulti3(Landscape.Mesh mesh, int index)
+        {
+            string diffuseTextureSourcePathA = mesh.textures[0].path;
+            string diffuseTextureSourcePathB = mesh.textures[1].path;
+            string diffuseTextureSourcePathC = mesh.textures[2].path;
+            string normalTextureSourcePath = Utility.ResourcePath(@"textures\tx_flat.dds");
+            string blendTextureSourcePath = Utility.ResourcePath(@"textures\tx_grey.dds");
+            string diffuseTextureA, diffuseTextureB, diffuseTextureC, normalTexture, blendTexture;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
+                if (genTextures.ContainsKey(diffuseTextureSourcePath))
+                {
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                }
+                else
+                {
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
+                }
+            }
+            diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
+            diffuseTextureB = AddTexture(diffuseTextureSourcePathB);
+            diffuseTextureC = AddTexture(diffuseTextureSourcePathC);
+            normalTexture = AddTexture(normalTextureSourcePath);
+            blendTexture = AddTexture(blendTextureSourcePath);
+
+            string matbinTemplate = matbinTemplates["static[a]multi[3]"];
+            string matbinName = "mat_landscape_";
+            matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
+            matbinName += "-";
+            matbinName += diffuseTextureB.StartsWith("tx_") ? diffuseTextureB.Substring(3) : diffuseTextureB;
+            matbinName += "-";
+            matbinName += diffuseTextureC.StartsWith("tx_") ? diffuseTextureC.Substring(3) : diffuseTextureC;
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.Params[10].Value = false;   // "Enable SSR" -- turning this off as we dont want reflections and i assume its screen space reflections (?)
+                matbin.Params[15].Value = 0.36f;   // blend settings, these values result in a very normal linear 3 way blend
+                matbin.Params[16].Value = 0.36f;
+                matbin.Params[17].Value = 0f;
+                matbin.Params[18].Value = new float[] { 1f, 1f };  // set of uv params. I'm not sure what these do but im setting them all to 1f
+                matbin.Params[19].Value = new float[] { 1f, 1f };
+                matbin.Params[20].Value = new float[] { 1f, 1f };
+                matbin.Params[21].Value = new float[] { 1f, 1f };
+                matbin.Samplers[0].Path = diffuseTextureA;
+                matbin.Samplers[0].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.Samplers[1].Path = diffuseTextureB;
+                matbin.Samplers[1].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.Samplers[2].Path = diffuseTextureC;
+                matbin.Samplers[2].Unk14 = new Vector2(Const.TERRAIN_UV_SCALE);
+                matbin.Samplers[3].Path = normalTexture;
+                matbin.Samplers[3].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[4].Path = normalTexture;
+                matbin.Samplers[4].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[5].Path = normalTexture;
+                matbin.Samplers[5].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[6].Path = normalTexture;
+                matbin.Samplers[6].Unk14 = new Vector2(0f, 0f);
+                matbin.Samplers[7].Path = blendTexture;
+                matbin.Samplers[7].Unk14 = new Vector2(0f, 0f);
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
+            info.Add(new(diffuseTextureB, $"textures\\{diffuseTextureB}.tpf.dcx"));
+            info.Add(new(diffuseTextureC, $"textures\\{diffuseTextureC}.tpf.dcx"));
+            info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
+            info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        public MaterialInfo GenerateMaterialWater(int index)
+        {
+            string matbinTemplate = matbinTemplates["static[x]water"];
+            string matbinName = "mat_water";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            return new MaterialInfo(material, gx, layout, matbin, info);
         }
 
         /* Write all tpfs and matbins generated by above methods in this context and bnd them appropriately */
         public void WriteAll()
         {
+            Lort.NewTask("Writing matbins", genMATBINs.Count());
             foreach(KeyValuePair<string, MATBIN> kvp in genMATBINs)
             {
                 string outFileName = $"{Utility.PathToFileName(kvp.Value.SourcePath)}.matbin";
                 kvp.Value.Write($"{Const.CACHE_PATH}materials\\{outFileName}");
+                Lort.TaskIterate();
             }
 
+            Lort.NewTask("Writing tpfs", genTextures.Count());
             foreach (KeyValuePair<string, string> kvp in genTextures)
             {
                 TPF tpf = new TPF();
@@ -326,6 +597,7 @@ namespace JortPob.Model
                 tpf.Textures.Add(tex);
 
                 tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
+                Lort.TaskIterate();
             }
         }
 
