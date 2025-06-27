@@ -28,8 +28,6 @@ namespace JortPob
             ESM esm = new ESM($"{Const.MORROWIND_PATH}\\Data Files\\Morrowind.json");      // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             Layout layout = new(cache, esm);                                                 // Subdivides all content data from ESM into a more elden ring friendly format
-
-
             Paramanager param = new();                                                        // Class for managing PARAM files
 
             /* Generate exterior msbs from layout */
@@ -254,14 +252,11 @@ namespace JortPob
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
             param.GenerateAssetRows(cache.assets);
             param.GenerateAssetRows(cache.waters);
+            param.GeneratePartDrawParams();
             param.Write();
 
             /* Bind and write all materials and textures */
-            Lort.Log($"Binding materials...", Lort.Type.Main);
-            Lort.NewTask("Binding Materials", 1);
             Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
-            Lort.Log($"Binding textures...", Lort.Type.Main);
-            Lort.NewTask("Binding Textures", 1);
             Bind.BindTPF(cache, $"{Const.OUTPUT_PATH}map\\m60\\common\\m60_0000");
 
             /* Bind all assets */    // Multithreaded because slow
@@ -277,22 +272,25 @@ namespace JortPob
             MSBE overworld = OverworldManager.Generate(esm, cache.GetWater());
             overworld.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m60_00_00_99.msb.dcx");
 
-            /* Write msbs */
-            MsbWorker.Go(msbs);
-
             /* Debug print thing */
-            if(Const.DEBUG_PRINT_LOCATION_INFO != null)
+            if (Const.DEBUG_PRINT_LOCATION_INFO != null)
             {
                 Cell cell = esm.GetCellByName(Const.DEBUG_PRINT_LOCATION_INFO);
-                foreach(Tile tile in layout.tiles)
+                foreach (Tile tile in layout.tiles)
                 {
-                    if(tile.PositionInside(cell.center))
+                    if (tile.PositionInside(cell.center))
                     {
                         Lort.Log($" ## DEBUG ## Found cell '{cell.name}' in m{tile.map}_{tile.coordinate.x}_{tile.coordinate.y}_{tile.block}", Lort.Type.Debug);
                         break;
                     }
                 }
             }
+
+            /* Write msbs */
+            esm = null;  // free some memory here
+            param = null;
+            GC.Collect();
+            MsbWorker.Go(msbs);
 
             /* Donezo */
             Lort.Log("Done!", Lort.Type.Main);

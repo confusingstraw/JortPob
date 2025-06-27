@@ -212,7 +212,7 @@ namespace JortPob.Common
             /* Some Stuff */
             map.MapStudioLayer = 4294967295;
             map.isUsePartsDrawParamID = 1;
-            map.PartsDrawParamID = 1001;
+            map.PartsDrawParamID = 9000;
 
             /* Gparam */
             map.Gparam.FogParamID = -1;

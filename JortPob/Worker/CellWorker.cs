@@ -42,6 +42,10 @@ namespace JortPob.Worker
                 if (Const.DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME != null && !(node["name"] != null && node["name"].ToString() == Const.DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME)) { continue; }
 
                 Cell cell = new(esm, node);
+
+                // If the cell is basically empty, we just go ahead and discard it.
+                if (cell.contents.Count() <= 0) { continue; }
+
                 cells.Add(cell);
 
                 Lort.TaskIterate(); // Progress bar update

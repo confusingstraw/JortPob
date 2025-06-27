@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -101,6 +102,31 @@ namespace JortPob.Model
                 }
 
                 flver.Meshes.Add(flverMesh);
+            }
+
+            /* Setup LODs */
+            FLVER2.Mesh mesh = flver.Meshes.Last();
+            //mesh.FaceSets[0].Flags = FLVER2.FaceSet.FSFlags.LodLevel1; //lod0 is default, no flag needs to be set
+
+            FLVER2.FaceSet faceset = new();
+            faceset.Flags = FLVER2.FaceSet.FSFlags.LodLevel1;
+            faceset.CullBackfaces = true;
+            faceset.Unk06 = 1;
+            mesh.FaceSets.Add(faceset);
+
+            for(int k=0;k<flver.Meshes.Count-1;k++)  // @TODO: temp! generate proper lod indices later please
+            {
+                FLVER2.Mesh m = flver.Meshes[k];
+                FLVER2.FaceSet f = m.FaceSets[0];
+                FLVER2.FaceSet nu = new();
+                nu.Flags = FLVER2.FaceSet.FSFlags.LodLevel1;
+                nu.CullBackfaces = true;
+                nu.Unk06 = 1;
+                foreach(int ind in f.Indices)
+                {
+                    nu.Indices.Add(ind);
+                }
+                m.FaceSets.Add(nu);
             }
 
             /* Calculate bounding boxes */

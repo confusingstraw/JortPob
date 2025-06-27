@@ -19,6 +19,10 @@ namespace JortPob.Common
             /* Grab all matbin files */
             string[] fileList = Directory.GetFiles($"{Const.CACHE_PATH}materials");
             int i = 15102; // appending our new file indexes after all the base game ones
+
+            Lort.Log($"Binding materials...", Lort.Type.Main);
+            Lort.NewTask("Binding Materials", fileList.Length);
+
             foreach (string file in fileList)
             {
                 MATBIN matbin = MATBIN.Read(file);
@@ -29,6 +33,7 @@ namespace JortPob.Common
                 bind.Name = $"N:\\GR\\data\\INTERROOT_win64\\material\\matbin\\Morrowind\\matxml\\{Utility.PathToFileName(file)}.matbin";
                 bind.Bytes = matbin.Write();
                 bnd.Files.Add(bind);
+                Lort.TaskIterate();
             }
 
             bnd.Write(outPath);
@@ -63,7 +68,6 @@ namespace JortPob.Common
 
         public static void BindAsset(ModelInfo modelInfo, string outPath)
         {
-
             // Bind up asset flver
             {
                 BND4 bnd = new();
@@ -164,6 +168,9 @@ namespace JortPob.Common
                 }
             }
 
+            Lort.Log($"Binding textures...", Lort.Type.Main);
+            Lort.NewTask("Binding Textures", textures.Count());
+
             /* Bind all textures */
             BXF4 tpfbdt = new();
             tpfbdt.Extended = 4;
@@ -182,6 +189,7 @@ namespace JortPob.Common
                 bf.Name = $"{tex.name}.tpf.dcx";
                 bf.Bytes = tpf.Write();
                 tpfbdt.Files.Add(bf);
+                Lort.TaskIterate();
             }
 
             /* Write bind */

@@ -354,7 +354,7 @@ namespace JortPob.Model
             else
             {
                 matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
-                //matbin.Params[1].Value = true;  // decal mode (?) - not functional with the nolight material i guess
+                //matbin.Params[1].Value = true;  // decal mode (?) - not functional with the nolight material i guess'
                 matbin.Params[4].Value = true;  // no shadowcast
                 matbin.Params[8].Value = true; // disable decals on this material (???)
                 matbin.Params[9].Value = true;  // no depth write
@@ -364,6 +364,7 @@ namespace JortPob.Model
                 matbin.Params[16].Value = false; // emmissvie?? def true
                 matbin.Params[17].Value = false; // forceforward?? def true
                 matbin.Samplers[0].Path = diffuseTexture;
+                matbin.Samplers[0].Unk14 = new Vector2(1, 1);
                 matbin.SourcePath = $"{matbinName}.matxml";
                 genMATBINs.TryAdd(matbinkey, matbin);
             }

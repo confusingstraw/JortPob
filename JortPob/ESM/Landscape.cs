@@ -324,7 +324,7 @@ namespace JortPob
             }
 
             string colorMapPath = $"{Const.CACHE_PATH}textures\\color{coordinate.x}m{coordinate.y}.dds";
-            byte[] colorMap = Common.DDS.MakeTextureFromPixelData(colors, 65, 65, 512, 512, filterFlags: TEX_FILTER_FLAGS.CUBIC);
+            byte[] colorMap = Common.DDS.MakeTextureFromPixelData(colors, 65, 65, Const.TERRAIN_COLOR_OVERLAY_SIZE, Const.TERRAIN_COLOR_OVERLAY_SIZE, filterFlags: TEX_FILTER_FLAGS.CUBIC);
             Directory.CreateDirectory($"{Const.CACHE_PATH}textures");
             File.WriteAllBytes(colorMapPath, colorMap);
 

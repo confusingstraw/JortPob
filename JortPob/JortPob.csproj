@@ -98,7 +98,13 @@
     <None Update="Resources\matbins\m10_00_117.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\matbins\m10_00_900.matbin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\matbins\m11_00_302.matbin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\matbins\m21_00_905.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\matbins\MaterialInfo.xml">

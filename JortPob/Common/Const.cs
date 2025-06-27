@@ -26,7 +26,9 @@ namespace JortPob.Common
         public static readonly float CELL_SIZE = 8192f * GLOBAL_SCALE;
         public static readonly float TILE_SIZE = 256f;
         public static readonly int CELL_GRID_SIZE = 64;    // terrain vertices
+
         public static readonly float TERRAIN_UV_SCALE = 16f;  // uv scale for terrain textures
+        public static readonly int TERRAIN_COLOR_OVERLAY_SIZE = 256;  // size of teture generated for vertex color overlay on terrain meshes
 
         /* Calculated... ESM lowest cell is [-20,-20]~ on the grid. MSB lowest value is [+33,+40]~. Offset so they overlap */
         public static readonly Vector3 LAYOUT_COORDINATE_OFFSET = new((20*CELL_SIZE)+(35*TILE_SIZE), 0, (20*CELL_SIZE)+(38*TILE_SIZE));

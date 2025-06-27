@@ -32,4 +32,24 @@ namespace JortPob.Common
             return $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\{path}";
         }
     }
+
+    public static class IListExtensions
+    {
+        /// <summary>
+        /// Shuffles the element order of the specified list.
+        /// </summary>
+        public static void Shuffle<T>(this IList<T> ts)
+        {
+            var count = ts.Count;
+            var last = count - 1;
+            Random rand = new Random();
+            for (var i = 0; i < last; ++i)
+            {
+                var r = rand.Next(i, count);
+                var tmp = ts[i];
+                ts[i] = ts[r];
+                ts[r] = tmp;
+            }
+        }
+    }
 }
