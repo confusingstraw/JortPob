@@ -53,10 +53,11 @@ namespace JortPob
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
         {
+            /*  // deprecated, all terrain has been moved to superoverworld in the OverworldManager class
             float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
             float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
+            terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));*/
 
             Tile tile = GetTile(position);
             tile.AddTerrain(position, terrainInfo);

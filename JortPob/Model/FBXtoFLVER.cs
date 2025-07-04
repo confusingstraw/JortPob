@@ -210,6 +210,9 @@ namespace JortPob.Model
             /* Calculate bounding boxes */
             BoundingBoxSolver.FLVER(flver);
 
+            /* Optimize flver */
+            flver = FLVERUtil.Optimize(flver);
+
             /* Calculate model size */
             float size = Vector3.Distance(rootNode.BoundingBoxMin, rootNode.BoundingBoxMax);
             modelInfo.size = size;
@@ -271,6 +274,7 @@ namespace JortPob.Model
                 CollisionInfo collisionInfo = new(modelInfo.name, $"meshes\\{Utility.PathToFileName(objPath)}.obj");
                 modelInfo.collision = collisionInfo;
 
+                obj = obj.optimize();
                 obj.write(objPath);
             }
 

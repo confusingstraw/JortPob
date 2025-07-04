@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKX2;
+using JortPob.Common;
 using SharpAssimp;
 using SoulsFormats;
 using System;
@@ -52,10 +53,6 @@ namespace JortPob.Model
             foreach (Landscape.Mesh landMesh in landscape.meshes)
             {
                 FLVER2.Mesh flverMesh = new();
-                FLVER2.FaceSet flverFaces = new();
-                flverMesh.FaceSets.Add(flverFaces);
-                flverFaces.CullBackfaces = true;
-                flverFaces.Unk06 = 1;
                 flverMesh.NodeIndex = 0; // attach to rootnode
                 flverMesh.MaterialIndex = i++;
 
@@ -63,11 +60,10 @@ namespace JortPob.Model
                 FLVER2.VertexBuffer flverBuffer = new(0);
                 flverMesh.VertexBuffers.Add(flverBuffer);
 
-                /* Convert vert/face data */
-                foreach (int index in landMesh.indices)
+                /* Convert vertex data */
+                foreach (Landscape.Vertex vertex in landMesh.vertices)
                 {
                     FLVER.Vertex flverVertex = new();
-                    Landscape.Vertex vertex = landMesh.vertices[index];
 
                     /* Grab vertice position + normal */
                     Vector3 pos = new(vertex.position.X, vertex.position.Y, vertex.position.Z);
@@ -93,44 +89,39 @@ namespace JortPob.Model
                     flverVertex.Bitangent = new Vector4(0, 0, 1, 1);  // @TODO: WRONG!
                     flverVertex.Tangents.Add(new Vector4(1, 0, 0, 1));  // @TODO: WRONG!
 
-                    //FLVER.VertexColor color = new(vertex.color.w, vertex.color.x, vertex.color.y, vertex.color.z); // Doesn't seem to do anything @TODO: replace with mult overlay
-                    FLVER.VertexColor color = new(255, 255, 255, 255); // Generically set value, elden ring vertex color support is shit garbage. we use a texture to handle this
+                    byte average = (byte)((float)(vertex.color.x + vertex.color.y + vertex.color.z) / 3f);
+                    FLVER.VertexColor color = new(255, average, average, average); // Generically set value, elden ring vertex color support is shit garbage. we use a texture to handle this
                     flverVertex.Colors.Add(color);
 
                     flverMesh.Vertices.Add(flverVertex);
-                    flverFaces.Indices.Add(flverMesh.Vertices.Count - 1);
+                }
+
+                /* Convert indice data */
+                FLVER2.FaceSet.FSFlags[] flags = new FLVER2.FaceSet.FSFlags[] { FLVER2.FaceSet.FSFlags.None, FLVER2.FaceSet.FSFlags.LodLevel1, FLVER2.FaceSet.FSFlags.LodLevel2 };
+                for(int j=0;j<3;j++)
+                {
+                    List<int> indiceSet = landMesh.indices[j];
+                    FLVER2.FaceSet flverFaces = new();
+                    flverFaces.Flags = flags[j];
+                    flverFaces.CullBackfaces = true;
+                    flverFaces.Unk06 = 1;
+
+                    foreach(int index in indiceSet)
+                    {
+                        flverFaces.Indices.Add(index);
+                    }
+
+                    flverMesh.FaceSets.Add(flverFaces);
                 }
 
                 flver.Meshes.Add(flverMesh);
             }
 
-            /* Setup LODs */
-            FLVER2.Mesh mesh = flver.Meshes.Last();
-            //mesh.FaceSets[0].Flags = FLVER2.FaceSet.FSFlags.LodLevel1; //lod0 is default, no flag needs to be set
-
-            FLVER2.FaceSet faceset = new();
-            faceset.Flags = FLVER2.FaceSet.FSFlags.LodLevel1;
-            faceset.CullBackfaces = true;
-            faceset.Unk06 = 1;
-            mesh.FaceSets.Add(faceset);
-
-            for(int k=0;k<flver.Meshes.Count-1;k++)  // @TODO: temp! generate proper lod indices later please
-            {
-                FLVER2.Mesh m = flver.Meshes[k];
-                FLVER2.FaceSet f = m.FaceSets[0];
-                FLVER2.FaceSet nu = new();
-                nu.Flags = FLVER2.FaceSet.FSFlags.LodLevel1;
-                nu.CullBackfaces = true;
-                nu.Unk06 = 1;
-                foreach(int ind in f.Indices)
-                {
-                    nu.Indices.Add(ind);
-                }
-                m.FaceSets.Add(nu);
-            }
-
             /* Calculate bounding boxes */
             BoundingBoxSolver.FLVER(flver);
+
+            /* Optimize flver */
+            flver = FLVERUtil.Optimize(flver);
 
             /* Write flver */
             flver.Write(outputFilename);
@@ -144,6 +135,7 @@ namespace JortPob.Model
                 string objPath = outputFilename.Replace(".flver", $"_split{j}.obj");
                 CollisionInfo collisionInfo = new($"ext{landscape.coordinate.x},{landscape.coordinate.y}_split{j}", $"terrain\\ext{landscape.coordinate.x},{landscape.coordinate.y}_split{j}.obj");
                 terrainInfo.collision.Add(collisionInfo);
+                objs[j] = objs[j].optimize();
                 objs[j].write(objPath);
             }
 

@@ -375,10 +375,12 @@ namespace JortPob
     {
         public readonly string name; // Original dds texture name for lookup
         public readonly string path; // Relative path from the 'cache' folder to the converted tpf file
+        public readonly string low;  // same as above but points to low detail texture
         public TextureInfo(string name, string path)
         {
             this.name = name.ToLower();
             this.path = path;
+            this.low = path.Replace(".tpf.dcx", "_l.tpf.dcx");
         }
     }
 

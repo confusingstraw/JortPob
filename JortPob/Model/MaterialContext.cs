@@ -182,11 +182,8 @@ namespace JortPob.Model
         /* template matbins are stored with their original filename so that the lookup through the MaterialInfo.xml still matches to it correctly. makes life easier! */
         public Dictionary<string, string> matbinTemplates = new() {
             { "static[a]opaque", "AEG006_030_ID001" },      // simple opaque albedo material
-            { "static[a]alpha", null },                     // same but alpha tested
-            { "static[a]transparent", null },               // same but transparent
             { "static[a]multi[2]", "m10_00_027" },          // blendy multimaterial for terrain
             { "static[a]multi[3]", "m10_00_022" },          // VERY blendy multimaterial for terrain
-            { "static[a]overlay", "m10_00_003" },      // used for terrain vertex color masking
             { "static[x]water", "Field_sea_05"}          // water shader, does not take any input textures
         };
 
@@ -260,9 +257,6 @@ namespace JortPob.Model
                     case "static[a]multi[3]":
                         materialInfo.Add(GenerateMaterialMulti3(mesh, index++));
                         break;
-                    case "static[a]overlay":
-                        materialInfo.Add(GenerateMaterialOverlay(mesh, index++));
-                        break;
                     default:
                         Lort.Log($" ## ERROR ## INVALID MATERIAL TYPE DESIGNATOR ??? [{mesh.shader}] ", Lort.Type.Debug);
                         break;
@@ -319,64 +313,6 @@ namespace JortPob.Model
 
             List<TextureInfo> info = new();
             info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
-
-            return new MaterialInfo(material, gx, layout, matbin, info);
-        }
-
-        private MaterialInfo GenerateMaterialOverlay(Landscape.Mesh mesh, int index)
-        {
-            string diffuseTextureSourcePath = mesh.textures[0].path;
-            string diffuseTexture;
-            string AddTexture(string diffuseTextureSourcePath)
-            {
-                if (genTextures.ContainsKey(diffuseTextureSourcePath))
-                {
-                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
-                }
-                else
-                {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
-                    genTextures.TryAdd(diffuseTextureSourcePath, n);
-                    return n;
-                }
-            }
-            diffuseTexture = AddTexture(diffuseTextureSourcePath);
-
-            string matbinTemplate = matbinTemplates["static[a]overlay"];
-            string matbinName = $"mat_{mesh.textures[0].name}";
-
-            MATBIN matbin;
-            string matbinkey = $"{matbinTemplate}::{matbinName}";
-            if (genMATBINs.ContainsKey(matbinkey))
-            {
-                matbin = genMATBINs.GetValueOrDefault(matbinkey);
-            }
-            else
-            {
-                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
-                //matbin.Params[1].Value = true;  // decal mode (?) - not functional with the nolight material i guess'
-                matbin.Params[4].Value = true;  // no shadowcast
-                matbin.Params[8].Value = true; // disable decals on this material (???)
-                matbin.Params[9].Value = true;  // no depth write
-                //matbin.Params[10].Value = true;  // SSR ??
-                matbin.Params[12].Value = 3;    // Multiply/Overlay composite mode. Not sure which hard to tell difference.
-                matbin.Params[15].Value = false; // forward rendering ?? def true
-                matbin.Params[16].Value = false; // emmissvie?? def true
-                matbin.Params[17].Value = false; // forceforward?? def true
-                matbin.Samplers[0].Path = diffuseTexture;
-                matbin.Samplers[0].Unk14 = new Vector2(1, 1);
-                matbin.SourcePath = $"{matbinName}.matxml";
-                genMATBINs.TryAdd(matbinkey, matbin);
-            }
-
-            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
-            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
-            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
-            material.MTD = matbin.SourcePath;
-            material.Name = $"{matbinName}";
-
-            List<TextureInfo> info = new();
-            info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
 
             return new MaterialInfo(material, gx, layout, matbin, info);
         }
@@ -500,8 +436,10 @@ namespace JortPob.Model
             {
                 matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
                 matbin.Params[10].Value = false;   // "Enable SSR" -- turning this off as we dont want reflections and i assume its screen space reflections (?)
-                matbin.Params[15].Value = 0.36f;   // blend settings, these values result in a very normal linear 3 way blend
-                matbin.Params[16].Value = 0.36f;
+                //matbin.Params[15].Value = 0.375f;   // blend settings, these values result in a very normal linear 3 way blend
+                //matbin.Params[16].Value = 0.495f;
+                matbin.Params[15].Value = 0.5f;
+                matbin.Params[16].Value = 0.5f;
                 matbin.Params[17].Value = 0f;
                 matbin.Params[18].Value = new float[] { 1f, 1f };  // set of uv params. I'm not sure what these do but im setting them all to 1f
                 matbin.Params[19].Value = new float[] { 1f, 1f };
@@ -525,6 +463,13 @@ namespace JortPob.Model
                 matbin.Samplers[7].Unk14 = new Vector2(0f, 0f);
                 matbin.SourcePath = $"{matbinName}.matxml";
                 genMATBINs.TryAdd(matbinkey, matbin);
+
+                if (matbinName == "mat_landscape_bc_moss-bc_mud-missing")
+                {
+                    Console.WriteLine("HI AGAIN");
+                    //matbin.Params[15].Value = 123456789f;   // blend settings, these values result in a very normal linear 3 way blend
+                    //matbin.Params[16].Value = 123456789f;
+                }
             }
 
             FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
@@ -585,19 +530,42 @@ namespace JortPob.Model
             Lort.NewTask("Writing tpfs", genTextures.Count());
             foreach (KeyValuePair<string, string> kvp in genTextures)
             {
-                TPF tpf = new TPF();
-                tpf.Encoding = 1;
-                tpf.Flag2 = 3;
-                tpf.Platform = TPF.TPFPlatform.PC;
-                tpf.Compression = DCX.Type.DCX_KRAK;
-
+                /* Load dds */
                 byte[] data = File.ReadAllBytes(kvp.Key);
-                int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(data);
+                byte[] dataLow = Common.DDS.Scale(data);
 
-                TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
-                tpf.Textures.Add(tex);
+                /* Bind up the texture */
+                {
+                    int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(data);
 
-                tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
+                    TPF tpf = new TPF();
+                    tpf.Encoding = 1;
+                    tpf.Flag2 = 3;
+                    tpf.Platform = TPF.TPFPlatform.PC;
+                    tpf.Compression = DCX.Type.DCX_KRAK;
+
+                    TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
+                    tpf.Textures.Add(tex);
+
+                    tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
+                }
+
+                /* And then, make a low detail texture for lods and bind that up */
+                {
+                    int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(dataLow);
+
+                    TPF tpf = new TPF();
+                    tpf.Encoding = 1;
+                    tpf.Flag2 = 3;
+                    tpf.Platform = TPF.TPFPlatform.PC;
+                    tpf.Compression = DCX.Type.DCX_KRAK;
+
+                    TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, dataLow, TPF.TPFPlatform.PC);
+                    tpf.Textures.Add(tex);
+
+                    tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}_l.tpf.dcx");
+                }
+
                 Lort.TaskIterate();
             }
         }

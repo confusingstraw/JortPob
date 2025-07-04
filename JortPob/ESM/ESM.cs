@@ -2,6 +2,7 @@
 using JortPob.Common;
 using JortPob.Worker;
 using SharpAssimp;
+using SoulsFormats;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -129,13 +130,35 @@ namespace JortPob
 
                 if (coordinate.x == x && coordinate.y == y)
                 {
-                    Landscape landscape = new Landscape(coordinate, json, records);
+                    Landscape landscape = new Landscape(this, coordinate, json);
                     landscapes.Add(landscape);
                     return landscape;
                 }
             }
             return null;
 
+        }
+
+        /* Same as above but only retursn a landscape if its already fully loaded. Returns null if its not loaded */
+        public Landscape GetLoadedLandscape(Int2 coordinate)
+        {
+            foreach (Landscape landscape in landscapes)
+            {
+                if (landscape.coordinate == coordinate) { return landscape; }
+            }
+            return null;
+        }
+
+        /* Load all landscapes, single threaded */
+        public void LoadLandscapes()
+        {
+            Lort.Log($"Processing {exterior.Count} landscapes...", Lort.Type.Main);
+            Lort.NewTask("Processing Landscape", exterior.Count);
+            foreach (Cell cell in exterior)
+            {
+                GetLandscape(cell.coordinate);
+                Lort.TaskIterate();
+            }
         }
     }
 

@@ -91,8 +91,68 @@ namespace JortPob.Common
             }
         }
 
-        /* @TODO: it might be a good idea (not sure though) to write a method that optimizes the obj by 'welding' vertices. basically just look for duplicate vertex data and remove it + adjust indices */
-        public Obj optimize() { return null; }
+        // optimize by re-indexing duplicate vertice data
+        public Obj optimize() {
+            Obj nu = new();
+
+            int[] GetIndex(Vector3 v, Vector3 vn, Vector3 vt)
+            {
+                int[] indset = new int[] { -1, -1, -1 };
+                // V
+                for(int i=0;i<nu.vs.Count();i++)
+                {
+                    if (nu.vs[i] == v) { indset[0] = i; break; }
+                }
+                if (indset[0] == -1) {
+                    nu.vs.Add(v);
+                    indset[0] = nu.vs.Count() - 1;
+                }
+                //VN
+                for (int i = 0; i < nu.vns.Count(); i++)
+                {
+                    if (nu.vns[i] == vn) { indset[1] = i; break; }
+                }
+                if (indset[1] == -1)
+                {
+                    nu.vns.Add(vn);
+                    indset[1] = nu.vns.Count() - 1;
+                }
+                //VT
+                for (int i = 0; i < nu.vts.Count(); i++)
+                {
+                    if (nu.vts[i] == vt) { indset[2] = i; break; }
+                }
+                if (indset[2] == -1)
+                {
+                    nu.vts.Add(vt);
+                    indset[2] = nu.vts.Count() - 1;
+                }
+
+                return indset;
+            }
+
+            foreach(ObjG g in gs)
+            {
+                ObjG nug = new();
+                nug.name = g.name;
+                nug.mtl = g.mtl;
+                foreach(ObjF f in g.fs)
+                {
+                    int[] a = GetIndex(vs[f.a.v], vns[f.a.vn], vts[f.a.vt]);
+                    int[] b = GetIndex(vs[f.b.v], vns[f.b.vn], vts[f.b.vt]);
+                    int[] c = GetIndex(vs[f.c.v], vns[f.c.vn], vts[f.c.vt]);
+
+                    ObjV A = new ObjV(a[0], a[2], a[1]);  //lol i swapped the order of vt vn on accident. fixed
+                    ObjV B = new ObjV(b[0], b[2], b[1]);
+                    ObjV C = new ObjV(c[0], c[2], c[1]);
+
+                    ObjF nuf = new ObjF(A, B, C);
+                    nug.fs.Add(nuf);
+                }
+                nu.gs.Add(nug);
+            }
+            return nu;
+        }
 
         /* Scale this obj */
         public void scale(float scale)

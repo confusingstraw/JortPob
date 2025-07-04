@@ -55,19 +55,9 @@ namespace JortPob
                     Vector3 position = tuple.Item1;
                     TerrainInfo terrainInfo = tuple.Item2;
 
-                    /* Terrain and terrain collision */  // Render goes in hugetile for long view distance. Collision goes in tile for optimization
-                    if (tile.GetType() == typeof(HugeTile))
-                    {
-                        /* @TODO: This system for grabbing and packing terrain parts sucks, we should rework it at some point */
-                        MSBE.Part.MapPiece map = MakePart.MapPiece();
-                        map.Name = $"m{terrainInfo.id.ToString("D8")}_0000";
-                        map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
-                        map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
-
-                        msb.Parts.MapPieces.Add(map);
-                        pool.mapIndices.Add(new Tuple<int, string>(terrainInfo.id, terrainInfo.path));
-                    }
-                    else if (tile.GetType() == typeof(Tile))
+                    /* Terrain and terrain collision */  // Render goes in superoverworld for long view distance. Collision goes in tile for optimization
+                    // superoverowrld msb is  handled by its own class -> OverworldManager
+                    if (tile.GetType() == typeof(Tile))
                     {
                         foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                         {
@@ -250,9 +240,10 @@ namespace JortPob
 
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
+            param.GeneratePartDrawParams();
             param.GenerateAssetRows(cache.assets);
             param.GenerateAssetRows(cache.waters);
-            param.GeneratePartDrawParams();
+            param.KillMapHeightParams();    // murder kill
             param.Write();
 
             /* Bind and write all materials and textures */
@@ -269,8 +260,8 @@ namespace JortPob
             }
 
             /* Generate overworld */
-            MSBE overworld = OverworldManager.Generate(esm, cache.GetWater());
-            overworld.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m60_00_00_99.msb.dcx");
+            ResourcePool overworld = OverworldManager.Generate(cache, esm, param);
+            msbs.Insert(0, overworld); // this one takes the longest so we put it first so that the thread working on it has plenty of time to finish
 
             /* Debug print thing */
             if (Const.DEBUG_PRINT_LOCATION_INFO != null)
@@ -306,6 +297,7 @@ namespace JortPob
         public MSBE msb;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
+        /* Exterior cells */
         public ResourcePool(BaseTile tile, MSBE msb)
         {
             id = new int[]
@@ -317,11 +309,24 @@ namespace JortPob
             this.msb = msb;
         }
 
+        /* Interior cells */
         public ResourcePool(InteriorGroup group, MSBE msb)
         {
             id = new int[]
             {
                     group.map, group.area, group.unk, group.block
+            };
+            mapIndices = new();
+            this.msb = msb;
+            collisionIndices = new();
+        }
+
+        /* Super overworld */
+        public ResourcePool(MSBE msb)
+        {
+            id = new int[]
+            {
+                    60, 00, 00, 99
             };
             mapIndices = new();
             this.msb = msb;

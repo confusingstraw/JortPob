@@ -70,7 +70,7 @@ namespace JortPob.Worker
                         else
                         {
                             ModelInfo baked = new(modelInfo.name, modelInfo.path.Replace(".flver", $"_s{scale}.flver"), scale);
-                            Scale.FLVER($"{Const.CACHE_PATH}{modelInfo.path}", $"{Const.CACHE_PATH}{baked.path}", scale * 0.01f);
+                            FLVERUtil.Scale($"{Const.CACHE_PATH}{modelInfo.path}", $"{Const.CACHE_PATH}{baked.path}", scale * 0.01f);
                             if (modelInfo.collision != null)
                             {
                                 baked.collision = new(modelInfo.collision.name, modelInfo.collision.obj.Replace(".obj", $"_s{scale}.obj"));
@@ -86,6 +86,7 @@ namespace JortPob.Worker
                     {
                         ModelInfo dynamic = new(modelInfo.name, modelInfo.path, Const.DYNAMIC_ASSET);
                         dynamic.collision = modelInfo.collision;
+                        dynamic.size = modelInfo.size; // in the future this would be a good time to find and save the largest dynamic scale used for lod gen
                         models.Add(dynamic);
                     }
                 }

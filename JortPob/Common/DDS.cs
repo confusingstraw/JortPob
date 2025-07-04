@@ -1,4 +1,5 @@
 ﻿using DirectXTexNet;
+using SharpAssimp;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TeximpNet.DDS;
 using static SoulsFormats.DDS;
+using static SoulsFormats.FLVER2.FaceSet;
 
 namespace JortPob.Common
 {
@@ -116,9 +118,39 @@ namespace JortPob.Common
                 }
 
                 pinnedArray.Free(); //We have to manually free pinned stuff, or it will never be collected.
+                img.Dispose();
+                sImage.Dispose();
                 return bytes;
             }
         }
+
+        /* dds file bytes in, rescaled dds bytes out */
+        /* returns exactly halfsize, since thats what we need for a low detail texture */
+        public static byte[] Scale(byte[] dds)
+        {
+            GCHandle pinnedArray = GCHandle.Alloc(dds, GCHandleType.Pinned);
+            ScratchImage img = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), dds.Length, DDS_FLAGS.NONE);
+            int w = img.GetMetadata().Width / 2;
+            int h = img.GetMetadata().Height / 2;
+            if (TexHelper.Instance.IsCompressed(img.GetMetadata().Format))
+            {
+                img = img.Decompress(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM);
+            }
+            img = img.Resize(0, w, h, TEX_FILTER_FLAGS.LINEAR);
+            img = img.Compress(DirectXTexNet.DXGI_FORMAT.BC1_UNORM, TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
+            //img.OverrideFormat(DirectXTexNet.DXGI_FORMAT.BC2_UNORM_SRGB);
+            
+            byte[] scaled;
+            using (UnmanagedMemoryStream uStream = img.SaveToDDSMemory(DDS_FLAGS.FORCE_DX10_EXT))
+            {
+                scaled = new byte[uStream.Length];
+                uStream.Read(scaled);
+            }
+            pinnedArray.Free();
+            img.Dispose();
+            return scaled;
+        }
+
         public static bool IsAlpha(string texPath)
         {
             byte[] texBytes = File.ReadAllBytes(texPath);

@@ -180,15 +180,28 @@ namespace JortPob.Common
             int index = 0;
             foreach (TextureInfo tex in textures)
             {
-                TPF tpf = TPF.Read($"{Const.CACHE_PATH}{tex.path}");
-
-                BinderFile bf = new();
-                bf.CompressionType = DCX.Type.None;
-                bf.Flags = SoulsFormats.Binder.FileFlags.Flag1;
-                bf.ID = index++;
-                bf.Name = $"{tex.name}.tpf.dcx";
-                bf.Bytes = tpf.Write();
-                tpfbdt.Files.Add(bf);
+                // tex file
+                {
+                    TPF tpf = TPF.Read($"{Const.CACHE_PATH}{tex.path}");
+                    BinderFile bf = new();
+                    bf.CompressionType = DCX.Type.None;
+                    bf.Flags = SoulsFormats.Binder.FileFlags.Flag1;
+                    bf.ID = index++;
+                    bf.Name = $"{tex.name}.tpf.dcx";
+                    bf.Bytes = tpf.Write();
+                    tpfbdt.Files.Add(bf);
+                }
+                // low detail tex file
+                {
+                    TPF tpf = TPF.Read($"{Const.CACHE_PATH}{tex.low}");
+                    BinderFile bf = new();
+                    bf.CompressionType = DCX.Type.None;
+                    bf.Flags = SoulsFormats.Binder.FileFlags.Flag1;
+                    bf.ID = index++;
+                    bf.Name = $"{tex.name}_l.tpf.dcx";
+                    bf.Bytes = tpf.Write();
+                    tpfbdt.Files.Add(bf);
+                }
                 Lort.TaskIterate();
             }
 

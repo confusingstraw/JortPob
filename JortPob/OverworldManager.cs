@@ -16,9 +16,10 @@ namespace JortPob
         /* Makes a modified version  of m60_00_00_99 */
         /* This msb is the "super overworld" an lod msb that is always visible at any distance in the overworld */
         /* It also contains things like the sky and water so yee */
-        public static MSBE Generate(ESM esm, WaterInfo waterInfo)
+        public static ResourcePool Generate(Cache cache, ESM esm, Paramanager param)
         {
             MSBE msb = MSBE.Read(Utility.ResourcePath(@"msb\m60_00_00_99.msb.dcx"));
+            ResourcePool pool = new(msb);
 
             /* Delete all vanilla map parts */
             msb.Parts.MapPieces.Clear();
@@ -38,22 +39,48 @@ namespace JortPob
 
             /* Calculate actual 0,0 of morrowind against the superoverworld root offset (DUMB!) */
             Cell cell = esm.GetCellByGrid(new Int2(0, 0));
-            float x = (10 * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-            float y = (8 * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-            Vector3 center = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            Vector3 center;
+            if (cell != null)
+            {
+                float x = (10 * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                float y = (8 * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                center = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            }
+            else
+            {
+                // if we have the const debug flag set for building a specific cell or group of cells the esm 0,0 cell may not be loaded
+                // in that case here is the correct value under normal circumstances, its better to calc it for safety but its debug so w/e
+                center = new Vector3(15.360352f, 0f, 2831.3604f);
+            }
 
             /* Add water */
             Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
             Vector3 TEST_OFFSET2 = new(0, -15, 0);
-            MSBE.Part.Asset water = MakePart.Asset(waterInfo);
+            MSBE.Part.Asset water = MakePart.Asset(cache.GetWater());
             water.Position = center + TEST_OFFSET1 + TEST_OFFSET2;
             msb.Parts.Assets.Add(water);
 
+            /* Add terrain */
+            foreach(TerrainInfo terrainInfo in cache.terrains)
+            {
+                Vector3 position = new Vector3(terrainInfo.coordinate.x * Const.CELL_SIZE, 0, terrainInfo.coordinate.y * Const.CELL_SIZE) + center;
+
+                MSBE.Part.MapPiece map = MakePart.MapPiece();
+                map.Name = $"m{terrainInfo.id.ToString("D8")}_0000";
+                map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
+                map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                map.PartsDrawParamID = param.terrainDrawParamID;
+
+                msb.Parts.MapPieces.Add(map);
+                pool.mapIndices.Add(new Tuple<int, string>(terrainInfo.id, terrainInfo.path));
+            }
+
+            /* Regenerate resources */
             msb.Models.Assets.Clear();
             msb.Models.MapPieces.Clear();
             AutoResource.Generate(60, 0, 0, 99, msb);
 
-            return msb;
+            return pool;
         }
     }
 }

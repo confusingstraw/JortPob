@@ -86,6 +86,9 @@ namespace JortPob
 
         public Dictionary<ParamType, PARAM> param;
 
+        public short terrainDrawParamID;
+        private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
+
         public Paramanager()
         {
             /* Borrowed some files from SmithBox. Credit to that for paramdef xml */
@@ -172,12 +175,25 @@ namespace JortPob
             SFUtil.EncryptERRegulation($"{Const.OUTPUT_PATH}regulation.bin", bnd);
         }
 
+        /* picks the partdrawparam for an asset based on its size. smaller assets have shorter render distance etc */
+        private int AssetPartDrawParamBySize(ModelInfo asset)
+        {
+            for (int i = 0; i < Const.ASSET_LOD_VALUES.Count(); i++)
+            {
+                // we do a little cheating here. dynamics can be scaled so im just giving them a huge size mult to compensate.
+                // realstically an optimization should be made to calculate this but its a minor concern so very low priority @TODO:
+                float[] values = Const.ASSET_LOD_VALUES[i];  
+                if ((asset.IsDynamic() ? asset.size * 10f : asset.size) < values[0]) { return lodPartDrawParamIDs[i]; }
+            }
+            return lodPartDrawParamIDs.Last().Value;
+        }
+
         public void GenerateAssetRows(List<ModelInfo> assets)
         {
             PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
             foreach (ModelInfo asset in assets)
             {
-                /* Dyanmic */
+                /* Dynamic */
                 if (asset.IsDynamic())
                 {
                     // Clone a specific row as our baseline
@@ -188,9 +204,9 @@ namespace JortPob
                         PARAM.Cell src = source.Cells[i];
                         row.Cells[i].Value = src.Value;
                     }
-
+                    
                     // Set some values and add
-                    row.Cells[2].Value = 9000;        // DrawParamID
+                    row.Cells[2].Value = AssetPartDrawParamBySize(asset);        // DrawParamID
                     row.Cells[3].Value = 0;           // Hit type (LO ONLY)
                     row.Cells[4].Value = 0;           // BehaviourType, affects HKX scaling and breakability
                     assetParam.Rows.Add(row);
@@ -208,7 +224,7 @@ namespace JortPob
                     }
 
                     // Set some values and add
-                    row.Cells[2].Value = 9000;        // DrawParamID
+                    row.Cells[2].Value = AssetPartDrawParamBySize(asset);        // DrawParamID
                     row.Cells[3].Value = 0;           // Hit type (LO ONLY)
                     row.Cells[4].Value = 1;           // BehaviourType, affects HKX scaling and breakability
                     assetParam.Rows.Add(row);
@@ -237,25 +253,79 @@ namespace JortPob
         public void GeneratePartDrawParams()
         {
             PARAM assetParam = param[ParamType.PartsDrawParam];
+            float NONE = 99999f;
+            short drawParamId = Const.PART_DRAW_PARAM;
+            lodPartDrawParamIDs = new();
 
             // Clone a specific row as our baseline
-            PARAM.Row source = GetRow(1001, assetParam);   // generic long distance lod drawparam
-            PARAM.Row row = new(9000, $"mw | generic | no lod | static", assetParam.AppliedParamdef);
-            for (int i = 0; i < source.Cells.Count; i++)
+            for (int i=0;i<Const.ASSET_LOD_VALUES.Count();i++)
             {
-                PARAM.Cell src = source.Cells[i];
-                row.Cells[i].Value = src.Value;
+                float[] values = Const.ASSET_LOD_VALUES[i];
+
+                PARAM.Row source = GetRow(1001, assetParam);   // generic long distance lod drawparam
+                PARAM.Row row = new(drawParamId, $"mw | generic | 0lod | size_{values[0]} | static", assetParam.AppliedParamdef);
+                for (int j = 0; j < source.Cells.Count; j++)
+                {
+                    PARAM.Cell src = source.Cells[j];
+                    row.Cells[j].Value = src.Value;
+                }
+
+                // set some values
+                row.Cells[0].Value = NONE;  // border 0
+                row.Cells[1].Value = 0;
+
+                row.Cells[13].Value = values[1]; // drawdist
+                row.Cells[14].Value = values[2]; // fadeoff
+
+                row.Cells[10].Value = 256; // tex_lv1_borderdist [512]
+                row.Cells[11].Value = 32;    // tex_lv1_playdist [10]
+                row.Cells[24].Value = 0;    // include lod map level [2]
+                row.Cells[26].Value = 1;    // lodtype [1]
+
+                row.Cells[30].Value = NONE; // distant view model border dist [30]
+                row.Cells[31].Value = 0;    // distant view model play dist [5]
+                assetParam.Rows.Add(row);
+                lodPartDrawParamIDs.Add(i, drawParamId++);
             }
 
-            // set some values and add
-            row.Cells[10].Value = 9999; // tex_lv1_borderdist [512]
-            row.Cells[11].Value = 0;    // tex_lv1_playdist [10]
-            row.Cells[24].Value = 0;    // include lod map level [2]
-            row.Cells[26].Value = 0;    // lodtype [1]
 
-            row.Cells[30].Value = 9999; // distant view model border dist [30]
-            row.Cells[31].Value = 0;    // distant view model play dist [5]
-            assetParam.Rows.Add(row);
+            // Clone a specific row as our baseline
+            {
+                PARAM.Row source = GetRow(1001, assetParam);   // generic long distance lod drawparam
+                PARAM.Row row = new(drawParamId, $"mw | terrain | 2lod | static", assetParam.AppliedParamdef);
+                for (int i = 0; i < source.Cells.Count; i++)
+                {
+                    PARAM.Cell src = source.Cells[i];
+                    row.Cells[i].Value = src.Value;
+                }
+
+                // set some values and add
+                row.Cells[0].Value = Const.TERRAIN_LOD_VALUES[0].DISTANCE; // border 0
+                row.Cells[1].Value = 16;
+                row.Cells[2].Value = Const.TERRAIN_LOD_VALUES[1].DISTANCE; // border 1
+                row.Cells[3].Value = 32;
+                row.Cells[4].Value = Const.TERRAIN_LOD_VALUES[2].DISTANCE; // border 2
+                row.Cells[5].Value = 64;
+
+                row.Cells[13].Value = NONE; // drawdist
+                row.Cells[14].Value = 0; //fadeoff
+
+                row.Cells[10].Value = 256; // tex_lv1_borderdist [512]
+                row.Cells[11].Value = 32;    // tex_lv1_playdist [10]
+                row.Cells[24].Value = 0;    // include lod map level [2]
+                row.Cells[26].Value = 1;    // lodtype [1]
+
+                row.Cells[30].Value = NONE; // distant view model border dist [30]
+                row.Cells[31].Value = 0;    // distant view model play dist [5]
+                assetParam.Rows.Add(row);
+                terrainDrawParamID = drawParamId++;
+            }
+        }
+
+        /* Die */
+        public void KillMapHeightParams()
+        {
+            param[ParamType.MapGridCreateHeightLimitInfoParam].Rows.Clear();
         }
     }
 }

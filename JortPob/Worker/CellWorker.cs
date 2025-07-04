@@ -39,7 +39,21 @@ namespace JortPob.Worker
             for (int i = start; i < Math.Min(json.Count, end); i++)
             {
                 JsonNode node = json[i];
+
                 if (Const.DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME != null && !(node["name"] != null && node["name"].ToString() == Const.DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME)) { continue; }
+                if(Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX != null)
+                {
+                    int x = int.Parse(node["data"]["grid"][0].ToString());
+                    int y = int.Parse(node["data"]["grid"][1].ToString());
+
+                    if (
+                        x < Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX[0] ||
+                        y < Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX[1] ||
+                        x > Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX[2] ||
+                        y > Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX[3]
+                    ) 
+                    { continue; }
+                }
 
                 Cell cell = new(esm, node);
 

@@ -58,6 +58,10 @@ namespace JortPob.Worker
 
         public static List<TerrainInfo> Go(MaterialContext materialContext, ESM esm)
         {
+            /* We can no longer multi-thread landscape loading. This is due to border blending requiring things be loaded 1 at a time. */
+            /* We can still multithread the model conversions though so that is still a thing */
+            if (!Const.DEBUG_SKIP_TERRAIN_BORDER_BLENDING) { esm.LoadLandscapes(); }
+
             Lort.Log($"Converting {esm.exterior.Count} landscapes...", Lort.Type.Main); // Not that slow but multithreading good
             Lort.NewTask("Converting Landscape", esm.exterior.Count);
 
