@@ -145,7 +145,7 @@ namespace JortPob
                 if (tile.GetType() == typeof(Tile))
                 {
                     MSBE.Part.Player player = MakePart.Player();
-                    player.Position = tile.creatures.Count > 1 ? tile.creatures[0].relative : TEST_OFFSET1;
+                    player.Position = tile.npcs.Count > 1 ? tile.npcs[0].relative : TEST_OFFSET1;
                     msb.Parts.Players.Add(player);
                 }
 

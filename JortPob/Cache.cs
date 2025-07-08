@@ -137,6 +137,8 @@ namespace JortPob
                             foreach (Content content in contents)
                             {
                                 if(content.mesh == null) { continue; }  // skip content with no mesh
+                                if(content.mesh.Contains(@"i\in_lava_")) { WaterManager.AddLava(content); }  // lava check
+                                if(content.mesh.Contains(@"f\terrain_bc_scum_")) { WaterManager.AddSwamp(content); }  // swamp check
                                 PreModel model = GetMesh(content);
                                 int i = model.scales.ContainsKey(content.scale)? model.scales[content.scale]:0;
                                 model.scales.Remove(content.scale);
@@ -156,14 +158,14 @@ namespace JortPob
                 AssimpContext assimpContext = new();
                 MaterialContext materialContext = new();
 
-                /* Convert models/textures for models */
-                nu.assets = FlverWorker.Go(materialContext, meshes);
-
                 /* Convert models/textures for terrain */
                 nu.terrains = LandscapeWorker.Go(materialContext, esm);
 
                 /* Generate stuff for water */
-                nu.waters = WaterManager.Generate(esm, materialContext);
+                nu.waters = WaterManager.Generate(esm, materialContext);  // @TODO: moved this up for testing. move it back down after
+
+                /* Convert models/textures for models */
+                nu.assets = FlverWorker.Go(materialContext, meshes);
 
                 /* Write textures */
                 materialContext.WriteAll();
