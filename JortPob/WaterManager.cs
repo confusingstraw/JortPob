@@ -63,10 +63,10 @@ namespace JortPob
                 Cutout testZ = new(Vector3.Zero, new Vector3(0, 0, 0), 10);
                 WetFace testZ2 = new(testZ.Points()[0], testZ.Points()[1], testZ.Points()[2]);
 
-                Vector3 test0 = testA.Intersection(testB);
-                Vector3 test1 = testA.Intersection(testC);
-                Vector3 test2 = testC.Intersection(testD);
-                Vector3 test3 = testC.Intersection(testE);
+                Vector3 test0 = testA.Intersection(testB, false);
+                Vector3 test1 = testA.Intersection(testC, false);
+                Vector3 test2 = testC.Intersection(testD, false);
+                Vector3 test3 = testC.Intersection(testE, false);
 
                 bool test4 = testZ.IsInside(new Vector3(1, 0, 7) + testZ.position, false);
                 bool test5 = testZ.IsInside(Vector3.Zero + testZ.position, false);
@@ -85,24 +85,24 @@ namespace JortPob
                 bool test16 = testZ.IsInside(new Vector3(1, 0, -1) + testZ.position, false);
                 bool test17 = testZ.IsInside(new Vector3(-1, 0, -1) + testZ.position, false);
 
-                Vector3 test18 = testF.Intersection(testG);
-                Vector3 test19 = testF.Intersection(testF);
-                Vector3 test20 = testG.Intersection(testF);
+                Vector3 test18 = testF.Intersection(testG, false);
+                Vector3 test19 = testF.Intersection(testF, false);
+                Vector3 test20 = testG.Intersection(testF, false);
 
                 bool test21 = testZ.IsInside(new Vector3(0, 0, 5) + testZ.position, false);
                 bool test22 = testZ.IsInside(new Vector3(5, 0, 5) + testZ.position, false);
                 bool test23 = testZ.IsInside(new Vector3(-5, 0, 0) + testZ.position, false);
                 bool test24 = testZ.IsInside(new Vector3(-5, 0, -5) + testZ.position, false);
 
-                bool test30 = testZ2.IsInside(new Vector3(0, 0, 5) + testZ.position, false);
-                bool test31 = testZ2.IsInside(new Vector3(5, 0, 5) + testZ.position, false);
-                bool test32 = testZ2.IsInside(new Vector3(-5, 0, 0) + testZ.position, false);
-                bool test33 = testZ2.IsInside(new Vector3(-5, 0, -5) + testZ.position, false);
+                bool test30 = testZ2.IsInside(new Vector3(0, 0, 5) + testZ.position, true);
+                bool test31 = testZ2.IsInside(new Vector3(5, 0, 5) + testZ.position, true);
+                bool test32 = testZ2.IsInside(new Vector3(-5, 0, 0) + testZ.position, true);
+                bool test33 = testZ2.IsInside(new Vector3(-5, 0, -5) + testZ.position, true);
 
                 WetFace testI = new WetFace(new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(0, 0, 1));
 
                 bool test25 = testI.IsIntersect(testI.Edges());
-                Vector3 test26 = testA.Intersection(testA2);
+                Vector3 test26 = testA.Intersection(testA2, false);
 
                 Vector3 X = new Vector3(1, 0, 0);
                 Vector3 Z = new Vector3(0, 0, 1);
@@ -120,19 +120,19 @@ namespace JortPob
                 {
                    foreach(WetEdge b in edges)
                     {
-                        results[i++] = new CBT(!a.Intersection(b).IsNaN(), a, b);
+                        results[i++] = new CBT(!a.Intersection(b, false).IsNaN(), a, b);
                     }
                 }
 
                 WetEdge fuck0 = new WetEdge(new Vector3(-175.342f, 0f, 793.467f), new Vector3(-122.88f, 0f, 778.24f));
                 WetEdge fuck1 = new WetEdge(new Vector3(-170.222f, 0f, 788.347f), new Vector3(-170.222f, 0f, 793.467f));
-                Vector3 testFUCK0 = fuck0.Intersection(fuck1);
-                Vector3 testFUCK1 = fuck1.Intersection(fuck0);
+                Vector3 testFUCK0 = fuck0.Intersection(fuck1, false);
+                Vector3 testFUCK1 = fuck1.Intersection(fuck0, false);
 
                 WetEdge fuck2 = new WetEdge(new Vector3(-122.88f, 0f, 778.24f), new Vector3(-175.342f, 0f, 793.467f));
                 WetEdge fuck3 = new WetEdge(new Vector3(-170.222f, 0f, 793.467f), new Vector3(-170.222f, 0f, 788.347f));
-                Vector3 testFUCK2 = fuck2.Intersection(fuck3);
-                Vector3 testFUCK3 = fuck3.Intersection(fuck2);
+                Vector3 testFUCK2 = fuck2.Intersection(fuck3, false);
+                Vector3 testFUCK3 = fuck3.Intersection(fuck2, false);
 
                 WetMesh wetmesh = new(esm);
                 wetmesh.ToObj().write(@"I:\SteamLibrary\steamapps\common\ELDEN RING\wetmesh debug.obj");
@@ -373,8 +373,22 @@ namespace JortPob
         public class WetMesh
         {
             public List<WetFace> faces;
+            public List<List<WetFace>> outlines; // debug
             public WetMesh(ESM esm)
             {
+                outlines = new();
+                void AddDebugOutline(List<WetEdge> es)
+                {
+                    List<WetFace> group = new();
+                    foreach(WetEdge e in es)
+                    {
+                        Vector3 avg = (e.a + e.b) / 2f;
+                        WetFace f = new(e.a, avg, e.b);
+                        group.Add(f);
+                    }
+                    outlines.Add(group);
+                }
+
                 /* generic quad vert data */
                 float half = Const.CELL_SIZE * .5f;
                 Vector3[] positions = new Vector3[]
@@ -470,6 +484,8 @@ namespace JortPob
                             //cutouts.Remove(cutout); // fully handled, not needed anymore! we are also breaking so no issue with foreach enum
                             faces.RemoveAt(i--);
                             faces.AddRange(newFaces);
+                            foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
+                                    Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
                             break; // we cant do multiple cutouts at the same time so break and we we will loop back through 
                         }
                     }
@@ -512,13 +528,24 @@ namespace JortPob
                                     Vector3 nearest = Vector3.NaN; // nearest intersected edge point
                                     foreach (WetEdge cutedge in cutout.Edges())
                                     {
-                                        Vector3 intersection = spl.Intersection(cutedge);
+                                        Vector3 intersection = spl.Intersection(cutedge, false);
                                         if (intersection.IsNaN()) { continue; } // no intersection, skip
 
                                         if (nearest.IsNaN() || (Vector3.Distance(nearest, spl.a) > Vector3.Distance(intersection, spl.a)))
                                         {
                                             nearest = intersection;
                                         }
+                                    }
+
+                                    //possible issue with not being edge inclusive, could debug
+                                    if (nearest.IsNaN()) {
+                                        // something went wrong and we were unable to find an intersection 
+                                        // this seems to be a rare case
+                                        // we need to discard this triangle wholesale for now, i assume this bug is related to edge inclusive intersections
+                                        // if we dont discard we enter an infinite loop of "intersection > attempt to slice > fail > try again"
+                                        // this seems to be the one remaining bug in water slicer code. ffs thank god. @TODO: very very minor bug. only causes like 5 missing tris in the whole thing
+                                        outline.RemoveAt(ii--);
+                                        continue;
                                     }
 
                                     /* Create new edge from nearest intersection to replace one with engulfed point */
@@ -542,7 +569,7 @@ namespace JortPob
                             {
                                 if (kvp.Value == 1) { openPoints.Add(kvp.Key); }
                             }
-                            for (int ii = 0; ii < openPoints.Count; ii += 2)   // this method of sealing is probably fine but could have trouble in some edge cases. potential bugs!
+                            for (int ii = 0; ii < openPoints.Count-1; ii += 2)   // this method of sealing is probably fine but could have trouble in some edge cases. potential bugs!
                             {
                                 WetEdge sealEdge = new WetEdge(openPoints[ii], openPoints[ii + 1]);
                                 outline.Add(sealEdge); // arf arf
@@ -582,19 +609,24 @@ namespace JortPob
                             /* Delete the original triangle, and add the new ones to the mesh */
                             faces.RemoveAt(i--);
                             faces.AddRange(newFaces);
+                            foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
+                                    Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
                             break; // we cant do multiple cutouts at the same time so break and we we will loop back through 
                         }
                     }
                 }
 
                 /* Case #3, cutout edge intersects a triangle edge, no points of the triangle are inside the cutout though */
-                for (int i = 0; i < faces.Count(); i++)
+                /* As an idea to fix infinite recursive slicing lets uhhh make it a single loop through each cutout, adding new faces at the end instead of in loop */
+                foreach (Cutout cutout in cutouts)
                 {
-                    WetFace face = faces[i];
-                    List<WetEdge> outline = face.Edges(); // edges of tri
+                    List<WetFace> newFaces = new();
 
-                    foreach (Cutout cutout in cutouts)
+                    for (int i = 0; i < faces.Count(); i++)
                     {
+                        WetFace face = faces[i];
+                        List<WetEdge> outline = face.Edges(); // edges of tri
+
                         if (face.IsIntersect(cutout.Edges()))
                         {
                             /* Next we loop back through edges and look for intersections between the tri edge and cutout. cutting the triangle edges to the intersection */
@@ -607,7 +639,7 @@ namespace JortPob
                                 Vector3 farthest = Vector3.NaN;
                                 foreach (WetEdge cut in cutout.Edges())
                                 {
-                                    Vector3 intersection = edge.Intersection(cut);
+                                    Vector3 intersection = edge.Intersection(cut, false);
                                     if (!intersection.IsNaN())
                                     {
                                         if (nearest.IsNaN() || (Vector3.Distance(nearest, edge.a) > Vector3.Distance(intersection, edge.a)))
@@ -621,40 +653,59 @@ namespace JortPob
                                     }
                                 }
 
-                                if (nearest.IsNaN() || farthest.IsNaN()) { continue; } // no intersection found, continue. they will always eithe be both nan or both not nan. the or is just for clarity
+                                // so common sense says if either nearest or farthest is nan then both are but due to imprecision and overlapping edges its feasible for that to be untrue
+                                // so we will check both individually and add them
+                                if (!nearest.IsNaN())
+                                {
+                                    WetEdge replaceEdge = new WetEdge(edge.a, nearest);
+                                    outline.Add(replaceEdge);
+                                }
+                                if (!farthest.IsNaN())
+                                {
+                                    WetEdge reverseEdge = new WetEdge(farthest, edge.b);
+                                    outline.Add(reverseEdge);
+                                }
 
-                                WetEdge replaceEdge = new WetEdge(edge.a, nearest);
-                                WetEdge reverseEdge = new WetEdge(farthest, edge.b);
-                                outline.RemoveAt(ii--);
-                                outline.Add(replaceEdge);
-                                outline.Add(reverseEdge);
+                                // at least one of them was legit, if both we dont remove the edge
+                                if (!(nearest.IsNaN() && farthest.IsNaN()))
+                                {
+                                    outline.RemoveAt(ii--);
+                                }
                             }
-
-                            /* Next we intersect the cutout edges that are inside the triangle and add them to the outline using the original triangle edges. anything entirely outside the tri is discarded */
-                            /* Im going to skip accounting for a specific edge case where the cutout intersects through the entire tri without encompassing any points of it. lazy! */
+                        }
+                        /* Next we intersect the cutout edges that are inside the triangle and add them to the outline using the original triangle edges. anything entirely outside the tri is discarded */
+                        /* Im going to skip accounting for a specific edge case where the cutout intersects through the entire tri without encompassing any points of it. lazy! */
+                         if (
+                            face.IsIntersect(cutout.Edges())||
+                            face.IsInside(cutout.Points()[0], true) ||
+                            face.IsInside(cutout.Points()[1], true) ||
+                            face.IsInside(cutout.Points()[2], true) ||
+                            face.IsInside(cutout.Points()[3], true)
+                            ) 
+                         {
                             foreach (WetEdge cut in cutout.Edges())
                             {
                                 foreach (WetEdge edge in face.Edges())
                                 {
                                     // if edge is entirly inside triangle add it
-                                    if (face.IsInside(cut.a, false) && face.IsInside(cut.b, false))
+                                    if (face.IsInside(cut.a, true) && face.IsInside(cut.b, true))
                                     {
                                         outline.Add(cut);
                                         continue;
                                     }
 
                                     // if edge intersects triangle add the part thats inside the triangle
-                                    Vector3 intersection = cut.Intersection(edge);
+                                    Vector3 intersection = cut.Intersection(edge, true);
                                     if (!intersection.IsNaN())
                                     {
                                         // point a is inside; segment
-                                        if (face.IsInside(cut.a, false))
+                                        if (face.IsInside(cut.a, true))
                                         {
                                             WetEdge newEdge = new(intersection, cut.a);
                                             outline.Add(newEdge);
                                         }
                                         // point b is inside; segment
-                                        else if (face.IsInside(cut.b, false))
+                                        else if (face.IsInside(cut.b, true))
                                         {
                                             WetEdge newEdge = new(cut.b, intersection);
                                             outline.Add(newEdge);
@@ -667,12 +718,12 @@ namespace JortPob
                                             foreach(WetEdge e in face.Edges())
                                             {
                                                 if(edge == e) { continue; }  // looking for the other edge we hit
-                                                bisectionPoint = cut.Intersection(e);
+                                                bisectionPoint = cut.Intersection(e, false);
                                                 if (!bisectionPoint.IsNaN()) { break; } // 99% sure i dont need to test beyond the first positive result
                                             }
                                             if(bisectionPoint.IsNaN())
                                             {
-                                                Console.WriteLine("BAD BAD BAD"); // @TODO: REMOVE
+                                                Console.WriteLine("BAD BAD BAD"); // @TODO: REMOVE, if this happens we die instantly
                                                 continue;
                                             }
                                             WetEdge newEdge = new(intersection, bisectionPoint);
@@ -682,52 +733,87 @@ namespace JortPob
                                 }
                             }
 
-                            /* Detect and seperate islands */
-                            List<List<WetEdge>> islands = new();
-                            void CheckEdge(WetEdge edge)
+                            /* Check if triangle is still sealed, (it's probably a polygon now but uhhh yeah just go ahead. if it's not sealed then seal it */
+                            /* attempt to weld points and fix issues caused by imprecision of intersection results */
+                            foreach(WetEdge A in outline)
                             {
-                                // See if edge belongs in an existing island
-                                foreach(List<WetEdge> island in islands)
+                                // attempt to weld each pair of points based on which point appears to be less mangled by imprecision
+                                foreach (WetEdge B in outline)
                                 {
-                                    foreach(WetEdge e in island)
+                                    // a to a
+                                    if(Vector3.Distance(A.a, B.a) < 0.001)
                                     {
-                                        if (
-                                            edge.a.TolerantEquals(e.a) ||
-                                            edge.a.TolerantEquals(e.b) ||
-                                            edge.b.TolerantEquals(e.a) ||
-                                            edge.b.TolerantEquals(e.b)
-                                        )
-                                        {
-                                            island.Add(edge);
-                                            return;
-                                        }
+                                        if(cutout.IsInside(A.a, false)) { A.a = B.a; }
+                                        else { B.a = A.a; }
+                                    }
+                                    // a to b
+                                    if (Vector3.Distance(A.a, B.b) < 0.001)
+                                    {
+                                        if (cutout.IsInside(A.a, false)) { A.a = B.b; }
+                                        else { B.b = A.a; }
+                                    }
+                                    // b to a
+                                    if (Vector3.Distance(A.b, B.a) < 0.001)
+                                    {
+                                        if (cutout.IsInside(A.b, false)) { A.b = B.a; }
+                                        else { B.a = A.b; }
+                                    }
+                                    // b to b
+                                    if (Vector3.Distance(A.b, B.b) < 0.001)
+                                    {
+                                        if (cutout.IsInside(A.b, false)) { A.b = B.b; }
+                                        else { B.b = A.b; }
                                     }
                                 }
-                                // New island
-                                List<WetEdge> newIsland = new();
-                                newIsland.Add(edge);
-                                islands.Add(newIsland);
-                            }
-                            foreach (WetEdge edge in outline) { CheckEdge(edge); }
-
-                            if (islands.Count > 2)
-                            {
-                                Console.WriteLine("GUH");
                             }
 
-                            /* Discard shit islands */ // @TODO: these are a result of bugs so uhhhhhhhhhh fix bug?
-                            for (int ii = 0; ii < islands.Count();ii++)
+                            /* find open points */
+                            Dictionary<Vector3, int> edgePointCount = new();
+                            foreach (WetEdge edge in outline)
                             {
-                                if (islands[ii].Count() < 3)
+                                if (edgePointCount.ContainsKey(edge.a)) { edgePointCount[edge.a]++; }
+                                else { edgePointCount.Add(edge.a, 1); }
+                                if (edgePointCount.ContainsKey(edge.b)) { edgePointCount[edge.b]++; }
+                                else { edgePointCount.Add(edge.b, 1); }
+                            }
+                            List<Vector3> openPoints = new();
+                            foreach (KeyValuePair<Vector3, int> kvp in edgePointCount)
+                            {
+                                if (kvp.Value == 1) { openPoints.Add(kvp.Key); }
+                            }
+                            /* seal */
+                            for (int ii = 0; ii < openPoints.Count; ii++)
+                            {
+                                Vector3 pA = openPoints[ii];
+                                Vector3 nearest = Vector3.NaN;
+                                for(int jj=0;jj<openPoints.Count;jj++)
                                 {
-                                    islands[Math.Max(0, ii - 1)].AddRange(islands[ii]); //collapse shit island, guh massvie gay hack @TODO:
-                                    islands.RemoveAt(ii--);
+                                    if(ii == jj) { continue; } // self succ prevention
+                                    Vector3 pB = openPoints[jj];
+                                    if(nearest.IsNaN() || Vector3.Distance(pA, nearest) > Vector3.Distance(pA, pB))
+                                    {
+                                        nearest = pB;
+                                    }
                                 }
+
+                                if (nearest.IsNaN()) {
+                                    continue; // fail to seal
+                                } 
+
+                                WetEdge sealEdge = new(pA, nearest);
+                                outline.Add(sealEdge);
+                                openPoints.Remove(pA);
+                                openPoints.Remove(nearest);
+                                ii--;
                             }
+
+                            List<List<WetEdge>> islands = new();
+                            islands.Add(outline);
+
+                            AddDebugOutline(outline);
 
                             /* Now that we are finally done creating the edge outline, lets fill it in with triangles */
                             /* Do a raycast from each edge to every other point and fill in with valid triangles */
-                            List<WetFace> newFaces = new();
                             foreach (List<WetEdge> island in islands)
                             {
                                 List<WetEdge> edges = new();
@@ -769,37 +855,40 @@ namespace JortPob
                                             return false;
                                         }
 
-                                        /* test the new edges of this triangle, skip outline edge */
+                                        /* test the new edges of this triangle, skip outline edge */ // not used
                                         bool BaseSkipIntersectTest(WetFace f)
                                         {
                                             foreach(WetEdge cutedge in cutout.Edges())
                                             {
-                                                if (!cutedge.Intersection(new WetEdge(f.a, f.b)).IsNaN()) { return true; }
-                                                if (!cutedge.Intersection(new WetEdge(f.c, f.b)).IsNaN()) { return true; }
+                                                if (!cutedge.Intersection(new WetEdge(f.a, f.b), false).IsNaN()) { return true; }
+                                                if (!cutedge.Intersection(new WetEdge(f.c, f.b), false).IsNaN()) { return true; }
                                             }
                                             return false;
                                         }
 
                                         /* Check if they are valid, then add them if they are */
-                                        if (nf1 != null && !nf1.IsIntersect(edges) && !nf1.IsDegenerate() && !InsideCutout(nf1) && !BaseSkipIntersectTest(nf1)) { newFaces.Add(nf1); edges.AddRange(nf1.Edges()); }
-                                        else if (nf2 != null && !nf2.IsIntersect(edges) && !nf2.IsDegenerate() && !InsideCutout(nf2) && !BaseSkipIntersectTest(nf2)) { newFaces.Add(nf2); edges.AddRange(nf2.Edges()); }
+                                        cutout.size -= 0.1f;
+                                        if (nf1 != null && !nf1.IsIntersect(edges) && !nf1.IsDegenerate() && !InsideCutout(nf1) && !nf1.IsIntersect(cutout.Edges())) { newFaces.Add(nf1); edges.AddRange(nf1.Edges()); }
+                                        else if (nf2 != null && !nf2.IsIntersect(edges) && !nf2.IsDegenerate() && !InsideCutout(nf2) && !nf2.IsIntersect(cutout.Edges())) { newFaces.Add(nf2); edges.AddRange(nf2.Edges()); }
+                                        cutout.size += 0.1f;
                                     }
                                 }
                             }
 
-                            if (newFaces.Count() == 1 && face.TolerantEquals(newFaces[0])) { continue; } // gore hack
+                            /*if (newFaces.Count() == 1 && face.TolerantEquals(newFaces[0])) { continue; } // gore hack
                             for (int ii=0;ii<newFaces.Count();ii++)
                             {
                                 WetFace nuf = newFaces[ii];
                                 if (nuf.Area() < 1f) { newFaces.RemoveAt(ii--); }
-                            }
+                            }*/
 
                             /* Delete the original triangle, and add the new ones to the mesh */
                             faces.RemoveAt(i--);
-                            faces.AddRange(newFaces);
-                            break; // we cant do multiple cutouts at the same time so break and we we will loop back through 
                         }
                     }
+                    foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
+                        Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
+                    faces.AddRange(newFaces);
                 }
             }
 
@@ -858,6 +947,32 @@ namespace JortPob
                             ObjF f = new(A, B, C);
                             g.fs.Add(f);
                         }
+                    }
+                    obj.gs.Add(g);
+                }
+                // debug outline meshes
+                int i = 0;
+                foreach(List<WetFace> group in outlines)
+                {
+                    ObjG g = new();
+                    g.name = $"outline [{i++}]";
+                    g.mtl = g.name;
+
+                    obj.vns.Add(new Vector3(0, 1, 0));
+                    obj.vts.Add(new Vector3(0, 0, 0));
+
+                    foreach (WetFace face in group)
+                    {
+                        obj.vs.Add(face.a);
+                        obj.vs.Add(face.b);
+                        obj.vs.Add(face.c);
+
+                        ObjV A = new(obj.vs.Count() - 3, 0, 0);
+                        ObjV B = new(obj.vs.Count() - 2, 0, 0);
+                        ObjV C = new(obj.vs.Count() - 1, 0, 0);
+
+                        ObjF f = new(A, B, C);
+                        g.fs.Add(f);
                     }
                     obj.gs.Add(g);
                 }
@@ -932,6 +1047,14 @@ namespace JortPob
             // Convex shape test, code adapted from a triangle sameside point inside example
             public bool IsInside(Vector3 v, bool edgeInclusive)
             {
+                if (edgeInclusive)
+                {
+                    foreach (Vector3 p in Points())
+                    {
+                        if (p == v) { return true; }
+                    }
+                }
+
                 // checks if point is on same side of edge as another point
                 bool SameSide(Vector3 p1, Vector3 p2, WetEdge edge)
                 {
@@ -1017,6 +1140,13 @@ namespace JortPob
             // Convex shape test, code adapted from a triangle sameside point inside example
             public bool IsInside(Vector3 v, bool edgeInclusive)
             {
+                if (edgeInclusive) {
+                    foreach (Vector3 p in Points())
+                    {
+                        if (p == v) { return true; }
+                    }
+                }
+
                 // checks if point is on same side of edge as another point
                 bool SameSide(Vector3 p1, Vector3 p2, WetEdge edge)
                 {
@@ -1046,7 +1176,7 @@ namespace JortPob
                 {
                     foreach (WetEdge b in B)
                     {
-                        if (!a.Intersection(b).IsNaN()) {
+                        if (!a.Intersection(b, false).IsNaN()) {
                             return true;
                         } // intersecting edge test
                         if (IsInside(b.a, false)) {
@@ -1061,7 +1191,7 @@ namespace JortPob
 
         public class WetEdge
         {
-            public readonly Vector3 a, b;
+            public Vector3 a, b;
             public WetEdge(Vector3 a, Vector3 b)
             {
                 this.a = a;
@@ -1074,10 +1204,10 @@ namespace JortPob
             }
 
             // mostly copied from 20xx.io util class because guh
-            public Vector3 Intersection(WetEdge B)
+            public Vector3 Intersection(WetEdge B, bool edgeInclusive)
             {
                 // check if the end points are the intersection and discard if so! since we are working with triangles i am not considering endpoints part of an intersection as it means faces intersect themselves and neighbour faces
-                if (a.TolerantEquals(B.a) || a.TolerantEquals(B.b) || b.TolerantEquals(B.a) || b.TolerantEquals(B.b))
+                if (!edgeInclusive && (a.TolerantEquals(B.a) || a.TolerantEquals(B.b) || b.TolerantEquals(B.a) || b.TolerantEquals(B.b)))
                 {
                     return Vector3.NaN;
                 }
@@ -1100,7 +1230,7 @@ namespace JortPob
                     Vector3 intersection = new(i_x, 0, i_y);
 
                     // if the intersection point is exactly on an endpoint, we discard. we dont want that behavriour in this situation
-                    if(intersection.TolerantEquals(a) || intersection.TolerantEquals(b) || intersection.TolerantEquals(B.a) || intersection.TolerantEquals(B.b))
+                    if(!edgeInclusive && (intersection.TolerantEquals(a) || intersection.TolerantEquals(b) || intersection.TolerantEquals(B.a) || intersection.TolerantEquals(B.b)))
                     {
                         return Vector3.NaN;
                     }

@@ -73,7 +73,7 @@ namespace JortPob.Common
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = new int[] {-3, -10, -1, -8 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = null; //= new int[] {-3, -10, -1, -8 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         public static readonly bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING = true; // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
         public static readonly bool DEBUG_SKIP_INTERIOR = true;
         public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done
