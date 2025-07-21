@@ -22,7 +22,7 @@ namespace JortPob
         public readonly string region;
         public readonly Int2 coordinate;  // Position on the cell grid
         public readonly Vector3 center;
-        public readonly Vector3 boundsMin;
+        public readonly Vector3 boundsMin;  // honestly unsure what these are used for, old code from ds3 build
         public readonly Vector3 boundsMax;
 
         public readonly List<Content> contents;            // All of this
@@ -42,7 +42,8 @@ namespace JortPob
             int y = int.Parse(json["data"]["grid"][1].ToString());
             coordinate = new Int2(x, y);
 
-            center = new Vector3((Const.CELL_SIZE * coordinate.x) + (Const.CELL_SIZE * 0.5f), 0.0f, (Const.CELL_SIZE * coordinate.y) + (Const.CELL_SIZE * 0.5f));
+            float half = Const.CELL_SIZE / 2f;
+            center = new Vector3(coordinate.x, 0.0f, coordinate.y) * Const.CELL_SIZE + new Vector3(half, 0f, half);
 
             /* Cell Content Data */
             contents = new();
@@ -102,6 +103,33 @@ namespace JortPob
             }
             boundsMin = new Vector3(x1, y1, z1);
             boundsMax = new Vector3(x2, y2, z2);
+        }
+
+        public bool IsPointInside(Vector3 point)
+        {
+            float startX = center.X - Const.CELL_SIZE;
+            float endX = center.X;
+            float startY = center.Z - Const.CELL_SIZE;
+            float endY = center.Z;
+
+            Vector3 min = new(startX, 0f, startY);
+            Vector3 max = new(endX, 0f, endY);
+            if (point.X < min.X || point.X > max.X) return false;
+            if(point.Z < min.Z || point.Z > max.Z) return false;
+
+            return true;
+        }
+
+        public bool IsPointInside(List<Vector3> points)
+        {
+            foreach(Vector3 point in points)
+            {
+                if (IsPointInside(point))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

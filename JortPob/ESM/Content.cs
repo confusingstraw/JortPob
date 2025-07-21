@@ -19,6 +19,8 @@ namespace JortPob
         public readonly ESM.Type type;
 
         public Vector3 relative;
+        public Int2 load; // if a piece of content needs tile load data this is where it's stored
+
         public readonly Vector3 position, rotation;
         public readonly int scale;  // scale in converted to a int where 100 = 1.0f scale. IE:clamp to nearest 1%. this is to group scale for asset generation.
 

@@ -154,20 +154,16 @@ namespace JortPob
             /* Subdivide all cell content into tiles */
             foreach(Cell cell in esm.exterior)
             {
+                HugeTile huge = GetHugeTile(cell.center);
                 TerrainInfo terrain = cache.GetTerrain(cell.coordinate);
                 if (terrain != null)
                 {
-                    HugeTile huge = GetHugeTile(cell.center);
                     if (huge != null) { huge.AddTerrain(cell.center, terrain); }
                     else { Lort.Log($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}", Lort.Type.Debug); }
                 }
 
-                foreach(Content content in cell.contents)
-                {
-                    HugeTile huge = GetHugeTile(content.position);
-                    if(huge != null) { huge.AddContent(cache, content); }
-                    else { Lort.Log($" ## WARNING ## Content fell outside of reality {cell.coordinate} -- {content.id}", Lort.Type.Debug); }
-                }
+                if (huge != null) { huge.AddContent(cache, cell); }
+                else { Lort.Log($" ## WARNING ## Cell fell outside of reality {cell.coordinate} -- {cell.name}", Lort.Type.Debug); }
 
                 Lort.TaskIterate(); // Progress bar update
             }

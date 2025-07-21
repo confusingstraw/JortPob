@@ -236,10 +236,10 @@ namespace JortPob.Model
             if ((fbxCollisions.Count > 0 || forceCollision) && !CheckOverride(modelInfo.name))
             {
                 /* Best guess for collision material */
-                CollisionMaterial matguess = CollisionMaterial.None;
-                void Guess(string[] keys, CollisionMaterial type)
+                Obj.CollisionMaterial matguess = Obj.CollisionMaterial.None;
+                void Guess(string[] keys, Obj.CollisionMaterial type)
                 {
-                    if (matguess != CollisionMaterial.None) { return; }
+                    if (matguess != Obj.CollisionMaterial.None) { return; }
                     foreach (Material mat in fbx.Materials)
                     {
                         foreach (string key in keys)
@@ -253,17 +253,17 @@ namespace JortPob.Model
                 }
 
                 /* This is a hierarchy, first found keyword determines collision type, more obvious keywords at the top, niche ones at the bottom */
-                Guess(new string[] { "wood", "log", "bark" }, CollisionMaterial.Wood);
-                Guess(new string[] { "sand" }, CollisionMaterial.Sand);
-                Guess(new string[] { "rock", "stone", "boulder" }, CollisionMaterial.Rock);
-                Guess(new string[] { "dirt", "soil", "grass" }, CollisionMaterial.Dirt);
-                Guess(new string[] { "iron", "metal", "steel" }, CollisionMaterial.IronGrate);
-                Guess(new string[] { "mushroom", }, CollisionMaterial.ScarletMushroom);
-                Guess(new string[] { "statue", "adobe" }, CollisionMaterial.Rock);
-                Guess(new string[] { "dwrv", "daed" }, CollisionMaterial.Rock);
+                Guess(new string[] { "wood", "log", "bark" }, Obj.CollisionMaterial.Wood);
+                Guess(new string[] { "sand" }, Obj.CollisionMaterial.Sand);
+                Guess(new string[] { "rock", "stone", "boulder" }, Obj.CollisionMaterial.Rock);
+                Guess(new string[] { "dirt", "soil", "grass" }, Obj.CollisionMaterial.Dirt);
+                Guess(new string[] { "iron", "metal", "steel" }, Obj.CollisionMaterial.IronGrate);
+                Guess(new string[] { "mushroom", }, Obj.CollisionMaterial.ScarletMushroom);
+                Guess(new string[] { "statue", "adobe" }, Obj.CollisionMaterial.Rock);
+                Guess(new string[] { "dwrv", "daed" }, Obj.CollisionMaterial.Rock);
 
                 // Give up!
-                if (matguess == CollisionMaterial.None) { matguess = CollisionMaterial.Stock; }
+                if (matguess == Obj.CollisionMaterial.None) { matguess = Obj.CollisionMaterial.Stock; }
 
                 /* If the model doesnt have an explicit collision mesh but forceCollision is on because it's a static, we use the visual mesh as a collision mesh */
                 Obj obj = COLLISIONtoOBJ(fbxCollisions.Count > 0 ? fbxCollisions : fbxMeshes, matguess);

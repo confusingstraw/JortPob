@@ -21,18 +21,6 @@ namespace JortPob
             tiles = new();
         }
 
-        public override Tile GetContentTrueTile(Content content)
-        {
-            foreach(Tile tile in tiles)
-            {
-                if (tile.PositionInside(content.position))
-                {
-                    return tile;
-                }
-            }
-            return null;  // shouldnt happen but will crash if it does
-        }
-
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
         {
@@ -64,24 +52,30 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
-        public new void AddContent(Cache cache, Content content)
+        public new void AddContent(Cache cache, Cell cell)
         {
-            switch (content)   // How the fuck is there not a better way to do this. for fucks sake C#
+            foreach (Content content in cell.contents)
             {
-                case AssetContent a:
-                    ModelInfo modelInfo = cache.GetModel(a.mesh);
-                    if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE) {
-                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                        base.AddContent(cache,content);
+                switch (content)
+                {
+                    case AssetContent a:
+                        ModelInfo modelInfo = cache.GetModel(a.mesh);
+                        if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
+                        {
+                            float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                            float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                            Tile tile = GetTile(cell.center);
+                            content.load = tile.coordinate;
+                            base.AddContent(cache, cell, content);
+                            break;
+                        }
+                        goto default;
+                    default:
+                        BigTile big = GetBigTile(cell.center);
+                        big.AddContent(cache, cell, content);
                         break;
-                    }
-                    goto default;
-                default:
-                    BigTile big = GetBigTile(content.position);
-                    big.AddContent(cache, content);
-                    break;
+                }
             }
         }
 

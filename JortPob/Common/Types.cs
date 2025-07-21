@@ -7,6 +7,28 @@ using System.Threading.Tasks;
 
 namespace JortPob.Common
 {
+    public static class Vector3Extension
+    {
+        public static bool IsNaN(this Vector3 vec3)
+        {
+            return float.IsNaN(vec3.X) | float.IsNaN(vec3.Y) | float.IsNaN(vec3.Z);
+        }
+
+        /*public static Vector3 Round(this Vector3 vec3, int decimalPlaces)
+        {
+            return new Vector3(
+                (float)Math.Round(vec3.X, decimalPlaces),
+                (float)Math.Round(vec3.Y, decimalPlaces),
+                (float)Math.Round(vec3.Z, decimalPlaces)
+            );
+        }*/
+
+        public static bool TolerantEquals(this Vector3 A, Vector3 B)
+        {
+            return Vector3.Distance(A, B) <= 0.001f; // imprecision really do be a cunt
+        }
+    }
+
     public class Box
     {
         public int x1, y1, x2, y2;
@@ -117,57 +139,6 @@ namespace JortPob.Common
         public Byte4(byte x, byte y, byte z, byte w)
         {
             this.x = x; this.y = y; this.z = z; this.w = w;
-        }
-    }
-
-    public class TextureKey
-    {
-        public string Key, Value;
-        public Vector2 uv;
-        public byte Unk10;
-        public bool Unk11;
-        public TextureKey(string k, string v, byte u, bool uu)
-        {
-            Key = k; Value = v; Unk10 = u; Unk11 = uu;
-            uv = Vector2.One;
-        }
-        public TextureKey(string k, string v, byte u, bool uu, Vector2 uv)
-        {
-            Key = k; Value = v; Unk10 = u; Unk11 = uu;
-            this.uv = uv;
-        }
-    }
-
-    public class FBXConverterJob
-    {
-        public string OutputPath, MorrowindPath, TPFDir;
-        public List<FBXInfo> FBXList;
-        public FBXConverterJob(string OutputPath, string MorrowindPath, string TPFDir, List<FBXInfo> FBXList)
-        {
-            this.OutputPath = OutputPath;
-            this.MorrowindPath = MorrowindPath;
-            this.TPFDir = TPFDir;
-            this.FBXList = FBXList;
-        }
-    }
-
-    public class FBXInfo
-    {
-        public string FBXPath { get; }
-        public string FlverPath { get; }
-        public List<int> Scales;
-        public FBXInfo(string fbxPath, string flverPath)
-        {
-            FBXPath = fbxPath;
-            FlverPath = flverPath;
-            Scales = new();
-        }
-
-        public void AddScale(float scale)
-        {
-            int stepScale = (int)(Math.Round(scale * 100f / 10) * 10);
-            if (Scales.Contains(stepScale)) { return; }
-            Scales.Add(stepScale);
         }
     }
 }

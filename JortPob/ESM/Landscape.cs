@@ -32,13 +32,15 @@ namespace JortPob
 
         public List<Mesh> meshes;
 
-        public bool hasWater;
+        public bool hasWater, hasSwamp, hasLava;
 
         public Landscape(ESM esm, Int2 coordinate, JsonNode json)
         {
             this.coordinate = coordinate;
             flags = json["landscape_flags"].ToString();
             hasWater = false;  // cant trust esm flags, default false and check later in this constructor
+            hasSwamp = false;
+            hasLava = false;
 
             byte[] b64Height = Base64.Default.Decode(json["vertex_heights"]["data"].ToString());
             byte[] b64Normal = Base64.Default.Decode(json["vertex_normals"]["data"].ToString());
@@ -555,7 +557,11 @@ namespace JortPob
             /* Check if this landscape ever goes low enough to have water */
             foreach (Vertex v in vertices)
             {
-                if(v.position.Y < Const.WATER_HEIGHT) { hasWater = true; break; }
+                // -v.position.x is because terrain is mirrored during the model conversion. its flipped in this context
+                Vector3 posActual = new Vector3((Const.CELL_SIZE * coordinate.x) + -v.position.X, v.position.Y, (Const.CELL_SIZE * coordinate.y) + v.position.Z);
+                if (WaterManager.PointInLava(posActual)) { v.lava = true; hasLava = true;  continue; }
+                else if (WaterManager.PointInSwamp(posActual)) { v.swamp = true; hasSwamp = true; continue; }
+                else if (v.position.Y < Const.WATER_HEIGHT) { v.underwater = true;  hasWater = true; continue; }
             }
         }
 
@@ -597,6 +603,8 @@ namespace JortPob
             public Vector2 coordinate;  // UV
             public Byte4 color; // Bytes of a texture that contains the converted vertex color information
 
+            public bool underwater, swamp, lava;
+
             public ushort texture;
 
             public Vertex(Vector3 position, Int2 grid, Vector3 normal, Vector2 coordinate, Byte4 color, ushort texture)
@@ -607,6 +615,10 @@ namespace JortPob
                 this.coordinate = coordinate;
                 this.color = color;
                 this.texture = texture;
+
+                underwater = false;
+                swamp = false;
+                lava = false;
             }
 
             public static bool operator ==(Vertex a, Vertex b)

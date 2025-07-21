@@ -1,4 +1,5 @@
-﻿using SoulsFormats;
+﻿using HKLib.hk2018.hk;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -233,6 +234,7 @@ namespace JortPob.Common
 
             /* write to file */
             if (File.Exists(outPath)) { File.Delete(outPath); }
+            if(!Directory.Exists(Path.GetDirectoryName(outPath))) { Directory.CreateDirectory(Path.GetDirectoryName(outPath)); }
             File.WriteAllText(outPath, sb.ToString());
         }
 
@@ -253,6 +255,28 @@ namespace JortPob.Common
                 }
             }
             return mats;
+        }
+
+        public enum CollisionMaterial
+        {
+            None = 0,
+            Stock = 1,
+            Rock = 2,
+            Sand = 3,
+            Wood = 4,
+            Dirt = 5,
+            Ore = 6,
+            Lava = 7,
+            ScarletTree = 8,
+            IronGrate = 11,
+            ScarletMushroom = 12,
+            Bone = 14,
+            Water = 21,
+            ShallowPoisonSwamp = 23,
+            PoisonSwamp = 24,
+            RainDirt = 44,
+            ScarletSwamp = 46,
+            LakeofRot = 49
         }
     }
 
@@ -320,27 +344,5 @@ namespace JortPob.Common
         {
             sb.Append(v + 1); sb.Append('/'); sb.Append(vt + 1); sb.Append('/'); sb.Append(vn + 1); sb.Append(' ');
         }
-    }
-
-    public enum CollisionMaterial
-    {
-        None = 0,
-        Stock = 1,
-        Rock= 2,
-        Sand = 3,
-        Wood = 4,
-        Dirt = 5,
-        Ore = 6,
-        Lava = 7,
-        ScarletTree= 8,
-        IronGrate = 11,
-        ScarletMushroom= 12,
-        Bone = 14,
-        Water = 21,
-        ShallowPoisonSwamp = 23,
-        PoisonSwamp = 24,
-        RainDirt = 44,
-        ScarletSwamp = 46,
-        LakeofRot = 49
     }
 }
