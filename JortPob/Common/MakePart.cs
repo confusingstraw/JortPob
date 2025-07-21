@@ -270,7 +270,7 @@ namespace JortPob.Common
         }
 
         /* Make a collision for use as water splashy */
-        public static MSBE.Part.Collision Collision(WaterInfo waterInfo)
+        public static MSBE.Part.Collision WaterCollision()
         {
             MSBE.Part.Collision collision = new();
 

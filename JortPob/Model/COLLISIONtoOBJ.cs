@@ -11,7 +11,7 @@ namespace JortPob.Model
 {
     public partial class ModelConverter
     {
-        public static Obj COLLISIONtoOBJ(List<Tuple<Node, Mesh>> collisions, CollisionMaterial material)
+        public static Obj COLLISIONtoOBJ(List<Tuple<Node, Mesh>> collisions, Obj.CollisionMaterial material)
         {
             Obj obj = new();
 

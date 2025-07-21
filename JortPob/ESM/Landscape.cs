@@ -32,13 +32,15 @@ namespace JortPob
 
         public List<Mesh> meshes;
 
-        public bool hasWater;
+        public bool hasWater, hasSwamp, hasLava;
 
         public Landscape(ESM esm, Int2 coordinate, JsonNode json)
         {
             this.coordinate = coordinate;
             flags = json["landscape_flags"].ToString();
             hasWater = false;  // cant trust esm flags, default false and check later in this constructor
+            hasSwamp = false;
+            hasLava = false;
 
             byte[] b64Height = Base64.Default.Decode(json["vertex_heights"]["data"].ToString());
             byte[] b64Normal = Base64.Default.Decode(json["vertex_normals"]["data"].ToString());
@@ -557,8 +559,8 @@ namespace JortPob
             {
                 // -v.position.x is because terrain is mirrored during the model conversion. its flipped in this context
                 Vector3 posActual = new Vector3((Const.CELL_SIZE * coordinate.x) + -v.position.X, v.position.Y, (Const.CELL_SIZE * coordinate.y) + v.position.Z);
-                if (WaterManager.PointInLava(posActual)) { v.lava = true;  continue; }
-                else if (WaterManager.PointInSwamp(posActual)) { v.swamp = true; continue; }
+                if (WaterManager.PointInLava(posActual)) { v.lava = true; hasLava = true;  continue; }
+                else if (WaterManager.PointInSwamp(posActual)) { v.swamp = true; hasSwamp = true; continue; }
                 else if (v.position.Y < Const.WATER_HEIGHT) { v.underwater = true;  hasWater = true; continue; }
             }
         }

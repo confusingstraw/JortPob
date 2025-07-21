@@ -21,18 +21,6 @@ namespace JortPob
             tiles = new();
         }
 
-        public override Tile GetContentTrueTile(Content content)
-        {
-            foreach (Tile tile in tiles)
-            {
-                if (tile.PositionInside(content.position))
-                {
-                    return tile;
-                }
-            }
-            return null;  // shouldnt happen but will crash if it does
-        }
-
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
         {
@@ -52,7 +40,7 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public new void AddContent(Cache cache, Content content)
+        public new void AddContent(Cache cache, Cell cell, Content content)
         {
             switch (content)
             {
@@ -62,13 +50,15 @@ namespace JortPob
                         float x = (coordinate.x * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
                         float y = (coordinate.y * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                        base.AddContent(cache, content);
+                        Tile t = GetTile(cell.center);
+                        content.load = t.coordinate;
+                        base.AddContent(cache, cell, content);
                         break;
                     }
                     goto default;
                 default:
-                    Tile tile = GetTile(content.position);
-                    tile.AddContent(cache, content);
+                    Tile tile = GetTile(cell.center);
+                    tile.AddContent(cache, cell, content);
                     break;
             }
         }

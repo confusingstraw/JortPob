@@ -25,7 +25,7 @@ namespace JortPob.Common
 
         public static bool TolerantEquals(this Vector3 A, Vector3 B)
         {
-            return A == B;
+            return Vector3.Distance(A, B) <= 0.001f; // imprecision really do be a cunt
         }
     }
 

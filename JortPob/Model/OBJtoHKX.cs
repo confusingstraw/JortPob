@@ -98,7 +98,7 @@ namespace JortPob.Model
             /* Absolute garbage code fix for materials */
             /* Somewhere in the process of dropoff -> 12av -> hork code chain the material ids get mutilated and so I have to repair them at the end */
             /* This sucks but it is what it is. Hork code is a black box so I can't debug it. */
-            List<CollisionMaterial> source = Obj.GetMaterials(objPath);  // grab source materials from obj file
+            List<Obj.CollisionMaterial> source = Obj.GetMaterials(objPath);  // grab source materials from obj file
             List<HKLib.hk2018.fsnpCustomMeshParameter.PrimitiveData> mats =
                 ((HKLib.hk2018.fsnpCustomParamCompressedMeshShape)((HKLib.hk2018.hknpPhysicsSceneData)hkx.m_namedVariants[0].m_variant).m_systemDatas[0].m_bodyCinfos[0].m_shape).m_pParam.m_primitiveDataArray;
             if (mats.Count > source.Count) { Lort.Log($"Mismatch in HKX hitmrtl repair: {Utility.PathToFileName(objPath)}.obj", Lort.Type.Debug); }

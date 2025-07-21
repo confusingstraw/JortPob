@@ -21,6 +21,19 @@ namespace JortPob
     {
         public static void Convert()
         {
+            Vector3 forward = Vector3.UnitY;
+            Vector3 left = Vector3.UnitX;
+
+            Vector3 a = new Vector3(1, 0, 0);
+            Vector3 b = new Vector3(-1, 0, 0);
+            Vector3 c = new Vector3(0, 1, 0);
+            Vector3 d = new Vector3(0, -1, 0);
+
+            double val1 = (Math.Acos(Vector3.Dot(a, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(a, forward));
+            double val2 = (Math.Acos(Vector3.Dot(b, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(b, forward));
+            double val3 = (Math.Acos(Vector3.Dot(c, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(c, forward));
+            double val4 = (Math.Acos(Vector3.Dot(d, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(d, forward));
+
             /* Startup logging */
             Lort.Initialize();
 
@@ -71,6 +84,42 @@ namespace JortPob
                             msb.Parts.Collisions.Add(collision);
                             pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
                         }
+
+                        /* Add water collision if terrain 'hasWater' */
+                        /* Water is done on a cell by cell basis so I am simply tieing it to the terrain data here */
+                        if (terrainInfo.hasWater)
+                        {
+                            WaterInfo waterInfo = cache.GetWater();
+                            CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
+
+                            /* Make collision for water splashing */
+                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                            MSBE.Part.Collision collision = MakePart.WaterCollision();
+                            collision.Name = $"h{collisionIndex}_0000";
+                            collision.ModelName = $"h{collisionIndex}";
+                            collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+
+                            msb.Parts.Collisions.Add(collision);
+                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
+                        }
+                        
+                        /* Add collision for cutouts. */
+                        if(terrainInfo.hasSwamp || terrainInfo.hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
+                        {
+                            CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
+                            if(cutoutInfo != null)
+                            {
+                                /* Make collision for swamp or lava splashy splashing */
+                                string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                                MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
+                                collision.Name = $"h{collisionIndex}_0000";
+                                collision.ModelName = $"h{collisionIndex}";
+                                collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+
+                                msb.Parts.Collisions.Add(collision);
+                                pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
+                            }
+                        }
                     }
                 }
 
@@ -89,36 +138,12 @@ namespace JortPob
                     /* Asset tileload config */
                     if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
                     {
-                        Tile tt = tile.GetContentTrueTile(content);
-
-                        asset.TileLoad.MapID = new byte[] { (byte)tt.block, (byte)tt.coordinate.y, (byte)tt.coordinate.x, (byte)tt.map };
+                        asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)tile.map };
                         asset.TileLoad.Unk04 = 13;
                         asset.TileLoad.CullingHeightBehavior = -1;
                     }
 
                     msb.Parts.Assets.Add(asset);
-                }
-
-                /* Add Water */
-                // @TODO: test if we need a water plane or not, easy to figure out from landscape data (CURRENTLY: we are generating water across the tile not per cell. posibly later fix)
-                if (tile.GetType() == typeof(Tile)) {
-                    /* Grab WaterInfo */
-                    WaterInfo waterInfo = cache.GetWater();
-
-                    /* Make asset of visual water mesh */
-                    /*MSBE.Part.Asset asset = MakePart.Asset(waterInfo);
-                    asset.Position = TEST_OFFSET1 + TEST_OFFSET2;
-                    msb.Parts.Assets.Add(asset);*/
-
-                    /* Make collision for water splashing */
-                    string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
-                    MSBE.Part.Collision collision = MakePart.Collision(waterInfo);
-                    collision.Name = $"h{collisionIndex}_0000";
-                    collision.ModelName = $"h{collisionIndex}";
-                    collision.Position = TEST_OFFSET1 + TEST_OFFSET2;
-
-                    msb.Parts.Collisions.Add(collision);
-                    pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterInfo.collision));
                 }
 
                 /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test

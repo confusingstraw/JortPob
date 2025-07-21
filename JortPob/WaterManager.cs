@@ -1,10 +1,12 @@
 ﻿using HKLib.hk2018;
+using HKLib.hk2018.hkaiNavMeshEdgeZipper;
 using HKLib.hk2018.hkaiWorldCommands;
 using HKLib.hk2018.hkcdDynamicTree;
 using HKLib.hk2018.TypeRegistryTest;
 using JortPob.Common;
 using JortPob.Model;
 using Microsoft.VisualBasic;
+using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -26,144 +28,140 @@ namespace JortPob
     /* @TODO: this really shouldnt be a static class anymore. it has evolved a bit */
     public class WaterManager
     {
-        struct CBT
-        {
-            public bool result, same;
-            public WetEdge a, b;
-            public CBT(bool result, WetEdge a, WetEdge b)
-            {
-                this.result = result;
-                same = a == b;
-                this.a = a;
-                this.b = b;
-            }
-        }
-
         /* Creates assetbnd, hkx file, and matbins for water */
-        public static List<WaterInfo> Generate(ESM esm, MaterialContext materialContext)
+        public static WaterInfo GenerateWater(ESM esm, MaterialContext materialContext)
         {
-            List<WaterInfo> waters = new();
-
             /* Further research on water meshes leads me to believe the best approach is a single water mesh for the entire world space. */
             /* Stupid as fuck solution but it is what it is */
-            int id = 0; // id for water mesh // just making the single one for now, maybe later we will generate more for other things
+
+            /* Generate visual water mesh data */  // single massive mesh used in super overworld
+            Lort.Log("Generating water...", Lort.Type.Main);
+            Lort.NewTask("Water Generation", 20 + 4 + esm.exterior.Count());
+            WetMesh wetmesh = new(esm, CUTOUTS); // a lot of things happen in this constructor
+
+            /* Generate collision water mesh data */
+            List<Tuple<Int2, WetMesh>> wetcollisions = new();
+            WetMesh genericwetcollision = new(esm.GetCellByGrid(new Int2(0, 0)), new()); // generic no cutouts water plane. most cells will use this
+            wetcollisions.Add(new(new Int2(0, 0), genericwetcollision));
+            foreach(Cell cell in esm.exterior)
             {
-                /* Generate water mesh */
-                WetEdge testA = new WetEdge(new Vector3(1, 0, 1), new Vector3(-1, 0, -1));
-                WetEdge testB = new WetEdge(new Vector3(1, 0, 0), new Vector3(-1, 0, 0));
-                WetEdge testC = new WetEdge(new Vector3(0, 0, 5), new Vector3(0, 0, 6));
-                WetEdge testD = new WetEdge(new Vector3(0, 0, 1), new Vector3(0, 0, -1));
-                WetEdge testE = new WetEdge(new Vector3(0, 0, 4), new Vector3(0, 0, 5.5f));
-                WetEdge testA2 = new WetEdge(new Vector3(-1, 0, -2), new Vector3(0, 0, 0));
-
-                WetEdge testF = new WetEdge(new Vector3(1, 0, 3), new Vector3(15, 0, 22));
-                WetEdge testG = new WetEdge(new Vector3(-5, 0, -3), new Vector3(1, 0, 3));
-
-
-                Cutout testZ = new(Vector3.Zero, new Vector3(0, 0, 0), 10);
-                WetFace testZ2 = new(testZ.Points()[0], testZ.Points()[1], testZ.Points()[2]);
-
-                Vector3 test0 = testA.Intersection(testB, false);
-                Vector3 test1 = testA.Intersection(testC, false);
-                Vector3 test2 = testC.Intersection(testD, false);
-                Vector3 test3 = testC.Intersection(testE, false);
-
-                bool test4 = testZ.IsInside(new Vector3(1, 0, 7) + testZ.position, false);
-                bool test5 = testZ.IsInside(Vector3.Zero + testZ.position, false);
-                bool test6 = testZ.IsInside(new Vector3(17, 0, 0) + testZ.position, false);
-                bool test7 = testZ.IsInside(new Vector3(4, 0, 2) + testZ.position, false);
-                bool test8 = testZ.IsInside(new Vector3(4, 8, 2) + testZ.position, false);
-                bool test9 = testZ.IsInside(new Vector3(0, 0, 5) + testZ.position, false);
-
-                bool test10 = testZ.IsInside(new Vector3(1, 0, 0) + testZ.position, false);
-                bool test11 = testZ.IsInside(new Vector3(-1, 0, 0) + testZ.position, false);
-                bool test12 = testZ.IsInside(new Vector3(0, 0, 1) + testZ.position, false);
-                bool test13 = testZ.IsInside(new Vector3(0, 0, -1) + testZ.position, false);
-
-                bool test14 = testZ.IsInside(new Vector3(1, 0, 1) + testZ.position, false);
-                bool test15 = testZ.IsInside(new Vector3(-1, 0, 1) + testZ.position, false);
-                bool test16 = testZ.IsInside(new Vector3(1, 0, -1) + testZ.position, false);
-                bool test17 = testZ.IsInside(new Vector3(-1, 0, -1) + testZ.position, false);
-
-                Vector3 test18 = testF.Intersection(testG, false);
-                Vector3 test19 = testF.Intersection(testF, false);
-                Vector3 test20 = testG.Intersection(testF, false);
-
-                bool test21 = testZ.IsInside(new Vector3(0, 0, 5) + testZ.position, false);
-                bool test22 = testZ.IsInside(new Vector3(5, 0, 5) + testZ.position, false);
-                bool test23 = testZ.IsInside(new Vector3(-5, 0, 0) + testZ.position, false);
-                bool test24 = testZ.IsInside(new Vector3(-5, 0, -5) + testZ.position, false);
-
-                bool test30 = testZ2.IsInside(new Vector3(0, 0, 5) + testZ.position, true);
-                bool test31 = testZ2.IsInside(new Vector3(5, 0, 5) + testZ.position, true);
-                bool test32 = testZ2.IsInside(new Vector3(-5, 0, 0) + testZ.position, true);
-                bool test33 = testZ2.IsInside(new Vector3(-5, 0, -5) + testZ.position, true);
-
-                WetFace testI = new WetFace(new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(0, 0, 1));
-
-                bool test25 = testI.IsIntersect(testI.Edges());
-                Vector3 test26 = testA.Intersection(testA2, false);
-
-                Vector3 X = new Vector3(1, 0, 0);
-                Vector3 Z = new Vector3(0, 0, 1);
-                WetEdge edge0 = new WetEdge(X+Z, -X-Z); // diags
-                WetEdge edge1 = new WetEdge(-X-Z, X+Z);
-                WetEdge edge2 = new WetEdge(-X+Z, X-Z);
-                WetEdge edge3 = new WetEdge(X-Z, -X+Z);
-                WetEdge edge4 = new WetEdge(X, -X); // cards
-                WetEdge edge5 = new WetEdge(-X, X);
-                WetEdge edge6 = new WetEdge(Z, -Z);
-                WetEdge edge7 = new WetEdge(-Z, Z);
-                List<WetEdge> edges = new() { edge0, edge1, edge2, edge3, edge4, edge5, edge6, edge7 };
-                CBT[] results = new CBT[edges.Count*edges.Count]; int i = 0;
-                foreach(WetEdge a in edges)
+                // Only generate if there is water, and it has a cutout intersecting somewhere
+                // If there is no water, we don't need it. if there water but no cutout, we will re-use a simple default water plane
+                bool needsMesh = false;
+                foreach(Cutout cutout in CUTOUTS)
                 {
-                   foreach(WetEdge b in edges)
+                    if (cell.IsPointInside(cutout.Points()))
                     {
-                        results[i++] = new CBT(!a.Intersection(b, false).IsNaN(), a, b);
+                        needsMesh = true; break;
                     }
                 }
+                if (!needsMesh) { continue; } // no cutout, skip
 
-                WetEdge fuck0 = new WetEdge(new Vector3(-175.342f, 0f, 793.467f), new Vector3(-122.88f, 0f, 778.24f));
-                WetEdge fuck1 = new WetEdge(new Vector3(-170.222f, 0f, 788.347f), new Vector3(-170.222f, 0f, 793.467f));
-                Vector3 testFUCK0 = fuck0.Intersection(fuck1, false);
-                Vector3 testFUCK1 = fuck1.Intersection(fuck0, false);
+                Landscape landscape = esm.GetLandscape(cell.coordinate);
+                if (!landscape.hasWater) { continue; } // no water, skip
 
-                WetEdge fuck2 = new WetEdge(new Vector3(-122.88f, 0f, 778.24f), new Vector3(-175.342f, 0f, 793.467f));
-                WetEdge fuck3 = new WetEdge(new Vector3(-170.222f, 0f, 793.467f), new Vector3(-170.222f, 0f, 788.347f));
-                Vector3 testFUCK2 = fuck2.Intersection(fuck3, false);
-                Vector3 testFUCK3 = fuck3.Intersection(fuck2, false);
-
-                WetMesh wetmesh = new(esm);
-                wetmesh.ToObj().write(@"I:\SteamLibrary\steamapps\common\ELDEN RING\wetmesh debug.obj");
-                Console.WriteLine("DEBUG BREAK");
-
-                /* Make water meshes */
-                FLVER2 flver = GenerateFlver(esm, materialContext);
-                Obj obj = GenerateObj();
-
-                /* Files happen */
-                string name = $"meshes\\water{id}";
-                string flverPath = $"{name}.flver";
-                string objPath = $"{name}.obj";
-                flver.Write($"{Const.CACHE_PATH}{flverPath}");
-                obj.write($"{Const.CACHE_PATH}{objPath}");
-
-                /* make a waterinfo class about this generated water */
-                WaterInfo waterInfo = new(id, flverPath);
-                CollisionInfo collisioInfo = new($"water{id}", objPath);
-                waterInfo.collision = collisioInfo;
-                
-                waters.Add(waterInfo);
+                WetMesh wetcollision = new(cell, CUTOUTS);
+                Tuple<Int2, WetMesh> tuple = new(cell.coordinate, wetcollision);
+                wetcollisions.Add(tuple);
+                Lort.TaskIterate();
             }
 
-            return waters;
+            /* Write generated water mesh data into a flver */
+            FLVER2 flver = GenerateFlver(wetmesh, materialContext);
+
+            /* Files happen */
+            string name = $"water\\super_water";
+            string flverPath = $"{name}.flver";
+            flver.Write($"{Const.CACHE_PATH}{flverPath}");
+
+            /* make a waterinfo class about this generated water */
+            WaterInfo waterInfo = new(0, flverPath);
+            foreach (Tuple<Int2, WetMesh> tuple in wetcollisions)
+            {
+                Int2 coordinate = tuple.Item1;
+                WetMesh wetcollision = tuple.Item2;
+                Obj obj = wetcollision.ToObj(Obj.CollisionMaterial.Water).optimize();
+                string objPath = $"water\\collision[{coordinate.x},{coordinate.y}].obj";
+                obj.write($"{Const.CACHE_PATH}{objPath}");
+
+                CollisionInfo collisionInfo = new($"water collision[{coordinate.x}, {coordinate.y}]", objPath);
+                waterInfo.AddCollision(coordinate, collisionInfo);
+            }
+
+            return waterInfo;
         }
 
-        private static FLVER2 GenerateFlver(ESM esm, MaterialContext materialContext)
+        public static List<CutoutInfo> GenerateCutouts(ESM esm)
         {
-            //FLVER2 EXAMPLE = FLVER2.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\asset\aeg\aeg097\aeg097_000-geombnd-dcx\GR\data\INTERROOT_win64\asset\aeg\AEG097\AEG097_000\sib\AEG097_000.flver");
+            /* Generate swamp collision planes */
+            /* Loop through each ext cell and check if a cutout is inside it. If so make a collision plane for it */
+            List<Tuple<Int2, Obj>> cutoutCollisions = new();
+            foreach (Cell cell in esm.exterior)
+            {
+                List<Cutout> cutouts = new();
+                foreach (Cutout c in CUTOUTS)
+                {
+                    if (cell.IsPointInside(c.position))
+                    {
+                        cutouts.Add(c);
+                    }
+                }
+                if (cutouts.Count <= 0) { continue; } // no cuttys, no mesh, no prob
 
+                /* Generate mesh with cutouts we found... making a raw obj because guh */
+                Obj obj = new();
+                ObjG g = new();
+                g.name = Obj.CollisionMaterial.PoisonSwamp.ToString();
+                g.mtl = $"hkm_{g.name}_Safe1";
+
+                obj.vns.Add(new Vector3(0, 1, 0));
+                obj.vts.Add(new Vector3(0, 0, 0));
+
+                Vector3 cellOffset = new Vector3(cell.coordinate.x, 0f, cell.coordinate.y) * Const.CELL_SIZE;
+                foreach (Cutout cutout in cutouts)
+                {
+                    foreach (Vector3 point in cutout.Points())
+                    {
+                        obj.vs.Add(point - cellOffset);   // offset moves cutout into the coordinate space of the cell. where 0,0 is the center of the cell iirc
+                    }
+
+                    ObjV A1 = new(obj.vs.Count() - 1, 0, 0);
+                    ObjV B1 = new(obj.vs.Count() - 2, 0, 0);
+                    ObjV C1 = new(obj.vs.Count() - 3, 0, 0);
+
+                    ObjV A2 = new(obj.vs.Count() - 3, 0, 0);
+                    ObjV B2 = new(obj.vs.Count() - 4, 0, 0);
+                    ObjV C2 = new(obj.vs.Count() - 1, 0, 0);
+
+                    ObjF F1 = new(A1, B1, C1);
+                    ObjF F2 = new(A2, B2, C2);
+                    g.fs.Add(F1);
+                    g.fs.Add(F2);
+                }
+                obj.gs.Add(g);
+
+                cutoutCollisions.Add(new(cell.coordinate, obj.optimize()));
+            }
+
+            /* make a cutoutinfo class about each generated cutoutcollision */
+            List<CutoutInfo> cutoutInfos = new();
+            foreach (Tuple<Int2, Obj> tuple in cutoutCollisions)
+            {
+                Int2 coordinate = tuple.Item1;
+                Obj obj = tuple.Item2;
+                string objPath = $"cutout\\collision[{coordinate.x},{coordinate.y}].obj";
+                obj.write($"{Const.CACHE_PATH}{objPath}");
+
+                CollisionInfo collisionInfo = new($"cutout collision[{coordinate.x}, {coordinate.y}]", objPath);
+                CutoutInfo cutoutInfo = new(coordinate, collisionInfo);
+                cutoutInfos.Add(cutoutInfo);
+            }
+
+            return cutoutInfos;
+        }
+
+        private static FLVER2 GenerateFlver(WetMesh wet, MaterialContext materialContext)
+        {
             FLVER2 flver = new();
             flver.Header.Version = 131098; // Elden Ring FLVER Version Number
             flver.Header.Unk5D = 0;        // Unk
@@ -180,7 +178,7 @@ namespace JortPob
             flver.Nodes.Add(rootNode);
             flver.Skeletons = skeletonSet;
 
-            /* Materials @TODO: */
+            /* Material */
             MaterialContext.MaterialInfo matinfo = materialContext.GenerateMaterialWater(0);
             flver.Materials.Add(matinfo.material);
             flver.BufferLayouts.Add(matinfo.layout);
@@ -197,90 +195,120 @@ namespace JortPob
             FLVER2.VertexBuffer vb = new(0);
             mesh.VertexBuffers.Add(vb);
 
-            /* generic quad vert data */
-            float half = Const.CELL_SIZE * .5f;
-            Vector3[] positions = new Vector3[]
-            {
-                new Vector3(half, 0, half), new Vector3(half, 0, -half), new Vector3(-half, 0, -half), new Vector3(-half, 0, half)
-            };
+            /* generic data */
             Vector3 normal = new Vector3(0, 1, 0);
             Vector4 tangent = new Vector4(1, 0, 0, -1);
             Vector4 bitangent = new Vector4(0, 0, 0, 0);
-            Vector3[] uvs = new Vector3[]
-            {
-                new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(1, 1, 0), new Vector3(0, 1, 0)
-            };
             FLVER.VertexColor color = new(255, 255, 255, 255);
-            List<int> indiceOffsets = new List<int>() { 0, 1, 2, 0, 2, 3 };
 
             // returns indice if exists, -1 if doesnt // normally i dont caare about optimizing verts/indices but this material really cares about connected verts so we doing it
-            int GetVertex(Vector3 position)
+            int GetVertex(FLVER.Vertex v)
             {
-                for(int i=0;i<mesh.Vertices.Count;i++)
+                for (int i = 0; i < mesh.Vertices.Count; i++)
                 {
                     FLVER.Vertex vert = mesh.Vertices[i];
-                    if (Vector3.Distance(vert.Position, position) < 0.01) { return i; }
+                    if (
+                        Vector3.Distance(vert.Position, v.Position) < 0.001 &&
+                        Vector3.Distance(vert.UVs[0], v.UVs[0]) < 0.001
+                    ) { return i; }
                 }
                 return -1;
             }
 
-            /* Okay here we go lmao */
-            for (int y = -Const.WATER_RADIUS; y < Const.WATER_RADIUS; y++)
+            /* Write wet mesh data to flver and generate UVs */
+            foreach (WetFace face in wet.faces)
             {
-                for (int x = -Const.WATER_RADIUS; x < Const.WATER_RADIUS; x++)
+                FLVER.Vertex[] verts = new FLVER.Vertex[3];
+
+                for(int i=0;i<face.Points().Count();i++)
                 {
-                    if(Vector2.Distance(new Vector2(x,y), new Vector2(0f)) <= Const.WATER_RADIUS)
+                    Vector3 v = face.Points()[i];
+
+                    FLVER.Vertex vert = new();
+                    vert.Position = v;
+                    vert.Normal = normal;
+                    vert.Tangents.Add(tangent);
+                    vert.Bitangent = bitangent;
+                    vert.Colors.Add(color);
+
+                    Vector3 worldSpaceUV = new(vert.Position.X, vert.Position.Z, 0f);
+
+                    float distToZero = Vector3.Distance((worldSpaceUV / Const.CELL_SIZE) - new Vector3(Const.WATER_CENTER.X, Const.WATER_CENTER.Y, 0f), Vector3.Zero);
+                    float normDistToZero = distToZero / (Const.WATER_RADIUS + 2.5f);  // +2.5f is to account for outer radius
+                    Vector3 normalized = ((worldSpaceUV / Const.CELL_SIZE) - new Vector3(Const.WATER_CENTER.X, Const.WATER_CENTER.Y, 0f)) / (Const.WATER_RADIUS + 3); // not vector normalized, just like, normlaized so entire uv of mesh is within the -1 -> 1 space of uvs
+                    if (normalized.X > 1f || normalized.Y > 1f) { Lort.Log($"### WATER UV OUTSIDE VALID RANGE [{normalized.X}, {normalized.Y}]", Lort.Type.Debug); } // guh!
+
+                    Vector3 dir = Vector3.Normalize(normalized); // actually normalized direction of point from 0,0
+                    Vector3 forward = Vector3.UnitY;
+                    Vector3 left = Vector3.UnitX;
+                    double ringAngle = (Math.Acos(Vector3.Dot(dir, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(dir, forward));
+                    float ringX = (float)(ringAngle / Math.PI);
+                    Vector3 ringUV = new Vector3(ringX, -1f * ((normDistToZero * 2f) - 1f), 0f);
+
+
+                    /* Water UV UNK values. I'll add comments to what I think they are as we go. These values determine various ranges for water UVs */
+                    float[] UNK_0_0 = new float[] { 16f, 7f }; // scales uvs to the extents of the uv precision. largest uv value here is 16f so we make the flat map as big as possible to use precision fully
+                    float UNK_0_1 = 15.95f - UNK_0_0[1] - 1f; // Y value of UV0 helps scale wave intensity. im using this value as an offset to adjust wave intensity a bit
+                    float UNK_1_0 = 2f; // for whatever reason this second uv channel is scaled to just like 2f. lol
+                    Vector3 UNK_1_1 = new Vector3(.5f, .5f, 0f); // this uv is centered on the 0->1 area. no idea why. this offset moves us there
+                    float[,] UNK_2_0 = new float[,] { { 0f, 0f }, { 15.9f, .2f } };  // something to do with depth, x is some kind of distance from shore, y is some kind of var, possibly depth or wave height
+                    float[,] UNK_3_0 = new float[,] { { -15.9f, .05f }, { 0f, .125f } }; // same as above but with different offsets and values. oddly the example mesh has a weird thing with some of the x being on the wrong side. maybe X wrap issue
+                    float UNK_4_0 = .65f; // dunno, it's almost entirely set to .5f in the elden ring ocean. only exception is in one specific spot near the shore 
+
+                    /* Notes on UV channel 0 */
+                    // Most important UV. Seems to have many affects on things
+                    // Giant ring layout. Stretches all the way from +16+16 to -16-16
+                    // The vertices near Y+16 are nearest to the shore, the vertices near Y-16 are the furthest from shore
+                    // The Y value seems to control wave intensity in some way
+                    // X Value is unknown
+                    // I'm using X*16 and Y*7 to reduce distortion at the shorelines. I could modify it to be exponential the further out into the ocean we get but guh fuck it
+                    // I should try and fix the gross stretching at the edges via splitting uvs later.
+                    // Also seems to control the actual texture tiling of water textures which means we can't let it be deformed a lot. Needs to be a valid texture unwrap as well as control things
+
+                    /* Notes on what UNKs actually do */
+                    // UNK_2_0 :: seems to do almost nothing
+                    // UNK_3_0 :: seems to do almost nothing
+                    // UNK_4_0 :: 0f = crazy waves, 1f = perfectly flat water plane moving up and down. i think this a scalar for the size of wave noise map?
+
+                    vert.UVs.Add((ringUV * new Vector3(UNK_0_0[0], UNK_0_0[1], 0f)) + new Vector3(0f, UNK_0_1, 0f));  // some kind of loop uv layout, between -15,15
+                    vert.UVs.Add((normalized + UNK_1_1) * UNK_1_0);   // normal-ish top down flat uv layout, sized so world is within like -2, 2
+                    vert.UVs.Add(new Vector3(float.Lerp(UNK_2_0[0, 0], UNK_2_0[1, 0], normDistToZero), float.Lerp(UNK_2_0[0,1], UNK_2_0[1,1], normDistToZero), 0));   // some kind of value based on distance from center of land
+                    vert.UVs.Add(new Vector3(float.Lerp(UNK_3_0[0, 0], UNK_3_0[1, 0], normDistToZero), float.Lerp(UNK_3_0[0, 1], UNK_3_0[1, 1], normDistToZero), 0)); // very similar to above but offset differntly
+                    vert.UVs.Add(new Vector3(normalized.X, UNK_4_0, 0)); // weird but X is normal and normalized between 0,1 and y is just flat aside from a few random verts 
+                    vert.UVs.Add(new Vector3(normalized.X, UNK_4_0, 0)); // same as last one ????
+                    vert.UVs.Add(new Vector3(normalized.X, UNK_4_0, 0)); // also same ???
+                    vert.UVs.Add(new Vector3(normalized.X, UNK_4_0, 0)); // still same ??????????
+
+                    verts[i] = vert;
+                }
+
+                /* Stuff to do with loop uvs in slot 0. explain later @TODO: */
+                bool xEdge = false;
+                foreach(FLVER.Vertex vert in verts)
+                {
+                    if (vert.UVs[0].X < -10) { xEdge = true; break; }
+                }
+
+                foreach (FLVER.Vertex vert in verts)
+                {
+                    if (vert.UVs[0].X >= 16)
                     {
-                        Landscape landscape = esm.GetLandscape(new Int2(x, y));
-                        if(landscape == null || landscape.hasWater)
-                        {
-                            /* Offset */
-                            Vector3 posOffset = new Vector3(x, 0f, y) * Const.CELL_SIZE;
-                            Vector3 uvOffset = new Vector3(x, y, 0f);
-
-                            /* Add vertex data */
-                            int[] quad = new int[4];
-                            for (int i = 0; i < 4; i++)
-                            {
-                                Vector3 nextpos = positions[i] + posOffset;
-                                int indice = GetVertex(nextpos);
-
-                                if (indice == -1)
-                                {
-                                    FLVER.Vertex vert = new();
-                                    vert.Position = nextpos;
-                                    vert.Normal = normal;
-                                    vert.Tangents.Add(tangent);
-                                    vert.Bitangent = bitangent;
-
-                                    float distToZero = Vector3.Distance(uvs[i] + uvOffset, Vector3.Zero);
-                                    float normDistToZero = distToZero / Const.WATER_RADIUS;
-                                    Vector3 normalized = (uvs[i] + uvOffset) / Const.WATER_RADIUS;
-
-                                    vert.UVs.Add(normalized * 15f);  // some kind of loop uv layout, between -15,15, @TODO: generate this properly?
-                                    vert.UVs.Add(normalized * 2f);   // normal-ish top down flat uv layout, sized so world is within like -2, 2
-                                    vert.UVs.Add(new Vector3(normDistToZero * 15f, normDistToZero * 0.2f, 0));   // some kind of value based on distance from center of land
-                                    vert.UVs.Add(new Vector3(normalized.X * 15f, 0.1f, 0f)); // no fucking clue
-                                    vert.UVs.Add(new Vector3(normalized.X, 0.5f, 0)); // weird but X is normal and normalized between 0,1 and y is just flat aside from a few random verts 
-                                    vert.UVs.Add(new Vector3(normalized.X, 0.5f, 0)); // same as last one ????
-                                    vert.UVs.Add(new Vector3(normalized.X, 0.5f, 0)); // also same ???
-                                    vert.UVs.Add(new Vector3(normalized.X, 0.5f, 0)); // still same ??????????
-
-                                    vert.Colors.Add(color);
-                                    mesh.Vertices.Add(vert);
-                                    indice = mesh.Vertices.Count - 1;
-                                }
-
-                                quad[i] = indice;
-                            }
-
-                            /* Define indice */
-                            foreach(int i in indiceOffsets)
-                            {
-                                faces.Indices.Add(quad[i]);
-                            }
-                        }
+                        vert.UVs[0] = new Vector3(15.9999f, vert.UVs[0].Y, 0);
                     }
+
+                    if(xEdge && vert.UVs[0].X > 10)
+                    {
+                        vert.UVs[0] = new Vector3(-16f, vert.UVs[0].Y, 0);
+                    }
+
+                    int indice = GetVertex(vert);
+                    if (indice != -1)
+                    {
+                        faces.Indices.Add(indice); continue;
+                    }
+
+                    mesh.Vertices.Add(vert);
+                    faces.Indices.Add(mesh.Vertices.Count - 1);
                 }
             }
 
@@ -293,61 +321,18 @@ namespace JortPob
             return flver;
         }
 
-        private static Obj GenerateObj()
-        {
-            /* generate obj for uses as water plane collision, these are per tile so its just a square */
-            Obj obj = new();
-            ObjG g = new();
-            g.name = CollisionMaterial.Water.ToString();
-            g.mtl = $"hkm_{g.name}_Safe1";
-
-            float half = Const.TILE_SIZE * .5f;
-            Vector3[] positions = new Vector3[]
-            {
-                    new Vector3(half, 0, half), new Vector3(half, 0, -half), new Vector3(-half, 0, -half), new Vector3(-half, 0, half)
-            };
-            Vector3 normal = new Vector3(0, 1, 0);
-            Vector3[] uvs = new Vector3[]
-            {
-                    new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(1, 1, 0), new Vector3(0, 1, 0)
-            };
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                obj.vs.Add(positions[i]);
-                obj.vns.Add(normal);
-                obj.vts.Add(uvs[i]);
-            }
-            List<int> indices = new List<int>() { 0, 1, 2, 0, 2, 3 };
-            List<ObjV> V = new();
-            foreach (int index in indices)
-            {
-                ObjV v = new(index, index, index);
-                V.Add(v);
-
-                if (V.Count >= 3)
-                {
-                    ObjF f = new(V[0], V[1], V[2]);
-                    g.fs.Add(f);
-                    V.Clear();
-                }
-            }
-            obj.gs.Add(g);
-
-            return obj;
-        }
-
         /* When iterating through static assets, if we see swamp meshes we pop em in here. We need a list of swamp areas so we can cut them out of water gen */
         /* Morrowind water is flat so the swamp is just slightly above the water, but elden ring water is 3d so we have to actually slice the water plane to prevent clipping */
-        public static List<Cutout> cutouts = new();
+        public static List<Cutout> CUTOUTS = new();
         public static void AddSwamp(Content content)
         {
             float s;
             if (content.mesh == @"f\terrain_bc_scum_01.nif") { s =  20.48f; }  // measured these meshes in blender. could read actual vert data but they are just squares so why bother
             else if (content.mesh == @"f\terrain_bc_scum_02.nif") { s = 10.24f; }
             else { s = 5.12f; } // @"f\terrain_bc_scum_03.nif"
-            Cutout cutout = new(content.position + new Vector3(22f, 0, 0), content.rotation, s);
-            cutouts.Add(cutout);
+            s *= Const.WATER_CUTOUT_SIZE_TWEAK;
+            Cutout cutout = new(content.position, content.rotation, s);
+            CUTOUTS.Add(cutout);
 
         }
 
@@ -358,9 +343,9 @@ namespace JortPob
 
         public static bool PointInSwamp(Vector3 position)
         {
-            foreach(Cutout cutout in cutouts)
+            foreach(Cutout cutout in CUTOUTS)
             {
-                if (cutout.IsInside(position, false) && position.Y <= cutout.position.Y) { return true; }
+                if (cutout.IsInside(position, false) && position.Y <= cutout.height) { return true; }
             }
             return false;
         }
@@ -374,7 +359,9 @@ namespace JortPob
         {
             public List<WetFace> faces;
             public List<List<WetFace>> outlines; // debug
-            public WetMesh(ESM esm)
+
+            /* This constructor makes a water mesh for the entire world space. This is use for visuals. Takes the ESM as a param to do it */
+            public WetMesh(ESM esm, List<Cutout> cutouts)
             {
                 outlines = new();
                 void AddDebugOutline(List<WetEdge> es)
@@ -389,44 +376,572 @@ namespace JortPob
                     outlines.Add(group);
                 }
 
-                /* generic quad vert data */
-                float half = Const.CELL_SIZE * .5f;
-                Vector3[] positions = new Vector3[]
-                {
-                    new Vector3(half, 0, half),
-                    new Vector3(half, 0, -half),
-                    new Vector3(-half, 0, -half),
-                    new Vector3(-half, 0, half)
-                };
+                float half = Const.CELL_SIZE * .5f; // half a cell
 
                 /* Generate world water mesh */
                 faces = new();
+                Dictionary<Int2, int> grid = new();
+                int flip = 0;
+                /* We do this 2 in passes. first pass is tesselated, second is filling in more distant squares */
                 for (int y = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y++)
                 {
                     for (int x = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x++)
                     {
-                        if (Vector2.Distance(new Vector2(x, y), Const.WATER_CENTER) <= Const.WATER_RADIUS)
+                        float dist = Vector2.Distance(new Vector2(x, y), Const.WATER_CENTER);
+                        if (dist < Const.WATER_RADIUS)
                         {
                             Landscape landscape = esm.GetLandscape(new Int2(x, y));
+
                             if (landscape == null || landscape.hasWater)
                             {
+                                if (landscape != null && landscape.hasSwamp) { continue; } // don't tesselate areas with swamp cutout. we want fewer triangles there for water consistency. just let grid fill those
+
                                 /* Offset */
                                 Vector3 posOffset = new Vector3(x, 0f, y) * Const.CELL_SIZE;
-                                Vector3[] quad = new Vector3[]
+                                float startX = -half + posOffset.X;
+                                float endX = half + posOffset.X;
+                                float startY = -half + posOffset.Z;
+                                float endY = half + posOffset.Z;
+
+                                if (dist <= Const.WATER_RADIUS * .75f)
                                 {
-                                    positions[0] + posOffset,
-                                    positions[1] + posOffset,
-                                    positions[2] + posOffset,
-                                    positions[3] + posOffset,
-                                };
-                                WetFace A = new WetFace(quad[2], quad[1], quad[0]);
-                                WetFace B = new WetFace(quad[0], quad[3], quad[2]);
-                                faces.Add(A); faces.Add(B);
+                                    float size = Const.CELL_SIZE / Const.WATER_TESSELATION;
+                                    flip = 0;
+                                    for (int yy = 0; yy < Const.WATER_TESSELATION; yy++)
+                                    {
+                                        for (int xx = 0; xx < Const.WATER_TESSELATION; xx++)
+                                        {
+                                            Vector3[] quad = new Vector3[]
+                                            {
+                                            new Vector3(startX + (xx*size), 0f, startY + (yy*size)),
+                                            new Vector3(startX + ((xx+1)*size), 0f, startY + (yy*size)),
+                                            new Vector3(startX + ((xx+1)*size), 0f, startY + ((yy+1)*size)),
+                                            new Vector3(startX + (xx*size), 0f, startY + ((yy+1)*size)),
+                                            };
+
+                                            WetFace A = new WetFace(quad[(2 + flip) % 4], quad[(1 + flip) % 4], quad[(0 + flip) % 4]);
+                                            WetFace B = new WetFace(quad[(0 + flip) % 4], quad[(3 + flip) % 4], quad[(2 + flip) % 4]);
+                                            faces.Add(A); faces.Add(B);
+                                            flip = flip == 0 ? 1 : 0;
+                                        }
+                                        flip = flip == 0 ? 1 : 0;
+                                    }
+                                    grid.Add(new Int2(x, y), Const.WATER_TESSELATION);
+                                }
+                            }
+                            else
+                            {
+                                grid.Add(new Int2(x, y), -1); // -1 means land are with no water. for openedges to ignore
                             }
                         }
                     }
                 }
+                Lort.TaskIterate();
 
+                /* Outline triangle fill time */
+                flip = 0;
+                for (int y = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y++)
+                {
+                    for (int x = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x++)
+                    {
+                        float dist = Vector2.Distance(new Vector2(x, y), Const.WATER_CENTER);
+                        if (dist < Const.WATER_RADIUS)
+                        {
+                            Landscape landscape = esm.GetLandscape(new Int2(x, y));
+
+                            if (landscape == null || landscape.hasWater)
+                            {
+                                /* Offset */
+                                Vector3 posOffset = new Vector3(x, 0f, y) * Const.CELL_SIZE;
+                                float startX = -half + posOffset.X;
+                                float endX = half + posOffset.X;
+                                float startY = -half + posOffset.Z;
+                                float endY = half + posOffset.Z;
+
+                                //if (dist > Const.WATER_RADIUS * .75f) // old way of doing it, going off grid now
+                                if (!grid.ContainsKey(new Int2(x,y)))
+                                {
+                                    /* Get edge vert counts (these are actually face counts so just +1 to get vert counts) */
+                                    int pX = grid.ContainsKey(new Int2(x + 1, y)) ? grid[new Int2(x + 1, y)] : 1;
+                                    int pY = grid.ContainsKey(new Int2(x, y + 1)) ? grid[new Int2(x, y + 1)] : 1;
+                                    int nX = grid.ContainsKey(new Int2(x - 1, y)) ? grid[new Int2(x - 1, y)] : 1;
+                                    int nY = grid.ContainsKey(new Int2(x, y - 1)) ? grid[new Int2(x, y - 1)] : 1;
+
+                                    /* Easy mode */
+                                    if (pX == 1 && pY == 1 && nX == 1 && nY == 1)
+                                    {
+                                        // make square lol
+                                        Vector3[] quad = new Vector3[]
+                                        {
+                                                    new Vector3(startX, 0, startY),
+                                                    new Vector3(endX, 0, startY),
+                                                    new Vector3(endX, 0, endY),
+                                                    new Vector3(startX, 0, endY)
+                                        };
+
+                                        WetFace A = new WetFace(quad[(2+flip)%4], quad[(1+flip)%4], quad[(0+flip)%4]);
+                                        WetFace B = new WetFace(quad[(0+flip)%4], quad[(3+flip)%4], quad[(2+flip)%4]);
+                                        faces.Add(A); faces.Add(B);
+                                        flip = flip == 0 ? 1 : 0;
+                                    }
+                                    /* Hard mode */
+                                    else
+                                    {
+                                        /* create an outline via the the grid edges and then fill with tris */
+
+                                        /* Make an outline */
+                                        List<WetEdge> outline = new();
+
+                                        /* Negative X side */
+                                        {
+                                            float size = Const.CELL_SIZE / nX;
+                                            Vector3 start = new Vector3(startX, 0, startY);
+                                            for (int i = 0; i < nX; i++)
+                                            {
+                                                outline.Add(new WetEdge(start + new Vector3(0, 0, i * size), start + new Vector3(0, 0, (i + 1) * size)));
+                                            }
+                                        }
+                                        /* Negative Y side */
+                                        {
+                                            float size = Const.CELL_SIZE / nY;
+                                            Vector3 start = new Vector3(startX, 0, startY);
+                                            for (int i = 0; i < nY; i++)
+                                            {
+                                                outline.Add(new WetEdge(start + new Vector3(i * size, 0, 0), start + new Vector3((i + 1) * size, 0, 0)));
+                                            }
+                                        }
+                                        /* Positive X side */
+                                        {
+                                            float size = Const.CELL_SIZE / pX;
+                                            Vector3 start = new Vector3(endX, 0, startY);
+                                            for (int i = 0; i < pX; i++)
+                                            {
+                                                outline.Add(new WetEdge(start + new Vector3(0, 0, i * size), start + new Vector3(0, 0, (i + 1) * size)));
+                                            }
+                                        }
+                                        /* Positive Y side */
+                                        {
+                                            float size = Const.CELL_SIZE / pY;
+                                            Vector3 start = new Vector3(startX, 0, endY);
+                                            for (int i = 0; i < pY; i++)
+                                            {
+                                                outline.Add(new WetEdge(start + new Vector3(i * size, 0, 0), start + new Vector3((i + 1) * size, 0, 0)));
+                                            }
+                                        }
+                                        //AddDebugOutline(outline);
+
+                                        /* Fill triangles */
+                                        List<WetFace> newFaces = new();
+                                        List<WetEdge> innerEdges = new(); // edges added by new faces, used to prevent overlapping triangles
+                                        List<Vector3> points = new();
+                                        // edge direction is not consistent with my meshes so im going to add both points and hyper weld and align
+                                        foreach (WetEdge edge in outline) { points.Add(edge.a); points.Add(edge.b); }
+                                        for(int i=0;i<points.Count();i++)
+                                        {
+                                            Vector3 a = points[i];
+                                            for(int j=0;j<points.Count();j++)
+                                            {
+                                                if (i == j) { continue; } // dont suicide
+
+                                                Vector3 b = points[j];
+                                                if (a.TolerantEquals(b))
+                                                {
+                                                    points.RemoveAt(j--); // kill with laser beam
+                                                    continue;
+                                                }
+
+                                                // check and enforce alignment, i fucking hate floats
+                                                if(Math.Abs(a.X - b.X) < 0.001f)
+                                                {
+                                                    a.X = b.X; // force alignment
+                                                }
+                                                if (Math.Abs(a.Y - b.Y) < 0.001f)
+                                                {
+                                                    a.Y = b.Y; // force alignment
+                                                }
+                                            }
+                                        }
+
+                                        List<Vector3> FindNearest(Vector3 p, List<Vector3> ps)
+                                        {
+                                            List<Vector3> nearest = new();
+                                            nearest.AddRange(ps);
+                                            for (int k = 0; k < nearest.Count - 1; k++)
+                                            {
+                                                float distA = Vector3.Distance(p, nearest[k]);
+                                                float distB = Vector3.Distance(p, nearest[k + 1]);
+
+                                                if (distB < distA)
+                                                {
+                                                    Vector3 temp = nearest[k];
+                                                    nearest[k] = nearest[k + 1];
+                                                    nearest[k + 1] = temp;
+                                                    k = 0; // start sort over since we changed the list. very inefficient but fucking bruh whatever
+                                                }
+                                            }
+                                            return nearest;
+                                        }
+
+                                        for (int i= 0;i<points.Count();i++)
+                                        {
+                                            Vector3 a = points[i];
+
+                                            List<Vector3> nearestB = FindNearest(a, points);
+
+                                            for(int j=0;j< nearestB.Count();j++)
+                                            {
+                                                Vector3 b = nearestB[j];
+
+                                                if (a == b) { continue; } // self succ is bad
+
+                                                /* Sort points by nearest */
+                                                Vector3 center = (a + b) * 0.5f;
+                                                List<Vector3> nearestC = FindNearest(center, points); // never ask me about this bugfix, i will cut you
+
+                                                /* Attempt to make a face starting with nearest point. check if they are valid then discard or add and continue */
+                                                foreach (Vector3 c in nearestC)
+                                                {
+                                                    if (c == a || c == b) { continue; } // dont self succ
+
+                                                    WetFace nf = new WetFace(a, b, c);
+
+                                                    /* Verify not an already existing face */
+                                                    foreach (WetFace newFace in newFaces)
+                                                    {
+                                                        if (newFace == nf) { nf = null; break; }
+                                                    }
+                                                    if (nf == null) { continue; }
+
+                                                    /* Check degenerate */
+                                                    if (nf.IsDegenerate()) { continue; }
+
+                                                    /* Check if it intersects with any inner edges */
+                                                    if (nf.IsIntersect(innerEdges)) { continue; }
+
+                                                    /* Check if the face is skipping over a vertex on the same edge and effectively encapsulating a smaller face */
+                                                    foreach (Vector3 z in points)
+                                                    {
+                                                        if (z == a || z == b || z == c) { continue; } // make sure this point isnt a part of the new tri
+                                                        if (nf.IsInside(z, true)) // see if this point is inside or aligned on the edge of the new tri
+                                                        {
+                                                            nf = null; break; // if it is then discard because this tri will create an open edge
+                                                        }
+
+                                                    }
+                                                    if (nf == null) { continue; }
+
+                                                    /* Last check if the dumbfuck edge case "shrink check" */
+                                                    /* Deals with the rare but annoying as shit case where we get a triangle with an open edge containing 2 more faces */
+                                                    /* I assume this happens because of imprecision causing the paralell instersecting edges to return no intersection */
+                                                    /* so we shrink the new tri and retest and that will return true if its being dumb as fuck */
+                                                    /* Since we sort points by nearest the smaller tris should exist before the bigger one trys to get added, which amkes this work in theory */
+                                                    if (nf.Scale(.9f).IsIntersect(innerEdges)) { continue; }
+
+                                                    /* Cool beans, add it and continue */
+                                                    newFaces.Add(nf); innerEdges.AddRange(nf.Edges());
+                                                }
+                                            }
+                                        }
+                                        faces.AddRange(newFaces);
+                                    }
+                                    grid.Add(new Int2(x, y), 1);
+                                }
+                            }
+                        }
+                    }
+                    flip = flip == 0 ? 1 : 0;
+                }
+                Lort.TaskIterate();
+
+                /* Circleify those squares */
+                /* We have a minecraft circle of squares here, add a ring of verts and fill with triangles to resolve that */
+                if (!Const.DEBUG_SKIP_NICE_WATER_CIRCLIFICATION) {
+                    /* Make a circle outline */
+                    List<WetEdge> outline = new();
+                    List<Vector3> outpoints = new();
+                    for (int i = 0; i < Const.WATER_RADIUS; i++)
+                    {
+                        float angle = (float)(i * Math.PI * 2f / Const.WATER_RADIUS);
+                        float x = (float)Math.Cos(angle);
+                        float y = (float)Math.Sin(angle);
+                        Vector3 vert = Vector3.Normalize(new Vector3(x, 0f, y)) * (Const.WATER_RADIUS + 2) * Const.CELL_SIZE;  // +2 offset to give some distance between end of squares grid and circle triangulation
+                        outpoints.Add(vert + (new Vector3(Const.WATER_CENTER.X, 0f, Const.WATER_CENTER.Y) * Const.CELL_SIZE));
+                    }
+                    for (int i = 0; i < outpoints.Count(); i++)
+                    {
+                        WetEdge edge = new WetEdge(outpoints[i], outpoints[(i + 1) % outpoints.Count()]);
+                        outline.Add(edge);
+                    }
+                    AddDebugOutline(outline);
+
+                    /* Make an inner outline of the squarey mesh, basically an open edges selection */
+                    /* actually doing that is annoying though so uhhh cheating! */
+                    List<WetEdge> openEdges = new();
+                    for (int y = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.Y)); y++)
+                    {
+                        for (int x = -(Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x < (Const.WATER_RADIUS + (int)Math.Abs(Const.WATER_CENTER.X)); x++)
+                        {
+                            Vector3 posOffset = new Vector3(x, 0f, y) * Const.CELL_SIZE;
+                            float nX = -half + posOffset.X;
+                            float pX = half + posOffset.X;
+                            float nY = -half + posOffset.Z;
+                            float pY = half + posOffset.Z;
+
+                            // This square exists
+                            if (grid.ContainsKey(new Int2(x, y)))
+                            {
+                                // Positive X open edge
+                                if (!grid.ContainsKey(new Int2(x + 1, y)))
+                                {
+                                    WetEdge openEdge = new WetEdge(new Vector3(pX, 0f, nY), new Vector3(pX, 0f, pY));
+                                    openEdges.Add(openEdge);
+                                }
+
+                                // Negative X open edge
+                                if (!grid.ContainsKey(new Int2(x - 1, y)))
+                                {
+                                    WetEdge openEdge = new WetEdge(new Vector3(nX, 0f, nY), new Vector3(nX, 0f, pY));
+                                    openEdges.Add(openEdge);
+                                }
+
+                                // Positive Y open edge
+                                if (!grid.ContainsKey(new Int2(x, y + 1)))
+                                {
+                                    WetEdge openEdge = new WetEdge(new Vector3(nX, 0f, pY), new Vector3(pX, 0f, pY));
+                                    openEdges.Add(openEdge);
+                                }
+
+                                // Negative Y open edge
+                                if (!grid.ContainsKey(new Int2(x, y - 1)))
+                                {
+                                    WetEdge openEdge = new WetEdge(new Vector3(nX, 0f, nY), new Vector3(pX, 0f, nY));
+                                    openEdges.Add(openEdge);
+                                }
+                            }
+                        }
+                    }
+                    AddDebugOutline(openEdges);
+
+                    /* Got our openEdges and our circle outline, now we just need to triangulate */
+                    /* make point list and weld */
+                    /* update to this, welding the edges first then adding the points and welding again. i fucking HATE floats */
+                    List<Vector3> points = new();
+
+                    void EdgeWeld(List<WetEdge> edges)
+                    {
+                        foreach(WetEdge A in edges)
+                        {
+                            foreach(WetEdge B in edges)
+                            {
+                                if (A.a.TolerantEquals(B.a)) { A.a = B.a; }
+                                if (A.a.TolerantEquals(B.b)) { A.a = B.b; }
+                                if (A.b.TolerantEquals(B.a)) { A.b = B.a; }
+                                if (A.b.TolerantEquals(B.b)) { A.b = B.b; }
+                            }
+                        }
+                    }
+
+                    EdgeWeld(openEdges);
+                    EdgeWeld(outline);
+
+                    foreach (WetEdge edge in openEdges)
+                    {
+                        points.Add(edge.a);
+                        points.Add(edge.b);
+                    }
+                    foreach (WetEdge edge in outline)
+                    {
+                        points.Add(edge.a);
+                        points.Add(edge.b);
+                    }
+                    for (int i = 0; i < points.Count(); i++)
+                    {
+                        Vector3 a = points[i];
+                        for (int j = 0; j < points.Count(); j++)
+                        {
+                            if (i == j) { continue; } // dont suicide
+
+                            Vector3 b = points[j];
+                            if (a.TolerantEquals(b))
+                            {
+                                points.RemoveAt(j--); // kill with laser beam
+                                continue;
+                            }
+
+                            /*// check and enforce alignment, i fucking hate floats
+                            if (Math.Abs(a.X - b.X) < 0.01f)
+                            {
+                                a.X = b.X; // force alignment
+                            }
+                            if (Math.Abs(a.Y - b.Y) < 0.01f)
+                            {
+                                a.Y = b.Y; // force alignment
+                            }*/
+                        }
+                    }
+
+                    /* add an edge from every open edge to center point. prevents faces from being created on the inside */
+                    List<WetFace> newFaces = new();
+                    List<WetEdge> newEdges = new();
+                    newEdges.AddRange(openEdges); //
+                    foreach (WetEdge edge in openEdges)
+                    {
+                        WetEdge jankedgea = new WetEdge(edge.a, new Vector3(Const.WATER_CENTER.X, 0f, Const.WATER_CENTER.Y) * Const.CELL_SIZE);
+                        WetEdge jankedgeb = new WetEdge(edge.b, new Vector3(Const.WATER_CENTER.X, 0f, Const.WATER_CENTER.Y) * Const.CELL_SIZE);
+                        newEdges.Add(jankedgea);
+                        newEdges.Add(jankedgeb);
+                    }
+
+                    List<Tuple<Vector3, float>> FindNearest(Vector3 p, List<Vector3> ps, int results)
+                    {
+                        List<Tuple<Vector3, float>> nearest = new();
+                        for (int k = 0; k < ps.Count; k++)
+                        {
+                            if (p == ps[k]) { continue; } // dont self succ
+
+                            if (nearest.Count() < results)
+                            {
+                                nearest.Add(new(ps[k], Vector3.Distance(ps[k], p)));
+                                continue;
+                            }
+
+                            float dist = Vector3.Distance(p, ps[k]);
+                            for (int l = 0; l < nearest.Count(); l++)
+                            {
+                                Tuple<Vector3, float> tuple = nearest[l];
+                                if (dist < tuple.Item2)
+                                {
+                                    nearest.Insert(l, new(ps[k], dist));
+                                    break;
+                                }
+                            }
+                            nearest = nearest.Slice(0, results);
+                        }
+                        return nearest;
+                    }
+
+
+                    for (int r = 1; r < 24; r += (int)(Math.Max(r * .25f, 1)))  // big stupid ugly slow as shit hack, don't worry about it
+                    {
+                        for (int i = 0; i < points.Count(); i++)
+                        {
+                            Vector3 a = points[i];
+
+                            List<Tuple<Vector3, float>> nearestB = FindNearest(a, points, r);
+
+                            for (int j = 0; j < nearestB.Count(); j++)
+                            {
+                                Vector3 b = nearestB[j].Item1;
+                                Vector3 center = (a + b) / 2f;
+
+                                /* Find nearest handful of points */
+                                List<Tuple<Vector3, float>> nearestC = FindNearest(center, points, r);
+
+
+                                /* Attempt to make a face starting with nearest point. check if they are valid then discard or add and continue */
+                                foreach (Tuple<Vector3, float> tuple in nearestC)
+                                {
+                                    Vector3 c = tuple.Item1;
+
+                                    if (c == a || c == b) { continue; } // dont self succ
+
+                                    WetFace nf = new WetFace(a, b, c);
+
+                                    /* Verify not an already existing face */
+                                    foreach (WetFace newFace in newFaces)
+                                    {
+                                        if (newFace == nf) { nf = null; break; }
+                                    }
+                                    if (nf == null) { continue; }
+
+                                    /* Check degenerate */
+                                    if (nf.IsDegenerate()) { continue; }
+
+                                    /* Check if it intersects with any inner edges */
+                                    if (nf.IsIntersect(newEdges)) { continue; }
+
+                                    /* Check if the face is skipping over a vertex on the same edge and effectively encapsulating a smaller face */
+                                    foreach (Vector3 z in points)
+                                    {
+                                        if (z == a || z == b || z == c) { continue; } // make sure this point isnt a part of the new tri
+                                        if (nf.IsInside(z, true)) // see if this point is inside or aligned on the edge of the new tri
+                                        {
+                                            nf = null; break; // if it is then discard because this tri will create an open edge
+                                        }
+
+                                    }
+                                    if (nf == null) { continue; }
+
+                                    /* Last check if the dumbfuck edge case "shrink check" */
+                                    /* Described in the block above that handles triangulated to non triangulated squares. just uhh go look up there. same situation */
+                                    if (nf.Scale(.9f).IsIntersect(newEdges)) { continue; }
+
+                                    /* Cool beans, add it and continue */
+                                    newFaces.Add(nf); newEdges.AddRange(nf.Edges());
+                                    //break; // 1 valid face per initial point is fine for now
+                                }
+                            }
+                        }
+                        Lort.TaskIterate();
+                    }
+                    faces.AddRange(newFaces);
+                }
+
+                SubtractCutouts(cutouts);  // the big boom boom function
+                Lort.TaskIterate();
+
+                Cleanup();                  // does a few minor housekeeping things at the end of mesh gen
+                Lort.TaskIterate();
+
+                // Done! woohoo! that took like 4 days to code
+            }
+
+            /* This constructor makes a water collision mesh for a single cell. This is use for water splash collision plane. Takes a single cell as a param */
+            public WetMesh(Cell cell, List<Cutout> cutouts)
+            {
+                // When using debug consts to build specific sections of the map for debug, its possible the cell at 0,0 isn't loaded. this is a quick check for that
+                Vector3 posOffset = cell != null ? new Vector3(cell.coordinate.x, 0f, cell.coordinate.y) * Const.CELL_SIZE : new(0, 0, 0);
+
+                faces = new();
+                outlines = new();
+
+                float half = Const.CELL_SIZE * .5f;
+                float startX = -half + posOffset.X;
+                float endX = half + posOffset.X;
+                float startY = -half + posOffset.Z;
+                float endY = half + posOffset.Z;
+
+                // make square lol
+                Vector3[] quad = new Vector3[]
+                {
+                            new Vector3(startX, 0, startY),
+                            new Vector3(endX, 0, startY),
+                            new Vector3(endX, 0, endY),
+                            new Vector3(startX, 0, endY)
+                };
+
+                WetFace A = new WetFace(quad[2], quad[1], quad[0]);
+                WetFace B = new WetFace(quad[0], quad[3], quad[2]);
+
+                faces.Add(A);
+                faces.Add(B);
+
+                SubtractCutouts(cutouts);  // walk the dinosaur
+
+                /* collisions will be in indvidual small tile msbs so undo the offset to the worldspace coords */
+                List<WetFace> oldFaces = faces;
+                faces = new();
+                foreach(WetFace face in oldFaces)
+                {
+                    WetFace nf = new(face.a - posOffset, face.b - posOffset, face.c - posOffset);
+                    faces.Add(nf);
+                }
+
+                Cleanup(); // that's a wrap!
+            }
+
+            private void SubtractCutouts(List<Cutout> cutouts)
+            {
                 /* Begin slicing cutouts... god help me */
 
                 /* We check every triangle in the mesh for intersection with a cutout */
@@ -484,14 +999,13 @@ namespace JortPob
                             //cutouts.Remove(cutout); // fully handled, not needed anymore! we are also breaking so no issue with foreach enum
                             faces.RemoveAt(i--);
                             faces.AddRange(newFaces);
-                            foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
-                                    Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
                             break; // we cant do multiple cutouts at the same time so break and we we will loop back through 
                         }
                     }
                 }
 
                 /* Case #2, one or more points of a triangle inside cutout */
+                List<WetFace> defferedFaces = new();
                 for (int i = 0; i < faces.Count(); i++)
                 {
                     WetFace face = faces[i];
@@ -514,8 +1028,9 @@ namespace JortPob
                                 WetEdge edge = outline[ii];
 
                                 /* Both points inside */
-                                if (cutout.IsInside(edge.a, false) && cutout.IsInside(edge.b, false))
+                                if (cutout.IsInside(edge.a, true) && cutout.IsInside(edge.b, true))
                                 {
+                                    // additional note, if all 3 points end up inside the cutout this will fully delete the outline and resulting face
                                     outline.RemoveAt(ii--); continue;  // remove edge and continue, fully removed edges dont need any actual splicing
                                 }
 
@@ -528,7 +1043,7 @@ namespace JortPob
                                     Vector3 nearest = Vector3.NaN; // nearest intersected edge point
                                     foreach (WetEdge cutedge in cutout.Edges())
                                     {
-                                        Vector3 intersection = spl.Intersection(cutedge, false);
+                                        Vector3 intersection = spl.Intersection(cutedge, true);
                                         if (intersection.IsNaN()) { continue; } // no intersection, skip
 
                                         if (nearest.IsNaN() || (Vector3.Distance(nearest, spl.a) > Vector3.Distance(intersection, spl.a)))
@@ -537,19 +1052,19 @@ namespace JortPob
                                         }
                                     }
 
-                                    //possible issue with not being edge inclusive, could debug
-                                    if (nearest.IsNaN()) {
+                                    if (nearest.IsNaN())
+                                    {
                                         // something went wrong and we were unable to find an intersection 
                                         // this seems to be a rare case
-                                        // we need to discard this triangle wholesale for now, i assume this bug is related to edge inclusive intersections
-                                        // if we dont discard we enter an infinite loop of "intersection > attempt to slice > fail > try again"
-                                        // this seems to be the one remaining bug in water slicer code. ffs thank god. @TODO: very very minor bug. only causes like 5 missing tris in the whole thing
                                         outline.RemoveAt(ii--);
                                         continue;
                                     }
 
                                     /* Create new edge from nearest intersection to replace one with engulfed point */
                                     WetEdge replaceEdge = new WetEdge(spl.a, nearest);
+
+                                    if (replaceEdge == edge) { continue; }  // avoid infinite slicing to the same edge
+
                                     outline.RemoveAt(ii--);
                                     outline.Add(replaceEdge);
                                 }
@@ -569,7 +1084,7 @@ namespace JortPob
                             {
                                 if (kvp.Value == 1) { openPoints.Add(kvp.Key); }
                             }
-                            for (int ii = 0; ii < openPoints.Count-1; ii += 2)   // this method of sealing is probably fine but could have trouble in some edge cases. potential bugs!
+                            for (int ii = 0; ii < openPoints.Count - 1; ii += 2)   // this method of sealing is probably fine but could have trouble in some edge cases. potential bugs!
                             {
                                 WetEdge sealEdge = new WetEdge(openPoints[ii], openPoints[ii + 1]);
                                 outline.Add(sealEdge); // arf arf
@@ -596,8 +1111,8 @@ namespace JortPob
                                     /* See if this triangle already exists */
                                     foreach (WetFace newFace in newFaces)
                                     {
-                                        if (nf1 != null && newFace.TolerantEquals(nf1)) { nf1 = null; }
-                                        if (nf2 != null && newFace.TolerantEquals(nf2)) { nf2 = null; }
+                                        if (nf1 != null && newFace == nf1) { nf1 = null; }
+                                        if (nf2 != null && newFace == nf2) { nf2 = null; }
                                     }
 
                                     /* Check if they are valid, then add them if they are */
@@ -606,15 +1121,25 @@ namespace JortPob
                                 }
                             }
 
+                            /* Due to imprecision/edge inclusion issues it's possible we slice a face and end up with the exact same face lol */
+                            /* Due to this lets just compare the generated face to the og face and if its the same lol lmao discard */
+                            if (newFaces.Count() == 1)
+                            {
+                                if (newFaces[0].TolerantEquals(face))
+                                {
+                                    continue;
+                                }
+                            }
+
                             /* Delete the original triangle, and add the new ones to the mesh */
                             faces.RemoveAt(i--);
-                            faces.AddRange(newFaces);
-                            foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
-                                    Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
+                            defferedFaces.AddRange(newFaces);
                             break; // we cant do multiple cutouts at the same time so break and we we will loop back through 
                         }
                     }
                 }
+
+                faces.AddRange(defferedFaces); // cum
 
                 /* Case #3, cutout edge intersects a triangle edge, no points of the triangle are inside the cutout though */
                 /* As an idea to fix infinite recursive slicing lets uhhh make it a single loop through each cutout, adding new faces at the end instead of in loop */
@@ -675,14 +1200,14 @@ namespace JortPob
                         }
                         /* Next we intersect the cutout edges that are inside the triangle and add them to the outline using the original triangle edges. anything entirely outside the tri is discarded */
                         /* Im going to skip accounting for a specific edge case where the cutout intersects through the entire tri without encompassing any points of it. lazy! */
-                         if (
-                            face.IsIntersect(cutout.Edges())||
-                            face.IsInside(cutout.Points()[0], true) ||
-                            face.IsInside(cutout.Points()[1], true) ||
-                            face.IsInside(cutout.Points()[2], true) ||
-                            face.IsInside(cutout.Points()[3], true)
-                            ) 
-                         {
+                        if (
+                           face.IsIntersect(cutout.Edges()) ||
+                           face.IsInside(cutout.Points()[0], true) ||
+                           face.IsInside(cutout.Points()[1], true) ||
+                           face.IsInside(cutout.Points()[2], true) ||
+                           face.IsInside(cutout.Points()[3], true)
+                           )
+                        {
                             foreach (WetEdge cut in cutout.Edges())
                             {
                                 foreach (WetEdge edge in face.Edges())
@@ -715,16 +1240,15 @@ namespace JortPob
                                         {
                                             // assuming since neither point inside, we are bisecting the tri entirely. 
                                             Vector3 bisectionPoint = Vector3.NaN;
-                                            foreach(WetEdge e in face.Edges())
+                                            foreach (WetEdge e in face.Edges())
                                             {
-                                                if(edge == e) { continue; }  // looking for the other edge we hit
+                                                if (edge == e) { continue; }  // looking for the other edge we hit
                                                 bisectionPoint = cut.Intersection(e, false);
                                                 if (!bisectionPoint.IsNaN()) { break; } // 99% sure i dont need to test beyond the first positive result
                                             }
-                                            if(bisectionPoint.IsNaN())
+                                            if (bisectionPoint.IsNaN())
                                             {
-                                                Console.WriteLine("BAD BAD BAD"); // @TODO: REMOVE, if this happens we die instantly
-                                                continue;
+                                                continue; // rare case, we just discard it because bad
                                             }
                                             WetEdge newEdge = new(intersection, bisectionPoint);
                                             outline.Add(newEdge);
@@ -735,15 +1259,15 @@ namespace JortPob
 
                             /* Check if triangle is still sealed, (it's probably a polygon now but uhhh yeah just go ahead. if it's not sealed then seal it */
                             /* attempt to weld points and fix issues caused by imprecision of intersection results */
-                            foreach(WetEdge A in outline)
+                            foreach (WetEdge A in outline)
                             {
                                 // attempt to weld each pair of points based on which point appears to be less mangled by imprecision
                                 foreach (WetEdge B in outline)
                                 {
                                     // a to a
-                                    if(Vector3.Distance(A.a, B.a) < 0.001)
+                                    if (Vector3.Distance(A.a, B.a) < 0.001)
                                     {
-                                        if(cutout.IsInside(A.a, false)) { A.a = B.a; }
+                                        if (cutout.IsInside(A.a, false)) { A.a = B.a; }
                                         else { B.a = A.a; }
                                     }
                                     // a to b
@@ -786,19 +1310,20 @@ namespace JortPob
                             {
                                 Vector3 pA = openPoints[ii];
                                 Vector3 nearest = Vector3.NaN;
-                                for(int jj=0;jj<openPoints.Count;jj++)
+                                for (int jj = 0; jj < openPoints.Count; jj++)
                                 {
-                                    if(ii == jj) { continue; } // self succ prevention
+                                    if (ii == jj) { continue; } // self succ prevention
                                     Vector3 pB = openPoints[jj];
-                                    if(nearest.IsNaN() || Vector3.Distance(pA, nearest) > Vector3.Distance(pA, pB))
+                                    if (nearest.IsNaN() || Vector3.Distance(pA, nearest) > Vector3.Distance(pA, pB))
                                     {
                                         nearest = pB;
                                     }
                                 }
 
-                                if (nearest.IsNaN()) {
+                                if (nearest.IsNaN())
+                                {
                                     continue; // fail to seal
-                                } 
+                                }
 
                                 WetEdge sealEdge = new(pA, nearest);
                                 outline.Add(sealEdge);
@@ -810,7 +1335,7 @@ namespace JortPob
                             List<List<WetEdge>> islands = new();
                             islands.Add(outline);
 
-                            AddDebugOutline(outline);
+                            //AddDebugOutline(outline);
 
                             /* Now that we are finally done creating the edge outline, lets fill it in with triangles */
                             /* Do a raycast from each edge to every other point and fill in with valid triangles */
@@ -834,8 +1359,8 @@ namespace JortPob
                                         /* See if this triangle already exists */
                                         foreach (WetFace newFace in newFaces)
                                         {
-                                            if (nf1 != null && newFace.TolerantEquals(nf1)) { nf1 = null; }
-                                            if (nf2 != null && newFace.TolerantEquals(nf2)) { nf2 = null; }
+                                            if (nf1 != null && newFace == nf1) { nf1 = null; }
+                                            if (nf2 != null && newFace == nf2) { nf2 = null; }
                                         }
 
                                         /* See if this newly generated triangle actually falls inside of a cutout */
@@ -858,7 +1383,7 @@ namespace JortPob
                                         /* test the new edges of this triangle, skip outline edge */ // not used
                                         bool BaseSkipIntersectTest(WetFace f)
                                         {
-                                            foreach(WetEdge cutedge in cutout.Edges())
+                                            foreach (WetEdge cutedge in cutout.Edges())
                                             {
                                                 if (!cutedge.Intersection(new WetEdge(f.a, f.b), false).IsNaN()) { return true; }
                                                 if (!cutedge.Intersection(new WetEdge(f.c, f.b), false).IsNaN()) { return true; }
@@ -886,14 +1411,89 @@ namespace JortPob
                             faces.RemoveAt(i--);
                         }
                     }
-                    foreach(WetFace f in newFaces){ if(f.a.IsNaN() || f.b.IsNaN() || f.c.IsNaN()) {
-                        Console.WriteLine("GUH"); break; } } // Compact guh check @TODO: delete debug stuff
                     faces.AddRange(newFaces);
                 }
             }
 
-            /* DEBUG @TODO: remove later */
-            public Obj ToObj()
+            private void Cleanup()
+            {
+                /* Unify all faces */
+                Vector3 up = Vector3.UnitY;
+                for (int i = 0; i < faces.Count(); i++)
+                {
+                    WetFace face = faces[i];
+
+                    if (Vector3.Dot(face.Normal(), up) < 0)
+                    {
+                        faces[i] = face.Flip();
+                    }
+                }
+
+                /* Weld all verts fairly aggressively */
+                /* Delete any faces that become degenerate from welding as well */
+                List<Vector3> verts = new();
+                Vector3 GetVert(Vector3 v)
+                {
+                    foreach (Vector3 vert in verts)
+                    {
+                        if (Vector3.Distance(v, vert) < 0.011)
+                        {
+                            return vert;
+                        }
+                    }
+
+                    Vector3 r = new Vector3((float)Math.Round(v.X, 2), (float)Math.Round(v.Y, 2), (float)Math.Round(v.Z, 2));
+                    verts.Add(r);
+                    return r;
+                }
+                List<WetFace> oldFaces = faces;
+                faces = new();
+                foreach (WetFace face in oldFaces)
+                {
+                    Vector3 a = GetVert(face.a);
+                    Vector3 b = GetVert(face.b);
+                    Vector3 c = GetVert(face.c);
+                    WetFace nf = new(a, b, c);
+
+                    if (nf.IsDegenerate()) { continue; } // discard degenerates created by rounding
+
+                    faces.Add(nf);
+                }
+            }
+
+            /* Makes a collision obj with the given material type */
+            public Obj ToObj(Obj.CollisionMaterial material)
+            {
+                Obj obj = new();
+                // water mesh
+                {
+                    ObjG g = new();
+                    g.name = material.ToString();
+                    g.mtl = $"hkm_{g.name}_Safe1";
+
+                    obj.vns.Add(new Vector3(0, 1, 0));
+                    obj.vts.Add(new Vector3(0, 0, 0));
+
+                    foreach (WetFace face in faces)
+                    {
+                        obj.vs.Add(face.a);
+                        obj.vs.Add(face.b);
+                        obj.vs.Add(face.c);
+
+                        ObjV A = new(obj.vs.Count() - 3, 0, 0);
+                        ObjV B = new(obj.vs.Count() - 2, 0, 0);
+                        ObjV C = new(obj.vs.Count() - 1, 0, 0);
+
+                        ObjF f = new(A, B, C);
+                        g.fs.Add(f);
+                    }
+                    obj.gs.Add(g);
+                }
+                return obj;
+            }
+
+            /* Debug code, not actually used unless I'm working on this class. Leaving it because it's not hurting anything really */
+            public Obj ToDebugObj()
             {
                 Obj obj = new();
                 // water mesh
@@ -931,10 +1531,10 @@ namespace JortPob
 
                     Vector3 up = new(0, 5f, 0); // offset for debug
 
-                    foreach(Cutout cutout in cutouts)
+                    foreach (Cutout cutout in CUTOUTS)
                     {
                         List<WetFace> faces = cutout.Faces();
-                        foreach(WetFace face in faces)
+                        foreach (WetFace face in faces)
                         {
                             obj.vs.Add(face.a + up);
                             obj.vs.Add(face.b + up);
@@ -952,7 +1552,7 @@ namespace JortPob
                 }
                 // debug outline meshes
                 int i = 0;
-                foreach(List<WetFace> group in outlines)
+                foreach (List<WetFace> group in outlines)
                 {
                     ObjG g = new();
                     g.name = $"outline [{i++}]";
@@ -984,11 +1584,13 @@ namespace JortPob
         public class Cutout
         {
             public readonly Vector3 position, rotation;
-            public float size; // @TODO: reaadonly....
+            public float size;
+            public float height;
             public Cutout(Vector3 position, Vector3 rotation, float size)
             {
                 this.position = position - new Vector3(Const.CELL_SIZE * .5f, 0, Const.CELL_SIZE * .5f);
-                this.position.Y = 0; // @TODO: debug just to verify its a nonissue
+                this.position.Y = 0; // while it may not make a whole lot of sense... 
+                height = position.Y; // height values do actually break *something* in the cutout slicer. so uhhh lets just seperate it for my own sanity
                 this.rotation = rotation;
                 this.size = size;
             }
@@ -1102,8 +1704,34 @@ namespace JortPob
                 };
             }
 
+            /* Calculate and return normal */
+            public Vector3 Normal()
+            {
+                Vector3 ab = b - a;
+                Vector3 ac = c - a;
+
+                return Vector3.Normalize(Vector3.Cross(ab, ac));
+            }
+
+            /* Return flipped version of this triangle */
+            public WetFace Flip()
+            {
+                return new WetFace(c, b, a);
+            }
+
+            /* Return a scaled version of the triangle, used for a stupid edge case for intersection called the "shrink check" */
+            public WetFace Scale(float scale)
+            {
+                Vector3 center = (a + b + c) / 3f; // center of triangle
+                Vector3 na = Vector3.Lerp(center, a, scale);
+                Vector3 nb = Vector3.Lerp(center, b, scale);
+                Vector3 nc = Vector3.Lerp(center, c, scale);
+                return new WetFace(na, nb, nc);
+            }
+
             public bool Equals(WetFace B)
             {
+                if (B == null) { return false; }
                 return
                     (a == B.a && b == B.b && c == B.c) ||
                     (a == B.a && c == B.b && b == B.c) ||
@@ -1112,6 +1740,15 @@ namespace JortPob
                     (c == B.a && a == B.b && b == B.c) ||
                     (c == B.a && b == B.b && a == B.c);
             }
+
+            public static bool operator ==(WetFace A, WetFace B)
+            {
+                if (A is null) { return B is null; }
+                return A.Equals(B);
+            }
+            public static bool operator !=(WetFace A, WetFace B) => !(A == B);
+
+            public override bool Equals(object A) => Equals(A as WetFace);
 
             public bool TolerantEquals(WetFace B)
             {
@@ -1132,6 +1769,8 @@ namespace JortPob
             /* Degenerate triangles have no surface area, just delete it. 2 smaller sides of a tri should never add up to the largest side. */
             public bool IsDegenerate()
             {
+                if (a == b || a == c || b == c) { return true; } // obviously degen if a point is used more than once
+
                 float[] sides = new[] { Vector3.Distance(a, b), Vector3.Distance(b, c), Vector3.Distance(c, a) };
                 Array.Sort(sides);
                 return sides[0] + sides[1] <= sides[2];
@@ -1198,16 +1837,41 @@ namespace JortPob
                 this.b = b;
             }
 
+            public bool Equals(WetEdge B)
+            {
+                if (B == null) { return false; }
+                return
+                    (a == B.a && b == B.b) ||
+                    (a == B.b && b == B.a);
+            }
+
+            public static bool operator ==(WetEdge A, WetEdge B)
+            {
+                if (A is null) { return B is null; }
+                return A.Equals(B);
+            }
+            public static bool operator !=(WetEdge A, WetEdge B) => !(A == B);
+
+            public override bool Equals(object A) => Equals(A as WetEdge);
+
             public WetEdge Reverse()
             {
                 return new WetEdge(b, a);
+            }
+
+            /* Not super accurate, just using center point to center point distance calc, good enough for what i'm doing */
+            public float Distance(WetEdge B)
+            {
+                Vector3 centerA = (a + b) / 2f;
+                Vector3 centerB = (B.a + B.b) / 2f;
+                return Vector3.Distance(centerA, centerB);
             }
 
             // mostly copied from 20xx.io util class because guh
             public Vector3 Intersection(WetEdge B, bool edgeInclusive)
             {
                 // check if the end points are the intersection and discard if so! since we are working with triangles i am not considering endpoints part of an intersection as it means faces intersect themselves and neighbour faces
-                if (!edgeInclusive && (a.TolerantEquals(B.a) || a.TolerantEquals(B.b) || b.TolerantEquals(B.a) || b.TolerantEquals(B.b)))
+                if (!edgeInclusive && (a == B.a || a == B.b || b == B.a || b == B.b))
                 {
                     return Vector3.NaN;
                 }
@@ -1230,7 +1894,7 @@ namespace JortPob
                     Vector3 intersection = new(i_x, 0, i_y);
 
                     // if the intersection point is exactly on an endpoint, we discard. we dont want that behavriour in this situation
-                    if(!edgeInclusive && (intersection.TolerantEquals(a) || intersection.TolerantEquals(b) || intersection.TolerantEquals(B.a) || intersection.TolerantEquals(B.b)))
+                    if(!edgeInclusive && (intersection == a || intersection == b || intersection == B.a || intersection == B.b))
                     {
                         return Vector3.NaN;
                     }

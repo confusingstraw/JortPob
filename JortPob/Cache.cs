@@ -9,9 +9,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -26,6 +28,7 @@ namespace JortPob
         public List<ModelInfo> assets;
         public List<ObjectInfo> objects;
         public List<WaterInfo> waters;
+        public List<CutoutInfo> cutouts; // defines collision planes for swamps/lava
 
         public Cache()
         {
@@ -33,6 +36,8 @@ namespace JortPob
             assets = new();
             objects = new();
             terrains = new();
+            waters = new();
+            cutouts = new();
         }
 
         /* Get a terrain by coordinate */
@@ -43,6 +48,19 @@ namespace JortPob
                 if(terrain.coordinate == coordinate)
                 {
                     return terrain;
+                }
+            }
+            return null;
+        }
+
+        /* Get a cutout by coordinate */
+        public CutoutInfo GetCutout(Int2 coordinate)
+        {
+            foreach(CutoutInfo cutout in cutouts)
+            {
+                if(cutout.coordinate == coordinate)
+                {
+                    return cutout;
                 }
             }
             return null;
@@ -161,11 +179,14 @@ namespace JortPob
                 /* Convert models/textures for terrain */
                 nu.terrains = LandscapeWorker.Go(materialContext, esm);
 
-                /* Generate stuff for water */
-                nu.waters = WaterManager.Generate(esm, materialContext);  // @TODO: moved this up for testing. move it back down after
+                /* Generate stuff for cutouts */
+                nu.cutouts = WaterManager.GenerateCutouts(esm);
 
                 /* Convert models/textures for models */
                 nu.assets = FlverWorker.Go(materialContext, meshes);
+
+                /* Generate stuff for water */
+                nu.waters.Add(WaterManager.GenerateWater(esm, materialContext));
 
                 /* Write textures */
                 materialContext.WriteAll();
@@ -193,7 +214,11 @@ namespace JortPob
                 }
                 foreach(WaterInfo water in nu.waters)
                 {
-                    collisions.Add(water.collision);
+                    collisions.AddRange(water.GetCollision());
+                }
+                foreach (CutoutInfo cutout in nu.cutouts)
+                {
+                    collisions.Add(cutout.collision);
                 }
                 HkxWorker.Go(collisions);
 
@@ -235,6 +260,7 @@ namespace JortPob
         public readonly string path;
         public List<CollisionInfo> collision;
         public List<TextureInfo> textures; // All generated tpf files
+        public bool hasWater, hasLava, hasSwamp; // caching these flags so we dont have to load the landscape to find out
 
         public int id;
         public TerrainInfo(Int2 coordinate, string path)
@@ -245,6 +271,10 @@ namespace JortPob
             collision = new();
 
             id = -1;
+
+            hasWater = false;
+            hasLava = false;
+            hasSwamp = false;
         }
     }
 
@@ -329,12 +359,13 @@ namespace JortPob
     {
         public int id;
         public string path;
-        public CollisionInfo collision;   // Not true collision, just used for the water plane to have splashy splashers when you splash through it
+        public List<Tuple<Int2, CollisionInfo>> collision;   // Not true collision, just used for the water plane to have splashy splashers when you splash through it
 
         public WaterInfo(int id, string path)
         {
             this.id = id;
             this.path = path;
+            collision = new();
         }
 
         public string AssetPath()
@@ -356,6 +387,45 @@ namespace JortPob
             int v1 = Const.WATER_ASSET_GROUP + (int)(id / 1000);
             int v2 = id % 1000;
             return int.Parse($"{v1.ToString("D3")}{v2.ToString("D3")}");  // yes i know this the wrong way to do this but guh
+        }
+
+        public void AddCollision(Int2 coordinate, CollisionInfo collisionInfo)
+        {
+            collision.Add(new(coordinate, collisionInfo));
+        }
+
+        public List<CollisionInfo> GetCollision()
+        {
+            List<CollisionInfo> ret = new();
+            foreach(Tuple<Int2, CollisionInfo> tuple in collision)
+            {
+                ret.Add(tuple.Item2);
+            }
+            return ret;
+        }
+
+        public CollisionInfo GetCollision(Int2 coordinate)
+        {
+            foreach (Tuple<Int2, CollisionInfo> tuple in collision)
+            {
+                if (tuple.Item1 == coordinate)
+                {
+                    return tuple.Item2;
+                }
+            }
+            return GetCollision(new Int2(0, 0)); // we use 0,0 as the default no cutout water plane collision. if this is missing it will stack overflow and crash. should never happen but lol
+        }
+    }
+
+    public class CutoutInfo
+    {
+        public readonly Int2 coordinate;
+        public CollisionInfo collision;
+
+        public CutoutInfo(Int2 coordinate, CollisionInfo collision)
+        {
+            this.coordinate = coordinate;
+            this.collision = collision;
         }
     }
 
