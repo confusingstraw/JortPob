@@ -1,12 +1,14 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Transactions;
+using static SoulsAssetPipeline.Animation.HKX;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JortPob
@@ -123,9 +125,41 @@ namespace JortPob
     /* invisible lights with no static mesh associated */
     public class LightContent : Content 
     {
+        public readonly Byte4 color;
+        public readonly float radius, weight;
+        public readonly int value, time;
+
+        public bool dynamic, fire, negative, defaultOff;
+        public Mode mode;
+
+        public enum Mode { Flicker, FlickerSlow, Pulse, PulseSlow, Default }
+
         public LightContent(JsonNode json, Record record) : base(json, record)
         {
+            int r = int.Parse(record.json["data"]["color"][0].ToString());
+            int g = int.Parse(record.json["data"]["color"][1].ToString());
+            int b = int.Parse(record.json["data"]["color"][2].ToString());
+            int a = int.Parse(record.json["data"]["color"][3].ToString());
+            color = new(r, g, b, a);  // 0 -> 255 colors
 
+            radius = float.Parse(record.json["data"]["radius"].ToString()) * Const.GLOBAL_SCALE;
+            weight = float.Parse(record.json["data"]["weight"].ToString());
+
+            value = int.Parse(record.json["data"]["value"].ToString());
+            time = int.Parse(record.json["data"]["time"].ToString());
+
+            string flags = record.json["data"]["flags"].ToString();
+
+            dynamic = flags.Contains("DYNAMIC");
+            fire = flags.Contains("FIRE");
+            negative = flags.Contains("NEGATIVE");
+            defaultOff = flags.Contains("OFF_BY_DEFAULT");
+
+            if (flags.Contains("FLICKER_SLOW")) { mode = Mode.FlickerSlow; }
+            else if (flags.Contains("FLICKER")) { mode = Mode.Flicker; }
+            else if (flags.Contains("PULSE_SLOW")) { mode = Mode.PulseSlow; }
+            else if (flags.Contains("PULSE")) { mode = Mode.Pulse; }
+            else { mode = Mode.Default; }
         }
     }
 }

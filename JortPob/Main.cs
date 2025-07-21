@@ -44,8 +44,6 @@ namespace JortPob
             Paramanager param = new();                                                        // Class for managing PARAM files
 
             /* Generate exterior msbs from layout */
-            Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
-            Vector3 TEST_OFFSET2 = new(0, -15, 0);
             List<ResourcePool> msbs = new();
 
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
@@ -56,7 +54,8 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new();
-                ResourcePool pool = new(tile, msb);
+                LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
+                ResourcePool pool = new(tile, msb, lightManager);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Collision Indices */
@@ -79,7 +78,7 @@ namespace JortPob
                             MSBE.Part.Collision collision = MakePart.Collision();
                             collision.Name = $"h{collisionIndex}_0000";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
 
                             msb.Parts.Collisions.Add(collision);
                             pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
@@ -97,7 +96,7 @@ namespace JortPob
                             MSBE.Part.Collision collision = MakePart.WaterCollision();
                             collision.Name = $"h{collisionIndex}_0000";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
 
                             msb.Parts.Collisions.Add(collision);
                             pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
@@ -114,7 +113,7 @@ namespace JortPob
                                 MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                                 collision.Name = $"h{collisionIndex}_0000";
                                 collision.ModelName = $"h{collisionIndex}";
-                                collision.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                                collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
 
                                 msb.Parts.Collisions.Add(collision);
                                 pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
@@ -131,7 +130,7 @@ namespace JortPob
 
                     /* Make part */
                     MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
-                    asset.Position = content.relative + TEST_OFFSET1 + TEST_OFFSET2;
+                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale()?(content.scale*0.01f):1f);
 
@@ -146,11 +145,17 @@ namespace JortPob
                     msb.Parts.Assets.Add(asset);
                 }
 
+                /* Add lights */
+                foreach(LightContent light in tile.lights)
+                {
+                    lightManager.CreateLight(light);
+                }
+
                 /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
                 foreach (NpcContent npc in tile.npcs)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Npc();
-                    enemy.Position = npc.relative + TEST_OFFSET1 + TEST_OFFSET2;
+                    enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     enemy.Rotation = npc.rotation;
 
                     msb.Parts.Enemies.Add(enemy);
@@ -160,7 +165,7 @@ namespace JortPob
                 foreach (CreatureContent creature in tile.creatures)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Creature();
-                    enemy.Position = creature.relative + TEST_OFFSET1 + TEST_OFFSET2;
+                    enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     enemy.Rotation = creature.rotation;
 
                     msb.Parts.Enemies.Add(enemy);
@@ -170,7 +175,7 @@ namespace JortPob
                 if (tile.GetType() == typeof(Tile))
                 {
                     MSBE.Part.Player player = MakePart.Player();
-                    player.Position = tile.npcs.Count > 1 ? tile.npcs[0].relative : TEST_OFFSET1;
+                    player.Position = tile.npcs.Count > 1 ? tile.npcs[0].relative : Const.TEST_OFFSET1;
                     msb.Parts.Players.Add(player);
                 }
 
@@ -193,7 +198,8 @@ namespace JortPob
 
                 /* Generate msb from group */
                 MSBE msb = new();
-                ResourcePool pool = new(group, msb);
+                LightManager lightManager = new(group.map, group.area, group.unk, group.block);
+                ResourcePool pool = new(group, msb, lightManager);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Handle chunks */
@@ -215,10 +221,16 @@ namespace JortPob
 
                         //asset.InstanceID = INSTANCETEST++;
 
-                        asset.Position = content.relative + TEST_OFFSET1 + TEST_OFFSET2;
+                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.IsDynamic() ? (content.scale * 0.01f) : 1f);
                         msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Add lights */
+                    foreach (LightContent light in chunk.lights)
+                    {
+                        lightManager.CreateLight(light);
                     }
 
                     /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
@@ -226,7 +238,7 @@ namespace JortPob
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
                         enemy.Name = $"c0000_{npc.id.Replace(" ", "")}";
-                        enemy.Position = new Vector3(npc.relative.X, 3, npc.relative.Z) + TEST_OFFSET1;
+                        enemy.Position = new Vector3(npc.relative.X, 3, npc.relative.Z) + Const.TEST_OFFSET1;
                         enemy.Rotation = npc.rotation;
                         enemy.InstanceID = -1;
                         enemy.EntityID = 0;
@@ -239,7 +251,7 @@ namespace JortPob
                     {
                         MSBE.Part.Enemy enemy = MakePart.Creature();
                         enemy.Name = $"c6060_{creature.id.Replace(" ", "")}";
-                        enemy.Position = new Vector3(creature.relative.X, 3, creature.relative.Z) + TEST_OFFSET1;
+                        enemy.Position = new Vector3(creature.relative.X, 3, creature.relative.Z) + Const.TEST_OFFSET1;
                         enemy.Rotation = creature.rotation;
                         enemy.InstanceID = -1;
                         enemy.ModelName = "c6060";
@@ -251,7 +263,7 @@ namespace JortPob
 
                 /* TEST players */  // Generic player spawn point at the center of the cell for testing purposes
                 MSBE.Part.Player player = MakePart.Player();
-                player.Position = TEST_OFFSET1;
+                player.Position = Const.TEST_OFFSET1;
 
                 msb.Parts.Players.Add(player);
 
@@ -320,10 +332,11 @@ namespace JortPob
         public int[] id;
         public List<Tuple<int, string>> mapIndices;
         public MSBE msb;
+        public LightManager lights;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
         /* Exterior cells */
-        public ResourcePool(BaseTile tile, MSBE msb)
+        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights)
         {
             id = new int[]
             {
@@ -332,10 +345,11 @@ namespace JortPob
             mapIndices = new();
             collisionIndices = new();
             this.msb = msb;
+            this.lights = lights;
         }
 
         /* Interior cells */
-        public ResourcePool(InteriorGroup group, MSBE msb)
+        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights)
         {
             id = new int[]
             {
@@ -343,11 +357,12 @@ namespace JortPob
             };
             mapIndices = new();
             this.msb = msb;
+            this.lights = lights;
             collisionIndices = new();
         }
 
         /* Super overworld */
-        public ResourcePool(MSBE msb)
+        public ResourcePool(MSBE msb, LightManager lights)
         {
             id = new int[]
             {
@@ -355,6 +370,7 @@ namespace JortPob
             };
             mapIndices = new();
             this.msb = msb;
+            this.lights = lights;
             collisionIndices = new();
         }
 

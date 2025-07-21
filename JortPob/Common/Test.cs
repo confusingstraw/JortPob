@@ -95,7 +95,7 @@ namespace JortPob
             {
                 if (tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
 
-                ResourcePool pool = new(tile, null);
+                ResourcePool pool = new(tile, null, null);
 
                 /* Add terrain */
                 foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)

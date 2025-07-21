@@ -19,7 +19,8 @@ namespace JortPob
         public static ResourcePool Generate(Cache cache, ESM esm, Paramanager param)
         {
             MSBE msb = MSBE.Read(Utility.ResourcePath(@"msb\m60_00_00_99.msb.dcx"));
-            ResourcePool pool = new(msb);
+            LightManager lightManager = new(60, 00, 00, 99);
+            ResourcePool pool = new(msb, lightManager);
 
             /* Delete all vanilla map parts */
             msb.Parts.MapPieces.Clear();
@@ -54,10 +55,8 @@ namespace JortPob
             }
 
             /* Add water */
-            Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
-            Vector3 TEST_OFFSET2 = new(0, -15, 0);
             MSBE.Part.Asset water = MakePart.Asset(cache.GetWater());
-            water.Position = center + TEST_OFFSET1 + TEST_OFFSET2;
+            water.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
             msb.Parts.Assets.Add(water);
 
             /* Add terrain */
@@ -68,7 +67,7 @@ namespace JortPob
                 MSBE.Part.MapPiece map = MakePart.MapPiece();
                 map.Name = $"m{terrainInfo.id.ToString("D8")}_0000";
                 map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
-                map.Position = position + TEST_OFFSET1 + TEST_OFFSET2;
+                map.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                 map.PartsDrawParamID = param.terrainDrawParamID;
 
                 msb.Parts.MapPieces.Add(map);

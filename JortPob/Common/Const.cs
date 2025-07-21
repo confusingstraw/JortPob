@@ -71,6 +71,11 @@ namespace JortPob.Common
         public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f; // increase size of cutouts slightly to maybe make them work cleaner
         #endregion
 
+        #region TEST
+        public static readonly Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
+        public static readonly Vector3 TEST_OFFSET2 = new(0, -15, 0); // these should both be deleted eventually
+        #endregion
+
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = true; // slow as shit, skipping this saves about a minute per build
@@ -85,7 +90,7 @@ namespace JortPob.Common
 
 
 
-        /* Some ugly cocks */
+        /* Some CBT */
         public struct LOD_VALUE
         {
             public readonly FLVER2.FaceSet.FSFlags FLAG;

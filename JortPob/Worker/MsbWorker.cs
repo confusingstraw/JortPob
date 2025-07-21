@@ -32,6 +32,7 @@ namespace JortPob.Worker
             string name = $"{pool.id[0].ToString("D2")}_{pool.id[1].ToString("D2")}_{pool.id[2].ToString("D2")}_{pool.id[3].ToString("D2")}";
 
             pool.msb.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m{name}.msb.dcx");
+            if (pool.lights.Count() > 0) { pool.lights.Write(); }
 
             /* Write map pieces like terrain */
             foreach (Tuple<int, string> mp in pool.mapIndices)
