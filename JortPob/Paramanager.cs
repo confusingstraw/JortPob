@@ -1,4 +1,5 @@
 ﻿using HKLib.hk2018.hk;
+using HKLib.hk2018.TypeRegistryTest;
 using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
@@ -10,6 +11,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using static JortPob.FxrManager;
+using static SoulsFormats.PARAM;
 
 namespace JortPob
 {
@@ -105,7 +108,7 @@ namespace JortPob
                 Lort.TaskIterate();
                 try
                 {
-                    ParamDefType ty = (ParamDefType)Enum.Parse(typeof(ParamDefType), p.ParamType);
+                    ParamDefType ty = (ParamDefType)System.Enum.Parse(typeof(ParamDefType), p.ParamType);
                     paramdefs.Add(ty, p);
                 }
                 catch(Exception ex)
@@ -156,6 +159,17 @@ namespace JortPob
                 if (row.ID == id) { return row; }
             }
             return null;
+        }
+
+        public PARAM.Row CloneRow(PARAM.Row source, PARAMDEF paramdef, string newName, int newID)
+        {
+            PARAM.Row row = new(newID, newName, paramdef);
+            for (int j = 0; j < source.Cells.Count; j++)
+            {
+                PARAM.Cell src = source.Cells[j];
+                row.Cells[j].Value = src.Value;
+            }
+            return row;
         }
 
         public void Write()
@@ -228,6 +242,76 @@ namespace JortPob
                     row.Cells[3].Value = 0;           // Hit type (LO ONLY)
                     row.Cells[4].Value = 1;           // BehaviourType, affects HKX scaling and breakability
                     assetParam.Rows.Add(row);
+                }
+            }
+        }
+
+        public void GenerateAssetRows(List<EmitterInfo> assets)
+        {
+            PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
+            foreach (EmitterInfo asset in assets)
+            {
+                /* We just make all emitters dynamic assets because I can't be asked to sort out baked scaling for them rn */
+                /* There aren't that many of them and most will be no-collide so its fine prolly */
+                // Clone a specific row as our baseline
+                {
+                    PARAM.Row source = GetRow(7077, assetParam);   // 7077 is a big stone building part in the overworld
+                    PARAM.Row row = new(asset.AssetRow(), asset.record, assetParam.AppliedParamdef);
+                    for (int i = 0; i < source.Cells.Count; i++)
+                    {
+                        PARAM.Cell src = source.Cells[i];
+                        row.Cells[i].Value = src.Value;
+                    }
+
+                    // Set some values and add
+                    row.Cells[2].Value = AssetPartDrawParamBySize(asset.model);        // DrawParamID
+                    row.Cells[3].Value = 0;           // Hit type (LO ONLY)
+                    row.Cells[4].Value = 0;           // BehaviourType, affects HKX scaling and breakability
+                    assetParam.Rows.Add(row);
+                }
+
+                /* If the asset has some emitter or attachlight nodes we create an sfx param for it */
+                {
+                    if (!asset.HasEmitter() && asset.GetAttachLight() == -1) { continue; }  // really shouldnt happen but...
+
+                    int offset = 0;
+                    PARAM emitterParam = param[ParamType.AssetModelSfxParam];
+                    PARAM.Row row = CloneRow(GetRow(228039000, emitterParam), emitterParam.AppliedParamdef, $"emitter-{asset.record}", asset.AssetRow() * 1000); // 228039000 is a candle in the round table hold
+                    /* Quick optimization */
+                    /* In Morrowind they comibne multiple effects for some emitter things. Most notably a campfire is like 5 emitters */
+                    /* In Elden Ring they jus thave a single simple campfire FXR. So uhhh let's just look and see if a MW emitter has the fire part and then delete the rest to make things easier. */
+                    if (asset.model.dummies.ContainsKey("superspray01 emitter"))
+                    {
+                        asset.model.dummies.Remove("smoke emitter");
+                        asset.model.dummies.Remove("sparks emitter");
+                    }
+
+                    if (asset.model.dummies.ContainsKey("fire emitter"))
+                    {
+                        asset.model.dummies.Remove("smoke emitter");
+                        asset.model.dummies.Remove("sparks emitter");
+                    }
+                    foreach (KeyValuePair<string, short> kvp in asset.model.dummies)
+                    {
+                        string name = kvp.Key;
+                        short refid = kvp.Value;
+                        int fxrid = FxrManager.GetFXR(name);
+
+                        if (fxrid != -1)
+                        {
+                            row.Cells[0 + (offset * 3)].Value = fxrid;
+                            row.Cells[1 + (offset * 3)].Value = refid;
+                            offset++;
+                        }
+                    }
+
+                    if (asset.GetAttachLight() != -1)
+                    {
+                        row.Cells[0 + (offset * 3)].Value = FxrManager.GetLightFXR(asset);
+                        row.Cells[1 + (offset * 3)].Value = asset.GetAttachLight();
+                    }
+
+                    emitterParam.Rows.Add(row);
                 }
             }
         }

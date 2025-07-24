@@ -1,8 +1,11 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.hk;
+using HKLib.hk2018.TypeRegistryTest;
+using JortPob.Common;
 using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -54,18 +57,45 @@ namespace JortPob.Model
             List<Tuple<Node, Mesh>> fbxMeshes = new();
             List<Tuple<Node, Mesh>> fbxCollisions = new();
 
+            Vector3 CollapseTransform(Node node)
+            {
+                Vector3 position = Vector3.Zero;
+
+                Node parent = node;
+                while (parent != null)
+                {
+                    Vector3 translation;
+                    Quaternion rotation;
+                    Vector3 scale;
+                    Matrix4x4.Decompose(parent.Transform, out scale, out rotation, out translation);
+                    translation = new Vector3(parent.Transform.M14, parent.Transform.M24, parent.Transform.M34); // Hack
+
+                    rotation = Quaternion.Inverse(rotation);
+
+                    Matrix4x4 ms = Matrix4x4.CreateScale(scale);
+                    Matrix4x4 mr = Matrix4x4.CreateFromQuaternion(rotation);
+                    Matrix4x4 mt = Matrix4x4.CreateTranslation(translation);
+
+                    position = Vector3.Transform(position, ms * mr * mt);
+
+                    parent = parent.Parent;
+                }
+                return position;
+            }
+
             void FBXHierarchySearch(Node fbxParentNode, bool isCollision)
             {
                 foreach (Node fbxChildNode in fbxParentNode.Children)
                 {
                     string nodename = fbxChildNode.Name.ToLower();
+
                     if (nodename.Trim().ToLower() == "collision")
                     {
                         isCollision = true;
                     }
                     if (nodename.Contains("attachlight") || nodename.Contains("emitter"))
                     {
-                        // nodes.Add(new(nodename, fbxComponent.AbsoluteTransform.Translation * GLOBAL_SCALE)); // @TODO: dummies!
+                        nodes.Add(new(nodename, CollapseTransform(fbxChildNode)));
                     }
                     if (fbxChildNode.HasMeshes)
                     {
@@ -90,6 +120,10 @@ namespace JortPob.Model
                 Node node = tuple.Item1;
                 Mesh fbxMesh = tuple.Item2;
 
+                /* Some Fix-up code here. We need to remove any meshes with a name like "ShadowBox" */
+                /* These meshes are used for like shadow stencils or... something? Regardless they are worthless in the ER engine */
+                if(fbxMesh.Name.ToLower().Contains("shadowbox")) { index++; continue; }
+
                 /* Generate blank flver mesh and faceset */
                 FLVER2.Mesh flverMesh = new();
                 FLVER2.FaceSet flverFaces = new();
@@ -112,7 +146,7 @@ namespace JortPob.Model
                 {
                     Lort.Log($"## WARNING ## {rootNode.Name}->{fbxMesh.Name} has no tangent data!", Lort.Type.Debug);
                 }
-                foreach (Face fbxFace in fbxMesh.Faces)          // @TODO: possible optimization of reusing duplicate vertices, for now just making all indices 1 to 1 for simplicity
+                foreach (Face fbxFace in fbxMesh.Faces)
                 {
                     for (int i = 0; i < 3; i++)
                     {
@@ -205,6 +239,35 @@ namespace JortPob.Model
                 }
 
                 flver.Meshes.Add(flverMesh);
+            }
+
+            /* Add Dummy Polys */
+            short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
+            foreach(Tuple<string, Vector3> tuple in nodes)
+            {
+                string name = tuple.Item1;
+                Vector3 position = tuple.Item2;
+
+                if (name.Contains(".0")) { name = name.Substring(0, name.Length - 4); }   // Duplicate nodes get a '.001' and what not appended to their names. Remove that.
+                short refid = modelInfo.dummies.ContainsKey(name) ? modelInfo.dummies[name] : nextRef++;
+
+                // correct position using same math as we use for vertices above
+                position = position * Const.GLOBAL_SCALE;
+                position.X *= -1f;
+                Matrix4x4 rotateY180Matrix = Matrix4x4.CreateRotationY((float)Math.PI);
+                position = Vector3.Transform(position, rotateY180Matrix);
+
+                FLVER.Dummy dmy = new();
+                dmy.Position = position;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = refid;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = -1;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+                modelInfo.dummies.Add(name, refid);
             }
 
             /* Calculate bounding boxes */

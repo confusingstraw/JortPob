@@ -71,6 +71,10 @@ namespace JortPob.Common
         public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f; // increase size of cutouts slightly to maybe make them work cleaner
         #endregion
 
+        #region SFX
+        public static readonly int FXR_START_ID = 900000000;
+        #endregion
+
         #region TEST
         public static readonly Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
         public static readonly Vector3 TEST_OFFSET2 = new(0, -15, 0); // these should both be deleted eventually
@@ -86,9 +90,6 @@ namespace JortPob.Common
         public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done
         public static readonly bool DEBUG_HKX_FORCE_BINARY = true;   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
         #endregion
-
-
-
 
         /* Some CBT */
         public struct LOD_VALUE

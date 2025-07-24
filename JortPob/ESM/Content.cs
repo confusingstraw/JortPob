@@ -16,7 +16,7 @@ namespace JortPob
     /* Content is effectively any physical object in the game world. Anything that has a physical position in a cell */
     public abstract class Content
     {
-        public readonly string id;
+        public readonly string id;  // record id
 
         public readonly ESM.Type type;
 
@@ -114,8 +114,6 @@ namespace JortPob
     /* static meshes that have emitters/lights EX: candles/campfires -- converted to assets but also generates ffx files and params to make them work */
     public class EmitterContent : Content
     {
-        public readonly string mesh;
-
         public EmitterContent(JsonNode json, Record record) : base(json, record)
         {
             mesh = record.json["mesh"].ToString().ToLower();

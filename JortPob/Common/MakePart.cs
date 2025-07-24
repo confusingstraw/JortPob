@@ -15,6 +15,7 @@ namespace JortPob.Common
     public class MakePart
     {
         public static Dictionary<ModelInfo, int> AssetInstances = new(); // counts instances of assets
+        public static Dictionary<EmitterInfo, int> EmitterInstances = new(); // counts instances of emitter assets
         public static Dictionary<string, int> EnemyInstances = new();      // counts instances of enemies
         public static Dictionary<WaterInfo, int> WaterInstances = new();
 
@@ -109,6 +110,99 @@ namespace JortPob.Common
 
             return asset;
         }
+
+        /* Makes asset with some sfx stuff */
+        /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
+        public static MSBE.Part.Asset Asset(EmitterInfo emitterInfo)
+        {
+            MSBE.Part.Asset asset = new();
+
+            /* Instance */
+            int inst;
+            if (EmitterInstances.ContainsKey(emitterInfo)) { inst = ++EmitterInstances[emitterInfo]; }
+            else { inst = 0; EmitterInstances.Add(emitterInfo, inst); }
+            asset.InstanceID = inst;
+
+            /* Model Stuff */
+            asset.Name = $"{emitterInfo.AssetName().ToUpper()}_{inst.ToString("D4")}";
+            asset.ModelName = emitterInfo.AssetName().ToUpper();
+
+            /* Top stuff */
+            asset.AssetSfxParamRelativeID = 0;
+            asset.MapStudioLayer = 4294967295;
+            asset.IsShadowDest = true;
+
+            /* Gparam */
+            asset.Gparam.FogParamID = -1;
+            asset.Gparam.LightSetID = -1;
+
+            /* Various Unks */
+            asset.UnkE0F = 1;
+            asset.UnkE3C = -1;
+            asset.UnkT12 = 255;
+            asset.UnkT1E = -1;
+            asset.UnkT24 = -1;
+            asset.UnkT30 = -1;
+            asset.UnkT34 = -1;
+
+            /* Display Groups */
+            asset.Unk1.DisplayGroups[0] = 16;
+            asset.Unk1.UnkC4 = -1;
+
+            /* Unk Groups */
+            asset.Unk2.Condition = -1;
+            asset.Unk2.Unk26 = -1;
+
+            /* TileLoad */
+            asset.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+            asset.TileLoad.CullingHeightBehavior = -1;
+
+            /* Grass */
+            asset.Grass.Unk18 = -1;
+
+            /* Asset Partnames */
+            asset.UnkT54PartName = asset.Name;
+            asset.UnkPartNames[4] = asset.Name;
+            asset.UnkPartNames[5] = asset.Name;
+            asset.UnkModelMaskAndAnimID = -1;
+            asset.UnkT5C = -1;
+            asset.UnkT60 = -1;
+            asset.UnkT64 = -1;
+
+            /* AssetUnk1 */
+            asset.AssetUnk1.Unk1C = -1;
+            asset.AssetUnk1.Unk24 = -1;
+            asset.AssetUnk1.Unk26 = -1;
+            asset.AssetUnk1.Unk28 = -1;
+            asset.AssetUnk1.Unk2C = -1;
+
+            /* AssetUnk2 */
+            asset.AssetUnk2.Unk04 = 100;
+            asset.AssetUnk2.Unk14 = -1f;
+            asset.AssetUnk2.Unk1C = 255;
+            asset.AssetUnk2.Unk1D = 255;
+            asset.AssetUnk2.Unk1E = 255;
+            asset.AssetUnk2.Unk1F = 255;
+
+            /* AssetUnk3 */
+            asset.AssetUnk3.Unk04 = 64.808716f;
+            asset.AssetUnk3.Unk09 = 255;
+            asset.AssetUnk3.Unk0B = 255;
+            asset.AssetUnk3.Unk0C = -1;
+            asset.AssetUnk3.Unk10 = -1f;
+            asset.AssetUnk3.DisableWhenMapLoadedMapID = new sbyte[] { -1, -1, -1, -1 };
+            asset.AssetUnk3.Unk18 = -1;
+            asset.AssetUnk3.Unk1C = -1;
+            asset.AssetUnk3.Unk20 = -1;
+            asset.AssetUnk3.Unk24 = 255;
+
+            /* AssetUnk4 */
+            asset.AssetUnk4.Unk01 = 255;
+            asset.AssetUnk4.Unk02 = 255;
+
+            return asset;
+        }
+
 
         /* Make water plane asset */
         /* Values taken from AEG097_000_9900 in superoverworld */

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKX2;
+using JortPob.Common;
 using JortPob.Model;
 using JortPob.Worker;
 using PortJob;
@@ -14,6 +15,7 @@ using System.Net.Mime;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace JortPob
 {
@@ -21,19 +23,6 @@ namespace JortPob
     {
         public static void Convert()
         {
-            Vector3 forward = Vector3.UnitY;
-            Vector3 left = Vector3.UnitX;
-
-            Vector3 a = new Vector3(1, 0, 0);
-            Vector3 b = new Vector3(-1, 0, 0);
-            Vector3 c = new Vector3(0, 1, 0);
-            Vector3 d = new Vector3(0, -1, 0);
-
-            double val1 = (Math.Acos(Vector3.Dot(a, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(a, forward));
-            double val2 = (Math.Acos(Vector3.Dot(b, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(b, forward));
-            double val3 = (Math.Acos(Vector3.Dot(c, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(c, forward));
-            double val4 = (Math.Acos(Vector3.Dot(d, left)) > Math.PI / 2 ? -1 : 1) * Math.Acos(Vector3.Dot(d, forward));
-
             /* Startup logging */
             Lort.Initialize();
 
@@ -145,8 +134,23 @@ namespace JortPob
                     msb.Parts.Assets.Add(asset);
                 }
 
+                /* Add emitters */
+                foreach (EmitterContent content in tile.emitters)
+                {
+                    /* Grab ModelInfo */
+                    EmitterInfo emitterInfo = cache.GetEmitter(content.id);
+
+                    /* Make part */
+                    MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
+                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    asset.Rotation = content.rotation;
+                    asset.Scale = new Vector3(content.scale * 0.01f);
+
+                    msb.Parts.Assets.Add(asset);
+                }
+
                 /* Add lights */
-                foreach(LightContent light in tile.lights)
+                foreach (LightContent light in tile.lights)
                 {
                     lightManager.CreateLight(light);
                 }
@@ -279,9 +283,14 @@ namespace JortPob
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
             param.GeneratePartDrawParams();
             param.GenerateAssetRows(cache.assets);
+            param.GenerateAssetRows(cache.emitters);
             param.GenerateAssetRows(cache.waters);
             param.KillMapHeightParams();    // murder kill
             param.Write();
+
+            /* Write FXR files */
+            Lort.Log($"Binding FXRs...", Lort.Type.Main);
+            FxrManager.Write();
 
             /* Bind and write all materials and textures */
             Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
@@ -291,6 +300,7 @@ namespace JortPob
             Lort.Log($"Binding {cache.assets.Count} assets...", Lort.Type.Main);
             Lort.NewTask("Binding Assets", cache.assets.Count);
             Bind.BindAssets(cache);
+            Bind.BindEmitters(cache);
             foreach(WaterInfo water in cache.waters)  // bind up them waters toooooo
             {
                 Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");

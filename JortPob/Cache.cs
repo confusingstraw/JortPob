@@ -16,6 +16,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using static HKLib.hk2018.hkaSkeleton;
 
@@ -26,6 +27,7 @@ namespace JortPob
         public List<TerrainInfo> terrains;
         public List<ModelInfo> maps;        // Map pieces
         public List<ModelInfo> assets;
+        public List<EmitterInfo> emitters;
         public List<ObjectInfo> objects;
         public List<WaterInfo> waters;
         public List<CutoutInfo> cutouts; // defines collision planes for swamps/lava
@@ -34,6 +36,7 @@ namespace JortPob
         {
             maps = new();     /// @TODO: deelte deprecated
             assets = new();
+            emitters = new();
             objects = new();
             terrains = new();
             waters = new();
@@ -98,6 +101,19 @@ namespace JortPob
             }
 
             /* Oh dear.. return null I guess! */
+            return null;
+        }
+
+        public EmitterInfo GetEmitter(string record)
+        {
+            foreach(EmitterInfo emitter in emitters)
+            {
+                if(emitter.record == record)
+                {
+                    return emitter;
+                }
+            }
+
             return null;
         }
 
@@ -189,14 +205,54 @@ namespace JortPob
                 nu.waters.Add(WaterManager.GenerateWater(esm, materialContext));
 
                 /* Write textures */
+                Lort.Log($"Writing matbins & tpfs...", Lort.Type.Main);
                 materialContext.WriteAll();
                 assimpContext.Dispose();
 
                 /* Garbage collect after writing material data to file */
-                Lort.Log($"Writing matbins & tpfs...", Lort.Type.Main);
                 materialContext = null;
                 assimpContext = null;
                 GC.Collect();
+
+                /* Create emitterinfos */
+                foreach(JsonNode json in esm.records[ESM.Type.Light])
+                {
+                    if (json["mesh"] == null || json["mesh"].ToString().Trim() == "") { continue; }
+
+                    EmitterInfo emitterInfo = new();
+                    emitterInfo.record = json["id"].ToString();
+                    string mesh = json["mesh"].ToString().ToLower();
+                    emitterInfo.model = nu.GetModel(mesh);
+
+                    if(emitterInfo.model == null) { continue; } // discard if we don't find a model for this. should only happen when debug stuff is enabled for cell building
+
+                    int r = int.Parse(json["data"]["color"][0].ToString());
+                    int g = int.Parse(json["data"]["color"][1].ToString());
+                    int b = int.Parse(json["data"]["color"][2].ToString());
+                    int a = int.Parse(json["data"]["color"][3].ToString());
+                    emitterInfo.color = new byte[] { (byte)r, (byte)g, (byte)b, (byte)a };  // 0 -> 255 colors
+
+                    emitterInfo.radius = float.Parse(json["data"]["radius"].ToString()) * Const.GLOBAL_SCALE;
+                    emitterInfo.weight = float.Parse(json["data"]["weight"].ToString());
+
+                    emitterInfo.value = int.Parse(json["data"]["value"].ToString());
+                    emitterInfo.time = int.Parse(json["data"]["time"].ToString());
+
+                    string flags = json["data"]["flags"].ToString();
+
+                    emitterInfo.dynamic = flags.Contains("DYNAMIC");
+                    emitterInfo.fire = flags.Contains("FIRE");
+                    emitterInfo.negative = flags.Contains("NEGATIVE");
+                    emitterInfo.defaultOff = flags.Contains("OFF_BY_DEFAULT");
+
+                    if (flags.Contains("FLICKER_SLOW")) { emitterInfo.mode = LightContent.Mode.FlickerSlow; }
+                    else if (flags.Contains("FLICKER")) { emitterInfo.mode = LightContent.Mode.Flicker; }
+                    else if (flags.Contains("PULSE_SLOW")) { emitterInfo.mode = LightContent.Mode.PulseSlow; }
+                    else if (flags.Contains("PULSE")) { emitterInfo.mode = LightContent.Mode.Pulse; }
+                    else { emitterInfo.mode = LightContent.Mode.Default; }
+
+                    nu.emitters.Add(emitterInfo);
+                }
 
                 /* Convert collision */
                 List<CollisionInfo> collisions = new();
@@ -235,6 +291,10 @@ namespace JortPob
                 foreach (ModelInfo modelInfo in nu.assets)
                 {
                     modelInfo.id = nextA++;
+                }
+                foreach(EmitterInfo emitterInfo in nu.emitters)
+                {
+                    emitterInfo.id = nextA++;
                 }
                 foreach (ObjectInfo objectInfo in nu.objects)
                 {
@@ -288,6 +348,65 @@ namespace JortPob
         {
             this.name = name.ToLower();
             this.model = model;
+        }
+    }
+
+    public class EmitterInfo
+    {
+        public string record; // record ID
+        public ModelInfo model;
+
+        public float radius, weight;
+        public int time, value;
+        public byte[] color;
+
+        public bool dynamic, fire, negative, defaultOff;
+        public LightContent.Mode mode;
+
+        public int id; // asset id
+
+        public EmitterInfo()
+        {
+
+        }
+
+        public string AssetPath()
+        {
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}\\aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
+        }
+
+        public string AssetName()
+        {
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return $"aeg{v1.ToString("D3")}_{v2.ToString("D3")}";
+        }
+
+        public int AssetRow()
+        {
+            int v1 = Const.ASSET_GROUP + (int)(id / 1000);
+            int v2 = id % 1000;
+            return int.Parse($"{v1.ToString("D3")}{v2.ToString("D3")}");  // yes i know this the wrong way to do this but guh
+        }
+
+        public bool HasEmitter()
+        {
+            foreach (KeyValuePair<string, short> kvp in model.dummies)
+            {
+                if (kvp.Key.Contains("emitter")) { return true; }
+            }
+            return false;
+        }
+
+        public short GetAttachLight()
+        {
+            foreach (KeyValuePair<string, short> kvp in model.dummies)
+            {
+                if (kvp.Key.Contains("attachlight")) { return kvp.Value; }
+            }
+            return -1; // if no attachlight node we return -1
         }
     }
 
