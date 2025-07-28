@@ -143,9 +143,8 @@ namespace JortPob.Common
             }
         }
 
-        public static void BindAsset(WaterInfo waterInfo, string outPath)
+        public static void BindAsset(LiquidInfo waterInfo, string outPath)
         {
-
             // Bind up asset flver
             {
                 BND4 bnd = new();

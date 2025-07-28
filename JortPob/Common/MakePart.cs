@@ -17,7 +17,7 @@ namespace JortPob.Common
         public static Dictionary<ModelInfo, int> AssetInstances = new(); // counts instances of assets
         public static Dictionary<EmitterInfo, int> EmitterInstances = new(); // counts instances of emitter assets
         public static Dictionary<string, int> EnemyInstances = new();      // counts instances of enemies
-        public static Dictionary<WaterInfo, int> WaterInstances = new();
+        public static Dictionary<LiquidInfo, int> WaterInstances = new();
 
         /* Makes simple collideable asset */
         /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
@@ -206,7 +206,7 @@ namespace JortPob.Common
 
         /* Make water plane asset */
         /* Values taken from AEG097_000_9900 in superoverworld */
-        public static MSBE.Part.Asset Asset(WaterInfo waterInfo)
+        public static MSBE.Part.Asset Asset(LiquidInfo waterInfo)
         {
             //MSBE EXAMPLE = MSBE.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\mapstudio\m60_00_00_99.msb.dcx");
 

@@ -68,7 +68,11 @@ namespace JortPob.Common
         public static readonly int WATER_RADIUS = 30;   // when we generate water squares, we generate a circle of cells this size. 30 means 30 CELLS of water not 30 units
         public static readonly Vector2 WATER_CENTER = new Vector2(3f, 5f); // the ""center"" cell of morrowind. the actual 0,0 of the morrowind map is very off center. this correction is just for the water plane to look nicer.
         public static readonly int WATER_TESSELATION = 2; // number of times to subdivide squares for water
-        public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f; // increase size of cutouts slightly to maybe make them work cleaner
+        public static readonly float LIQUID_QUAD_GENERATE_SIZE = 2.56f; // size of a quad for lava/swamp visual mesh. affects tesselation and edge accuracy. smaller than 2f gets really slow! ideal value is like 1.28 though
+        public static readonly float LAVA_FLOOR_DEPTH = -0.3f; // add a bottom to lava pools so they dont get super deep
+        public static readonly float LAVA_VISUAL_OFFSET = -0.125f; // lowers visual mesh  of lava. this offset is to fix the issue of the lava waves going way higher than the edge of pools sometimes
+        public static readonly float SWAMP_FLOOR_DEPTH = -0.875f; // add a bottom to swamp pools so they dont get super deep
+        public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f; // increase size of cutouts slightly so we dont get any clipping at the edges, only used by water visual mesh subtraction
         #endregion
 
         #region SFX
@@ -84,7 +88,13 @@ namespace JortPob.Common
         /* when building for release everything in this group should be FALSE or NULL */
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = true; // slow as shit, skipping this saves about a minute per build
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = new int[] { -5, -15, 5, -5 }; //= new int[] {-3, -10, -1, -8 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = null; //= new int[] { -10, -10, 15, 5 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        // seyda neen area (small) = new int[] {-3, -10, -1, -8 }
+        // seyda neen area (large) = new int[] { -5, -15, 5, -5 }
+        // lava area near Marandus and Ashunartes = new int[] {1, -5, 5, -1}
+        // all lava areas (big) = new int[] {0, -5, 15, 10}
+        // lava area near Galom Daeus = new int[] {8, -2, 12, 2}
+        // lava and swamp areas combined = new int[] {-10, -10, 15, 5};
         public static readonly bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING = true; // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
         public static readonly bool DEBUG_SKIP_INTERIOR = true;
         public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done

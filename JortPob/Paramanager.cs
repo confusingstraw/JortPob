@@ -316,10 +316,10 @@ namespace JortPob
             }
         }
 
-        public void GenerateAssetRows(List<WaterInfo> assets)
+        public void GenerateAssetRows(List<LiquidInfo> assets)
         {
             PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
-            foreach (WaterInfo asset in assets)
+            foreach (LiquidInfo asset in assets)
             {
                 // Clone a specific row as our baseline
                 PARAM.Row source = GetRow(97000, assetParam);   // 097000 is the ocean water around limgrave

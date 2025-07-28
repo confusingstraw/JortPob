@@ -179,6 +179,9 @@
     <None Update="Resources\matbins\allmaterial.matbinbnd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\matbins\Field_03_swamp.matbin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\matbins\Field_sea_05.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -195,6 +198,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\matbins\m11_00_302.matbin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\matbins\m16_00_401.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\matbins\MaterialInfo.xml">
@@ -792,6 +798,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\msb\msblist.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\overrides\do_not_place.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\overrides\static_collision.json">

@@ -184,7 +184,9 @@ namespace JortPob.Model
             { "static[a]opaque", "AEG006_030_ID001" },      // simple opaque albedo material
             { "static[a]multi[2]", "m10_00_027" },          // blendy multimaterial for terrain
             { "static[a]multi[3]", "m10_00_022" },          // VERY blendy multimaterial for terrain
-            { "static[x]water", "Field_sea_05"}          // water shader, does not take any input textures
+            { "static[x]water", "Field_sea_05"},          // water shader, does not take any input textures, handled by liquidmanager
+            { "static[x]lava", "m16_00_401"},              // lava shader, functions similar to water, handled by liquidmanager
+            { "static[x]swamp", "Field_03_swamp"}              // swamp shader, functions similar to water, handled by liquidmanager
         };
 
         /* Create a full suite of a custom matbin, textures, and layout/gx/material info for a flver and return them all in a container */
@@ -505,6 +507,86 @@ namespace JortPob.Model
                 matbin.SourcePath = $"{matbinName}.matxml";
                 genMATBINs.TryAdd(matbinkey, matbin);
             }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        public MaterialInfo GenerateMaterialLava(int index)
+        {
+            string matbinTemplate = matbinTemplates["static[x]lava"];
+            string matbinName = "mat_lava";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            return new MaterialInfo(material, gx, layout, matbin, info);
+        }
+
+        public MaterialInfo GenerateMaterialSwamp(int index)
+        {
+            string diffuseTextureSourcePathA = $"{Const.MORROWIND_PATH}Data Files\\textures\\tx_bc_scum.dds"; // hardcoded swamp texture
+            string diffuseTextureA;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
+                if (genTextures.ContainsKey(diffuseTextureSourcePath))
+                {
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                }
+                else
+                {
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
+                }
+            }
+            diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
+
+            string matbinTemplate = matbinTemplates["static[x]swamp"];
+            string matbinName = "mat_swamp";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+            matbin.Samplers[0].Unk14 = new Vector2(16f, 32f); // default   8, 16
+            matbin.Samplers[1].Path = diffuseTextureA;
+            matbin.Samplers[1].Unk14 = new Vector2(2f, 2f); // default   0, 0
+            matbin.Samplers[2].Unk14 = new Vector2(16f, 16f); // default   8, 8
+            matbin.Samplers[3].Unk14 = new Vector2(1f, 1f); // default   0.5, 0.5
+            matbin.Samplers[4].Unk14 = new Vector2(2f, 2f); // default   0, 0
+            matbin.Samplers[5].Unk14 = new Vector2(1f, 1f); // default   0.5, 0.5
 
             FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
             FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");

@@ -29,7 +29,7 @@ namespace JortPob
         public List<ModelInfo> assets;
         public List<EmitterInfo> emitters;
         public List<ObjectInfo> objects;
-        public List<WaterInfo> waters;
+        public List<LiquidInfo> liquids;
         public List<CutoutInfo> cutouts; // defines collision planes for swamps/lava
 
         public Cache()
@@ -39,7 +39,7 @@ namespace JortPob
             emitters = new();
             objects = new();
             terrains = new();
-            waters = new();
+            liquids = new();
             cutouts = new();
         }
 
@@ -117,9 +117,19 @@ namespace JortPob
             return null;
         }
 
-        public WaterInfo GetWater()
+        public LiquidInfo GetWater()
         {
-            return waters[0];
+            return liquids[0];
+        }
+
+        public LiquidInfo GetSwamp()
+        {
+            return liquids[1];
+        }
+
+        public LiquidInfo GetLava()
+        {
+            return liquids[2];
         }
 
         public bool ModelHasCollision(string name)
@@ -171,8 +181,7 @@ namespace JortPob
                             foreach (Content content in contents)
                             {
                                 if(content.mesh == null) { continue; }  // skip content with no mesh
-                                if(content.mesh.Contains(@"i\in_lava_")) { WaterManager.AddLava(content); }  // lava check
-                                if(content.mesh.Contains(@"f\terrain_bc_scum_")) { WaterManager.AddSwamp(content); }  // swamp check
+                                LiquidManager.AddCutout(content); // check if this is a lava or swamp mesh and add it to cutouts if it is
                                 PreModel model = GetMesh(content);
                                 int i = model.scales.ContainsKey(content.scale)? model.scales[content.scale]:0;
                                 model.scales.Remove(content.scale);
@@ -196,13 +205,13 @@ namespace JortPob
                 nu.terrains = LandscapeWorker.Go(materialContext, esm);
 
                 /* Generate stuff for cutouts */
-                nu.cutouts = WaterManager.GenerateCutouts(esm);
+                nu.cutouts = LiquidManager.GenerateCutouts(esm);
 
                 /* Convert models/textures for models */
                 nu.assets = FlverWorker.Go(materialContext, meshes);
 
                 /* Generate stuff for water */
-                nu.waters.Add(WaterManager.GenerateWater(esm, materialContext));
+                nu.liquids = LiquidManager.GenerateLiquids(esm, materialContext);
 
                 /* Write textures */
                 Lort.Log($"Writing matbins & tpfs...", Lort.Type.Main);
@@ -268,7 +277,7 @@ namespace JortPob
                         collisions.Add(collision);
                     }
                 }
-                foreach(WaterInfo water in nu.waters)
+                foreach(LiquidInfo water in nu.liquids)
                 {
                     collisions.AddRange(water.GetCollision());
                 }
@@ -474,13 +483,13 @@ namespace JortPob
     }
 
     /* contains info on type of water and it's files and filepaths */
-    public class WaterInfo
+    public class LiquidInfo
     {
         public int id;
         public string path;
         public List<Tuple<Int2, CollisionInfo>> collision;   // Not true collision, just used for the water plane to have splashy splashers when you splash through it
 
-        public WaterInfo(int id, string path)
+        public LiquidInfo(int id, string path)
         {
             this.id = id;
             this.path = path;

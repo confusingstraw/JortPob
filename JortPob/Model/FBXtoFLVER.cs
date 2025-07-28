@@ -122,7 +122,8 @@ namespace JortPob.Model
 
                 /* Some Fix-up code here. We need to remove any meshes with a name like "ShadowBox" */
                 /* These meshes are used for like shadow stencils or... something? Regardless they are worthless in the ER engine */
-                if(fbxMesh.Name.ToLower().Contains("shadowbox")) { index++; continue; }
+                if (fbxMesh.Name.ToLower().Contains("shadowbox")) { index++; continue; }
+                if (fbxMesh.Name.ToLower().Contains("tri attachlight")) { index++; continue; }
 
                 /* Generate blank flver mesh and faceset */
                 FLVER2.Mesh flverMesh = new();
@@ -290,7 +291,7 @@ namespace JortPob.Model
             {
                 foreach(JsonNode node in json.AsArray())
                 {
-                    if (node.ToString().ToLower() == name) { return true; }
+                    if (node.ToString().ToLower() == name.ToLower()) { return true; }
                 }
                 return false;
             }

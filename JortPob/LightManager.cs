@@ -58,10 +58,10 @@ namespace JortPob
             erl.Radius = mwl.radius;
             erl.Rotation = Vector3.Zero;
 
-            erl.DiffuseColor = System.Drawing.Color.FromArgb(mwl.color.x, mwl.color.y, mwl.color.z, 255);
+            erl.DiffuseColor = System.Drawing.Color.FromArgb(255, mwl.color.x, mwl.color.y, mwl.color.z);
             erl.DiffusePower = 2;
 
-            erl.SpecularColor = System.Drawing.Color.FromArgb(mwl.color.x, mwl.color.y, mwl.color.z, 255);
+            erl.SpecularColor = System.Drawing.Color.FromArgb(255, mwl.color.x, mwl.color.y, mwl.color.z);
             erl.SpecularPower = 2;
 
             erl.CastShadows = false;

@@ -77,7 +77,7 @@ namespace JortPob
                         /* Water is done on a cell by cell basis so I am simply tieing it to the terrain data here */
                         if (terrainInfo.hasWater)
                         {
-                            WaterInfo waterInfo = cache.GetWater();
+                            LiquidInfo waterInfo = cache.GetWater();
                             CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
 
                             /* Make collision for water splashing */
@@ -97,15 +97,21 @@ namespace JortPob
                             CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
                             if(cutoutInfo != null)
                             {
-                                /* Make collision for swamp or lava splashy splashing */
+                                /* Make collision for swamp or lava splashy splashing, surface collision */
                                 string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
                                 MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                                 collision.Name = $"h{collisionIndex}_0000";
                                 collision.ModelName = $"h{collisionIndex}";
                                 collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
-
                                 msb.Parts.Collisions.Add(collision);
                                 pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
+
+                                /* Make collision for swamp or lava floor, caps the depth of pools so they arent super deep */
+                                collision = MakePart.Collision(); // also works for lava and poison
+                                collision.Name = $"h{collisionIndex}_0001";
+                                collision.ModelName = $"h{collisionIndex}";
+                                collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
+                                msb.Parts.Collisions.Add(collision);
                             }
                         }
                     }
@@ -114,6 +120,19 @@ namespace JortPob
                 /* Add assets */
                 foreach (AssetContent content in tile.assets)
                 {
+                    /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
+                    JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
+                    bool CheckOverride(string name)
+                    {
+                        foreach (JsonNode node in json.AsArray())
+                        {
+                            if (node.ToString().ToLower() == name.ToLower()) { return true; }
+                        }
+                        return false;
+                    }
+
+                    if(CheckOverride(content.mesh)) { continue; } // SKIP!
+
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
@@ -130,6 +149,21 @@ namespace JortPob
                         asset.TileLoad.Unk04 = 13;
                         asset.TileLoad.CullingHeightBehavior = -1;
                     }
+
+                    msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add doors */
+                foreach (DoorContent content in tile.doors)
+                {
+                    /* Grab ModelInfo */
+                    ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
+
+                    /* Make part */
+                    MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    asset.Rotation = content.rotation;
+                    asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
                     msb.Parts.Assets.Add(asset);
                 }
@@ -284,7 +318,7 @@ namespace JortPob
             param.GeneratePartDrawParams();
             param.GenerateAssetRows(cache.assets);
             param.GenerateAssetRows(cache.emitters);
-            param.GenerateAssetRows(cache.waters);
+            param.GenerateAssetRows(cache.liquids);
             param.KillMapHeightParams();    // murder kill
             param.Write();
 
@@ -301,7 +335,7 @@ namespace JortPob
             Lort.NewTask("Binding Assets", cache.assets.Count);
             Bind.BindAssets(cache);
             Bind.BindEmitters(cache);
-            foreach(WaterInfo water in cache.waters)  // bind up them waters toooooo
+            foreach(LiquidInfo water in cache.liquids)  // bind up them waters toooooo
             {
                 Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");
             }

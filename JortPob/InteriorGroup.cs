@@ -76,6 +76,7 @@ namespace JortPob
             public Vector3 bounds; // size from center
 
             public readonly List<AssetContent> assets;
+            public readonly List<DoorContent> doors;
             public readonly List<LightContent> lights;
             public readonly List<EmitterContent> emitters;
             public readonly List<CreatureContent> creatures;
@@ -89,6 +90,7 @@ namespace JortPob
                 Vector3 offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
 
                 assets = new();
+                doors = new();
                 emitters = new();
                 lights = new();
                 creatures = new();
@@ -109,6 +111,8 @@ namespace JortPob
                 {
                     case AssetContent a:
                         assets.Add(a); break;
+                    case DoorContent d:
+                        doors.Add(d); break;
                     case EmitterContent e:
                         emitters.Add(e); break;
                     case LightContent l:

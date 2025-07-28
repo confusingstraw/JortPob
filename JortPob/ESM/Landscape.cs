@@ -559,8 +559,8 @@ namespace JortPob
             {
                 // -v.position.x is because terrain is mirrored during the model conversion. its flipped in this context
                 Vector3 posActual = new Vector3((Const.CELL_SIZE * coordinate.x) + -v.position.X, v.position.Y, (Const.CELL_SIZE * coordinate.y) + v.position.Z);
-                if (WaterManager.PointInLava(posActual)) { v.lava = true; hasLava = true;  continue; }
-                else if (WaterManager.PointInSwamp(posActual)) { v.swamp = true; hasSwamp = true; continue; }
+                if (LiquidManager.PointInCutout(LiquidManager.Cutout.Type.Lava, posActual, true)) { v.lava = true; hasLava = true;  continue; }
+                else if (LiquidManager.PointInCutout(LiquidManager.Cutout.Type.Swamp, posActual, true)) { v.swamp = true; hasSwamp = true; continue; }
                 else if (v.position.Y < Const.WATER_HEIGHT) { v.underwater = true;  hasWater = true; continue; }
             }
         }

@@ -3,6 +3,7 @@ using HKLib.hk2018.hkaiNavMeshEdgeZipper;
 using HKLib.hk2018.hkaiWorldCommands;
 using HKLib.hk2018.hkcdDynamicTree;
 using HKLib.hk2018.TypeRegistryTest;
+using HKX2;
 using JortPob.Common;
 using JortPob.Model;
 using Microsoft.VisualBasic;
@@ -20,24 +21,25 @@ using System.Text;
 using System.Threading.Tasks;
 using static HKLib.hk2018.hkaiUserEdgeUtils;
 using static HKLib.hk2018.hknpExtendedExternMeshShapeGeometry;
+using static JortPob.LiquidManager;
 
 namespace JortPob
 {
     /* Automagically generates water assets for  the cache */
     /* Also handles some stuff for swamps and lava */
-    /* @TODO: this really shouldnt be a static class anymore. it has evolved a bit */
-    public class WaterManager
+    /* Note: this class is absolutely disgusting and is devoid of any good coding practices. I'm sorry! */
+    public class LiquidManager
     {
         /* Creates assetbnd, hkx file, and matbins for water */
-        public static WaterInfo GenerateWater(ESM esm, MaterialContext materialContext)
+        public static List<LiquidInfo> GenerateLiquids(ESM esm, MaterialContext materialContext)
         {
             /* Further research on water meshes leads me to believe the best approach is a single water mesh for the entire world space. */
             /* Stupid as fuck solution but it is what it is */
 
             /* Generate visual water mesh data */  // single massive mesh used in super overworld
-            Lort.Log("Generating water...", Lort.Type.Main);
-            Lort.NewTask("Water Generation", 20 + 4 + esm.exterior.Count());
-            WetMesh wetmesh = new(esm, CUTOUTS); // a lot of things happen in this constructor
+            Lort.Log("Generating liquids...", Lort.Type.Main);
+            Lort.NewTask("Liquid Generation", 20 + 4 + esm.exterior.Count());
+            WetMesh wetmesh = new(esm, GetCutoutType(Cutout.Type.Both, false, Const.WATER_CUTOUT_SIZE_TWEAK)); // a lot of things happen in this constructor
 
             /* Generate collision water mesh data */
             List<Tuple<Int2, WetMesh>> wetcollisions = new();
@@ -67,15 +69,14 @@ namespace JortPob
             }
 
             /* Write generated water mesh data into a flver */
-            FLVER2 flver = GenerateFlver(wetmesh, materialContext);
+            FLVER2 flver = GenerateWaterFlver(wetmesh, materialContext);
 
             /* Files happen */
-            string name = $"water\\super_water";
-            string flverPath = $"{name}.flver";
+            string flverPath = @"water\super_water.flver";
             flver.Write($"{Const.CACHE_PATH}{flverPath}");
 
             /* make a waterinfo class about this generated water */
-            WaterInfo waterInfo = new(0, flverPath);
+            LiquidInfo waterInfo = new(0, flverPath);
             foreach (Tuple<Int2, WetMesh> tuple in wetcollisions)
             {
                 Int2 coordinate = tuple.Item1;
@@ -88,17 +89,37 @@ namespace JortPob
                 waterInfo.AddCollision(coordinate, collisionInfo);
             }
 
-            return waterInfo;
+            /* Generate visual mesh for lava */
+            /* While we could use morrowind lava it's very uhhh boring and ugly... so INSTEAD ima make meshes for Elden Ring lava shaders */
+            /* Fundamentally I have to generate new meshes for these because Elden Ring lava is just... way differnt than morrowind lava */
+            /* So here we go! */
+            WetMesh lavaMesh = new WetMesh(GetCutoutType(Cutout.Type.Lava, true), Cutout.Type.Lava);
+            FLVER2 lavaFlver = GenerateLavaFlver(lavaMesh, materialContext);
+            string lavaFlverPath = @"water\super_lava.flver";
+            lavaFlver.Write($"{Const.CACHE_PATH}{lavaFlverPath}");
+            LiquidInfo lavaInfo = new(2, lavaFlverPath);
+
+
+            /* Generate visual mesh for swamps */
+            /* See above for explanation, same as lava */
+            WetMesh swampMesh = new WetMesh(GetCutoutType(Cutout.Type.Swamp, true), Cutout.Type.Swamp);
+            FLVER2 swampFlver = GenerateSwampFlver(swampMesh, materialContext);
+            string swampFlverPath = @"water\super_swamp.flver";
+            swampFlver.Write($"{Const.CACHE_PATH}{swampFlverPath}");
+            LiquidInfo swampInfo = new(1, swampFlverPath);
+
+            return new List<LiquidInfo>() { waterInfo, swampInfo, lavaInfo };
         }
 
         public static List<CutoutInfo> GenerateCutouts(ESM esm)
         {
-            /* Generate swamp collision planes */
+            /* Generate swamp/lava collision planes */
             /* Loop through each ext cell and check if a cutout is inside it. If so make a collision plane for it */
             List<Tuple<Int2, Obj>> cutoutCollisions = new();
             foreach (Cell cell in esm.exterior)
             {
                 List<Cutout> cutouts = new();
+                List<ShapedCutout> shaped = new();
                 foreach (Cutout c in CUTOUTS)
                 {
                     if (cell.IsPointInside(c.position))
@@ -106,13 +127,26 @@ namespace JortPob
                         cutouts.Add(c);
                     }
                 }
-                if (cutouts.Count <= 0) { continue; } // no cuttys, no mesh, no prob
+
+                foreach (ShapedCutout c in SHAPED_CUTOUTS)
+                {
+                    if (cell.IsPointInside(c.position))
+                    {
+                        shaped.Add(c);
+                    }
+                }
+                if (cutouts.Count <= 0 && shaped.Count <= 0) { continue; } // no cuttys, no mesh, no prob
 
                 /* Generate mesh with cutouts we found... making a raw obj because guh */
                 Obj obj = new();
-                ObjG g = new();
-                g.name = Obj.CollisionMaterial.PoisonSwamp.ToString();
-                g.mtl = $"hkm_{g.name}_Safe1";
+
+                ObjG swampG = new();
+                swampG.name = Obj.CollisionMaterial.PoisonSwamp.ToString();
+                swampG.mtl = $"hkm_{swampG.name}_Safe1";
+
+                ObjG lavaG = new();
+                lavaG.name = Obj.CollisionMaterial.Lava.ToString();
+                lavaG.mtl = $"hkm_{lavaG.name}_Safe1";
 
                 obj.vns.Add(new Vector3(0, 1, 0));
                 obj.vts.Add(new Vector3(0, 0, 0));
@@ -122,7 +156,7 @@ namespace JortPob
                 {
                     foreach (Vector3 point in cutout.Points())
                     {
-                        obj.vs.Add(point - cellOffset);   // offset moves cutout into the coordinate space of the cell. where 0,0 is the center of the cell iirc
+                        obj.vs.Add(point - cellOffset + new Vector3(0f, cutout.height, 0f));   // offset moves cutout into the coordinate space of the cell. where 0,0 is the center of the cell iirc
                     }
 
                     ObjV A1 = new(obj.vs.Count() - 1, 0, 0);
@@ -135,10 +169,40 @@ namespace JortPob
 
                     ObjF F1 = new(A1, B1, C1);
                     ObjF F2 = new(A2, B2, C2);
-                    g.fs.Add(F1);
-                    g.fs.Add(F2);
+
+                    ObjG gType = null;
+                    if(cutout.type == Cutout.Type.Swamp) { gType = swampG; }
+                    else if(cutout.type == Cutout.Type.Lava) { gType = lavaG; }
+
+                    gType.fs.Add(F1);
+                    gType.fs.Add(F2);
                 }
-                obj.gs.Add(g);
+
+                foreach(ShapedCutout cutout in shaped)
+                {
+                    foreach (WetFace face in cutout.mesh)
+                    {
+                        foreach (Vector3 point in face.Points())
+                        {
+                            obj.vs.Add(point - cellOffset + new Vector3(0f, cutout.height, 0f));   // offset moves cutout into the coordinate space of the cell. where 0,0 is the center of the cell iirc
+                        }
+
+                        ObjV A = new(obj.vs.Count() - 1, 0, 0);
+                        ObjV B = new(obj.vs.Count() - 2, 0, 0);
+                        ObjV C = new(obj.vs.Count() - 3, 0, 0);
+
+                        ObjF F = new(A, B, C);
+
+                        ObjG gType = null;
+                        if (cutout.type == Cutout.Type.Swamp) { gType = swampG; }
+                        else if (cutout.type == Cutout.Type.Lava) { gType = lavaG; }
+
+                        gType.fs.Add(F);
+                    }
+                }
+
+                if (lavaG.fs.Count() > 0) { obj.gs.Add(lavaG); }    // realistically, there should never be both lava and swamp in the same cell. it just doesnt happen but like guh.
+                if (swampG.fs.Count() > 0) { obj.gs.Add(swampG); }
 
                 cutoutCollisions.Add(new(cell.coordinate, obj.optimize()));
             }
@@ -160,7 +224,7 @@ namespace JortPob
             return cutoutInfos;
         }
 
-        private static FLVER2 GenerateFlver(WetMesh wet, MaterialContext materialContext)
+        private static FLVER2 GenerateWaterFlver(WetMesh wet, MaterialContext materialContext)
         {
             FLVER2 flver = new();
             flver.Header.Version = 131098; // Elden Ring FLVER Version Number
@@ -321,38 +385,362 @@ namespace JortPob
             return flver;
         }
 
+        public static FLVER2 GenerateLavaFlver(WetMesh hot, MaterialContext materialContext)
+        {
+            FLVER2 flver = new();
+            flver.Header.Version = 131098; // Elden Ring FLVER Version Number
+            flver.Header.Unk5D = 0;        // Unk
+            flver.Header.Unk68 = 4;        // Unk
+
+            /* Add bones and nodes for FLVER */
+            FLVER.Node rootNode = new();
+            FLVER2.SkeletonSet skeletonSet = new();
+            FLVER2.SkeletonSet.Bone rootBone = new(0);
+
+            rootNode.Name = Path.GetFileNameWithoutExtension("LavaMesh");
+            skeletonSet.AllSkeletons.Add(rootBone);
+            skeletonSet.BaseSkeleton.Add(rootBone);
+            flver.Nodes.Add(rootNode);
+            flver.Skeletons = skeletonSet;
+
+            /* Material */
+            MaterialContext.MaterialInfo matinfo = materialContext.GenerateMaterialLava(0);
+            flver.Materials.Add(matinfo.material);
+            flver.BufferLayouts.Add(matinfo.layout);
+            flver.GXLists.Add(matinfo.gx);
+
+            /* make a mesh */
+            FLVER2.Mesh mesh = new();
+            FLVER2.FaceSet faces = new();
+            mesh.FaceSets.Add(faces);
+            faces.CullBackfaces = false;
+            faces.Unk06 = 1;
+            mesh.NodeIndex = 0; // attach to rootnode
+            mesh.MaterialIndex = 0;
+            FLVER2.VertexBuffer vb = new(0);
+            mesh.VertexBuffers.Add(vb);
+
+            /* generic data */
+            Vector3 normal = new Vector3(0, 1, 0);
+            Vector4 tangent = new Vector4(1, 0, 0, -1);
+            Vector4 bitangent = new Vector4(0, 0, 0, 0);
+            FLVER.VertexColor color = new(255, 255, 255, 255);
+
+            // returns indice if exists, -1 if doesnt // normally i dont caare about optimizing verts/indices but this material really cares about connected verts so we doing it
+            int GetVertex(FLVER.Vertex v)
+            {
+                for (int i = 0; i < mesh.Vertices.Count; i++)
+                {
+                    FLVER.Vertex vert = mesh.Vertices[i];
+                    if (
+                        Vector3.Distance(vert.Position, v.Position) < 0.001 &&
+                        Vector3.Distance(vert.UVs[0], v.UVs[0]) < 0.001
+                    ) { return i; }
+                }
+                return -1;
+            }
+
+            /* Get bounds so we can uvw this easily */
+            float BOUND = Const.CELL_EXTERIOR_BOUNDS * Const.CELL_SIZE;
+            Vector2 min = new Vector2(BOUND); Vector2 max = new Vector2(-BOUND);
+            foreach (WetFace face in hot.faces)
+            {
+                foreach (Vector3 point in face.Points())
+                {
+                    min.X = Math.Min(point.X, min.X);
+                    min.Y = Math.Min(point.Z, min.Y);
+                    max.X = Math.Max(point.X, max.X);
+                    max.Y = Math.Max(point.Z, max.Y);
+                }
+            }
+
+            /* This bounds is a rectangle (probably) so we need to square it off to prevent stretchy UVs */
+            if(max.X-min.X < max.Y-min.Y)
+            {
+                max.X = min.X + (max.Y - min.Y);
+            }
+            else
+            {
+                max.Y = min.Y + (max.X - min.X);
+            }
+
+            /* Write wet mesh data to flver and generate UVs */
+            foreach (WetFace face in hot.faces)
+            {
+                FLVER.Vertex[] verts = new FLVER.Vertex[3];
+
+                for (int i = 0; i < face.Points().Count(); i++)
+                {
+                    Vector3 v = face.Points()[i];
+
+                    FLVER.Vertex vert = new();
+                    vert.Position = v;
+                    vert.Normal = normal;
+                    vert.Tangents.Add(tangent);
+                    vert.Bitangent = bitangent;
+                    vert.Colors.Add(color);
+
+                    float nX = (vert.Position.X - min.X) / (max.X - min.X);
+                    float nY = (vert.Position.Z - min.Y) / (max.Y - min.Y);
+                    Vector3 normalized = new Vector3(nX, nY, 0f);
+
+                    float UV0_SCALE = 10f;           // tiling of lava texture controlled by this
+                    float WAVE_INTENSITY = 0.0875f;   // 0 is perfectly flat, 1 is giga waves
+                    float HEAT_INTENSITY = .5f;     // setting this to 0f makes the lava a black texture of like hardened magma
+                    float UNK_0 = 0f;  // genuinely think these do nothing. classic fromsoft
+                    float UNK_1 = 0f; // genuinely think these do nothing. classic fromsoft
+                    float UNK_2 = 0.3f; // not sure but i think something to do with tiling and speed?
+
+                    vert.UVs.Add(normalized * UV0_SCALE);
+                    vert.UVs.Add(new Vector3(UNK_2, UNK_0, 0f));
+                    vert.UVs.Add(new Vector3(-15.9f, UNK_1, 0f));
+                    vert.UVs.Add(new Vector3(WAVE_INTENSITY, HEAT_INTENSITY, 0f));
+                    vert.UVs.Add(vert.UVs[3]);
+
+                    verts[i] = vert;
+                }
+
+                foreach (FLVER.Vertex vert in verts)
+                {
+                    int indice = GetVertex(vert);
+                    if (indice != -1)
+                    {
+                        faces.Indices.Add(indice); continue;
+                    }
+
+                    mesh.Vertices.Add(vert);
+                    faces.Indices.Add(mesh.Vertices.Count - 1);
+                }
+            }
+
+            /* Add mesh */
+            flver.Meshes.Add(mesh);
+
+            /* Bounding box solve */
+            BoundingBoxSolver.FLVER(flver);
+
+            return flver;
+        }
+
+        public static FLVER2 GenerateSwampFlver(WetMesh swamp, MaterialContext materialContext)
+        {
+            FLVER2 flver = new();
+            flver.Header.Version = 131098; // Elden Ring FLVER Version Number
+            flver.Header.Unk5D = 0;        // Unk
+            flver.Header.Unk68 = 4;        // Unk
+
+            /* Add bones and nodes for FLVER */
+            FLVER.Node rootNode = new();
+            FLVER2.SkeletonSet skeletonSet = new();
+            FLVER2.SkeletonSet.Bone rootBone = new(0);
+
+            rootNode.Name = Path.GetFileNameWithoutExtension("SwampMesh");
+            skeletonSet.AllSkeletons.Add(rootBone);
+            skeletonSet.BaseSkeleton.Add(rootBone);
+            flver.Nodes.Add(rootNode);
+            flver.Skeletons = skeletonSet;
+
+            /* Material */
+            MaterialContext.MaterialInfo matinfo = materialContext.GenerateMaterialSwamp(0);
+            flver.Materials.Add(matinfo.material);
+            flver.BufferLayouts.Add(matinfo.layout);
+            flver.GXLists.Add(matinfo.gx);
+
+            /* make a mesh */
+            FLVER2.Mesh mesh = new();
+            FLVER2.FaceSet faces = new();
+            mesh.FaceSets.Add(faces);
+            faces.CullBackfaces = false;
+            faces.Unk06 = 1;
+            mesh.NodeIndex = 0; // attach to rootnode
+            mesh.MaterialIndex = 0;
+            FLVER2.VertexBuffer vb = new(0);
+            mesh.VertexBuffers.Add(vb);
+
+            /* generic data */
+            Vector3 normal = new Vector3(0, 1, 0);
+            Vector4 tangent = new Vector4(1, 0, 0, -1);
+            Vector4 bitangent = new Vector4(0, 0, 0, 0);
+            FLVER.VertexColor color = new(255, 255, 255, 255);
+
+            // returns indice if exists, -1 if doesnt // normally i dont caare about optimizing verts/indices but this material really cares about connected verts so we doing it
+            int GetVertex(FLVER.Vertex v)
+            {
+                for (int i = 0; i < mesh.Vertices.Count; i++)
+                {
+                    FLVER.Vertex vert = mesh.Vertices[i];
+                    if (
+                        Vector3.Distance(vert.Position, v.Position) < 0.001 &&
+                        Vector3.Distance(vert.UVs[0], v.UVs[0]) < 0.001
+                    ) { return i; }
+                }
+                return -1;
+            }
+
+            /* Get bounds so we can uvw this easily */
+            float BOUND = Const.CELL_EXTERIOR_BOUNDS * Const.CELL_SIZE;
+            Vector2 min = new Vector2(BOUND); Vector2 max = new Vector2(-BOUND);
+            foreach (WetFace face in swamp.faces)
+            {
+                foreach (Vector3 point in face.Points())
+                {
+                    min.X = Math.Min(point.X, min.X);
+                    min.Y = Math.Min(point.Z, min.Y);
+                    max.X = Math.Max(point.X, max.X);
+                    max.Y = Math.Max(point.Z, max.Y);
+                }
+            }
+
+            /* This bounds is a rectangle (probably) so we need to square it off to prevent stretchy UVs */
+            if (max.X - min.X < max.Y - min.Y)
+            {
+                max.X = min.X + (max.Y - min.Y);
+            }
+            else
+            {
+                max.Y = min.Y + (max.X - min.X);
+            }
+
+            /* Write wet mesh data to flver and generate UVs */
+            Random rand = new();
+            foreach (WetFace face in swamp.faces)
+            {
+                FLVER.Vertex[] verts = new FLVER.Vertex[3];
+
+                for (int i = 0; i < face.Points().Count(); i++) 
+                {
+                    Vector3 v = face.Points()[i];
+
+                    FLVER.Vertex vert = new();
+                    vert.Position = v;
+                    vert.Normal = normal;
+                    vert.Tangents.Add(tangent);
+                    vert.Bitangent = bitangent;
+                    vert.Colors.Add(color);
+
+                    float nX = (vert.Position.X - min.X) / (max.X - min.X);
+                    float nY = (vert.Position.Z - min.Y) / (max.Y - min.Y);
+                    Vector3 normalized = new Vector3(nX, nY, 0f);
+
+                    Vector3 UV0_OFFSET = new Vector3(.5f, .5f, 0f); // the normalized uvs for this are 0 -> 1 so we offset to center it on 0,0 so we can stretch it to fill -16 -> 16
+                    float UV0_SCALE = 15.9f;                       // tiling of swamp textures controlled here
+                    float UNK_10 = (rand.Next() * .25f) + .25f;   // i have no fucking clue for any of these. honestly could all be stubs that do nothing for all i can tell
+                    float UNK_11 = (rand.Next() * .25f) + .25f;
+                    float UNK_0 = .05f;
+                    float UNK_1 = .05f;
+                    float UNK_2 = .0f;
+                    float UNK_3 = -15f;
+
+                    vert.UVs.Add((normalized - UV0_OFFSET) * UV0_SCALE);
+                    vert.UVs.Add(new Vector3(UNK_2, UNK_0, 0f));
+                    vert.UVs.Add(new Vector3(UNK_3, UNK_1, 0f));
+                    vert.UVs.Add(new Vector3(UNK_10, UNK_11, 0f));
+                    vert.UVs.Add(vert.UVs[3]);
+
+                    verts[i] = vert;
+                }
+
+                foreach (FLVER.Vertex vert in verts.Reverse()) // this specific swamp material backface culls disregarding mesh settings so i needed to flip this to make it visible. idk fuck
+                {
+                    int indice = GetVertex(vert);
+                    if (indice != -1)
+                    {
+                        faces.Indices.Add(indice); continue;
+                    }
+
+                    mesh.Vertices.Add(vert);
+                    faces.Indices.Add(mesh.Vertices.Count - 1);
+                }
+            }
+
+            /* Add mesh */
+            flver.Meshes.Add(mesh);
+
+            /* Bounding box solve */
+            BoundingBoxSolver.FLVER(flver);
+
+            return flver;
+        }
+
+
         /* When iterating through static assets, if we see swamp meshes we pop em in here. We need a list of swamp areas so we can cut them out of water gen */
         /* Morrowind water is flat so the swamp is just slightly above the water, but elden ring water is 3d so we have to actually slice the water plane to prevent clipping */
+        /* Returns true if added, false if not added */
         public static List<Cutout> CUTOUTS = new();
-        public static void AddSwamp(Content content)
+        public static List<ShapedCutout> SHAPED_CUTOUTS = new(); // literally like 2 things. we almost got away with just using squares but bethesda really just HAD to fuck it up
+        public static bool AddCutout(Content content)
         {
             float s;
-            if (content.mesh == @"f\terrain_bc_scum_01.nif") { s =  20.48f; }  // measured these meshes in blender. could read actual vert data but they are just squares so why bother
-            else if (content.mesh == @"f\terrain_bc_scum_02.nif") { s = 10.24f; }
-            else { s = 5.12f; } // @"f\terrain_bc_scum_03.nif"
-            s *= Const.WATER_CUTOUT_SIZE_TWEAK;
-            Cutout cutout = new(content.position, content.rotation, s);
-            CUTOUTS.Add(cutout);
+            Cutout.Type type;
+            bool shaped;
+            if (content.mesh == @"f\terrain_bc_scum_01.nif") { s = 20.48f; type = Cutout.Type.Swamp; shaped = false; }  // measured these meshes in blender. could read actual vert data but they are just squares so why bother
+            else if (content.mesh == @"f\terrain_bc_scum_02.nif") { s = 10.24f; type = Cutout.Type.Swamp; shaped = false; }
+            else if (content.mesh == @"f\terrain_bc_scum_03.nif") { s = 5.12f; type = Cutout.Type.Swamp; shaped = false; }
+            else if (content.mesh == @"i\in_lava_1024.nif") { s = 10.24f; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_1024_01.nif") { s = 10.24f; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_512.nif") { s = 5.12f; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_256.nif") { s = 2.56f; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_oval.nif") { s = 0f; type = Cutout.Type.Lava; shaped = true; } // fuck
+            else if (content.mesh == @"i\in_lava_256a.nif") { s = 0f; type = Cutout.Type.Lava; shaped = true; } // off
+            else return false;
 
+            Vector3 offsetJank = new Vector3(Const.CELL_SIZE * .5f, 0, Const.CELL_SIZE * .5f); // this is just one of those things where this offset is correct but i'd be hard pressed to tell you why
+            if (shaped)
+            {
+                ShapedCutout cutout = new(type, content.position - offsetJank, content.rotation, content.mesh);
+                SHAPED_CUTOUTS.Add(cutout);
+                return true;
+            }
+            else
+            {
+                Cutout cutout = new(type, content.position - offsetJank, content.rotation, s);
+                CUTOUTS.Add(cutout);
+                return true;
+            }
         }
 
-        public static void AddLava(Content content)
-        {
-
-        }
-
-        public static bool PointInSwamp(Vector3 position)
+        public static bool PointInCutout(Cutout.Type type, Vector3 position, bool includeShapedCutouts = false)
         {
             foreach(Cutout cutout in CUTOUTS)
             {
+                if(cutout.type != type) { continue; }
                 if (cutout.IsInside(position, false) && position.Y <= cutout.height) { return true; }
+            }
+            if (includeShapedCutouts)
+            {
+                foreach (Cutout cutout in SHAPED_CUTOUTS)
+                {
+                    if (cutout.type != type) { continue; }
+                    if (cutout.IsInside(position, false) && position.Y <= cutout.height) { return true; }
+                }
             }
             return false;
         }
 
-        public static bool PointInLava(Vector3 position)
+        public static List<Cutout> GetCutoutType(Cutout.Type type, bool includeShapedCutouts = false, float scaleSizeBy = 1f)
         {
-            return false;
+            List<Cutout> cutouts = new();
+            foreach(Cutout cutout in CUTOUTS)
+            {
+                if (cutout.type == type || type == Cutout.Type.Both) {
+                    if(scaleSizeBy == 1f) { cutouts.Add(cutout); }
+                    else
+                    {
+                        Cutout scaled = cutout.Copy();
+                        scaled.size *= scaleSizeBy;
+                        cutouts.Add(scaled);
+                    }
+                }
+            }
+            if(includeShapedCutouts)
+            {
+                foreach (ShapedCutout cutout in SHAPED_CUTOUTS)
+                {
+                    if (cutout.type == type || type == Cutout.Type.Both) { cutouts.Add(cutout); }
+                    // rescaling these is unsupported and hopefully never needed
+                }
+            }
+            return cutouts;
         }
 
         public class WetMesh
@@ -938,6 +1326,75 @@ namespace JortPob
                 }
 
                 Cleanup(); // that's a wrap!
+            }
+
+            /* This constructor makes a quad mesh of cutouts via brute force. Used to create visual meshes for lava and swamps */
+            public WetMesh(List<Cutout> cutouts, Cutout.Type cutoutType)
+            {
+                /* Calculate a bounding box of lava cutouts */
+                Vector3 offsetJank = new Vector3(Const.CELL_SIZE * .5f, 0, Const.CELL_SIZE * .5f); // this is just one of those things where this offset is correct but i'd be hard pressed to tell you why
+                float BOUND = Const.CELL_EXTERIOR_BOUNDS * Const.CELL_SIZE;
+                Vector2 min = new Vector2(BOUND); Vector2 max = new Vector2(-BOUND);
+                foreach (Cutout cutout in cutouts)
+                {
+                    foreach (Vector3 point in cutout.Points())
+                    {
+                        min.X = Math.Min(point.X, min.X);
+                        min.Y = Math.Min(point.Z, min.Y);
+                        max.X = Math.Max(point.X, max.X);
+                        max.Y = Math.Max(point.Z, max.Y);
+                    }
+                }
+                min -= new Vector2(offsetJank.X, offsetJank.Z);  // in theory we shouldnt have to do this but guh!
+                max += new Vector2(offsetJank.X, offsetJank.Z);
+
+                /* Generate a quad mesh anywhere there is lava cutouts. We can't use the MW data of lava because it's got open edges everywhere. Elden Ring lava needs a clean quad mesh to work with */
+                faces = new(); outlines = new();
+
+                for (float y = min.Y; y < max.Y; y += Const.LIQUID_QUAD_GENERATE_SIZE)
+                {
+                    for (float x = min.X; x < max.X; x += Const.LIQUID_QUAD_GENERATE_SIZE)
+                    {
+                        Cutout sq = new(cutoutType, new Vector3(x, 0f, y) - offsetJank, Vector3.Zero, Const.LIQUID_QUAD_GENERATE_SIZE);
+
+                        foreach (Cutout cutout in cutouts)
+                        {
+                            if (cutout.GetType() == typeof(ShapedCutout)) { continue; } // skip shaped cutouts for now
+                            Vector3 h = new Vector3(0, cutout.height, 0);
+
+                            if (cutout.IsIntersect(sq))
+                            {
+                                foreach (WetFace face in sq.Faces())
+                                {
+                                    Vector3 a = face.a + h;
+                                    Vector3 b = face.b + h;
+                                    Vector3 c = face.c + h;
+                                    faces.Add(new WetFace(a, b, c));
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // do shaped cutouts now
+                foreach (Cutout cutout in cutouts)
+                {
+                    if (cutout.GetType() != typeof(ShapedCutout)) { continue; }
+                    ShapedCutout shaped = (ShapedCutout)cutout;
+                    Vector3 h = new Vector3(0, cutout.height, 0);
+
+                    foreach (WetFace face in shaped.mesh)
+                    {
+                        List<Vector3> transformedPoints = new();
+                        foreach (Vector3 point in face.Points())
+                        {
+                            transformedPoints.Add(point + shaped.position + h); // need to also do rotation as well guh!
+                        }
+
+                        faces.Add(new WetFace(transformedPoints[0], transformedPoints[1], transformedPoints[2]));
+                    }
+                }
             }
 
             private void SubtractCutouts(List<Cutout> cutouts)
@@ -1581,18 +2038,144 @@ namespace JortPob
             }
         }
 
+        /* This is a last second add-in because every single cutout mesh was a square except FUCKING TWO STUPID LAVA MESHES */
+        /* So basically dirty hack, just need to insert the stupid oval lava mesh in to this system */
+        public class ShapedCutout : Cutout
+        {
+            public List<WetFace> mesh;
+
+            public ShapedCutout(Type type, Vector3 position, Vector3 rotation, string meshPath) : base(type, position, rotation, 0)
+            {
+                this.mesh = new();
+
+                AssimpContext assimpContext = new();
+                Scene fbx = assimpContext.ImportFile($"{Const.MORROWIND_PATH}Data Files\\meshes\\{meshPath.Replace(".nif", ".fbx")}");
+                Mesh mesh = null;  // find first mesh that's not collision and use it
+                Node node = null;
+
+                void FBXHierarchySearch(Node fbxParentNode)
+                {
+                    foreach (Node fbxChildNode in fbxParentNode.Children)
+                    {
+                        string nodename = fbxChildNode.Name.ToLower();
+
+                        if (nodename.Trim().ToLower() == "collision")
+                        {
+                            return;
+                        }
+                        if (fbxChildNode.HasMeshes)
+                        {
+                            foreach (int fbxMeshIndex in fbxChildNode.MeshIndices)
+                            {
+                                node = fbxChildNode;
+                                mesh = fbx.Meshes[fbxMeshIndex];
+                                return;
+                            }
+                        }
+                        if (fbxChildNode.HasChildren)
+                        {
+                            FBXHierarchySearch(fbxChildNode);
+                        }
+                    }
+                }
+                FBXHierarchySearch(fbx.RootNode);
+
+                foreach (Face face in mesh.Faces)
+                {
+                    List<Vector3> points = new();
+                    for (int i = 0; i < 3; i++)
+                    {
+                        FLVER.Vertex flverVertex = new();
+
+                        /* Grab vertice position + normals/tangents */
+                        Vector3 pos = mesh.Vertices[face.Indices[i]];
+
+                        /* Collapse transformations on positions and collapse rotations on normals/tangents */
+                        Node parent = node;
+                        while (parent != null)
+                        {
+                            Vector3 trans;
+                            Quaternion rot;
+                            Vector3 scale;
+                            Matrix4x4.Decompose(parent.Transform, out scale, out rot, out trans);
+                            trans = new Vector3(parent.Transform.M14, parent.Transform.M24, parent.Transform.M34); // Hack
+
+                            rot = Quaternion.Inverse(rot);
+
+                            Matrix4x4 ms = Matrix4x4.CreateScale(scale);
+                            Matrix4x4 mr = Matrix4x4.CreateFromQuaternion(rot);
+                            Matrix4x4 mt = Matrix4x4.CreateTranslation(trans);
+
+                            pos = Vector3.Transform(pos, ms * mr * mt);
+
+                            parent = parent.Parent;
+                        }
+
+                        // Fromsoftware lives in the mirror dimension. I do not know why.
+                        pos = pos * Const.GLOBAL_SCALE;
+                        pos.X *= -1f;
+
+                        /* Rotate Y 180 degrees because... */
+                        Matrix4x4 rotateY180Matrix = Matrix4x4.CreateRotationY((float)Math.PI);
+                        pos = Vector3.Transform(pos, rotateY180Matrix);
+
+                        points.Add(pos);
+                    }
+
+                    WetFace f = new(points[0], points[1], points[2]);
+                    this.mesh.Add(f);
+                }
+
+                assimpContext.Dispose();
+
+                /* Calculate size so inherited methods from cutout still mostly work */
+                float max = 0;
+                foreach (WetFace face in this.mesh)
+                {
+                    foreach(Vector3 point in face.Points())
+                    {
+                        float dist = Vector3.Distance(Vector3.Zero, point); //lol magnitude()
+                        if (dist > max) { max = dist; }
+                    }
+                }
+                this.size = max;
+            }
+        }
+
         public class Cutout
         {
+            public enum Type
+            {
+                Swamp, Lava, Both // both should not ever be set in the constructor. only used as a flag when sorting stuff in GetCutout()
+            };
+
+            public readonly Type type;
             public readonly Vector3 position, rotation;
             public float size;
             public float height;
-            public Cutout(Vector3 position, Vector3 rotation, float size)
+            public Cutout(Type type, Vector3 position, Vector3 rotation, float size)
             {
-                this.position = position - new Vector3(Const.CELL_SIZE * .5f, 0, Const.CELL_SIZE * .5f);
-                this.position.Y = 0; // while it may not make a whole lot of sense... 
+                this.type = type;
                 height = position.Y; // height values do actually break *something* in the cutout slicer. so uhhh lets just seperate it for my own sanity
+                this.position = position;
+                this.position.Y = 0; // while it may not make a whole lot of sense... 
                 this.rotation = rotation;
                 this.size = size;
+            }
+
+            /* Makes a copy */
+            private Cutout(Cutout B)
+            {
+                type = B.type;
+                position = B.position;
+                rotation = B.rotation;
+                size = B.size;
+                height = B.height;
+            }
+
+            public Cutout Copy()
+            {
+                return new Cutout(this);
             }
 
             public List<Vector3> Points()
@@ -1676,6 +2259,27 @@ namespace JortPob
                 }
 
                 return true;
+            }
+
+            // Checks if 2 cutouts intersect, doing this via point tests on both. this misses an edge case where 2 recatangles intersect but dont have any points within eachother but that's not gonna happen here
+            public bool IsIntersect(Cutout B)
+            {
+                // Optimizatino for speed, if center points are further away than 2x the the combined size of both we return false before doing any further testing
+                if (Vector3.Distance(position, B.position) > (size + B.size * 2f)) { return false; }
+
+                // Check if any A point is inside B
+                foreach(Vector3 a in Points())
+                {
+                    if(B.IsInside(a, true)) { return true; }
+                }
+
+                // Check if any B point is inside A
+                foreach (Vector3 b in B.Points())
+                {
+                    if (IsInside(b, true)) { return true; }
+                }
+
+                return false;
             }
         }
 

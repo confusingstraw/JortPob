@@ -59,8 +59,18 @@ namespace JortPob
             water.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
             msb.Parts.Assets.Add(water);
 
+            /* Add swamp */
+            MSBE.Part.Asset swamp = MakePart.Asset(cache.GetSwamp());
+            swamp.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+            msb.Parts.Assets.Add(swamp);
+
+            /* Add lava */
+            MSBE.Part.Asset lava = MakePart.Asset(cache.GetLava());
+            lava.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, Const.LAVA_VISUAL_OFFSET, 0f);
+            msb.Parts.Assets.Add(lava);
+
             /* Add terrain */
-            foreach(TerrainInfo terrainInfo in cache.terrains)
+            foreach (TerrainInfo terrainInfo in cache.terrains)
             {
                 Vector3 position = new Vector3(terrainInfo.coordinate.x * Const.CELL_SIZE, 0, terrainInfo.coordinate.y * Const.CELL_SIZE) + center;
 

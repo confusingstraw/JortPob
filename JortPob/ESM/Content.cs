@@ -111,6 +111,42 @@ namespace JortPob
         }
     }
 
+    /* doors, both warp doors and activator doors */
+    public class DoorContent : Content
+    {
+        public class Warp
+        {
+            public readonly string cell;
+            public readonly Vector3 position, rotation;
+            public Warp(JsonNode json)
+            {
+                float x = float.Parse(json["translation"][0].ToString());
+                float z = float.Parse(json["translation"][1].ToString());
+                float y = float.Parse(json["translation"][2].ToString());
+
+                float i = float.Parse(json["rotation"][0].ToString());
+                float j = float.Parse(json["rotation"][1].ToString());
+                float k = float.Parse(json["rotation"][2].ToString());
+
+                position = new(x, y, z);
+                rotation = new(i, j, k);
+                cell = json["cell"].ToString();
+            }
+        }
+
+        public Warp warp;
+        public DoorContent(JsonNode json, Record record) : base(json, record)
+        {
+            mesh = record.json["mesh"].ToString().ToLower();
+
+            if (json["destination"]  == null) { warp = null; }
+            else
+            {
+                warp = new(json["destination"]);
+            }
+        }
+    }
+
     /* static meshes that have emitters/lights EX: candles/campfires -- converted to assets but also generates ffx files and params to make them work */
     public class EmitterContent : Content
     {

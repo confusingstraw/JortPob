@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static JortPob.LiquidManager;
 using static SoulsFormats.PARAM;
 
 namespace JortPob
@@ -116,6 +117,68 @@ namespace JortPob
             TestWorker.Go(pools);
             Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
             Lort.Log("## DEBUG ## Done! Exit now via breakpoint pls~", Lort.Type.Main);
+        }
+        
+        /* Just rebuilds the lava visual mesh. Used for rapid testing changes to lava material params */
+        public static void RegenerateLava(Cache cache, ESM esm)
+        {
+            void ScoopEmUp(List<Cell> cells)
+            {
+                foreach (Cell cell in cells)
+                {
+                    void Scoop(List<Content> contents)
+                    {
+                        foreach (Content content in contents)
+                        {
+                            if (content.mesh == null) { continue; }  // skip content with no mesh
+                            LiquidManager.AddCutout(content); // check if this is a lava or swamp mesh and add it to cutouts if it is
+                        }
+                    }
+                    Scoop(cell.contents);
+                }
+            }
+            ScoopEmUp(esm.exterior);
+
+            LiquidInfo lavaInfo = cache.GetLava();
+            MaterialContext materialContext = new();
+            WetMesh hotmesh = new WetMesh(LiquidManager.GetCutoutType(LiquidManager.Cutout.Type.Lava, true), LiquidManager.Cutout.Type.Lava);
+            hotmesh.ToDebugObj().write(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\lavadebug.obj");
+            FLVER2 lavaFlver = LiquidManager.GenerateLavaFlver(hotmesh, materialContext);
+            lavaFlver.Write($"{Const.CACHE_PATH}{lavaInfo.path}");
+            Bind.BindAsset(lavaInfo, $"{Const.OUTPUT_PATH}asset\\aeg\\{lavaInfo.AssetPath()}.geombnd.dcx");
+        }
+
+        /* Just rebuilds the swamp visual mesh. Used for rapid testing changes to swamp material params */
+        public static void RegenerateSwamp(Cache cache, ESM esm)
+        {
+            void ScoopEmUp(List<Cell> cells)
+            {
+                foreach (Cell cell in cells)
+                {
+                    void Scoop(List<Content> contents)
+                    {
+                        foreach (Content content in contents)
+                        {
+                            if (content.mesh == null) { continue; }  // skip content with no mesh
+                            LiquidManager.AddCutout(content); // check if this is a lava or swamp mesh and add it to cutouts if it is
+                        }
+                    }
+                    Scoop(cell.contents);
+                }
+            }
+            ScoopEmUp(esm.exterior);
+
+            LiquidInfo swampInfo = cache.GetSwamp();
+            MaterialContext materialContext = new();
+            WetMesh swampMesh = new WetMesh(LiquidManager.GetCutoutType(LiquidManager.Cutout.Type.Swamp, true), LiquidManager.Cutout.Type.Swamp);
+            swampMesh.ToDebugObj().write(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\swampdebug.obj");
+            FLVER2 swampFlver = LiquidManager.GenerateSwampFlver(swampMesh, materialContext);
+            swampFlver.Write($"{Const.CACHE_PATH}{swampInfo.path}");
+            Bind.BindAsset(swampInfo, $"{Const.OUTPUT_PATH}asset\\aeg\\{swampInfo.AssetPath()}.geombnd.dcx");
+
+            materialContext.WriteAll(); // while we dont need to regenerate textures, the matbins are needed so guh
+            materialContext = null; // dispose
+            Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
         }
 
         private class TestWorker : Worker.Worker

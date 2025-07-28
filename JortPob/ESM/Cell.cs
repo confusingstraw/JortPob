@@ -29,6 +29,7 @@ namespace JortPob
         public readonly List<CreatureContent> creatures;
         public readonly List<NpcContent> npcs;
         public readonly List<AssetContent> assets;
+        public readonly List<DoorContent> doors;
         public readonly List<LightContent> lights;
         public readonly List<EmitterContent> emitters;
 
@@ -50,6 +51,7 @@ namespace JortPob
             creatures = new();
             npcs = new();
             assets = new();
+            doors = new();
             emitters = new();
             lights = new();
 
@@ -67,7 +69,11 @@ namespace JortPob
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Container:
+                    case ESM.Type.Activator:
                         if (mesh != null) { assets.Add(new AssetContent(reference, record)); }
+                        break;
+                    case ESM.Type.Door:
+                        if (mesh != null) { doors.Add(new DoorContent(reference, record)); }
                         break;
                     case ESM.Type.Light:
                         if (mesh == null) { lights.Add(new LightContent(reference, record)); }
@@ -86,6 +92,7 @@ namespace JortPob
             contents.AddRange(creatures);
             contents.AddRange(npcs);
             contents.AddRange(assets);
+            contents.AddRange(doors);
             contents.AddRange(emitters);
             contents.AddRange(lights);
 
