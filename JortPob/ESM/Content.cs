@@ -82,6 +82,16 @@ namespace JortPob
             rotation = eu * (float)(180 / Math.PI);
             scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
+
+        public Content(string id, ESM.Type type, Int2 load, Vector3 position, Vector3 rotation, int scale)
+        {
+            this.id = id;
+            this.type = type;
+            this.load = load;
+            this.position = position;
+            this.rotation = rotation;
+            this.scale = scale;
+        }
     }
 
     /* npcs, humanoid only */
@@ -108,6 +118,11 @@ namespace JortPob
         public AssetContent(JsonNode json, Record record) : base(json, record)
         {
             mesh = record.json["mesh"].ToString().ToLower();
+        }
+
+        public EmitterContent ConvertToEmitter()
+        {
+            return new EmitterContent(id, type, load, position, rotation, scale, mesh);
         }
     }
 
@@ -153,6 +168,11 @@ namespace JortPob
         public EmitterContent(JsonNode json, Record record) : base(json, record)
         {
             mesh = record.json["mesh"].ToString().ToLower();
+        }
+
+        public EmitterContent(string id, ESM.Type type, Int2 load, Vector3 position, Vector3 rotation, int scale, string mesh) : base(id, type, load, position, rotation, scale)
+        {
+            this.mesh = mesh;
         }
     }
 

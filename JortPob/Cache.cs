@@ -141,6 +141,37 @@ namespace JortPob
             return false;
         }
 
+        public void AddConvertedEmitter(EmitterContent emitterContent)
+        {
+            ModelInfo modelInfo = GetModel(emitterContent.mesh);
+
+            if (GetEmitter(emitterContent.id) == null)
+            {
+                EmitterInfo emitterInfo = new();
+                emitterInfo.record = emitterContent.id;
+                emitterInfo.model = modelInfo;
+
+                emitterInfo.color = new byte[] { 0, 0, 0, 0 }; // no light
+
+                emitterInfo.radius = 0f;
+                emitterInfo.weight = 0f;
+
+                emitterInfo.value = 0;
+                emitterInfo.time = 0;
+
+                emitterInfo.dynamic = false;
+                emitterInfo.fire = false;
+                emitterInfo.negative = false;
+                emitterInfo.defaultOff = true;
+                emitterInfo.mode = LightContent.Mode.Default;
+
+                emitterInfo.id = emitters.Last().id + 1;
+
+                Lort.Log($"## INFO ##  AssetContent '{emitterContent.id}' was converted to an EmitterContent!", Lort.Type.Debug);
+                emitters.Add(emitterInfo);
+            }
+        }
+
         /* Big stupid load function */
         public static Cache Load(ESM esm)
         {
@@ -479,6 +510,15 @@ namespace JortPob
         public bool UseScale()
         {
             return !HasCollision() || IsDynamic();
+        }
+
+        public bool HasEmitter()
+        {
+            foreach (KeyValuePair<string, short> kvp in dummies)
+            {
+                if (kvp.Key.Contains("emitter")) { return true; }
+            }
+            return false;
         }
     }
 

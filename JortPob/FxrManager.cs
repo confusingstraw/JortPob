@@ -42,9 +42,23 @@ namespace JortPob
         // ash without fire  (used maybe 8 times?)
         // superspray02 (1 off used by lava, unknown, prolly a really big fire?)
         // pcloud01 (1 off seems to be used for mist or something, unsure)
+        // chimney_smoke02
+        // ex_waterfall_mist_01
+        // blizzard01
+        // ex_gg_particles_01
+        // ex_waterfall_mist_s_01
+        // ex_volcano_steam_emitter
+        // terrain_lava_ventlg
+        // terrain_lava_vent
+        // superspray03
+        // steam_lavariver01
+        // steam_lavariver
 
+        private static List<string> UNK_EMITTERS = new(); // so we dont spam logs with the same unk emitter name 1000 times
         public static int GetFXR(string emitterName)
         {
+            if (emitterName.Contains("attachlight")) { return -1; } // get outtaaaaa heeeereeeee
+
             foreach(FXR fxr in FXRS)
             {
                 if(fxr.match == emitterName)
@@ -53,7 +67,7 @@ namespace JortPob
                 }
             }
 
-            Lort.Log($"## WARNING ## Unknown emitter name {emitterName}", Lort.Type.Debug);
+            if(!UNK_EMITTERS.Contains(emitterName)) { Lort.Log($"## WARNING ## Unknown emitter name {emitterName}", Lort.Type.Debug); UNK_EMITTERS.Add(emitterName); }
             return -1; 
         }
 

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.TypeRegistryTest;
+using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats.Formats.Morpheme.MorphemeBundle;
 using System;
@@ -151,8 +152,25 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
+            Content EmitterConversionCheck(Content content)
+            {
+                if(content.GetType() != typeof(AssetContent)) { return content; }
+                AssetContent assetContent = content as AssetContent;
+
+                /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
+                /* We can't really do this earlier than this point sadly because we need both the ESM loaded an cache built to be able to catch this corner case */
+                /* So we do it here */
+                ModelInfo modelInfo = cache.GetModel(assetContent.mesh);
+                if (!modelInfo.HasEmitter()) { return content; }
+
+                EmitterContent emitterContent = assetContent.ConvertToEmitter();
+                cache.AddConvertedEmitter(emitterContent);
+
+                return emitterContent;
+            }
+
             /* Subdivide all cell content into tiles */
-            foreach(Cell cell in esm.exterior)
+            foreach (Cell cell in esm.exterior)
             {
                 HugeTile huge = GetHugeTile(cell.center);
                 TerrainInfo terrain = cache.GetTerrain(cell.coordinate);
@@ -162,11 +180,19 @@ namespace JortPob
                     else { Lort.Log($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}", Lort.Type.Debug); }
                 }
 
-                if (huge != null) { huge.AddContent(cache, cell); }
-                else { Lort.Log($" ## WARNING ## Cell fell outside of reality {cell.coordinate} -- {cell.name}", Lort.Type.Debug); }
+                if (huge != null)
+                {
+                    foreach (Content content in cell.contents)
+                    {
+                        Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
 
+                        huge.AddContent(cache, cell, c);
+                    }
+                }
+                else { Lort.Log($" ## WARNING ## Cell fell outside of reality {cell.coordinate} -- {cell.name}", Lort.Type.Debug); }
                 Lort.TaskIterate(); // Progress bar update
             }
+
 
             /* Subdivide all interior cells into groups */
             int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);

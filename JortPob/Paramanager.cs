@@ -277,6 +277,9 @@ namespace JortPob
                     int offset = 0;
                     PARAM emitterParam = param[ParamType.AssetModelSfxParam];
                     PARAM.Row row = CloneRow(GetRow(228039000, emitterParam), emitterParam.AppliedParamdef, $"emitter-{asset.record}", asset.AssetRow() * 1000); // 228039000 is a candle in the round table hold
+                    row.Cells[0 + (offset * 3)].Value = -1;
+                    row.Cells[1 + (offset * 3)].Value = -1;
+
                     /* Quick optimization */
                     /* In Morrowind they comibne multiple effects for some emitter things. Most notably a campfire is like 5 emitters */
                     /* In Elden Ring they jus thave a single simple campfire FXR. So uhhh let's just look and see if a MW emitter has the fire part and then delete the rest to make things easier. */

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.TypeRegistryTest;
+using JortPob.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -52,30 +53,27 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
-        public new void AddContent(Cache cache, Cell cell)
+        public new void AddContent(Cache cache, Cell cell, Content content)
         {
-            foreach (Content content in cell.contents)
+            switch (content)
             {
-                switch (content)
-                {
-                    case AssetContent a:
-                        ModelInfo modelInfo = cache.GetModel(a.mesh);
-                        if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
-                        {
-                            float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                            float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                            content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                            Tile tile = GetTile(cell.center);
-                            content.load = tile.coordinate;
-                            base.AddContent(cache, cell, content);
-                            break;
-                        }
-                        goto default;
-                    default:
-                        BigTile big = GetBigTile(cell.center);
-                        big.AddContent(cache, cell, content);
+                case AssetContent a:
+                    ModelInfo modelInfo = cache.GetModel(a.mesh);
+                    if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
+                    {
+                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        Tile tile = GetTile(cell.center);
+                        content.load = tile.coordinate;
+                        base.AddContent(cache, cell, content);
                         break;
-                }
+                    }
+                    goto default;
+                default:
+                    BigTile big = GetBigTile(cell.center);
+                    big.AddContent(cache, cell, content);
+                    break;
             }
         }
 
