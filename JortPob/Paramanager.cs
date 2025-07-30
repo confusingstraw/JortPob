@@ -172,6 +172,14 @@ namespace JortPob
             return row;
         }
 
+        public void DeleteRow(PARAM param, int rowID)
+        {
+            foreach(PARAM.Row row in param.Rows)
+            {
+                if (row.ID == rowID) { param.Rows.Remove(row); return; }
+            }
+        }
+
         public void Write()
         {
             BND4 bnd = new();
@@ -202,6 +210,7 @@ namespace JortPob
             return lodPartDrawParamIDs.Last().Value;
         }
 
+        /* These 3 methods generate the params for assets and assetsfx for emitters */
         public void GenerateAssetRows(List<ModelInfo> assets)
         {
             PARAM assetParam = param[ParamType.AssetEnvironmentGeometryParam];
@@ -406,6 +415,67 @@ namespace JortPob
                 row.Cells[31].Value = 0;    // distant view model play dist [5]
                 assetParam.Rows.Add(row);
                 terrainDrawParamID = drawParamId++;
+            }
+        }
+
+        /* This function generates the mapdefaultinfoparam for each tile. These appear to control weather, sky, and general draw setttings for areas */
+        public class WeatherData
+        {
+            public readonly string name;
+            public readonly List<string> match;
+            public readonly int MapInfoParamId, MapRegionParamId;
+            public readonly OverworldManager.EnvMap env;
+
+            public WeatherData(string name, List<string> match, int MapInfoParamId, int MapRegionParamId, OverworldManager.EnvMap env)
+            {
+                this.name = name;
+                this.match = match;
+                for(int i=0;i<match.Count();i++) { match[i] = match[i].Trim().ToLower(); }
+                this.MapInfoParamId = MapInfoParamId;
+                this.MapRegionParamId = MapRegionParamId;
+                this.env = env;
+            }
+        }
+
+        public static List<WeatherData> WEATHER_DATA_LIST = new()
+        {
+            new WeatherData("Limgrave", new(){ "West Gash Region", "Ascadian Isles Region", "Grazelands Region" }, 60423600, 99999901, new OverworldManager.EnvMap(60, new Int2(10,9), 2, 7)), // 0
+            new WeatherData("Liurnia", new(){ "Bitter Coast Region", "Sheogorad", "Azura's Coast Region" }, 60374200, 60365000, new OverworldManager.EnvMap(60, new Int2(9,10), 2, 7)), // 10
+            new WeatherData("Altus", new(){ }, 60395000, 60395000, new OverworldManager.EnvMap(60, new Int2(10,9), 2, 7)), // 20
+            new WeatherData("Gelmir", new(){ "Ashlands Region", "Molag Mar Region" }, 60355200, 60355200, new OverworldManager.EnvMap(60, new Int2(9,13), 2, 7)), // 21
+            new WeatherData("Caelid", new(){ }, 60473700, 60473700, new OverworldManager.EnvMap(60, new Int2(10,10), 2, 7)), // 30
+            new WeatherData("Caelid Desert", new(){ "Red Mountain Region" }, 60533800, 60533800, new OverworldManager.EnvMap(60, new Int2(12,9), 2, 7)), // 31
+        };
+
+        public void GenerateMapInfoParam(Layout layout)
+        {
+            foreach(Tile tile in layout.tiles)
+            {
+                if (tile.IsEmpty()) { continue; } // skip empty tiles
+
+                string region = tile.GetRegion();
+                WeatherData weatherData = null;
+                foreach(WeatherData w in WEATHER_DATA_LIST)
+                {
+                    if(w.match.Contains(region))
+                    {
+                        weatherData = w; break;
+                    }
+                }
+
+                int id = int.Parse($"60{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00");
+
+                /* MapInfoParam */ // controls sky and weather
+                PARAM mapInfoParam = param[ParamType.MapDefaultInfoParam];
+                PARAM.Row rowA = CloneRow(GetRow(weatherData.MapInfoParamId, mapInfoParam), mapInfoParam.AppliedParamdef, $"mw msb - {tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                DeleteRow(mapInfoParam, id); // if a param with this id exists, delete it first.
+                mapInfoParam.Rows.Add(rowA);
+
+                /* MapRegionParam */ // controls gparam
+                PARAM mapRegionParam = param[ParamType.MapGdRegionInfoParam];
+                PARAM.Row rowB = CloneRow(GetRow(weatherData.MapRegionParamId, mapRegionParam), mapRegionParam.AppliedParamdef, $"mw msb - {tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                DeleteRow(mapRegionParam, id); // if a param with this id exists, delete it first.
+                mapRegionParam.Rows.Add(rowB);
             }
         }
 

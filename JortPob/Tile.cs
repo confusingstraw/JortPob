@@ -39,6 +39,41 @@ namespace JortPob
             return false;
         }
 
+        /* Returns averaged region of this tile. Each cell has a region set so the best we can do is see what region is most common among cells in this tile and return that */
+        public string GetRegion()
+        {
+            Dictionary<string, int> regions = new();
+            foreach(Cell cell in cells)
+            {
+                string r = cell.region.Trim().ToLower();
+                if (regions.ContainsKey(r)) { regions[r]++; }
+                else { regions.Add(r, 1); }
+            }
+
+            string most = regions.Keys.First();
+            foreach(KeyValuePair<string, int> kvp in regions)
+            {
+                if (regions[most] < kvp.Value)
+                {
+                    most = kvp.Key;
+                }
+            }
+
+            /* Red Mountain has priority for skybox */
+            string redMountain = "Red Mountain Region".Trim().ToLower();
+            if (regions.ContainsKey(redMountain))
+            {
+                if (regions[redMountain] >= 3) { most = redMountain; }
+            }
+
+            return most;
+        }
+
+        public override void AddCell(Cell cell)
+        {
+            cells.Add(cell);
+        }
+
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
@@ -65,6 +100,8 @@ namespace JortPob
         public readonly Int2 coordinate;
         public readonly int block;
 
+        public readonly List<Cell> cells;
+
         public readonly List<Tuple<Vector3, TerrainInfo>> terrain;
         public readonly List<AssetContent> assets;
         public readonly List<DoorContent> doors;
@@ -81,6 +118,7 @@ namespace JortPob
             block = b;
 
             /* Tile Content Data */
+            cells = new();
             terrain = new();
             assets = new();
             doors = new();
@@ -89,6 +127,13 @@ namespace JortPob
             creatures = new();
             npcs = new();
         }
+
+        public bool IsEmpty()
+        {
+            return cells.Count() <= 0 && terrain.Count() <= 0 && assets.Count() <= 0;
+        }
+
+        public abstract void AddCell(Cell cell);
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public void AddContent(Cache cache, Cell cell, Content content)

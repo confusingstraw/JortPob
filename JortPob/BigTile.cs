@@ -39,6 +39,13 @@ namespace JortPob
             return false;
         }
 
+        public override void AddCell(Cell cell)
+        {
+            cells.Add(cell);
+            Tile tile = GetTile(cell.center);
+            tile.AddCell(cell);
+        }
+
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public new void AddContent(Cache cache, Cell cell, Content content)
         {

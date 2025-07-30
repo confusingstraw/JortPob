@@ -39,7 +39,7 @@ namespace JortPob
             Lort.NewTask("Generating MSB", layout.tiles.Count);
             foreach (BaseTile tile in layout.all)
             {
-                if (tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
+                if (tile.IsEmpty()) { continue; }   // Skip empty tiles.
 
                 /* Generate msb from tile */
                 MSBE msb = new();
@@ -319,6 +319,7 @@ namespace JortPob
             param.GenerateAssetRows(cache.assets);
             param.GenerateAssetRows(cache.emitters);
             param.GenerateAssetRows(cache.liquids);
+            param.GenerateMapInfoParam(layout);
             param.KillMapHeightParams();    // murder kill
             param.Write();
 
@@ -341,7 +342,7 @@ namespace JortPob
             }
 
             /* Generate overworld */
-            ResourcePool overworld = OverworldManager.Generate(cache, esm, param);
+            ResourcePool overworld = OverworldManager.Generate(cache, esm, layout, param);
             msbs.Insert(0, overworld); // this one takes the longest so we put it first so that the thread working on it has plenty of time to finish
 
             /* Debug print thing */

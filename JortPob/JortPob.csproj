@@ -71,6 +71,294 @@
     <None Update="oo2core_6_win64.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_00_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_00_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_00_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_01_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_01_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_01_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_02_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_02_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_02_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_03_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_03_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_03_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_04_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_04_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_04_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_05_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_05_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_05_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_06_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_06_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_envmap_06_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_high.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_low.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_10_02_middle.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_00_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_00_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_00_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_01_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_01_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_01_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_02_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_02_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_02_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_03_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_03_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_03_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_04_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_04_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_04_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_05_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_05_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_05_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_06_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_06_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_envmap_06_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_high.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_low.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_09_13_02_middle.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_00_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_00_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_00_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_01_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_01_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_01_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_02_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_02_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_02_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_03_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_03_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_03_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_04_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_04_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_04_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_05_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_05_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_05_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_06_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_06_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_envmap_06_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_high.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_low.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_10_09_02_middle.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_00_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_00_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_00_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_01_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_01_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_01_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_02_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_02_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_02_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_03_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_03_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_03_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_04_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_04_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_04_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_05_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_05_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_05_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_06_high_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_06_low_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_envmap_06_middle_00.tpfbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_high.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_low.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\env\m60_12_09_02_middle.ivinfobnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\fxr\attachlight template.fxr">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

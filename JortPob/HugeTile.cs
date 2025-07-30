@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -38,6 +39,13 @@ namespace JortPob
             }
 
             return false;
+        }
+
+        public override void AddCell(Cell cell)
+        {
+            cells.Add(cell);
+            BigTile big = GetBigTile(cell.center);
+            big.AddCell(cell);
         }
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
@@ -111,6 +119,35 @@ namespace JortPob
         {
             tiles.Add(tile);
             tile.huge = this;
+        }
+
+        public string GetRegion()
+        {
+            Dictionary<string, int> regions = new();
+            foreach (Cell cell in cells)
+            {
+                string r = cell.region.Trim().ToLower();
+                if (regions.ContainsKey(r)) { regions[r]++; }
+                else { regions.Add(r, 1); }
+            }
+
+            string most = regions.Keys.First();
+            foreach (KeyValuePair<string, int> kvp in regions)
+            {
+                if (regions[most] < kvp.Value)
+                {
+                    most = kvp.Key;
+                }
+            }
+
+            /* Red Mountain has priority for skybox */
+            string redMountain = "Red Mountain Region".Trim().ToLower();
+            if (regions.ContainsKey(redMountain))
+            {
+                if (regions[redMountain] >= 8) { most = redMountain; }
+            }
+
+            return most;
         }
     }
 }

@@ -180,6 +180,8 @@ namespace JortPob
                     else { Lort.Log($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}", Lort.Type.Debug); }
                 }
 
+                huge.AddCell(cell);
+
                 if (huge != null)
                 {
                     foreach (Content content in cell.contents)
@@ -234,6 +236,18 @@ namespace JortPob
             foreach (HugeTile huge in huges)
             {
                 if (huge.PositionInside(position))
+                {
+                    return huge;
+                }
+            }
+            return null;
+        }
+
+        public HugeTile GetHugeTile(Int2 coordinate)
+        {
+            foreach (HugeTile huge in huges)
+            {
+                if (huge.coordinate == coordinate)
                 {
                     return huge;
                 }
