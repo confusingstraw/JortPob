@@ -54,10 +54,11 @@ namespace JortPob.Model
             {
                 FLVER2.Mesh flverMesh = new();
                 flverMesh.NodeIndex = 0; // attach to rootnode
-                flverMesh.MaterialIndex = i++;
+                flverMesh.MaterialIndex = i;
 
                 /* Setup Vertex Buffer */
                 FLVER2.VertexBuffer flverBuffer = new(0);
+                flverBuffer.LayoutIndex = i++;
                 flverMesh.VertexBuffers.Add(flverBuffer);
 
                 /* Convert vertex data */

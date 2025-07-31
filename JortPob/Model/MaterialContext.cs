@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.hkHashMapDetail;
+using JortPob.Common;
 using SoulsFormats;
 using SoulsFormats.KF4;
 using System;
@@ -9,11 +10,13 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using static JortPob.Model.MaterialContext;
 
 namespace JortPob.Model
 {
@@ -180,13 +183,19 @@ namespace JortPob.Model
         /* List of template matbins which we use as a base for our custom materials */
         /* filenames for templates stored without extension or path. files are in Resources/matbins and the extension is .matbin but is stored as.matxml in flvers so guh */
         /* template matbins are stored with their original filename so that the lookup through the MaterialInfo.xml still matches to it correctly. makes life easier! */
-        public Dictionary<string, string> matbinTemplates = new() {
-            { "static[a]opaque", "AEG006_030_ID001" },      // simple opaque albedo material
-            { "static[a]multi[2]", "m10_00_027" },          // blendy multimaterial for terrain
-            { "static[a]multi[3]", "m10_00_022" },          // VERY blendy multimaterial for terrain
-            { "static[x]water", "Field_sea_05"},          // water shader, does not take any input textures, handled by liquidmanager
-            { "static[x]lava", "m16_00_401"},              // lava shader, functions similar to water, handled by liquidmanager
-            { "static[x]swamp", "Field_03_swamp"}              // swamp shader, functions similar to water, handled by liquidmanager
+        public enum MaterialTemplate
+        {
+            Opaque, Multi2, Multi3, Foliage, Water, Lava, Swamp
+        }
+
+        public Dictionary<MaterialTemplate, string> matbinTemplates = new() {
+            { MaterialTemplate.Opaque, "AEG006_030_ID001" },      // simple opaque albedo material
+            { MaterialTemplate.Multi2, "m10_00_027" },          // blendy multimaterial for terrain
+            { MaterialTemplate.Multi3, "m10_00_022" },          // VERY blendy multimaterial for terrain
+            { MaterialTemplate.Foliage, "m15_00_665" },           // foliage shader, deforms based on wind/player movement. comes from some grass. uses uv to control deformation limits
+            { MaterialTemplate.Water, "Field_sea_05"},          // water shader, does not take any input textures, handled by liquidmanager
+            { MaterialTemplate.Lava, "m16_00_401"},              // lava shader, functions similar to water, handled by liquidmanager
+            { MaterialTemplate.Swamp, "Field_03_swamp"}              // swamp shader, functions similar to water, handled by liquidmanager
         };
 
         /* Create a full suite of a custom matbin, textures, and layout/gx/material info for a flver and return them all in a container */
@@ -194,51 +203,117 @@ namespace JortPob.Model
         public List<MaterialInfo> GenerateMaterials(List<SharpAssimp.Material> sourceMaterials)
         {
             int index = 0;
-            List<MaterialInfo> materialInfo = new();
+            List<MaterialInfo> materialInfos = new();
             foreach (SharpAssimp.Material sourceMaterial in sourceMaterials)
             {
-                // @TOOD: currently writing materials 1 to 1 but should probably check material usage and cull materials that are not needed like collision material
                 string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
-                string diffuseTexture;
+                string diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
+
+                /* Decide what kind of material to generate based on texture name */
+                if (diffuseTexture.Contains("leave") || diffuseTexture.Contains("leaf") || diffuseTexture.Contains("plant")) // @TODO: rework this system with an override
+                {
+                    materialInfos.Add(GenerateMaterialFoliage(sourceMaterial, index++));
+                }
+                else
+                {
+                    materialInfos.Add(GenerateMaterialSingle(sourceMaterial, index++));
+                }
+            }
+            return materialInfos;
+        }
+
+        public MaterialInfo GenerateMaterialSingle(SharpAssimp.Material sourceMaterial, int index)
+        {
+            string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
+            string diffuseTexture;
+            if (genTextures.ContainsKey(diffuseTextureSourcePath))
+            {
+                diffuseTexture = genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+            }
+            else
+            {
+                diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
+                genTextures.TryAdd(diffuseTextureSourcePath, diffuseTexture);
+            }
+
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Opaque];
+            string matbinName = diffuseTexture.StartsWith("tx_") ? $"mat_{diffuseTexture.Substring(3)}" : $"mat_{diffuseTexture}";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.Samplers[0].Path = $"{diffuseTexture}";
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index++);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Opaque);
+        }
+
+        public MaterialInfo GenerateMaterialFoliage(SharpAssimp.Material sourceMaterial, int index)
+        {
+            string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
+            string normalTextureSourcePath = Utility.ResourcePath(@"textures\tx_flat.dds");
+            string diffuseTexture, normalTexture;
+            string AddTexture(string diffuseTextureSourcePath)
+            {
                 if (genTextures.ContainsKey(diffuseTextureSourcePath))
                 {
-                    diffuseTexture = genTextures.GetValueOrDefault(diffuseTextureSourcePath);
+                    return genTextures.GetValueOrDefault(diffuseTextureSourcePath);
                 }
                 else
                 {
-                    diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
-                    genTextures.TryAdd(diffuseTextureSourcePath, diffuseTexture);
+                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    genTextures.TryAdd(diffuseTextureSourcePath, n);
+                    return n;
                 }
-
-                string matbinTemplate = matbinTemplates["static[a]opaque"];   // @TODO: actually look at values of textures and determine template type
-                string matbinName = diffuseTexture.StartsWith("tx_") ? $"mat_{diffuseTexture.Substring(3)}" : $"mat_{diffuseTexture}";
-
-                MATBIN matbin;
-                string matbinkey = $"{matbinTemplate}::{matbinName}";
-                if (genMATBINs.ContainsKey(matbinkey))
-                {
-                    matbin = genMATBINs.GetValueOrDefault(matbinkey);
-                }
-                else
-                {
-                    matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
-                    matbin.Samplers[0].Path = $"{diffuseTexture}";
-                    matbin.SourcePath = $"{matbinName}.matxml";
-                    genMATBINs.TryAdd(matbinkey, matbin);
-                }
-
-                FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
-                FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
-                FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index++);
-                material.MTD = matbin.SourcePath;
-                material.Name = $"{matbinName}";
-
-                List<TextureInfo> info = new();
-                info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
-
-                materialInfo.Add(new MaterialInfo(material, gx, layout, matbin, info));
             }
-            return materialInfo;
+            diffuseTexture = AddTexture(diffuseTextureSourcePath);
+            normalTexture = AddTexture(normalTextureSourcePath);
+
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Foliage];
+            string matbinName = diffuseTexture.StartsWith("tx_") ? $"mat_{diffuseTexture.Substring(3)}" : $"mat_{diffuseTexture}";
+
+            MATBIN matbin;
+            string matbinkey = $"{matbinTemplate}::{matbinName}";
+            if (genMATBINs.ContainsKey(matbinkey))
+            {
+                matbin = genMATBINs.GetValueOrDefault(matbinkey);
+            }
+            else
+            {
+                matbin = MATBIN.Read(Utility.ResourcePath($"matbins\\{matbinTemplate}.matbin"));
+                matbin.Samplers[0].Path = $"{diffuseTexture}";
+                matbin.Samplers[1].Path = $"{normalTexture}";
+                matbin.SourcePath = $"{matbinName}.matxml";
+                genMATBINs.TryAdd(matbinkey, matbin);
+            }
+
+            FLVER2.BufferLayout layout = GetLayout($"{matbinTemplate}.matxml", true);
+            FLVER2.GXList gx = GetGXList($"{matbinTemplate}.matxml");
+            FLVER2.Material material = GetMaterial($"{matbinTemplate}.matxml", index);
+            material.MTD = matbin.SourcePath;
+            material.Name = $"{matbinName}";
+
+            List<TextureInfo> info = new();
+            info.Add(new(diffuseTexture, $"textures\\{diffuseTexture}.tpf.dcx"));
+
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Foliage);
         }
 
         /* Same as above but for terrain */
@@ -248,19 +323,19 @@ namespace JortPob.Model
             List<MaterialInfo> materialInfo = new();
             foreach (Landscape.Mesh mesh in landscape.meshes)
             {
-                switch (mesh.shader)
+                switch (mesh.template)
                 {
-                    case "static[a]opaque":
+                    case MaterialTemplate.Opaque:
                         materialInfo.Add(GenerateMaterialSingle(mesh, index++));
                         break;
-                    case "static[a]multi[2]":
+                    case MaterialTemplate.Multi2:
                         materialInfo.Add(GenerateMaterialMulti2(mesh, index++));
                         break;
-                    case "static[a]multi[3]":
+                    case MaterialTemplate.Multi3:
                         materialInfo.Add(GenerateMaterialMulti3(mesh, index++));
                         break;
                     default:
-                        Lort.Log($" ## ERROR ## INVALID MATERIAL TYPE DESIGNATOR ??? [{mesh.shader}] ", Lort.Type.Debug);
+                        Lort.Log($" ## ERROR ## INVALID MATERIAL TYPE DESIGNATOR ??? [{mesh.template}] ", Lort.Type.Debug);
                         break;
                 }
             }
@@ -286,7 +361,7 @@ namespace JortPob.Model
             }
             diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
 
-            string matbinTemplate = matbinTemplates["static[a]opaque"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Opaque];
             string matbinName = "mat_landscape_";
             matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
 
@@ -316,7 +391,7 @@ namespace JortPob.Model
             List<TextureInfo> info = new();
             info.Add(new(diffuseTextureA, $"textures\\{diffuseTextureA}.tpf.dcx"));
 
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Opaque);
         }
 
         private MaterialInfo GenerateMaterialMulti2(Landscape.Mesh mesh, int index)
@@ -344,7 +419,7 @@ namespace JortPob.Model
             normalTexture = AddTexture(normalTextureSourcePath);
             blendTexture = AddTexture(blendTextureSourcePath);
 
-            string matbinTemplate = matbinTemplates["static[a]multi[2]"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Multi2];
             string matbinName = "mat_landscape_";
             matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
             matbinName += "-";
@@ -390,7 +465,7 @@ namespace JortPob.Model
             info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
             info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
 
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Multi2);
         }
 
         private MaterialInfo GenerateMaterialMulti3(Landscape.Mesh mesh, int index)
@@ -420,7 +495,7 @@ namespace JortPob.Model
             normalTexture = AddTexture(normalTextureSourcePath);
             blendTexture = AddTexture(blendTextureSourcePath);
 
-            string matbinTemplate = matbinTemplates["static[a]multi[3]"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Multi3];
             string matbinName = "mat_landscape_";
             matbinName += diffuseTextureA.StartsWith("tx_") ? diffuseTextureA.Substring(3) : diffuseTextureA;
             matbinName += "-";
@@ -487,12 +562,12 @@ namespace JortPob.Model
             info.Add(new(normalTexture, $"textures\\{normalTexture}.tpf.dcx"));
             info.Add(new(blendTexture, $"textures\\{blendTexture}.tpf.dcx"));
 
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Multi3);
         }
 
         public MaterialInfo GenerateMaterialWater(int index)
         {
-            string matbinTemplate = matbinTemplates["static[x]water"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Water];
             string matbinName = "mat_water";
 
             MATBIN matbin;
@@ -515,12 +590,12 @@ namespace JortPob.Model
             material.Name = $"{matbinName}";
 
             List<TextureInfo> info = new();
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Water);
         }
 
         public MaterialInfo GenerateMaterialLava(int index)
         {
-            string matbinTemplate = matbinTemplates["static[x]lava"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Lava];
             string matbinName = "mat_lava";
 
             MATBIN matbin;
@@ -543,7 +618,7 @@ namespace JortPob.Model
             material.Name = $"{matbinName}";
 
             List<TextureInfo> info = new();
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Lava);
         }
 
         public MaterialInfo GenerateMaterialSwamp(int index)
@@ -565,7 +640,7 @@ namespace JortPob.Model
             }
             diffuseTextureA = AddTexture(diffuseTextureSourcePathA);
 
-            string matbinTemplate = matbinTemplates["static[x]swamp"];
+            string matbinTemplate = matbinTemplates[MaterialTemplate.Swamp];
             string matbinName = "mat_swamp";
 
             MATBIN matbin;
@@ -595,7 +670,7 @@ namespace JortPob.Model
             material.Name = $"{matbinName}";
 
             List<TextureInfo> info = new();
-            return new MaterialInfo(material, gx, layout, matbin, info);
+            return new MaterialInfo(material, gx, layout, matbin, info, MaterialTemplate.Swamp);
         }
 
         /* Write all tpfs and matbins generated by above methods in this context and bnd them appropriately */
@@ -655,19 +730,21 @@ namespace JortPob.Model
         /* Container class for returning a bunch of stuff at once */
         public class MaterialInfo
         {
-            public FLVER2.Material material;
-            public FLVER2.GXList gx;
-            public FLVER2.BufferLayout layout;
-            public MATBIN matbin;
-            public List<TextureInfo> info; // used by cache
+            public readonly FLVER2.Material material;
+            public readonly FLVER2.GXList gx;
+            public readonly FLVER2.BufferLayout layout;
+            public readonly MATBIN matbin;
+            public readonly List<TextureInfo> info; // used by cache
+            public readonly MaterialTemplate template;
 
-            public MaterialInfo(FLVER2.Material material, FLVER2.GXList gx, FLVER2.BufferLayout layout, MATBIN matbin, List<TextureInfo> info)
+            public MaterialInfo(FLVER2.Material material, FLVER2.GXList gx, FLVER2.BufferLayout layout, MATBIN matbin, List<TextureInfo> info, MaterialTemplate template)
             {
                 this.material = material;
                 this.gx = gx;
                 this.layout = layout;
                 this.matbin = matbin;
                 this.info = info;
+                this.template = template;
             }
         }
     }

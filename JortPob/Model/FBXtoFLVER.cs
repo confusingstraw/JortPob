@@ -40,8 +40,8 @@ namespace JortPob.Model
             flver.Skeletons = skeletonSet;
 
             /* Generate material data */
-            List<MaterialContext.MaterialInfo> materialInfo = materialContext.GenerateMaterials(fbx.Materials);
-            foreach (MaterialContext.MaterialInfo mat in materialInfo)
+            List<MaterialContext.MaterialInfo> materialInfos = materialContext.GenerateMaterials(fbx.Materials);
+            foreach (MaterialContext.MaterialInfo mat in materialInfos)
             {
                 flver.Materials.Add(mat.material);
                 flver.GXLists.Add(mat.gx);
@@ -119,6 +119,7 @@ namespace JortPob.Model
             {
                 Node node = tuple.Item1;
                 Mesh fbxMesh = tuple.Item2;
+                MaterialContext.MaterialInfo materialInfo = materialInfos[index];
 
                 /* Some Fix-up code here. We need to remove any meshes with a name like "ShadowBox" */
                 /* These meshes are used for like shadow stencils or... something? Regardless they are worthless in the ER engine */
@@ -132,10 +133,11 @@ namespace JortPob.Model
                 flverFaces.CullBackfaces = true;
                 flverFaces.Unk06 = 1;
                 flverMesh.NodeIndex = 0; // attach to rootnode
-                flverMesh.MaterialIndex = index++;
+                flverMesh.MaterialIndex = index;
 
                 /* Setup Vertex Buffer */
                 FLVER2.VertexBuffer flverBuffer = new(0);
+                flverBuffer.LayoutIndex = index++;
                 flverMesh.VertexBuffers.Add(flverBuffer);
 
                 /* Spit out some warnings */
@@ -232,6 +234,14 @@ namespace JortPob.Model
                         else
                         {
                             flverVertex.Colors.Add(new FLVER.VertexColor(255, 255, 255, 255));
+                        }
+
+                        /* Some special stuff here. For nonstandard materials like foliage we need to add some extra UV information */
+                        if(materialInfo.template == MaterialContext.MaterialTemplate.Foliage)
+                        {
+                            flverVertex.UVs.Add(new Vector3(0f, .2f, 0f));
+                            flverVertex.UVs.Add(new Vector3(1f, 1f, 0f));
+                            flverVertex.UVs.Add(new Vector3(1f, 1f, 0f));
                         }
 
                         flverMesh.Vertices.Add(flverVertex);

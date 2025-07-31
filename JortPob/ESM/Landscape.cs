@@ -3,6 +3,7 @@ using gfoidl.Base64;
 using HKLib.hk2018;
 using HKLib.hk2018.TypeRegistryTest;
 using JortPob.Common;
+using JortPob.Model;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -440,13 +441,13 @@ namespace JortPob
                 switch (textures.Count())
                 {
                     case 1:
-                        nu = new(textures, "static[a]opaque");
+                        nu = new(textures, MaterialContext.MaterialTemplate.Opaque);
                         break;
                     case 2:
-                        nu = new(textures, "static[a]multi[2]");
+                        nu = new(textures, MaterialContext.MaterialTemplate.Multi2);
                         break;
                     case 3:
-                        nu = new(textures, "static[a]multi[3]");
+                        nu = new(textures, MaterialContext.MaterialTemplate.Multi3);
                         break;
                     default:
                         Lort.Log("## WARNING ## INVALID TEXTURE COUNT FOR MESH IN LANDSCAPE! WE WILL NOW CRASH!", Lort.Type.Debug);
@@ -580,18 +581,18 @@ namespace JortPob
 
         public class Mesh
         {
-            public List<Texture> textures;
-            public List<int>[] indices;    
-            public List<Vertex> vertices;
+            public readonly List<Texture> textures;
+            public readonly List<int>[] indices;    
+            public readonly List<Vertex> vertices;
 
-            public string shader;
+            public readonly MaterialContext.MaterialTemplate template;
 
-            public Mesh(List<Texture> textures, string shader)
+            public Mesh(List<Texture> textures, MaterialContext.MaterialTemplate template)
             {
                 this.textures = textures;
                 indices = new List<int>[] { new(), new(), new() };  // 0 is full detail, 1 is reduced detail for lod, 2 is minimum possible detail for super overworld
                 vertices = new();
-                this.shader = shader;
+                this.template = template;
             }
         }
 

@@ -488,6 +488,9 @@
     <None Update="Resources\matbins\m11_00_302.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\matbins\m15_00_665.matbin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\matbins\m16_00_401.matbin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
