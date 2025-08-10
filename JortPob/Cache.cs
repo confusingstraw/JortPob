@@ -1,4 +1,5 @@
 ﻿using HKLib.hk2018;
+using HKLib.hk2018.hkaiWorldCommands;
 using HKX2;
 using JortPob.Common;
 using JortPob.Model;
@@ -31,6 +32,8 @@ namespace JortPob
         public List<ObjectInfo> objects;
         public List<LiquidInfo> liquids;
         public List<CutoutInfo> cutouts; // defines collision planes for swamps/lava
+
+        public CollisionInfo defaultCollision; // used by interior cells as a base. needed because of engine being weird
 
         public Cache()
         {
@@ -203,7 +206,7 @@ namespace JortPob
                     return m;
                 }
 
-                void ScoopEmUp(List<Cell> cells)
+                void ScoopEmUp(List<Cell> cells, bool addCutouts)
                 {
                     foreach (Cell cell in cells)
                     {
@@ -212,7 +215,7 @@ namespace JortPob
                             foreach (Content content in contents)
                             {
                                 if(content.mesh == null) { continue; }  // skip content with no mesh
-                                LiquidManager.AddCutout(content); // check if this is a lava or swamp mesh and add it to cutouts if it is
+                                if (addCutouts) { LiquidManager.AddCutout(content); } // check if this is a lava or swamp mesh and add it to cutouts if it is
                                 PreModel model = GetMesh(content);
                                 int i = model.scales.ContainsKey(content.scale)? model.scales[content.scale]:0;
                                 model.scales.Remove(content.scale);
@@ -222,8 +225,8 @@ namespace JortPob
                         Scoop(cell.contents);
                     }
                 }
-                ScoopEmUp(esm.exterior);
-                if (!Const.DEBUG_SKIP_INTERIOR) { ScoopEmUp(esm.interior); }
+                ScoopEmUp(esm.exterior, true);
+                if (!Const.DEBUG_SKIP_INTERIOR) { ScoopEmUp(esm.interior, false); }
 
                 Lort.Log($"Generating new cache...", Lort.Type.Main);
 
@@ -243,6 +246,25 @@ namespace JortPob
 
                 /* Generate stuff for water */
                 nu.liquids = LiquidManager.GenerateLiquids(esm, materialContext);
+
+                /* Add some pregen assets */
+                ModelInfo boxModelInfo = new("InteriorShadowBox", $"meshes\\interior_shadow_box.flver", 100);
+                ModelConverter.FBXtoFLVER(assimpContext, materialContext, boxModelInfo, false, Utility.ResourcePath(@"mesh\\box.fbx"), $"{Const.CACHE_PATH}{boxModelInfo.path}");
+                FLVER2 boxFlver = FLVER2.Read($"{Const.CACHE_PATH}{boxModelInfo.path}"); // we need this box to be exactly 1 unit in each direction no matter what so we just edit it real quick
+                foreach (FLVER.Vertex v in boxFlver.Meshes[0].Vertices)
+                {
+                    float x = v.Position.X > 0f ? 1f : -1f;
+                    float y = v.Position.Y > 0f ? 1f : -1f;
+                    float z = v.Position.Z > 0f ? 1f : -1f;
+                    v.Position = new Vector3(x, y, z);
+                }
+                BoundingBoxSolver.FLVER(boxFlver); // redo bounding box since we edited the mesh
+                boxFlver.Write($"{Const.CACHE_PATH}{boxModelInfo.path}");
+                nu.assets.Add(boxModelInfo);
+
+                string defaultCollisionObjPath = "meshes\\default_collision_plane.obj";
+                if(!File.Exists($"{Const.CACHE_PATH}\\{defaultCollisionObjPath}")) { File.Copy(Utility.ResourcePath(@"mesh\plane.obj.file"), $"{Const.CACHE_PATH}{defaultCollisionObjPath}"); }
+                nu.defaultCollision = new("DefaultCollisionPlane", defaultCollisionObjPath);
 
                 /* Write textures */
                 Lort.Log($"Writing matbins & tpfs...", Lort.Type.Main);
@@ -296,6 +318,7 @@ namespace JortPob
 
                 /* Convert collision */
                 List<CollisionInfo> collisions = new();
+                collisions.Add(nu.defaultCollision);
                 foreach (ModelInfo modelInfo in nu.assets)
                 {
                     if (modelInfo.collision == null) { continue; }
@@ -440,13 +463,24 @@ namespace JortPob
             return false;
         }
 
+        // returns false if the light data in this class would effectively produce no light. for example a light color of 0 0 0 or a radius of 0
+        public bool HasLight()
+        {
+            if (radius <= 0) { return false; }
+            if (color[0] + color[1] + color[2] <= 0) { return false; }
+            return true;
+        }
+
         public short GetAttachLight()
         {
+            short rootDmyId = -1;
             foreach (KeyValuePair<string, short> kvp in model.dummies)
             {
                 if (kvp.Key.Contains("attachlight")) { return kvp.Value; }
+                if (kvp.Key.Contains("root")) { rootDmyId = kvp.Value; }
             }
-            return -1; // if no attachlight node we return -1
+
+            return rootDmyId; // if we don't find an explicit attachlight dmy we instead return the root dmy
         }
     }
 

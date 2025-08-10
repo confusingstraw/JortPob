@@ -20,6 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="NpcManager.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ESDLang">
+      <HintPath>DLL\ESDLang.dll</HintPath>
+    </Reference>
     <Reference Include="HKLib">
       <HintPath>DLL\HKLib.dll</HintPath>
     </Reference>
@@ -38,12 +45,24 @@
     <Reference Include="SoulsFormats">
       <HintPath>DLL\SoulsFormats.dll</HintPath>
     </Reference>
+    <Reference Include="SoulsIds">
+      <HintPath>DLL\SoulsIds.dll</HintPath>
+    </Reference>
+    <Reference Include="StudioUtils">
+      <HintPath>DLL\StudioUtils.dll</HintPath>
+    </Reference>
+    <Reference Include="WitchyFormats">
+      <HintPath>DLL\WitchyFormats.dll</HintPath>
+    </Reference>
     <Reference Include="ZstdNet">
       <HintPath>DLL\ZstdNet.dll</HintPath>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="DLL\ESDLang.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="DLL\HKLib.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
@@ -55,6 +74,9 @@
     </None>
     <None Update="DLL\HKX2.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="DLL\SoulsIds.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="libzstd.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -359,6 +381,9 @@
     <None Update="Resources\env\m60_12_09_02_middle.ivinfobnd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\esd\test.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\fxr\attachlight template.fxr">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -437,6 +462,15 @@
     <None Update="Resources\fxr\sfxbnd_commoneffects.ffxbnd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\fxr\sfxbnd_m30.ffxbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\fxr\sfxbnd_m31.ffxbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\fxr\sfxbnd_m32.ffxbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\fxr\sfxbnd_m60.ffxbnd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -495,6 +529,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\matbins\MaterialInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\mesh\box.fbx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\misc\havok.mtl">
@@ -1082,6 +1119,9 @@
     <None Update="Resources\misc\paramdefs\WwiseValueToStrConvertParamFormat.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\mesh\plane.obj.file">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\misc\regulation.bin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1095,6 +1135,30 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\overrides\static_collision.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\script\er-common.emedf.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\all_used_bnk_header_ids.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\all_used_bnk_ids.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\all_used_source_ids.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\bnk_template.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\page_turn.wem">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\test_sound.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\sound\test_sound.wem">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\test\h.compendium.dcx">
@@ -1145,6 +1209,15 @@
     <None Update="Resources\textures\tx_white.dds">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\text\item_dlc02.msgbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\text\menu_dlc02.msgbnd.dcx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\Bnk2Json\bnk2json.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\tools\ER_OBJ2HKX\AssetCc2_fixed.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1158,6 +1231,732 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\tools\ER_OBJ2HKX\obj2fsnp.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\BouncyCastle.Cryptography.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ActionButtonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AiAnimTblParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AIAttackParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AiOddsParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AiSoundParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AiStandardInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AssetGeometryParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AssetMaterialSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AssetModelSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AtkParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AttackElementCorrectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\AutoCreateEnvSoundParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BaseChrSelectMenuParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BehaviorParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BonfireWarpParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BonfireWarpSubCategoryParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BonfireWarpTabParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BuddyParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BuddyStoneParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BudgetParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BulletCreateLimitParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\BulletParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CalcCorrectGraph.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CameraFadeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CeremonyParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CharaInitParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CharMakeMenuListItemParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CharMakeMenuTopParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ChrActivateConditionParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ChrEquipModelParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ChrModelParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ClearCountCorrectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CommonSystemParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CoolTimeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutsceneGparamTimeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutsceneGparamWeatherParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutsceneMapIdParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutSceneTextureLoadParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutsceneTimezoneConvertParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\CutsceneWeatherOverrideGparamIdConvertParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\DecalParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\DefaultKeyAssign.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\DirectionCameraParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EnemyCommonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EnemyStandardInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EnvObjLotParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipMtrlSetParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamAccessory.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamCustomWeapon.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamGem.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamGoods.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamProtector.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EquipParamWeapon.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EstusFlaskRecoveryParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\EventFlagUsageParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\FaceParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\FaceRangeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\FeTextEffectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\FinalDamageRateParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\FootSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GameAreaParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GameInfoParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GameSystemCommonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_AAQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_DecalQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_DOFQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_EffectQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_LightingQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_MotionBlurQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_RaytracingQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_ReflectionQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_ShaderQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_ShadowQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_SSAOQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_TextureFilterQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_VolumetricEffectQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\Gconfig_WaterQuality.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GestureParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GparamGridRegionInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GparamRefSettingsParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GraphicsCommonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GraphicsConfig.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GrassLodRangeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GrassMapSettings.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\GrassTypeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\HitEffectSeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\HitEffectSfxConceptParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\HitEffectSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\HitMtrlParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ItemLotParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\KeyAssignMenuItemParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\KeyAssignParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\KnockBackParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\KnowledgeLoadScreenItemParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\LegacyDistantViewPartsReplaceParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\LoadBalancerDrawDistScaleParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\LoadBalancerNewDrawDistScaleParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\LoadBalancerParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\LockCamParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MagicParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapDefaultInfoParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapGdRegionDrawParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapGdRegionInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapGridCreateHeightDetailLimitInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapGridCreateHeightLimitInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapMimicryEstablishmentParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapNameTexParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapNameTexParam_m61.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapPieceTexParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MapPieceTexParam_m61.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MaterialEx.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuCommonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuOffscrRendParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuParamColorTable.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuPropertyLayoutParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuPropertySpecParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MenuValueTableSpecParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MimicryEstablishmentTexParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MimicryEstablishmentTexParam_m61.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MissileParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ModelSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MoveParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MultiEstusFlaskBonusParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MultiPlayCorrectionParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\MultiSoulBonusRateParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NetworkAreaParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NetworkMsgParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NetworkParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NpcAiActionParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NpcAiBehaviorProbabilityParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NpcParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\NpcThinkParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ObjActParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ObjectMaterialSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ObjectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PartsDrawParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PerformanceCheckParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PhantomParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PlayerCommonParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PlayRegionParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PostureControlParam_Gender.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PostureControlParam_Pro.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PostureControlParam_WepLeft.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\PostureControlParam_WepRight.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RandomAppearEditParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RandomAppearParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ReinforceParamProtector.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ReinforceParamWeapon.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ResistCorrectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ReverbAuxSendBusParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RideParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RoleParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RollingObjLotParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\RuntimeBoneControlParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SeActivationRangeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SeMaterialConvertParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SfxBlockResShareParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ShopLineupParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SignPuddleParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SignPuddleSubCategoryParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SignPuddleTabParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundAssetSoundObjEnableDistParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundAutoEnvSoundGroupParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundAutoReverbEvaluationDistParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundAutoReverbSelectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundChrPhysicsSeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundCommonIngameParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundCommonSystemParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SoundCutsceneParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SpeedtreeModel.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SpEffect.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SpEffectSetParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SpEffectVfx.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\SwordArtsParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\TalkParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ThrowDirectionSfxParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ThrowParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\ToughnessParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\TutorialParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WaypointParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherAssetCreateParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherAssetReplaceParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherLotParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherLotTexParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherLotTexParam_m61.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WeatherParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WepAbsorpPosParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WetAspectParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WhiteSignCoolTimeParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WorldMapLegacyConvParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WorldMapPieceParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WorldMapPlaceNameParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WorldMapPointParam.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ER\Defs\WwiseValueToStrConvertParamFormat.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_AI.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_AI.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Chr.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Chr.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Event.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Event.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_None.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_None.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Talk.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_Talk.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\dist\ESDScriptingDocumentation_TalkER.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\DrSwizzler.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\ESDLang.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\ESDLang.pdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.pdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\esdtool.runtimeconfig.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\IronPython.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\IronPython.Modules.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\IronPython.SQLite.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\IronPython.Wpf.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Microsoft.Dynamic.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Microsoft.Scripting.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Microsoft.Scripting.Metadata.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Mono.Unix.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\NativeFileDialogSharp.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Newtonsoft.Json.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\nfd.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\nfd.exp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\nfd.lib">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\nfd.pdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\oo2core_6_win64.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsFormats.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsFormats.pdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsFormats.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsIds.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsIds.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\SoulsIds.pdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\System.CodeDom.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\Tommy.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\x64\libzstd.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\x86\libzstd.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\ESDTool\ZstdNet.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\tools\WemConversionWrapper\wem_conversion_wrapper.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="settings.example.json">

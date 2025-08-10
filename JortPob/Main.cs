@@ -1,4 +1,5 @@
-﻿using HKX2;
+﻿using ESDLang.EzSemble;
+using HKX2;
 using JortPob.Common;
 using JortPob.Model;
 using JortPob.Worker;
@@ -14,8 +15,11 @@ using System.Linq;
 using System.Net.Mime;
 using System.Numerics;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using static JortPob.InteriorGroup;
+using static SoulsFormats.MQB;
 
 namespace JortPob
 {
@@ -31,6 +35,9 @@ namespace JortPob
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             Layout layout = new(cache, esm);                                                 // Subdivides all content data from ESM into a more elden ring friendly format
             Paramanager param = new();                                                        // Class for managing PARAM files
+            TextManager text = new();
+            SoundManager sound = new();
+            NpcManager character = new(esm, sound, param, text);
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
@@ -44,7 +51,8 @@ namespace JortPob
                 /* Generate msb from tile */
                 MSBE msb = new();
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
-                ResourcePool pool = new(tile, msb, lightManager);
+                Script script = tile.GetType() == typeof(Tile) ? new Script(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block) : null;
+                ResourcePool pool = new(tile, msb, lightManager, script);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Collision Indices */
@@ -164,8 +172,24 @@ namespace JortPob
                     asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+                    asset.EntityID = content.entity;
+
+                    if (content.warp != null)
+                    {
+                        script.RegisterLoadDoor(content);
+                    }
 
                     msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add warp destinations for load doors */
+                foreach (Layout.WarpDestination warp in tile.warps)
+                {
+                    MSBE.Part.Player player = MakePart.Player();
+                    player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    player.Rotation = warp.rotation;
+                    player.EntityID = warp.id;
+                    msb.Parts.Players.Add(player);
                 }
 
                 /* Add emitters */
@@ -196,6 +220,9 @@ namespace JortPob
                     enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     enemy.Rotation = npc.rotation;
 
+                    enemy.TalkID = character.GetESD(tile.IdList(), npc);       // creates and returns a character esd
+                    enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
+
                     msb.Parts.Enemies.Add(enemy);
                 }
 
@@ -207,14 +234,6 @@ namespace JortPob
                     enemy.Rotation = creature.rotation;
 
                     msb.Parts.Enemies.Add(enemy);
-                }
-
-                /* TEST players */  // Generic player spawn point at the center of the cell for testing purposes
-                if (tile.GetType() == typeof(Tile))
-                {
-                    MSBE.Part.Player player = MakePart.Player();
-                    player.Position = tile.npcs.Count > 1 ? tile.npcs[0].relative : Const.TEST_OFFSET1;
-                    msb.Parts.Players.Add(player);
                 }
 
                 /* Auto resource */
@@ -232,36 +251,137 @@ namespace JortPob
             {
                 if (Const.DEBUG_SKIP_INTERIOR) { break; }
 
-                if (group.chunks.Count <= 0 && group.chunks.Count <= 0) { continue; }   // Skip empty groups.
+                if (group.IsEmpty()) { continue; }   // Skip empty groups.
+
+                /* Collision Indices */
+                int nextC = 0;
 
                 /* Generate msb from group */
                 MSBE msb = new();
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
-                ResourcePool pool = new(group, msb, lightManager);
+                Script script = new Script(group.map, group.area, group.unk, group.block);
+                ResourcePool pool = new(group, msb, lightManager, script);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Handle chunks */
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                for (int i=0;i<group.chunks.Count();i++)
                 {
+                    InteriorGroup.Chunk chunk = group.chunks[i];
+
+                    /* Interior MSB drawgroup */
+                    uint chunkDrawGroup = (uint)0 | ((uint)1 << i);
+
+                    /* Interior MSB chunk collision root */
+                    string collisionIndex = $"{group.area.ToString("D2")}{group.unk.ToString("D2")}{nextC++.ToString("D2")}";
+                    MSBE.Part.Collision rootCollision = MakePart.Collision();
+                    rootCollision.Name = $"h{collisionIndex}_0000";
+                    rootCollision.ModelName = $"h{collisionIndex}";
+                    rootCollision.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Z, 0f);
+                    rootCollision.Unk1.DisplayGroups[0] = 0;
+                    rootCollision.Unk1.DisplayGroups[1] = chunkDrawGroup;
+                    rootCollision.Unk1.CollisionMask[0] = 0;
+                    rootCollision.Unk1.CollisionMask[1] = chunkDrawGroup;
+                    msb.Parts.Collisions.Add(rootCollision);
+                    pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cache.defaultCollision));
+
+                    /* Interior MSB shadow box */
+                    ModelInfo shadowBoxModelInfo = cache.GetModel("interiorshadowbox");
+                    MSBE.Part.Asset shadowBoxAsset = MakePart.Asset(shadowBoxModelInfo);
+                    shadowBoxAsset.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    shadowBoxAsset.Rotation = Vector3.Zero;
+                    shadowBoxAsset.Scale = chunk.bounds;
+                    shadowBoxAsset.Unk1.DisplayGroups[0] = 0;
+                    shadowBoxAsset.UnkPartNames[1] = rootCollision.Name;
+                    shadowBoxAsset.UnkPartNames[3] = rootCollision.Name;
+                    shadowBoxAsset.UnkPartNames[5] = rootCollision.Name;
+                    msb.Parts.Assets.Add(shadowBoxAsset);
+
                     /* Add assets */
                     foreach (AssetContent content in chunk.assets)
                     {
-                        // Grab da thing
+                        /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
+                        JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
+                        bool CheckOverride(string name)
+                        {
+                            foreach (JsonNode node in json.AsArray())
+                            {
+                                if (node.ToString().ToLower() == name.ToLower()) { return true; }
+                            }
+                            return false;
+                        }
+
+                        if (CheckOverride(content.mesh)) { continue; } // SKIP!
+
+                        /* Grab ModelInfo */
                         ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
-                        // Make da thing
-                        MSBE.Part.Asset asset = new();
-                        asset.Name = $"{modelInfo.AssetName().ToUpper()}_test";
-                        asset.ModelName = modelInfo.AssetName().ToUpper();
-                        asset.MapStudioLayer = 4294967295;
-
-                        asset.Unk1.DisplayGroups[0] = 16;
-
-                        //asset.InstanceID = INSTANCETEST++;
-
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
                         asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                         asset.Rotation = content.rotation;
-                        asset.Scale = new Vector3(modelInfo.IsDynamic() ? (content.scale * 0.01f) : 1f);
+                        asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Add doors */
+                    foreach (DoorContent content in chunk.doors)
+                    {
+                        /* Grab ModelInfo */
+                        ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
+
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+                        asset.EntityID = content.entity;
+
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        if (content.warp != null)
+                        {
+                            script.RegisterLoadDoor(content);
+                        }
+
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Add warp destinations for load doors */
+                    foreach(Layout.WarpDestination warp in chunk.warps)
+                    {
+                        MSBE.Part.Player player = MakePart.Player();
+                        player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        player.Rotation = warp.rotation;
+                        player.EntityID = warp.id;
+                        msb.Parts.Players.Add(player);
+                    }
+
+                    /* Add emitters */
+                    foreach (EmitterContent content in chunk.emitters)
+                    {
+                        /* Grab ModelInfo */
+                        EmitterInfo emitterInfo = cache.GetEmitter(content.id);
+
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
+                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(content.scale * 0.01f);
+
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
                         msb.Parts.Assets.Add(asset);
                     }
 
@@ -275,11 +395,14 @@ namespace JortPob
                     foreach (NpcContent npc in chunk.npcs)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
-                        enemy.Name = $"c0000_{npc.id.Replace(" ", "")}";
-                        enemy.Position = new Vector3(npc.relative.X, 3, npc.relative.Z) + Const.TEST_OFFSET1;
+                        enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                         enemy.Rotation = npc.rotation;
-                        enemy.InstanceID = -1;
-                        enemy.EntityID = 0;
+
+                        enemy.TalkID = character.GetESD(group.IdList(), npc);       // creates and returns a character esd
+                        enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
+
+                        enemy.Unk1.DisplayGroups[0] = 0;
+                        enemy.CollisionPartName = rootCollision.Name;
 
                         msb.Parts.Enemies.Add(enemy);
                     }
@@ -288,22 +411,15 @@ namespace JortPob
                     foreach (CreatureContent creature in chunk.creatures)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Creature();
-                        enemy.Name = $"c6060_{creature.id.Replace(" ", "")}";
-                        enemy.Position = new Vector3(creature.relative.X, 3, creature.relative.Z) + Const.TEST_OFFSET1;
+                        enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                         enemy.Rotation = creature.rotation;
-                        enemy.InstanceID = -1;
-                        enemy.ModelName = "c6060";
-                        enemy.WalkRouteName = "";
+
+                        enemy.Unk1.DisplayGroups[0] = 0;
+                        enemy.CollisionPartName = rootCollision.Name;
 
                         msb.Parts.Enemies.Add(enemy);
                     }
                 }
-
-                /* TEST players */  // Generic player spawn point at the center of the cell for testing purposes
-                MSBE.Part.Player player = MakePart.Player();
-                player.Position = Const.TEST_OFFSET1;
-
-                msb.Parts.Players.Add(player);
 
                 /* Auto resource */
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
@@ -313,6 +429,12 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
+            /* Write sound BNKs */
+            sound.Write($"{Const.OUTPUT_PATH}sd\\enus\\");
+
+            /* Write ESD bnds */
+            character.Write();
+
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
             param.GeneratePartDrawParams();
@@ -320,16 +442,22 @@ namespace JortPob
             param.GenerateAssetRows(cache.emitters);
             param.GenerateAssetRows(cache.liquids);
             param.GenerateMapInfoParam(layout);
+            param.GenerateActionButtonParam(text, 1500, "Enter");
+            param.GenerateActionButtonParam(text, 1501, "Exit");
             param.KillMapHeightParams();    // murder kill
             param.Write();
 
+            /* Write FMGs */
+            Lort.Log($"Binding FMGs...", Lort.Type.Main);
+            text.Write($"{Const.OUTPUT_PATH}msg\\engus\\");
+
             /* Write FXR files */
             Lort.Log($"Binding FXRs...", Lort.Type.Main);
-            FxrManager.Write();
+            FxrManager.Write(layout);
 
             /* Bind and write all materials and textures */
             Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
-            Bind.BindTPF(cache, $"{Const.OUTPUT_PATH}map\\m60\\common\\m60_0000");
+            Bind.BindTPF(cache, layout.ListCommon());
 
             /* Bind all assets */    // Multithreaded because slow
             Lort.Log($"Binding {cache.assets.Count} assets...", Lort.Type.Main);
@@ -378,10 +506,11 @@ namespace JortPob
         public List<Tuple<int, string>> mapIndices;
         public MSBE msb;
         public LightManager lights;
+        public Script script;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
         /* Exterior cells */
-        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights)
+        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights, Script script = null)
         {
             id = new int[]
             {
@@ -391,10 +520,11 @@ namespace JortPob
             collisionIndices = new();
             this.msb = msb;
             this.lights = lights;
+            this.script = script;
         }
 
         /* Interior cells */
-        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights)
+        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights, Script script = null)
         {
             id = new int[]
             {
@@ -403,6 +533,7 @@ namespace JortPob
             mapIndices = new();
             this.msb = msb;
             this.lights = lights;
+            this.script = script;
             collisionIndices = new();
         }
 
@@ -416,6 +547,7 @@ namespace JortPob
             mapIndices = new();
             this.msb = msb;
             this.lights = lights;
+            script = null;
             collisionIndices = new();
         }
 

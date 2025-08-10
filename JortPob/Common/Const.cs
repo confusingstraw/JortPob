@@ -1,10 +1,12 @@
-﻿using SoulsFormats;
+﻿using HKLib.hk2018.hkcdDynamicTree;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace JortPob.Common
@@ -13,6 +15,7 @@ namespace JortPob.Common
     {
         #region Paths
         public static string MORROWIND_PATH = Settable.Get("MORROWIND_PATH");
+        public static string ELDEN_PATH = Settable.Get("ELDEN_PATH");
         public static string OUTPUT_PATH = Settable.Get("OUTPUT_PATH");
         public static string CACHE_PATH = $"{OUTPUT_PATH}cache\\";
         #endregion
@@ -86,17 +89,34 @@ namespace JortPob.Common
 
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
+        public static readonly bool DEBUG_SKIP_ESD = false; // skip building dialog esd for npcs
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = true; // slow as shit, skipping this saves about a minute per build
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = new int[] { -5, -15, 5, -5 }; //= new int[] { -10, -10, 15, 5 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = null; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         // seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         // seyda neen area (large) = new int[] { -5, -15, 5, -5 }
         // lava area near Marandus and Ashunartes = new int[] {1, -5, 5, -1}
         // all lava areas (big) = new int[] {0, -5, 15, 10}
         // lava area near Galom Daeus = new int[] {8, -2, 12, 2}
         // lava and swamp areas combined = new int[] {-10, -10, 15, 5};
+        // half the map = new int[] {-10, -15, 20, 0};
         public static readonly bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING = true; // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-        public static readonly bool DEBUG_SKIP_INTERIOR = true;
+        public static readonly bool DEBUG_SKIP_INTERIOR = false;
+        public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
+        {
+            // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
+            // set MATCHES to null if for proper normal building
+            string[] MATCHES = null; // new[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Samarys Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
+
+            if (MATCHES == null) { return true; }
+
+            foreach(string m in MATCHES)
+            {
+                if (name.ToLower().Contains(m.ToLower())) { return true; }
+            }
+
+            return false;
+        }
         public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done
         public static readonly bool DEBUG_HKX_FORCE_BINARY = true;   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
         #endregion

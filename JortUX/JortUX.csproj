@@ -12,4 +12,13 @@
     <ProjectReference Include="..\JortPob\JortPob.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="StudioUtils">
+      <HintPath>..\JortPob\DLL\StudioUtils.dll</HintPath>
+    </Reference>
+    <Reference Include="WitchyFormats">
+      <HintPath>..\JortPob\DLL\WitchyFormats.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

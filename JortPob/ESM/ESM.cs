@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using static JortPob.NpcContent;
 
 namespace JortPob
 {
@@ -24,10 +25,11 @@ namespace JortPob
         {
             Header, GameSetting, GlobalVariable, Class, Faction, Race, Sound, Skill, MagicEffect, Script, Region, Birthsign, LandscapeTexture, Spell, Static, Door,
             MiscItem, Weapon, Container, Creature, Bodypart, Light, Enchantment, Npc, Armor, Clothing, RepairTool, Activator, Apparatus, Lockpick, Probe, Ingredient,
-            Book, Alchemy, LevelledItem, LevelledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, Info
+            Book, Alchemy, LevelledItem, LevelledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, DialogueInfo
         }
 
         public Dictionary<Type, List<JsonNode>> records;
+        public List<DialogRecord> dialog;
         public List<Cell> exterior, interior;
         private ConcurrentBag<Landscape> landscapes;
 
@@ -42,6 +44,7 @@ namespace JortPob
             foreach (string name in Enum.GetNames(typeof(Type)))
             {
                 Enum.TryParse(name, out Type type);
+                if (type == Type.Dialogue || type == Type.DialogueInfo) { continue; } // special records, need to be handled specially
                 records.Add(type, new List<JsonNode>());
             }
 
@@ -53,8 +56,38 @@ namespace JortPob
                     if (record["type"].ToString() == name)
                     {
                         Enum.TryParse(name, out Type type);
+                        if (type == Type.Dialogue || type == Type.DialogueInfo) { continue; } // special records, need to be handled specially
                         records[type].Add(record);
                     }
+                }
+            }
+
+            /* Handle dialog stuff now */
+            dialog = new();
+            DialogRecord current = null;
+            for (int i = 0; i < json.Count; i++)
+            {
+                JsonNode record = json[i];
+                Enum.TryParse(record["type"].ToString(), out Type type);
+
+                if (type == Type.Dialogue)
+                {
+                    string idstr = record["id"].ToString();
+                    string typestr = idstr.Replace(" ", "");
+                    string diatype = record["dialogue_type"].ToString();
+                    typestr = new String(typestr.Where(c => c != '-' && (c < '0' || c > '9')).ToArray());
+                    if(!Enum.TryParse(typestr, out DialogRecord.Type dtype)) { dtype = DialogRecord.Type.Topic; }
+                    if (diatype.ToLower() == "journal") { dtype = DialogRecord.Type.Journal; }
+
+                    if(current != null && current.type == DialogRecord.Type.Greeting && dtype == DialogRecord.Type.Greeting) { continue; } // skip so we can merge all 9 greeting levels into a single thingy
+
+                    current = new(dtype, idstr);
+                    dialog.Add(current);
+                }
+                else if(type == Type.DialogueInfo)
+                {
+                    DialogInfoRecord dialogInfoRecord = new(current.type, json[i]);
+                    current.infos.Add(dialogInfoRecord);
                 }
             }
 
@@ -160,6 +193,37 @@ namespace JortPob
                 Lort.TaskIterate();
             }
         }
+
+        /* Get dialog and character data for building esd */
+        public List<Tuple<DialogRecord, DialogInfoRecord>> GetDialog(NpcContent npc)
+        {
+            List<Tuple<DialogRecord, DialogInfoRecord>> d = new();
+            foreach(DialogRecord dialogRecord in dialog)
+            {
+                if (dialogRecord.type == DialogRecord.Type.Journal) { continue; } // obviously skip these lmao
+
+                // Check if the npc meets requirements for this topic or w/e
+                foreach(DialogInfoRecord info in dialogRecord.infos)
+                {
+                    // Check if the npc meets all requirements for this dialog line
+                    if (info.speaker != null && info.speaker != npc.id) { continue; }
+                    if (info.race != NpcContent.Race.Any && info.race != npc.race) { continue; }
+                    if (info.job != null && info.job != npc.job) { continue; }
+                    if (info.faction != null && info.faction != npc.faction) { continue; }
+                    if (info.disposition > npc.disposition) { continue; }
+                    if (info.rank > npc.rank) { continue; }
+                    if (info.cell != null && info.cell != npc.cell.name) { continue; }
+                    if (info.sex != NpcContent.Sex.Any && info.sex != npc.sex) { continue; }
+                    if (info.filters && dialogRecord.type == DialogRecord.Type.Greeting) { continue; }                     // @TODO: STUB, just discarding on filters or player data checks
+                    if (info.playerFaction != null) { continue; }
+
+                    d.Add(new(dialogRecord, info));
+                    break;
+                }
+            }
+
+            return d;
+        }
     }
 
     public class Record
@@ -170,6 +234,77 @@ namespace JortPob
         {
             this.type = type;
             this.json = json;
+        }
+    }
+
+    /* Just a serializiation of the dialog and dialoginfo thingies. We will be iterating through them a lot so may as well do it. */
+    public class DialogRecord
+    {
+        public enum Type
+        {
+            Greeting, Topic, Journal,
+            Alarm, Attack, Flee, Hello, Hit, Idle, Intruder, Thief, 
+            AdmireFail, AdmireSuccess, BribeFail, BribeSuccess, InfoRefusal, InfoFail, IntimidateFail, IntimidateSuccess, ServiceRefusal, TauntFail, TauntSuccess
+        }
+
+        public readonly Type type;
+        public readonly string id;
+
+        public readonly List<DialogInfoRecord> infos;
+
+        public DialogRecord(Type type, string id)
+        {
+            this.type = type;
+            this.id = id;
+
+            infos = new();
+        }
+    }
+
+    public class DialogInfoRecord
+    {
+        private static uint NEXT_ID = 0;
+
+        public readonly uint id; // generated id used when lookin up wems, not used by elden ring or morrowind
+        public readonly DialogRecord.Type type;
+
+        // static requirements for a dialog to be added
+        public readonly string speaker, job, faction, cell;
+        public readonly int rank;
+        public readonly NpcContent.Race race;
+        public readonly NpcContent.Sex sex;
+
+        // non-static requirements
+        public readonly string playerFaction;
+        public readonly int disposition, playerRank;
+
+        public readonly bool filters; // STUB!!! @TODO: actually implement later once we have script data managed
+
+        public readonly string text; // actual dialog text
+
+        public DialogInfoRecord(DialogRecord.Type type, JsonNode json)
+        {
+            id = DialogInfoRecord.NEXT_ID++;
+            this.type = type;
+
+            string NullEmpty(string s) { return s.Trim() == "" ? null : s; }
+
+            speaker = NullEmpty(json["speaker_id"].ToString());
+            string raceStr = NullEmpty(json["speaker_race"].ToString());
+            race = raceStr != null ? (NpcContent.Race)System.Enum.Parse(typeof(NpcContent.Race), raceStr.Replace(" ", "")) : NpcContent.Race.Any;
+            job = NullEmpty(json["speaker_class"].ToString());
+            faction = NullEmpty(json["speaker_faction"].ToString());
+            cell = NullEmpty(json["speaker_cell"].ToString());
+            rank = int.Parse(json["data"]["speaker_rank"].ToString());
+            Enum.TryParse(json["data"]["speaker_sex"].ToString(), out sex);
+
+            playerFaction = NullEmpty(json["player_faction"].ToString());
+            disposition = int.Parse(json["data"]["disposition"].ToString());
+            playerRank = int.Parse(json["data"]["player_rank"].ToString());
+
+            filters = json["filters"].AsArray().Count() > 0;
+
+            text = json["text"].ToString();
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.castTest;
+using JortPob.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace JortPob
 
         public Tile(int m, int x, int y, int b) : base(m, x, y, b)
         {
-
+            
         }
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
@@ -90,6 +91,15 @@ namespace JortPob
 
             base.AddContent(cache, cell, content);
         }
+
+        public void AddWarp(DoorContent.Warp warp)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+
+            Layout.WarpDestination dest = new((warp.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y), warp.rotation, warp.entity);
+            warps.Add(dest);
+        }
     }
 
 
@@ -110,6 +120,8 @@ namespace JortPob
         public readonly List<CreatureContent> creatures;
         public readonly List<NpcContent> npcs;
 
+        public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells
+
         public BaseTile(int m, int x, int y, int b)
         {
             /* Tile Data */
@@ -126,6 +138,13 @@ namespace JortPob
             lights = new();
             creatures = new();
             npcs = new();
+
+            warps = new();
+        }
+
+        public int[] IdList()
+        {
+            return new int[] { map, coordinate.x, coordinate.y, block };
         }
 
         public bool IsEmpty()

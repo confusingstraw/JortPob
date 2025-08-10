@@ -224,7 +224,7 @@ namespace JortPob.Model
 
         public MaterialInfo GenerateMaterialSingle(SharpAssimp.Material sourceMaterial, int index)
         {
-            string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
+            string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null && sourceMaterial.TextureDiffuse.FilePath != "" ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
             string diffuseTexture;
             if (genTextures.ContainsKey(diffuseTextureSourcePath))
             {

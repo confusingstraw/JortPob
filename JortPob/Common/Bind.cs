@@ -20,7 +20,7 @@ namespace JortPob.Common
             string[] fileList = Directory.GetFiles($"{Const.CACHE_PATH}materials");
             int i = 15102; // appending our new file indexes after all the base game ones
 
-            Lort.Log($"Binding materials...", Lort.Type.Main);
+            Lort.Log($"Binding {fileList.Length} materials...", Lort.Type.Main);
             Lort.NewTask("Binding Materials", fileList.Length);
 
             foreach (string file in fileList)
@@ -167,7 +167,7 @@ namespace JortPob.Common
                 bnd.Write(outPath);
             }
         }
-        public static void BindTPF(Cache cache, string outPath)
+        public static void BindTPF(Cache cache, List<int> commons)
         {
             /* Collect all textures, kind of brute force, could optimize later */
             List<TextureInfo> textures = new();
@@ -198,7 +198,7 @@ namespace JortPob.Common
                 }
             }
 
-            Lort.Log($"Binding textures...", Lort.Type.Main);
+            Lort.Log($"Binding {textures.Count()} textures...", Lort.Type.Main);
             Lort.NewTask("Binding Textures", textures.Count());
 
             /* Bind all textures */
@@ -236,7 +236,10 @@ namespace JortPob.Common
             }
 
             /* Write bind */
-            tpfbdt.Write($"{outPath}.tpfbhd", $"{outPath}.tpfbdt");
+            foreach (int common in commons) {
+                string outPath = $"{Const.OUTPUT_PATH}map\\m{common.ToString("D2")}\\common\\m{common.ToString("D2")}_0000";
+                tpfbdt.Write($"{outPath}.tpfbhd", $"{outPath}.tpfbdt");
+            }
         }
     }
 }

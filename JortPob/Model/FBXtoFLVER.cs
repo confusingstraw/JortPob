@@ -254,6 +254,7 @@ namespace JortPob.Model
 
             /* Add Dummy Polys */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
+            nodes.Insert(0, new("root", Vector3.Zero));    // always add a dummy at root for potential use by fxr later
             foreach(Tuple<string, Vector3> tuple in nodes)
             {
                 string name = tuple.Item1;
@@ -278,7 +279,7 @@ namespace JortPob.Model
                 dmy.AttachBoneIndex = -1;
                 dmy.UseUpwardVector = true;
                 flver.Dummies.Add(dmy);
-                modelInfo.dummies.Add(name, refid);
+                if (!modelInfo.dummies.ContainsKey(name)) { modelInfo.dummies.Add(name, refid); }
             }
 
             /* Calculate bounding boxes */

@@ -33,6 +33,7 @@ namespace JortPob.Worker
 
             pool.msb.Write($"{Const.OUTPUT_PATH}map\\mapstudio\\m{name}.msb.dcx");
             if (pool.lights.Count() > 0) { pool.lights.Write(); }
+            if (pool.script != null) { pool.script.Write($"{Const.OUTPUT_PATH}\\event\\m{name}.emevd.dcx"); }
 
             /* Write map pieces like terrain */
             foreach (Tuple<int, string> mp in pool.mapIndices)

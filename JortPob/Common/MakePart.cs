@@ -18,6 +18,7 @@ namespace JortPob.Common
         public static Dictionary<EmitterInfo, int> EmitterInstances = new(); // counts instances of emitter assets
         public static Dictionary<string, int> EnemyInstances = new();      // counts instances of enemies
         public static Dictionary<LiquidInfo, int> WaterInstances = new();
+        public static int PlayerInstances = 9000;
 
         /* Makes simple collideable asset */
         /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
@@ -340,6 +341,7 @@ namespace JortPob.Common
             collision.PlayRegionID = -1;
             collision.LocationTextID = -1;
             collision.InstanceID = -1;
+            collision.SceneGparam.TransitionTime = 10f;
             collision.TileLoad.CullingHeightBehavior = -1;
             collision.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
             collision.TileLoad.Unk0C = -1;
@@ -495,10 +497,11 @@ namespace JortPob.Common
         public static MSBE.Part.Player Player()
         {
             MSBE.Part.Player player = new();
+            int inst = PlayerInstances++;
 
-            player.Name = "c0000_9001";
+            player.Name = $"c0000_{inst.ToString("D4")}";
             player.ModelName = "c0000";
-            player.InstanceID = 9001;
+            player.InstanceID = inst;
             player.MapStudioLayer = 4294967295;
             player.Unk1.DisplayGroups[0] = 16;
             player.IsShadowDest = true;

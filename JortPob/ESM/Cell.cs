@@ -70,21 +70,21 @@ namespace JortPob
                     case ESM.Type.Static:
                     case ESM.Type.Container:
                     case ESM.Type.Activator:
-                        if (mesh != null) { assets.Add(new AssetContent(reference, record)); }
+                        if (mesh != null) { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
-                        if (mesh != null) { doors.Add(new DoorContent(reference, record)); }
+                        if (mesh != null) { doors.Add(new DoorContent(this, reference, record)); }
                         break;
                     case ESM.Type.Light:
-                        if (mesh == null) { lights.Add(new LightContent(reference, record)); }
-                        else { emitters.Add(new EmitterContent(reference, record)); }
+                        if (mesh == null) { lights.Add(new LightContent(this, reference, record)); }
+                        else { emitters.Add(new EmitterContent(this, reference, record)); }
                         break;
                     case ESM.Type.Npc:
-                        npcs.Add(new NpcContent(reference, record));
+                        npcs.Add(new NpcContent(this, reference, record));
                         break;
                     case ESM.Type.Creature:
                     case ESM.Type.LevelledCreature:
-                        creatures.Add(new CreatureContent(reference, record));
+                        creatures.Add(new CreatureContent(this, reference, record));
                         break;
                 }
             }

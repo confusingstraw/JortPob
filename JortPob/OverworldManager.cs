@@ -12,7 +12,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using static JortPob.OverworldManager;
-using static JortPob.Paramanager;
 using static SoulsAssetPipeline.Audio.Wwise.WwiseBlock;
 using static SoulsFormats.MSB3.Region;
 
@@ -25,7 +24,7 @@ namespace JortPob
         /* It also contains things like the sky and water so yee */
         public static ResourcePool Generate(Cache cache, ESM esm, Layout layout, Paramanager param)
         {
-            Lort.Log($"Building Overworld...", Lort.Type.Main);
+            Lort.Log($"Building overworld...", Lort.Type.Main);
             Lort.NewTask("Overworld Generation", 2);
 
             MSBE msb = MSBE.Read(Utility.ResourcePath(@"msb\m60_00_00_99.msb.dcx"));
@@ -229,8 +228,8 @@ namespace JortPob
         {
             
             string region = tile.GetRegion();
-            WeatherData weatherData = null;
-            foreach (WeatherData w in WEATHER_DATA_LIST)
+            Paramanager.WeatherData weatherData = null;
+            foreach (Paramanager.WeatherData w in Paramanager.WEATHER_DATA_LIST)
             {
                 if (w.match.Contains(region))
                 {

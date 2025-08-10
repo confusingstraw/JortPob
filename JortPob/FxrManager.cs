@@ -22,11 +22,6 @@ namespace JortPob
         // campfire from church of elleh = 7000
         // single candle from round table, no dynamic light = 800401
 
-        public static List<string> BNDS = new List<string>()
-        {
-            @"sfxbnd_m60.ffxbnd.dcx"
-        };
-
         public static List<FXR> FXRS = new List<FXR>()
         {
             new FXR(Const.FXR_START_ID, "candleflame emitter"),
@@ -99,94 +94,92 @@ namespace JortPob
         }
 
         /* Write all the ffxbnds for all the map groups */
-        public static void Write()
+        public static void Write(Layout layout)
         {
-            foreach(string bndPath in BNDS)
+            BND4 ffxbnd = new();
+            ffxbnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+            ffxbnd.Version = "25I10A23";
+
+            int fxrid = -1; int texid = 99999;
+            foreach(BinderFile file in ffxbnd.Files)
             {
-                BND4 ffxbnd = BND4.Read(Utility.ResourcePath($"fxr\\{bndPath}"));
-                int fxrid = -1; int texid = 99999;
-                foreach(BinderFile file in ffxbnd.Files)
+                if (file.Name.ToLower().EndsWith(".fxr") && file.ID > fxrid) { fxrid = file.ID; }
+                if (file.Name.ToLower().EndsWith(".tpf") && file.ID > texid) { texid = file.ID; }
+            }
+            fxrid++; texid++;
+
+            foreach (FXR fxr in FXRS)
+            {
+                // fxr file
                 {
-                    if (file.Name.ToLower().EndsWith(".fxr") && file.ID > fxrid) { fxrid = file.ID; }
-                    if (file.Name.ToLower().EndsWith(".tpf") && file.ID > texid) { texid = file.ID; }
+                    BinderFile file = new();
+                    file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.fxr}"));
+                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    file.ID = fxrid;
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
+                    ffxbnd.Files.Add(file);
                 }
-                fxrid++; texid++;
-
-                foreach (FXR fxr in FXRS)
+                // ffxreslist
                 {
-                    // fxr file
-                    {
-                        BinderFile file = new();
-                        file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.fxr}"));
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                        file.ID = fxrid;
-                        file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
-                        ffxbnd.Files.Add(file);
-                    }
-                    // ffxreslist
-                    {
-                        BinderFile file = new();
-                        file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.res}"));
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                        file.ID = 400000 + fxrid++;
-                        file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
-                        ffxbnd.Files.Add(file);
-                    }
-                    // tpfs
-                    foreach(string tpf in fxr.tpfs)
-                    {
-                        BinderFile file = new();
-                        file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{tpf}"));
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                        file.ID = texid++;
-                        file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\tex\\{Utility.PathToFileName(tpf)}.tpf";
-                        ffxbnd.Files.Add(file);
-                    }
+                    BinderFile file = new();
+                    file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.res}"));
+                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    file.ID = 400000 + fxrid++;
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
+                    ffxbnd.Files.Add(file);
                 }
-
-                /* These are just point lights inside an fxr. used for the attachlight node in models */
-                foreach(LightFXR fxr in LIGHT_FXRS)
+                // tpfs
+                foreach(string tpf in fxr.tpfs)
                 {
-                    // fxr file
-                    {
-                        BinderFile file = new();
-                        file.Bytes = fxr.GetBytes();
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                        file.ID = fxrid;
-                        file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
-                        ffxbnd.Files.Add(file);
-                    }
+                    BinderFile file = new();
+                    file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{tpf}"));
+                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    file.ID = texid++;
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\tex\\{Utility.PathToFileName(tpf)}.tpf";
+                    ffxbnd.Files.Add(file);
+                }
+            }
 
-                    // ffxreslist  (it's fucking blank but it's still required idk fucking fromsoft lmao)
-                    {
-                        BinderFile file = new();
-                        file.Bytes = new byte[0]; // lol, lmao even
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                        file.ID = 400000 + fxrid++;
-                        file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
-                        ffxbnd.Files.Add(file);
-                    }
+            /* These are just point lights inside an fxr. used for the attachlight node in models */
+            foreach(LightFXR fxr in LIGHT_FXRS)
+            {
+                // fxr file
+                {
+                    BinderFile file = new();
+                    file.Bytes = fxr.GetBytes();
+                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    file.ID = fxrid;
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
+                    ffxbnd.Files.Add(file);
                 }
 
-                /* Sort binderfiles by id */
-                /* Yes, for some god forsaken reason this seems to matter */
-                /* Shitty slow sort just testing guh guh fuck */
-                for(int i=0;i<ffxbnd.Files.Count()-1;i++)
+                // ffxreslist  (it's fucking blank but it's still required idk fucking fromsoft lmao)
                 {
-                    BinderFile file = ffxbnd.Files[i];
-                    BinderFile next = ffxbnd.Files[i+1];
-                    if (next.ID < file.ID)
-                    {
-                        BinderFile temp = file;
-                        ffxbnd.Files[i] = next;
-                        ffxbnd.Files[i+1] = temp;
-                        i = 0; // slow and bad
-                    }
+                    BinderFile file = new();
+                    file.Bytes = new byte[0]; // lol, lmao even
+                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
+                    file.ID = 400000 + fxrid++;
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
+                    ffxbnd.Files.Add(file);
                 }
+            }
 
-                /* Files have to be sorted because order of files in ffxbnd must match id order. Fuck if I know why from did this but they did */
-                // ffxbnd.Files.OrderBy(x => x.ID); // doesn't work, dont know why. lol lmaao.....
-                ffxbnd.Write($"{Const.OUTPUT_PATH}sfx\\{bndPath}");
+            /* Files have to be sorted because order of files in ffxbnd must match id order. Fuck if I know why from did this but they did */
+            // ffxbnd.Files.OrderBy(x => x.ID); // doesn't work, dont know why. lol lmaao.....
+            Utility.SortBND4(ffxbnd); // fxrs  REALLY care about being sorted correctly so yeah
+
+            List<int> maps = new();
+            maps.Add(60); // for the overworld
+            foreach(InteriorGroup group in layout.interiors)
+            {
+                if (group.IsEmpty()) { continue; }
+                if (maps.Contains(group.map)) { continue; }
+                maps.Add(group.map);
+            }
+
+            foreach (int map in maps)
+            {
+                ffxbnd.Write($"{Const.OUTPUT_PATH}sfx\\sfxbnd_m{map.ToString("D2")}.ffxbnd.dcx");
             }
         }
 

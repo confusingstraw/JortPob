@@ -1,4 +1,5 @@
 ﻿using HKLib.hk2018.TypeRegistryTest;
+using HKX2;
 using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats.Formats.Morpheme.MorphemeBundle;
@@ -135,7 +136,7 @@ namespace JortPob
             }
 
             /* Generate Interior Groups */
-            foreach(string msb in msblist)
+            foreach (string msb in msblist)
             {
                 string[] split = msb.Split(",");
                 int m = int.Parse(split[0]);
@@ -143,7 +144,12 @@ namespace JortPob
                 int u = int.Parse(split[2]);
                 int b = int.Parse(split[3]);
 
-                if ((m == 30 || m == 31 || m == 32) && u == 0 && b == 0)
+                int[] validMaps = new int[]
+                {
+                    12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43
+                };
+
+                if (validMaps.Contains(m) && u == 0 && b == 0)
                 {
                     InteriorGroup group = new InteriorGroup(m, a, u, b);
                     interiors.Add(group);
@@ -211,6 +217,85 @@ namespace JortPob
 
                 start += partition;
                 end += partition;
+            }
+
+            /* Resolve load doors */
+            InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
+            {
+                foreach(InteriorGroup group in interiors)
+                {
+                    foreach (InteriorGroup.Chunk chunk in group.chunks)
+                    {
+                        if (chunk.cell.name == name) { return chunk; }
+                    }
+                }
+
+                return null; // may happen if debug options are enabled to build only some cells
+            }
+
+            Tile FindTile(Vector3 position) // find a tile based on coords
+            {
+                foreach (Tile tile in tiles)
+                {
+                    if(tile.PositionInside(position))
+                    {
+                        return tile;
+                    }
+                }
+
+                return null; // may happen if debug options are enabled to build only some cells
+            }
+
+            void HandleDoor(DoorContent door)
+            {
+                if (door.warp != null)
+                {
+                    // Door goes to interior cell
+                    if (door.warp.cell != null)
+                    {
+                        InteriorGroup.Chunk to = FindChunk(door.warp.cell);
+                        if (to == null) { door.warp = null; return; }      // caused by debug sometimes
+                        door.warp.map = to.group.map;
+                        door.warp.x = to.group.area;
+                        door.warp.y = to.group.unk;
+                        door.warp.block = to.group.block;
+                        door.warp.entity = Script.Global.NextEntityId(door.warp.map, door.warp.x, door.warp.y, door.warp.block, 0);
+                        to.AddWarp(door.warp);
+                    }
+                    // Door goes to exterior cell
+                    else
+                    {
+                        Tile to = FindTile(door.cell.center);             // we use the tile (cell center) to decide which msb to load, not the exact door position
+                        if (to == null) { door.warp = null; return; }     // caused by debug sometimes
+                        door.warp.map = to.map;
+                        door.warp.x = to.coordinate.x;
+                        door.warp.y = to.coordinate.y;
+                        door.warp.block = to.block;
+                        door.warp.entity = Script.Global.NextEntityId(door.warp.map, door.warp.x, door.warp.y, door.warp.block, 0);
+                        to.AddWarp(door.warp);
+                    }
+                }
+            }
+
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    foreach(DoorContent door in chunk.doors)
+                    {
+                        HandleDoor(door);
+                        if(door.warp != null) { door.entity = Script.Global.NextEntityId(group.map, group.area, group.unk, group.block, 1); }
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles)
+            {
+                foreach (DoorContent door in tile.doors)
+                {
+                    HandleDoor(door);
+                    if (door.warp != null) { door.entity = Script.Global.NextEntityId(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, 1); }
+                }
             }
 
             /* Render an ASCII image of the tiles for verification! */
@@ -289,6 +374,31 @@ namespace JortPob
                 }
             }
             return null;
+        }
+
+        public List<int> ListCommon()
+        {
+            List<int> list = new();
+            list.Add(60);
+            foreach(InteriorGroup group in interiors)
+            {
+                if (!list.Contains(group.map)) { list.Add(group.map); }
+            }
+
+            return list;
+        }
+
+        public class WarpDestination
+        {
+            public readonly Vector3 position, rotation;
+            public readonly uint id;  // entity id
+
+            public WarpDestination(Vector3 position, Vector3 rotation, uint id)
+            {
+                this.position = position;
+                this.rotation = rotation;
+                this.id = id;
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018;
+using JortPob.Common;
 using SharpAssimp.Configs;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,20 @@ namespace JortPob
             block = b;
 
             chunks = new();
+        }
+
+        public int[] IdList()
+        {
+            return new int[] { map, area, unk, block };
+        }
+
+        public bool IsEmpty()
+        {
+            foreach(Chunk chunk in chunks)
+            {
+                if (chunk.assets.Count() > 0) { return false; }
+            }
+            return true;
         }
 
         // Fugly code <3
@@ -66,14 +81,17 @@ namespace JortPob
             {
                 root = new(0, 0, 0);
             }
-            Chunk chunk = new(cell, root);
+            Chunk chunk = new(this, cell, root);
             chunks.Add(chunk);
         }
 
         public class Chunk
         {
-            public Vector3 root;
-            public Vector3 bounds; // size from center
+            public readonly InteriorGroup group;
+            public readonly Cell cell;
+
+            public readonly Vector3 root;
+            public readonly Vector3 bounds, offset; // size from center
 
             public readonly List<AssetContent> assets;
             public readonly List<DoorContent> doors;
@@ -82,12 +100,16 @@ namespace JortPob
             public readonly List<CreatureContent> creatures;
             public readonly List<NpcContent> npcs;
 
-            public Chunk(Cell cell, Vector3 root)
+            public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells
+
+            public Chunk(InteriorGroup group, Cell cell, Vector3 root)
             {
+                this.group = group;
+                this.cell = cell;
                 this.root = root;
 
                 bounds = cell.boundsMax - cell.boundsMin;
-                Vector3 offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
+                offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
 
                 assets = new();
                 doors = new();
@@ -96,6 +118,8 @@ namespace JortPob
                 creatures = new();
                 npcs = new();
 
+                warps = new();
+
                 /* Process cell data */
                 foreach(Content content in cell.contents)
                 {
@@ -103,6 +127,12 @@ namespace JortPob
 
                     AddContent(content);
                 }
+            }
+
+            public void AddWarp(DoorContent.Warp warp)
+            {
+                Layout.WarpDestination dest = new(warp.position + root - offset, warp.rotation, warp.entity);
+                warps.Add(dest);
             }
 
             public void AddContent(Content content)
