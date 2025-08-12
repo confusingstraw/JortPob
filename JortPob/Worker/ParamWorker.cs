@@ -76,16 +76,16 @@ namespace JortPob.Worker
             }
 
             /* Wait for threads to finish */
-            while (true)
+            for (int i = 0; workers.Count() > 0; i++)
             {
-                bool done = true;
-                foreach (ParamWorker worker in workers)
+                if (i >= workers.Count()) { i = 0; }
+                ParamWorker worker = workers[i];
+                if (worker.IsDone)
                 {
-                    done &= worker.IsDone;
+                    workers.Remove(worker);
+                    param.Add(worker.type, worker.param);
+                    i--;
                 }
-
-                if (done)
-                    break;
 
                 // wait...
                 Thread.Yield();

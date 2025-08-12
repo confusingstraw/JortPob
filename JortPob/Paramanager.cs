@@ -7,6 +7,7 @@ using System.Data;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using WitchyFormats;
@@ -353,38 +354,48 @@ namespace JortPob
             public readonly string name;
             public readonly List<string> match;
             public readonly int MapInfoParamId, MapRegionParamId;
-            public readonly OverworldManager.EnvMap env;
+            public readonly EnvManager.Rem rem;
 
-            public WeatherData(string name, List<string> match, int MapInfoParamId, int MapRegionParamId, OverworldManager.EnvMap env)
+            public WeatherData(string name, List<string> match, int MapInfoParamId, int MapRegionParamId, EnvManager.Rem rem)
             {
                 this.name = name;
                 this.match = match;
                 for (int i = 0; i < match.Count(); i++) { match[i] = match[i].Trim().ToLower(); }
                 this.MapInfoParamId = MapInfoParamId;
                 this.MapRegionParamId = MapRegionParamId;
-                this.env = env;
+                this.rem = rem;
             }
         }
 
-        public static List<WeatherData> WEATHER_DATA_LIST = new()
+        // @TODO: maybe move weatherdata to layout or its own class since its used by multiple toher thingsthingso
+
+        public static List<WeatherData> EXTERIOR_WEATHER_DATA_LIST = new()
         {
-            new WeatherData("Limgrave", new(){ "West Gash Region", "Ascadian Isles Region", "Grazelands Region" }, 60423600, 99999901, new OverworldManager.EnvMap(60, new Int2(10,9), 2, 7)), // 0
-            new WeatherData("Liurnia", new(){ "Bitter Coast Region", "Sheogorad", "Azura's Coast Region" }, 60374200, 60365000, new OverworldManager.EnvMap(60, new Int2(9,10), 2, 7)), // 10
-            new WeatherData("Altus", new(){ }, 60395000, 60395000, new OverworldManager.EnvMap(60, new Int2(10,9), 2, 7)), // 20
-            new WeatherData("Gelmir", new(){ "Ashlands Region", "Molag Mar Region" }, 60355200, 60355200, new OverworldManager.EnvMap(60, new Int2(9,13), 2, 7)), // 21
-            new WeatherData("Caelid", new(){ }, 60473700, 60473700, new OverworldManager.EnvMap(60, new Int2(10,10), 2, 7)), // 30
-            new WeatherData("Caelid Desert", new(){ "Red Mountain Region" }, 60533800, 60533800, new OverworldManager.EnvMap(60, new Int2(12,9), 2, 7)), // 31
+            new WeatherData("Limgrave", new(){ "West Gash Region", "Ascadian Isles Region", "Grazelands Region" }, 60423600, 99999901, EnvManager.Rem.Forest), // 0
+            new WeatherData("Liurnia", new(){ "Bitter Coast Region", "Sheogorad", "Azura's Coast Region" }, 60374200, 60365000, EnvManager.Rem.Forest), // 10
+            new WeatherData("Altus", new(){ }, 60395000, 60395000, EnvManager.Rem.Forest), // 20
+            new WeatherData("Gelmir", new(){ "Ashlands Region", "Molag Mar Region" }, 60355200, 60355200, EnvManager.Rem.Mountain), // 21
+            new WeatherData("Caelid", new(){ }, 60473700, 60473700, EnvManager.Rem.Mountain), // 30
+            new WeatherData("Caelid Desert", new(){ "Red Mountain Region" }, 60533800, 60533800, EnvManager.Rem.Mountain), // 31
+        };
+
+        public static List<WeatherData> INTERIOR_WEATHER_DATA_LIST = new()
+        {
+            new WeatherData("Cave", new(){ "cave", "mine" }, 31030000, 31030000, EnvManager.Rem.Cave), // 3103
+            new WeatherData("Home", new(){ "house", "home" }, 11100000, 11100000, EnvManager.Rem.Home), // 1110
+            new WeatherData("Tomb", new(){ "tomb" }, 30000000, 30000000, EnvManager.Rem.Tomb), // 3000
         };
 
         public void GenerateMapInfoParam(Layout layout)
         {
+            // Exterior msbs
             foreach (Tile tile in layout.tiles)
             {
                 if (tile.IsEmpty()) { continue; } // skip empty tiles
 
                 string region = tile.GetRegion();
                 WeatherData weatherData = null;
-                foreach (WeatherData w in WEATHER_DATA_LIST)
+                foreach (WeatherData w in EXTERIOR_WEATHER_DATA_LIST)
                 {
                     if (w.match.Contains(region))
                     {
@@ -396,12 +407,32 @@ namespace JortPob
 
                 /* MapInfoParam */ // controls sky and weather
                 FsParam mapInfoParam = param[ParamType.MapDefaultInfoParam];
-                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
                 AddRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
                 FsParam mapRegionParam = param[ParamType.MapGdRegionInfoParam];
-                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                AddRow(mapRegionParam, rowB);
+            }
+
+            // Interior msbs
+            foreach (InteriorGroup group in layout.interiors)
+            {
+                if (group.IsEmpty()) { continue; } // skip empty tiles
+
+                WeatherData weatherData = group.GetWeather();
+
+                int id = int.Parse($"{group.map:D2}{group.area:D2}{group.unk:D2}{group.block:D2}");
+
+                /* MapInfoParam */ // controls sky and weather
+                FsParam mapInfoParam = param[ParamType.MapDefaultInfoParam];
+                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
+                AddRow(mapInfoParam, rowA);
+
+                /* MapRegionParam */ // controls gparam
+                FsParam mapRegionParam = param[ParamType.MapGdRegionInfoParam];
+                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
                 AddRow(mapRegionParam, rowB);
             }
         }
@@ -455,6 +486,71 @@ namespace JortPob
             row.Cells[23].SetValue(textId);
 
             AddRow(actionParam, row);
+        }
+
+        /* Set all map placenames to "Morrowind" for now. Later we can edit the map mask and setup the regions properly */
+        public void SetAllMapLocation(TextManager textManager)
+        {
+            int textId = textManager.AddLocation("Morrowind");
+
+            foreach(FsParam.Row row in param[ParamType.MapNameTexParam].Rows)
+            {
+               row.Cells[7].SetValue(textId);
+            }
+
+            textManager.SetLocation(10010, "Morrowind");  // it seems like chapel of anticiaption is the default when the game doesnt know where you are so making that a generic as well
+        }
+
+        /* Generate or get an already generated worldmappoint to be used as a placename. Not for actual map icons! */
+        public int GenerateWorldMapPoint(TextManager textManager, BaseTile tile, Cell cell, Vector3 relative, int id)
+        {
+            FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
+            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+
+            int textId = textManager.AddLocation(cell.name);
+
+            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
+            row["dispMask00"].Value.SetValue((byte)0);
+
+            row["areaNo"].Value.SetValue((byte)tile.map);
+            row["gridXNo"].Value.SetValue((byte)tile.coordinate.x);
+            row["gridZNo"].Value.SetValue((byte)tile.coordinate.y);
+
+            row["posX"].Value.SetValue(relative.X);
+            row["posY"].Value.SetValue(relative.Y);
+            row["posZ"].Value.SetValue(relative.Z);
+
+            row["textId1"].Value.SetValue(textId);
+
+            AddRow(worldMapPointParam, row);
+
+            return id;
+        }
+
+        /* Same as above but for interiors */
+        public int GenerateWorldMapPoint(TextManager textManager, InteriorGroup group, Cell cell, Vector3 relative, int id)
+        {
+            FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
+            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+
+            int textId = textManager.AddLocation(cell.name);
+
+            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
+            row["dispMask00"].Value.SetValue((byte)0);
+
+            row["areaNo"].Value.SetValue((byte)group.map);
+            row["gridXNo"].Value.SetValue((byte)group.area);
+            row["gridZNo"].Value.SetValue((byte)group.unk);
+
+            row["posX"].Value.SetValue(relative.X);
+            row["posY"].Value.SetValue(relative.Y);
+            row["posZ"].Value.SetValue(relative.Z);
+
+            row["textId1"].Value.SetValue(textId);
+
+            AddRow(worldMapPointParam, row);
+
+            return id;
         }
 
         /* Die */

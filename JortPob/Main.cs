@@ -9,6 +9,7 @@ using SoulsFormats;
 using SoulsFormats.KF4;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
@@ -18,8 +19,10 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using static HKLib.hk2018.hkaiAnnotatedStreamingSet;
 using static JortPob.InteriorGroup;
 using static SoulsFormats.MQB;
+using static SoulsIds.Universe;
 
 namespace JortPob
 {
@@ -30,12 +33,15 @@ namespace JortPob
             /* Startup logging */
             Lort.Initialize();
 
+            //BND4 generated = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\mod\map\m60\m60_10_10_02\m60_10_10_02_envmap_03_high_00.tpfbnd.dcx");
+            //BND4 original = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_10_10_02\m60_10_10_02_envmap_03_high_00.tpfbnd.dcx");
+
             /* Loading stuff */
             ESM esm = new ESM($"{Const.MORROWIND_PATH}\\Data Files\\Morrowind.json");      // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
-            Layout layout = new(cache, esm);                                                 // Subdivides all content data from ESM into a more elden ring friendly format
             Paramanager param = new();                                                        // Class for managing PARAM files
             TextManager text = new();
+            Layout layout = new(cache, esm, param, text);                                                 // Subdivides all content data from ESM into a more elden ring friendly format
             SoundManager sound = new();
             NpcManager character = new(esm, sound, param, text);
 
@@ -55,8 +61,8 @@ namespace JortPob
                 ResourcePool pool = new(tile, msb, lightManager, script);
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
-                /* Collision Indices */
-                int nextC = 0;
+                /* Variuos Indices */
+                int nextC = 0, nextMPR = 0;
 
                 /* Add terrain */
                 foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)
@@ -236,6 +242,45 @@ namespace JortPob
                     msb.Parts.Enemies.Add(enemy);
                 }
 
+                /* Handle area names */
+                if (tile.GetType() == typeof(Tile))
+                {
+                    foreach (Cell cell in tile.cells)
+                    {
+                        if (cell.name != null)
+                        {
+                            float x = (tile.coordinate.x * Const.TILE_SIZE);
+                            float y = (tile.coordinate.y * Const.TILE_SIZE);
+                            Vector3 relative = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+
+                            int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
+
+
+                            MSBE.Region.MapPoint mpr = new();
+                            mpr.Name = $"{cell.name} placename";
+                            mpr.Shape = new MSB.Shape.Box(Const.CELL_SIZE, Const.CELL_SIZE, Const.CELL_SIZE * 8);
+                            mpr.Position = relative;
+                            mpr.Rotation = Vector3.Zero;
+                            mpr.RegionID = nextMPR++;
+                            mpr.MapStudioLayer = 4294967295;
+                            mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, tile, cell, relative, paramId);
+
+                            mpr.MapID = -1;
+                            mpr.UnkE08 = 255;
+                            mpr.UnkS04 = 0;
+                            mpr.UnkS0C = -1;
+                            mpr.UnkT04 = -1;
+                            mpr.UnkT08 = -1;
+                            mpr.UnkT0C = -1;
+                            mpr.UnkT10 = -1;
+                            mpr.UnkT14 = -1;
+                            mpr.UnkT18 = -1;
+
+                            msb.Regions.MapPoints.Add(mpr);
+                        }
+                    }
+                }
+
                 /* Auto resource */
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
@@ -253,8 +298,8 @@ namespace JortPob
 
                 if (group.IsEmpty()) { continue; }   // Skip empty groups.
 
-                /* Collision Indices */
-                int nextC = 0;
+                /* Misc Indices */
+                int nextC = 0, nextMPR = 0;
 
                 /* Generate msb from group */
                 MSBE msb = new();
@@ -419,7 +464,57 @@ namespace JortPob
 
                         msb.Parts.Enemies.Add(enemy);
                     }
+
+                    /* Handle area name */
+                    int paramId = int.Parse($"60{group.map:D2}{group.area:D2}{nextMPR:D2}");
+
+
+                    MSBE.Region.MapPoint mpr = new();
+                    mpr.Name = $"{chunk.cell.name} placename";
+                    mpr.Shape = new MSB.Shape.Box(chunk.bounds.X, chunk.bounds.Z, chunk.bounds.Y);
+                    mpr.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
+                    mpr.Rotation = Vector3.Zero;
+                    mpr.RegionID = nextMPR++;
+                    mpr.MapStudioLayer = 4294967295;
+                    mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, group, chunk.cell, chunk.root, paramId);
+
+                    mpr.MapID = -1;
+                    mpr.UnkE08 = 255;
+                    mpr.UnkS04 = 0;
+                    mpr.UnkS0C = -1;
+                    mpr.UnkT04 = -1;
+                    mpr.UnkT08 = -1;
+                    mpr.UnkT0C = -1;
+                    mpr.UnkT10 = -1;
+                    mpr.UnkT14 = -1;
+                    mpr.UnkT18 = -1;
+
+                    msb.Regions.MapPoints.Add(mpr);
                 }
+
+                /* EnvMap & REM for interior */
+                {
+                    /* Create envmap texture file */
+                    int envId = 200 ;
+                    int size = 512, crossfade = 8;
+                    EnvManager.CreateEnvMaps(group, envId);
+
+                    /* Create an envbox */
+                    MSBE.Region.EnvironmentMapEffectBox envBox = MakePart.EnvBox();
+                    envBox.Name = $"Env_Box{envId.ToString("D3")}";
+                    envBox.Shape = new MSB.Shape.Box(size + crossfade, size + crossfade, size + crossfade);
+                    envBox.Position = new Vector3(0f, size * -0.5f, 0f) + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    envBox.TransitionDist = crossfade / 2f;
+                    msb.Regions.EnvironmentMapEffectBoxes.Add(envBox);
+
+                    MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
+                    envPoint.Name = $"Env_Point{envId.ToString("D3")}";
+                    envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    envPoint.UnkMapID = new byte[] { (byte)group.map, (byte)group.area, (byte)group.unk, (byte)group.block };
+                    msb.Regions.EnvironmentMapPoints.Add(envPoint);
+                }
+
+
 
                 /* Auto resource */
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
@@ -444,6 +539,7 @@ namespace JortPob
             param.GenerateMapInfoParam(layout);
             param.GenerateActionButtonParam(text, 1500, "Enter");
             param.GenerateActionButtonParam(text, 1501, "Exit");
+            param.SetAllMapLocation(text);
             param.KillMapHeightParams();    // murder kill
             param.Write();
 

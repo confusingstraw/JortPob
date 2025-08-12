@@ -253,9 +253,9 @@ namespace JortPob
                 FLVER2 boxFlver = FLVER2.Read($"{Const.CACHE_PATH}{boxModelInfo.path}"); // we need this box to be exactly 1 unit in each direction no matter what so we just edit it real quick
                 foreach (FLVER.Vertex v in boxFlver.Meshes[0].Vertices)
                 {
-                    float x = v.Position.X > 0f ? 1f : -1f;
-                    float y = v.Position.Y > 0f ? 1f : -1f;
-                    float z = v.Position.Z > 0f ? 1f : -1f;
+                    float x = v.Position.X > 0f ? .5f : -.5f;
+                    float y = v.Position.Y > 0f ? .5f : -.5f;
+                    float z = v.Position.Z > 0f ? .5f : -.5f;
                     v.Position = new Vector3(x, y, z);
                 }
                 BoundingBoxSolver.FLVER(boxFlver); // redo bounding box since we edited the mesh

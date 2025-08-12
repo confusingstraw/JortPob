@@ -22,7 +22,7 @@ namespace JortPob
         public readonly string region;
         public readonly Int2 coordinate;  // Position on the cell grid
         public readonly Vector3 center;
-        public readonly Vector3 boundsMin;  // honestly unsure what these are used for, old code from ds3 build
+        public readonly Vector3 boundsMin;
         public readonly Vector3 boundsMax;
 
         public readonly List<Content> contents;            // All of this
@@ -36,7 +36,7 @@ namespace JortPob
         public Cell(ESM esm, JsonNode json)
         {
             /* Cell Data */
-            name = json["name"].ToString();
+            name = json["name"].ToString() == "" ? null : json["name"].ToString();
             region = json["region"] != null ? json["region"].ToString() : "null";
 
             int x = int.Parse(json["data"]["grid"][0].ToString());
@@ -108,8 +108,8 @@ namespace JortPob
                 y2 = Math.Max(y2, content.position.Y);
                 z2 = Math.Max(z2, content.position.Z);
             }
-            boundsMin = new Vector3(x1, y1, z1);
-            boundsMax = new Vector3(x2, y2, z2);
+            boundsMin = new Vector3(x1, y1, z1) * 1.5f; // this is calc'd before we load models so we can't get a perfectly accurate bounding box. so lets just mult by 1.5f and call it a day
+            boundsMax = new Vector3(x2, y2, z2) * 1.5f;
         }
 
         public bool IsPointInside(Vector3 point)

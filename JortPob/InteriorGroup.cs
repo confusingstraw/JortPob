@@ -47,6 +47,11 @@ namespace JortPob
             return true;
         }
 
+        public Paramanager.WeatherData GetWeather()
+        {
+            return Paramanager.INTERIOR_WEATHER_DATA_LIST[1];  // @TODO: actually figure out what kind of cell this is and grab correct weather
+        }
+
         // Fugly code <3
         /* Process an interior cell into a chunk and add it to this group */
         /* This function is awful looking but it does an important bit of math to bound and align the chunk into a grid with other chunks in this group */

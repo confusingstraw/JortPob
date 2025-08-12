@@ -2,6 +2,7 @@
 using HKX2;
 using JortPob.Common;
 using JortPob.Worker;
+using SoulsFormats;
 using SoulsFormats.Formats.Morpheme.MorphemeBundle;
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace JortPob
 
         public List<InteriorGroup> interiors;
 
-        public Layout(Cache cache, ESM esm)
+        public Layout(Cache cache, ESM esm, Paramanager param, TextManager text)
         {
             all = new();
             huges = new();
@@ -265,7 +266,7 @@ namespace JortPob
                     // Door goes to exterior cell
                     else
                     {
-                        Tile to = FindTile(door.cell.center);             // we use the tile (cell center) to decide which msb to load, not the exact door position
+                        Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
                         if (to == null) { door.warp = null; return; }     // caused by debug sometimes
                         door.warp.map = to.map;
                         door.warp.x = to.coordinate.x;
@@ -296,6 +297,13 @@ namespace JortPob
                     HandleDoor(door);
                     if (door.warp != null) { door.entity = Script.Global.NextEntityId(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, 1); }
                 }
+            }
+
+            // default location name value for interiors
+            foreach(InteriorGroup group in interiors)
+            {
+                int textId = int.Parse($"{group.map:D2}{group.area:D2}0");
+                text.SetLocation(textId, "Interior");
             }
 
             /* Render an ASCII image of the tiles for verification! */

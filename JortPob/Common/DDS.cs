@@ -1,4 +1,5 @@
 ﻿using DirectXTexNet;
+using HKX2;
 using SharpAssimp;
 using System;
 using System.Collections.Generic;
@@ -62,6 +63,52 @@ namespace JortPob.Common
                 }
             }
 
+        }
+
+        public static byte[] MakeVolumeTexture(int size, byte R, byte G, byte B, byte A)  // very very VERY slow function
+        {
+            DDS_FLAGS ddsFlags = DDS_FLAGS.NONE;
+            ScratchImage sImage = TexHelper.Instance.Initialize3D(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM, size, size, size, 1, CP_FLAGS.NONE);          
+
+            // cock pain
+            unsafe
+            {
+                for (int i = 0; i < sImage.GetImageCount(); i++)
+                {
+                    DirectXTexNet.Image layer = sImage.GetImage(i);
+                    int byteCount = layer.Width * layer.Height * 4;
+                    byte* P = (byte*)layer.Pixels.ToPointer();
+
+                    for (int j = 0; j < byteCount; j += 4)
+                    {
+                        byte* r = P + j;
+                        byte* g = P + j + 1;
+                        byte* b = P + j + 2;
+                        byte* a = P + j + 3;
+
+
+                        *r = R;
+                        *g = G;
+                        *b = B;
+                        *a = A;
+                    }
+
+                }
+            }
+
+            DirectXTexNet.DXGI_FORMAT format = DirectXTexNet.DXGI_FORMAT.BC7_UNORM;
+            sImage = sImage.Compress(format, TEX_COMPRESS_FLAGS.BC7_QUICK, 0.5f);
+            sImage.OverrideFormat(format);
+
+            /* Save the DDS to memory stream and then read the stream into a byte array. */
+            byte[] bytes;
+            using (UnmanagedMemoryStream uStream = sImage.SaveToDDSMemory(ddsFlags))
+            {
+                bytes = new byte[uStream.Length];
+                uStream.Read(bytes);
+            }
+            sImage.Dispose();
+            return bytes;
         }
 
         /// <summary>

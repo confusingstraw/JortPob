@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
@@ -522,6 +523,66 @@ namespace JortPob.Common
             player.UnkE3C = -1;
 
             return player;
+        }
+
+        /* Create generic envbox */
+        public static MSBE.Region.EnvironmentMapEffectBox EnvBox()
+        {
+            MSBE.Region.EnvironmentMapEffectBox envBox = new();
+            envBox.Rotation = Vector3.Zero;
+            envBox.ActivationPartName = null;
+            envBox.EntityID = 0;
+            envBox.IsModifyLight = true;
+            envBox.MapID = -1;
+            envBox.MapStudioLayer = 4294967295;
+            envBox.PointLightMult = 1f;
+            envBox.RegionID = 0;
+            envBox.SpecularLightMult = 1f;
+            envBox.Unk40 = 0;
+            envBox.UnkE08 = 255;
+            envBox.UnkS04 = 0;
+            envBox.UnkS0C = -1;
+            envBox.UnkT08 = 0;
+            envBox.UnkT09 = 10;
+            envBox.UnkT0A = -1;
+            envBox.UnkT2C = 0;
+            envBox.UnkT2F = false;
+            envBox.UnkT30 = -1;
+            envBox.UnkT32 = false;
+            envBox.UnkT33 = true;
+            envBox.UnkT34 = 1;
+            envBox.UnkT36 = 1;
+            return envBox;
+        }
+
+        /* Create generic envpoint */
+        public static MSBE.Region.EnvironmentMapPoint EnvPoint()
+        {
+            MSBE.Region.EnvironmentMapPoint envPoint = new();
+            envPoint.Shape = new MSB.Shape.Point();
+            envPoint.Rotation = Vector3.Zero;
+            envPoint.ActivationPartName = null;
+            envPoint.EntityID = 0;
+            envPoint.MapID = -1;
+            envPoint.MapStudioLayer = 4294967295;
+            envPoint.RegionID = 0;
+            envPoint.Unk40 = 0;
+            envPoint.UnkE08 = 255;
+            envPoint.UnkS04 = 0;
+            envPoint.UnkS0C = -1;
+            envPoint.UnkT00 = 200;
+            envPoint.UnkT04 = 2;
+            envPoint.UnkT0D = true;
+            envPoint.UnkT0E = true;
+            envPoint.UnkT0F = true;
+            envPoint.UnkT10 = 1;
+            envPoint.UnkT14 = 1;
+            envPoint.UnkT20 = 512;
+            envPoint.UnkT24 = 64;
+            envPoint.UnkT28 = 5;
+            envPoint.UnkT2C = 0;
+            envPoint.UnkT2D = 1;
+            return envPoint;
         }
     }
 }

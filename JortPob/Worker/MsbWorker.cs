@@ -79,7 +79,7 @@ namespace JortPob.Worker
                 testH.ID = id++;
                 bxfH.Files.Add(testH);
             }
-            bxfH.Write($"{Const.OUTPUT_PATH}map\\m60\\m{name}\\h{name}.hkxbhd", $"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\h{name}.hkxbdt");
+            bxfH.Write($"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\h{name}.hkxbhd", $"{Const.OUTPUT_PATH}map\\m{map}\\m{name}\\h{name}.hkxbdt");
 
             BXF4 bxfL = new();
             bxfL.Version = "07D7R6";

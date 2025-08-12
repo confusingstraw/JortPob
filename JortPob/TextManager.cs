@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -19,13 +20,14 @@ namespace JortPob
 
         private Dictionary<TextType, FMG> menu, item;
 
-        private int nextTopicId, nextNpcNameId, nextActionButtonId;
+        private int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId;
 
         public TextManager()
         {
             nextTopicId = 29000000;
             nextNpcNameId = 11800000;
             nextActionButtonId = 10000;
+            nextLocationId = 11000000;
 
             Dictionary<TextType, FMG> LoadMsgBnd(string path)
             {
@@ -47,6 +49,15 @@ namespace JortPob
 
             menu = LoadMsgBnd(Utility.ResourcePath(@"text\menu_dlc02.msgbnd.dcx"));
             item = LoadMsgBnd(Utility.ResourcePath(@"text\item_dlc02.msgbnd.dcx"));
+        }
+
+        private FMG.Entry GetEntry(FMG fmg, int id)
+        {
+            foreach (FMG.Entry entry in fmg.Entries)
+            {
+                if (entry.ID == id) { return entry; }
+            }
+            return null;
         }
 
         public void AddTalk(int id, string text)
@@ -75,6 +86,22 @@ namespace JortPob
         {
             int id = nextActionButtonId++;
             FMG fmg = menu[TextType.ActionButtonText];
+            fmg.Entries.Add(new(id, text));
+            return id;
+        }
+
+        public void SetLocation(int id, string text)
+        {
+            FMG fmg = item[TextType.PlaceName];
+            FMG.Entry entry = GetEntry(fmg, id);
+            if (fmg != null) { fmg.Entries.Remove(entry); }
+            fmg.Entries.Add(new(id, text));
+        }
+
+        public int AddLocation(string text)
+        {
+            int id = nextLocationId++;
+            FMG fmg = item[TextType.PlaceName];
             fmg.Entries.Add(new(id, text));
             return id;
         }
