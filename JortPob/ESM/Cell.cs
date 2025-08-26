@@ -108,8 +108,9 @@ namespace JortPob
                 y2 = Math.Max(y2, content.position.Y);
                 z2 = Math.Max(z2, content.position.Z);
             }
-            boundsMin = new Vector3(x1, y1, z1) * 1.5f; // this is calc'd before we load models so we can't get a perfectly accurate bounding box. so lets just mult by 1.5f and call it a day
-            boundsMax = new Vector3(x2, y2, z2) * 1.5f;
+            const float PAD = 10f, mult = 1f;
+            boundsMin = (new Vector3(x1, y1, z1) - new Vector3(PAD)) * mult; // this is calc'd before we load models so we can't get a perfectly accurate bounding box. so lets just add a bit and mult by 1.5f and call it a day
+            boundsMax = (new Vector3(x2, y2, z2) + new Vector3(PAD)) * mult;
         }
 
         public bool IsPointInside(Vector3 point)

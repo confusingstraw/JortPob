@@ -221,7 +221,7 @@ namespace JortPob
             }
 
             /* Start out by creating border arrays */
-            if (Const.DEBUG_SKIP_TERRAIN_BORDER_BLENDING)
+            if (!Const.DEBUG_SKIP_TERRAIN_BORDER_BLENDING)
             {
                 borders = new Vertex[4, 65];
                 for (int ii = 0; ii <= Const.CELL_GRID_SIZE; ii++)

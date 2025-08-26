@@ -492,11 +492,11 @@ namespace JortPob
                     msb.Regions.MapPoints.Add(mpr);
                 }
 
-                /* EnvMap & REM for interior */
+                /* EnvMap & REM for interior */ // @TODO: make this per chunk so we can setupd different rems for different interiors
                 {
                     /* Create envmap texture file */
-                    int envId = 200 ;
-                    int size = 512, crossfade = 8;
+                    int envId = 200;
+                    int size = 4096, crossfade = 8;
                     EnvManager.CreateEnvMaps(group, envId);
 
                     /* Create an envbox */
