@@ -108,9 +108,9 @@ namespace JortPob
                 y2 = Math.Max(y2, content.position.Y);
                 z2 = Math.Max(z2, content.position.Z);
             }
-            const float PAD = 10f, mult = 1f;
-            boundsMin = (new Vector3(x1, y1, z1) - new Vector3(PAD)) * mult; // this is calc'd before we load models so we can't get a perfectly accurate bounding box. so lets just add a bit and mult by 1.5f and call it a day
-            boundsMax = (new Vector3(x2, y2, z2) + new Vector3(PAD)) * mult;
+            const float PAD = 10f; // originally was multiplying but that resulted in the box being moved when all 4 points existed in the same quadrant (XY). padding is easier and safe
+            boundsMin = new Vector3(x1, y1, z1) - new Vector3(PAD); // this is calc'd before we load models so we can't get a perfectly accurate bounding box. so we just pad it a bit and call it a day
+            boundsMax = new Vector3(x2, y2, z2) + new Vector3(PAD);
         }
 
         public bool IsPointInside(Vector3 point)
