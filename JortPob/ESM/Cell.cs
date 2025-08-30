@@ -1,18 +1,8 @@
 ﻿using JortPob.Common;
-using SharpAssimp;
-using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.IO.Pipes;
-using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JortPob
 {

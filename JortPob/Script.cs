@@ -1,13 +1,7 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
 using SoulsIds;
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static HKLib.hk2018.hclBufferLayout;
 
 /* THIS CLASS FUCKING SUCKS */
 /* this was rushed to get a video out. this class desperately needs rewriting and rethinking. it just doesn't cut it for what it needs to do in the future */

@@ -1,16 +1,9 @@
-﻿using HKX2;
-using JortPob.Common;
-using SharpAssimp;
+﻿using JortPob.Common;
 using SoulsFormats;
-using System;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob.Model
 {

@@ -1,28 +1,13 @@
-﻿using ESDLang.EzSemble;
-using HKX2;
-using JortPob.Common;
-using JortPob.Model;
+﻿using JortPob.Common;
 using JortPob.Worker;
 using PortJob;
-using SharpAssimp;
 using SoulsFormats;
-using SoulsFormats.KF4;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using static HKLib.hk2018.hkaiAnnotatedStreamingSet;
-using static JortPob.InteriorGroup;
-using static SoulsFormats.MQB;
-using static SoulsIds.Universe;
 
 namespace JortPob
 {

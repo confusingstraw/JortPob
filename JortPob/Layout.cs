@@ -1,17 +1,9 @@
-﻿using HKLib.hk2018.TypeRegistryTest;
-using HKX2;
-using JortPob.Common;
-using JortPob.Worker;
-using SoulsFormats;
-using SoulsFormats.Formats.Morpheme.MorphemeBundle;
+﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob
 {

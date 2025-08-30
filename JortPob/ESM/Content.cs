@@ -1,16 +1,7 @@
 ﻿using JortPob.Common;
 using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using System.Transactions;
-using static JortPob.Paramanager;
-using static SoulsAssetPipeline.Animation.HKX;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JortPob
 {

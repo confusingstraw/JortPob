@@ -1,6 +1,4 @@
-﻿using HKLib;
-using HKLib.hk2018;
-using HKLib.hk2018.hk;
+﻿using HKLib.hk2018;
 using HKLib.Reflection.hk2018;
 using HKLib.Serialization.hk2018.Binary;
 using HKLib.Serialization.hk2018.Xml;
@@ -10,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Xml.Linq;
 
 /* Code here is courtesy of Dropoff */
 /* Also uses some stuff by Hork & 12th I think */

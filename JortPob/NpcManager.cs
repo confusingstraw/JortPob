@@ -1,16 +1,9 @@
-﻿using ESDLang.Adapter;
-using HKLib.hk2018;
-using HKLib.hk2018.hk;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob
 {

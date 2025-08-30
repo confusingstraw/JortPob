@@ -1,20 +1,11 @@
-﻿using DirectXTexNet;
-using gfoidl.Base64;
-using HKLib.hk2018;
-using HKLib.hk2018.TypeRegistryTest;
+﻿using gfoidl.Base64;
 using JortPob.Common;
 using JortPob.Model;
-using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using System.Xml;
 
 
 namespace JortPob

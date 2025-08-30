@@ -1,20 +1,12 @@
 ﻿using JortPob.Common;
 using JortPob.Model;
 using JortPob.Worker;
-using SoulsAssetPipeline.Animation;
 using SoulsFormats;
-using SoulsIds;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using static JortPob.LiquidManager;
-using static SoulsFormats.PARAM;
 
 namespace JortPob
 {

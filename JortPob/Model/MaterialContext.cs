@@ -1,22 +1,13 @@
-﻿using HKLib.hk2018.hkHashMapDetail;
-using JortPob.Common;
+﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsFormats.KF4;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Numerics;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
-using System.Xml.Linq;
-using System.Xml.Serialization;
-using static JortPob.Model.MaterialContext;
 
 namespace JortPob.Model
 {

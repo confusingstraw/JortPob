@@ -1,15 +1,9 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using WitchyFormats;
-using static JortPob.OverworldManager;
 using static JortPob.Paramanager;
 
 namespace JortPob.Worker

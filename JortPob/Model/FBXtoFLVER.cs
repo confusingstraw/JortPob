@@ -1,17 +1,11 @@
-﻿using HKLib.hk2018.hk;
-using HKLib.hk2018.TypeRegistryTest;
-using JortPob.Common;
+﻿using JortPob.Common;
 using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 
 namespace JortPob.Model
 {
@@ -85,13 +79,13 @@ namespace JortPob.Model
 
             void FBXHierarchySearch(Node fbxParentNode, bool isCollision)
             {
-                foreach (Node fbxChildNode in fbxParentNode.Children)
-                {
+                foreach (Node fbxChildNode in fbxParentNode.Children) {
+                    bool isNodeCollision = isCollision;
                     string nodename = fbxChildNode.Name.ToLower();
 
                     if (nodename.Trim().ToLower() == "collision")
                     {
-                        isCollision = true;
+                        isNodeCollision = true;
                     }
                     if (nodename.Contains("attachlight") || nodename.Contains("emitter"))
                     {
@@ -101,24 +95,24 @@ namespace JortPob.Model
                     {
                         foreach (int fbxMeshIndex in fbxChildNode.MeshIndices)
                         {
-                            if (isCollision) { fbxCollisions.Add(new Tuple<Node, Mesh>(fbxChildNode, fbx.Meshes[fbxMeshIndex])); }
+                            if (isNodeCollision) { fbxCollisions.Add(new Tuple<Node, Mesh>(fbxChildNode, fbx.Meshes[fbxMeshIndex])); }
                             else { fbxMeshes.Add(new Tuple<Node, Mesh>(fbxChildNode, fbx.Meshes[fbxMeshIndex])); }
                         }
                     }
                     if (fbxChildNode.HasChildren)
                     {
-                        FBXHierarchySearch(fbxChildNode, isCollision);
+                        FBXHierarchySearch(fbxChildNode, isNodeCollision);
                     }
                 }
             }
             FBXHierarchySearch(fbx.RootNode, false);
 
             /* Convert meshes */
-            int index = 0;
             foreach (Tuple<Node, Mesh> tuple in fbxMeshes)
             {
                 Node node = tuple.Item1;
                 Mesh fbxMesh = tuple.Item2;
+                int index = fbxMesh.MaterialIndex;
                 MaterialContext.MaterialInfo materialInfo = materialInfos[index];
 
                 /* Some Fix-up code here. We need to remove any meshes with a name like "ShadowBox" */

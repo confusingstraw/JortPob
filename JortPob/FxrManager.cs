@@ -1,12 +1,8 @@
-﻿using HKLib.hk2018.hkcdCompressedAabbCodecs;
-using JortPob.Common;
+﻿using JortPob.Common;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob
 {

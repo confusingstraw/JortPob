@@ -1,12 +1,7 @@
-﻿using HKX2;
-using JortPob.Common;
+﻿using JortPob.Common;
 using SoulsFormats;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 
 /* Quite literally copy pasted class from the DS3 portjob project. Adapating as I go but uhh blame DS3 if bugs */
@@ -48,7 +43,7 @@ namespace JortPob
         public void CreateLight(LightContent mwl)
         {
             // DEBUG EXAMPLE
-            BTL DEBUG_EXAMPLE = BTL.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_34_42_00\m60_34_42_00_0000.btl.dcx");
+            //BTL DEBUG_EXAMPLE = BTL.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_34_42_00\m60_34_42_00_0000.btl.dcx");
 
             BTL.Light erl = new();
             erl.Name = mwl.id;

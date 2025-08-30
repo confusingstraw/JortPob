@@ -1,7 +1,4 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
-using JortPob;
+﻿using System.Windows;
 
 namespace JortUX
 {

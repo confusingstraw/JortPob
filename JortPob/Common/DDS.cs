@@ -1,20 +1,10 @@
 ﻿using DirectXTexNet;
-using HKX2;
-using SharpAssimp;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
-using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using TeximpNet.DDS;
-using static SoulsFormats.DDS;
-using static SoulsFormats.FLVER2.FaceSet;
 
 namespace JortPob.Common
 {

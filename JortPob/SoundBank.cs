@@ -1,13 +1,8 @@
-﻿using HKLib.hk2018.hkaiWorldCommands;
-using JortPob.Common;
-using System;
+﻿using JortPob.Common;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 using static JortPob.SoundManager;
 
 namespace JortPob

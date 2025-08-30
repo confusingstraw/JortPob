@@ -1,13 +1,9 @@
-﻿using HKLib.hk2018.hk;
-using SoulsFormats;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob.Common
 {

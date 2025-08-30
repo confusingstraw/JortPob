@@ -1,22 +1,9 @@
-﻿using HKLib.hk2018.hkaiWorldCommands;
-using JortPob.Common;
+﻿using JortPob.Common;
 using PortJob;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using static JortPob.OverworldManager;
-using static JortPob.Paramanager;
-using static SoulsAssetPipeline.Audio.Wwise.WwiseBlock;
-using static SoulsFormats.MSB3.Region;
-using static SoulsIds.Events;
 
 namespace JortPob
 {

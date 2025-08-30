@@ -1,13 +1,6 @@
 ﻿using JortPob.Common;
-using SoulsFormats;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json.Nodes;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace JortPob.Worker
 {

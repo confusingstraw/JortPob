@@ -1,20 +1,11 @@
-﻿using HKLib.hk2018;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Worker;
-using SharpAssimp;
-using SoulsFormats;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
 
 namespace JortPob
 {

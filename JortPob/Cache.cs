@@ -1,25 +1,15 @@
-﻿using HKLib.hk2018;
-using HKLib.hk2018.hkaiWorldCommands;
-using HKX2;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Model;
 using JortPob.Worker;
 using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static HKLib.hk2018.hkaSkeleton;
 
 namespace JortPob
 {
