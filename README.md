@@ -31,4 +31,6 @@
 
 13. Install ModEngine3: https://www.nexusmods.com/eldenringnightreign/mods/213?tab=description
 
-14. 
+14. Download this dll that skips regulation.bin file size checks at startup. Without this the game fails to load.
+
+15. Put the dll in ``Elden Ring\Game`` and edit the modengine config to include 
