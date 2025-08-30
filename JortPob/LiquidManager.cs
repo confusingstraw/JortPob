@@ -2061,10 +2061,11 @@ namespace JortPob
 
                         if (nodename.Trim().ToLower() == "collision")
                         {
-                            return;
+                            continue;
                         }
                         if (fbxChildNode.HasMeshes)
                         {
+                            // Skips if there are no indicies in MeshIndices
                             foreach (int fbxMeshIndex in fbxChildNode.MeshIndices)
                             {
                                 node = fbxChildNode;
