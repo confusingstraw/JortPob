@@ -1,13 +1,6 @@
-﻿using HKLib.hk2018.hkcdDynamicTree;
-using SoulsFormats;
-using System;
+﻿using SoulsFormats;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 
 namespace JortPob.Common
 {
