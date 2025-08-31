@@ -9,7 +9,7 @@
 4. Install ModEngine3 with the installer: https://www.nexusmods.com/eldenringnightreign/mods/213?tab=description
 
 5. Make a new file called `elden-scrolls.me3` and in the same folder make a `mods` folder, open it in a text editor and use this profile.
-```
+```toml
 profileVersion = 'v1'
 [[supports]]
 game = 'elden-ring'
