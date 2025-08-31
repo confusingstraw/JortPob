@@ -49,3 +49,9 @@ Pic for reference:
 
 15. This is another command line tool so run it with parameters: `tes3conv.exe "Data Files\Morrowind.esm" "Data Files\Morrowind.json"`. You should now have a Morrowind.json in the same folder as Morrowind.esm.
 <img width="961" height="612" alt="image" src="https://github.com/user-attachments/assets/8343e568-d7ed-4967-8a53-b394dce38e01" />
+
+16. Download the `common.emevd.dcx` from the Elden Scrolls Discord server and put it in the `mods/event` folder in your me3 profile.
+
+17. Double click the `elden-scrolls.me3` file to run the game. Go to the church of elleh and you will be transports to Morrowwind.
+
+You can use [Elden Ring Debug Tool](https://github.com/Nordgaren/Elden-Ring-Debug-Tool) or the [TGA Table](https://github.com/The-Grand-Archives/Elden-Ring-CT-TGA) to warp to the Church of Elleh and spawn items in. The latter requires Cheat Engine.
