@@ -27,7 +27,7 @@ Pic for reference:
 
 6. Download this dll that skips regulation.bin file size checks at startup. This is only avaiable in the `?ServerName?` Discord, and the `Elden Scrolls Dev` Discord, for now. Without this the game fails to load. Add it to the `mods` folder you created above.
 
-7. Edit the settings file and set the paths to your game folders. Here is mine for reference. Make sure the OUTPUT_PATH goes to the mods folder you just set up.
+7. Edit the settings file and set the paths to your game folders. Here is Nords for reference. Make sure the OUTPUT_PATH goes to the mods folder you just set up.
 <img width="1203" height="241" alt="image" src="https://github.com/user-attachments/assets/4c2df234-4f31-4975-ae97-c4fec46f648e" />
 
 8. Download BSAUnpacker from nexus: https://www.nexusmods.com/skyrimspecialedition/mods/974
