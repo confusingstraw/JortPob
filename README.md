@@ -6,9 +6,9 @@
 
 3. Copy the file "settings.example.json" and rename it to "settings.json". This is an untracked file for personal settings.
 
-4. 4.Install ModEngine3 with the installer: https://www.nexusmods.com/eldenringnightreign/mods/213?tab=description
+4. Install ModEngine3 with the installer: https://www.nexusmods.com/eldenringnightreign/mods/213?tab=description
 
-5. 5.Make a new file called `elden-scrolls.me3` and in the same folder make a `mods` folder, open it in a text editor and use this profile.
+5. Make a new file called `elden-scrolls.me3` and in the same folder make a `mods` folder, open it in a text editor and use this profile.
 ```
 profileVersion = 'v1'
 [[supports]]
@@ -22,10 +22,13 @@ source = 'mods\'
 path = 'mods\regbinmeme.dll'
 ```
 
+Pic for reference:
+<img width="1392" height="405" alt="image" src="https://github.com/user-attachments/assets/9dd04ba4-fc11-4346-b1fd-2eaecc792b15" />
+
 6. Download this dll that skips regulation.bin file size checks at startup. This is only avaiable in the `?ServerName?` Discord, and the `Elden Scrolls Dev` Discord, for now. Without this the game fails to load. Add it to the `mods` folder you created above.
 
-7. Edit the settings file and set the paths to your game folders. Here is mine for reference.
-<img width="778" height="186" alt="image" src="https://github.com/user-attachments/assets/641b6156-ba75-48d8-a85d-85a818c31eaf" />
+7. Edit the settings file and set the paths to your game folders. Here is mine for reference. Make sure the OUTPUT_PATH goes to the mods folder you just set up.
+<img width="1203" height="241" alt="image" src="https://github.com/user-attachments/assets/4c2df234-4f31-4975-ae97-c4fec46f648e" />
 
 8. Download BSAUnpacker from nexus: https://www.nexusmods.com/skyrimspecialedition/mods/974
 
