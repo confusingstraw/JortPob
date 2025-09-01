@@ -46,6 +46,7 @@ Pic for reference:
 <img width="2754" height="913" alt="image" src="https://github.com/user-attachments/assets/592451c3-cb7b-4af1-8636-fcb2ae0de5c1" />
 
 14. Download Greatness7's program Tes3Conv: https://github.com/Greatness7/tes3conv
+NOTE: Needs to be version 0.4.0 currently. Newest version not supported yet.
 
 15. This is another command line tool so run it with parameters: `tes3conv.exe "Data Files\Morrowind.esm" "Data Files\Morrowind.json"`. You should now have a Morrowind.json in the same folder as Morrowind.esm.
 <img width="961" height="612" alt="image" src="https://github.com/user-attachments/assets/8343e568-d7ed-4967-8a53-b394dce38e01" />
