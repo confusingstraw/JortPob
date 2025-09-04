@@ -937,22 +937,17 @@ namespace JortPob
 
                                         List<Vector3> FindNearest(Vector3 p, List<Vector3> ps)
                                         {
-                                            List<Vector3> nearest = new();
-                                            nearest.AddRange(ps);
-                                            for (int k = 0; k < nearest.Count - 1; k++)
-                                            {
-                                                float distA = Vector3.Distance(p, nearest[k]);
-                                                float distB = Vector3.Distance(p, nearest[k + 1]);
+                                            if (ps == null) return new List<Vector3>();
+                                            int n = ps.Count;
+                                            if (n <= 1) return new List<Vector3>(ps);
 
-                                                if (distB < distA)
-                                                {
-                                                    Vector3 temp = nearest[k];
-                                                    nearest[k] = nearest[k + 1];
-                                                    nearest[k + 1] = temp;
-                                                    k = 0; // start sort over since we changed the list. very inefficient but fucking bruh whatever
-                                                }
-                                            }
-                                            return nearest;
+                                            Vector3[] arr = ps.ToArray();          // copy to array (fast)
+                                            float[] keys = new float[n];          // distance keys (squared)
+                                            for (int i = 0; i < n; i++)
+                                                keys[i] = (arr[i] - p).SqrMagnitude();
+
+                                            Array.Sort(keys, arr);                // sorts keys and reorders arr accordingly
+                                            return new List<Vector3>(arr);        // return sorted list (closest first)
                                         }
 
                                         for (int i= 0;i<points.Count();i++)

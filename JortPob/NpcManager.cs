@@ -138,7 +138,7 @@ namespace JortPob
                 }
             }
 
-            for (int i=0;i<esds.Count();i++)
+            for (int i = 0; i < esds.Count() ; i++)
             {
                 string esdPath = esds[i].esd;
 
@@ -158,32 +158,60 @@ namespace JortPob
 
             foreach (KeyValuePair<int, BND4> kvp in bnds)
             {
-                /* Sort bnd ?? test */
                 BND4 bnd = kvp.Value;
-                for (int i=0;i<bnd.Files.Count()-1;i++)
-                {
-                    BinderFile file = bnd.Files[i];
-                    uint fileId = uint.Parse(Utility.PathToFileName(file.Name).Substring(1));
-                    BinderFile next = bnd.Files[i+1];
-                    uint nextId = uint.Parse(Utility.PathToFileName(next.Name).Substring(1));
+                var files = bnd.Files;
+                int n = files.Count;
 
-                    if (nextId < fileId)
+                if (n > 1)
+                {
+                    // copy to array for fast sort
+                    BinderFile[] arr = files.ToArray();
+                    uint[] keys = new uint[n];
+
+                    for (int i = 0; i < n; i++)
+                        keys[i] = BinderFileIdComparer.ParseBinderFileId(arr[i]); // fast parse function that avoids Substring if possible
+
+                    Array.Sort(keys, arr); // sorts arr by keys (closest to minimal overhead)
+
+                    // copy back and reassign IDs
+                    for (int i = 0; i < n; i++)
                     {
-                        BinderFile temp = file;
-                        bnd.Files[i] = next;
-                        bnd.Files[i + 1] = temp;
-                        i = 0; // slow and bad
+                        files[i] = arr[i];
+                        files[i].ID = i;
                     }
                 }
 
-                for(int i=0;i<bnd.Files.Count();i++)
-                {
-                    BinderFile file = bnd.Files[i];
-                    file.ID = i;
-                }
-
-                kvp.Value.Write($"{Const.OUTPUT_PATH}script\\talk\\m{kvp.Key.ToString("D4").Substring(0,2)}_{kvp.Key.ToString("D4").Substring(2, 2)}_00_00.talkesdbnd.dcx");
+                kvp.Value.Write($"{Const.OUTPUT_PATH}script\\talk\\m{kvp.Key.ToString("D4").Substring(0, 2)}_{kvp.Key.ToString("D4").Substring(2, 2)}_00_00.talkesdbnd.dcx");
             }
+
+            //foreach (KeyValuePair<int, BND4> kvp in bnds)
+            //{
+            //    /* Sort bnd ?? test */
+            //    BND4 bnd = kvp.Value;
+            //    for (int i = 0; i < bnd.Files.Count() - 1; i++)
+            //    {
+            //        BinderFile file = bnd.Files[i];
+            //        uint fileId = uint.Parse(Utility.PathToFileName(file.Name).Substring(1));
+            //        BinderFile next = bnd.Files[i+1];
+            //        uint nextId = uint.Parse(Utility.PathToFileName(next.Name).Substring(1));
+
+            //        if (nextId < fileId)
+            //        {
+            //            BinderFile temp = file;
+            //            bnd.Files[i] = next;
+            //            bnd.Files[i + 1] = temp;
+            //            i = 0; // slow and bad
+            //        }
+            //    }
+
+            //    for(int i = 0; i < bnd.Files.Count() ; i++)
+            //    {
+            //        BinderFile file = bnd.Files[i];
+            //        file.ID = i;
+            //    }
+
+            //    kvp.Value.Write($"{Const.OUTPUT_PATH}script\\talk\\m{kvp.Key.ToString("D4").Substring(0, 2)}_{kvp.Key.ToString("D4").Substring(2, 2)}_00_00.talkesdbnd.dcx");
+            //}
         }
 
         private EsdInfo GetEsdInfo(string content)

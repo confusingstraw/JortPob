@@ -1,7 +1,9 @@
 ﻿using SoulsFormats;
+using SoulsIds;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using WitchyFormats;
 
 namespace JortPob.Common
 {
@@ -50,52 +52,63 @@ namespace JortPob.Common
         /* Shitty slow sort, replace with something better eventually */
         public static void SortBND4(BND4 bnd)
         {
-            for (int i = 0; i < bnd.Files.Count() - 1; i++)
-            {
-                BinderFile file = bnd.Files[i];
-                BinderFile next = bnd.Files[i + 1];
-                if (next.ID < file.ID)
-                {
-                    BinderFile temp = file;
-                    bnd.Files[i] = next;
-                    bnd.Files[i + 1] = temp;
-                    i = 0; // slow and bad
-                }
-            }
+            bnd.Files = bnd.Files.OrderBy(file => file.ID).ToList();
+
+            //for (int i = 0; i < bnd.Files.Count() - 1; i++)
+            //{
+            //    BinderFile file = bnd.Files[i];
+            //    BinderFile next = bnd.Files[i + 1];
+            //    if (next.ID < file.ID)
+            //    {
+            //        BinderFile temp = file;
+            //        bnd.Files[i] = next;
+            //        bnd.Files[i + 1] = temp;
+            //        i = 0; // slow and bad
+            //    }
+            //}
+        }
+
+        public static void SortFsParam(FsParam param)
+        {
+            param.Rows = param.Rows.OrderBy(row => row.ID).ToList();
         }
 
         // same garbage as above
-        public static void SortPARAM(PARAM param)
+        public static void SortPARAM(SoulsFormats.PARAM param)
         {
-            for (int i = 0; i < param.Rows.Count() - 1; i++)
-            {
-                PARAM.Row row = param.Rows[i];
-                PARAM.Row next = param.Rows[i + 1];
-                if(next.ID < row.ID)
-                {
-                    PARAM.Row temp = row;
-                    param.Rows[i] = next;
-                    param.Rows[i + 1] = temp;
-                    i = 0; 
-                }
-            }
+            param.Rows = param.Rows.OrderBy(row => row.ID).ToList();
+
+            //for (int i = 0; i < param.Rows.Count() - 1; i++)
+            //{
+            //    PARAM.Row row = param.Rows[i];
+            //    PARAM.Row next = param.Rows[i + 1];
+            //    if(next.ID < row.ID)
+            //    {
+            //        PARAM.Row temp = row;
+            //        param.Rows[i] = next;
+            //        param.Rows[i + 1] = temp;
+            //        i = 0; 
+            //    }
+            //}
         }
 
         // yep!
         public static void SortFMG(FMG fmg)
         {
-            for (int i = 0; i < fmg.Entries.Count() - 1; i++)
-            {
-                FMG.Entry entry = fmg.Entries[i];
-                FMG.Entry next = fmg.Entries[i + 1];
-                if (next.ID < entry.ID)
-                {
-                    FMG.Entry temp = entry;
-                    fmg.Entries[i] = next;
-                    fmg.Entries[i + 1] = temp;
-                    i = 0;
-                }
-            }
+            fmg.Entries = fmg.Entries.OrderBy(entry => entry.ID).ToList();
+
+            //for (int i = 0; i < fmg.Entries.Count() - 1; i++)
+            //{
+            //    FMG.Entry entry = fmg.Entries[i];
+            //    FMG.Entry next = fmg.Entries[i + 1];
+            //    if (next.ID < entry.ID)
+            //    {
+            //        FMG.Entry temp = entry;
+            //        fmg.Entries[i] = next;
+            //        fmg.Entries[i + 1] = temp;
+            //        i = 0;
+            //    }
+            //}
         }
     }
 

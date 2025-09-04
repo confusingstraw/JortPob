@@ -160,9 +160,7 @@ namespace JortPob
                 }
             }
 
-            /* Files have to be sorted because order of files in ffxbnd must match id order. Fuck if I know why from did this but they did */
-            // ffxbnd.Files.OrderBy(x => x.ID); // doesn't work, dont know why. lol lmaao.....
-            Utility.SortBND4(ffxbnd); // fxrs  REALLY care about being sorted correctly so yeah
+            Utility.SortBND4(ffxbnd);
 
             List<int> maps = new();
             maps.Add(60); // for the overworld
