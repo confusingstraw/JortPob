@@ -160,6 +160,7 @@ namespace JortPob
                 }
             }
 
+            // for some reason bnds have to be sorted by ID
             Utility.SortBND4(ffxbnd);
 
             List<int> maps = new();
@@ -171,9 +172,12 @@ namespace JortPob
                 maps.Add(group.map);
             }
 
+            Lort.Log($"Writing {maps.Count} FFX Binder files... ", Lort.Type.Main);
+            Lort.NewTask($"Writing {maps.Count} FFX Binder files... ", maps.Count);
             foreach (int map in maps)
             {
                 ffxbnd.Write($"{Const.OUTPUT_PATH}sfx\\sfxbnd_m{map.ToString("D2")}.ffxbnd.dcx");
+                Lort.TaskIterate();
             }
         }
 

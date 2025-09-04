@@ -156,6 +156,8 @@ namespace JortPob
                 Lort.TaskIterate();
             }
 
+            Lort.Log($"Writing {bnds.Count} Binded ESDs... ", Lort.Type.Main);
+            Lort.NewTask($"Writing {bnds.Count} Binded ESDs... ", bnds.Count);
             foreach (KeyValuePair<int, BND4> kvp in bnds)
             {
                 BND4 bnd = kvp.Value;
@@ -182,6 +184,7 @@ namespace JortPob
                 }
 
                 kvp.Value.Write($"{Const.OUTPUT_PATH}script\\talk\\m{kvp.Key.ToString("D4").Substring(0, 2)}_{kvp.Key.ToString("D4").Substring(2, 2)}_00_00.talkesdbnd.dcx");
+                Lort.TaskIterate();
             }
 
             //foreach (KeyValuePair<int, BND4> kvp in bnds)

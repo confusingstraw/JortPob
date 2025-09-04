@@ -947,7 +947,7 @@ namespace JortPob
                                                 keys[i] = (arr[i] - p).SqrMagnitude();
 
                                             Array.Sort(keys, arr);                // sorts keys and reorders arr accordingly
-                                            return new List<Vector3>(arr);        // return sorted list (closest first)
+                                            return arr.ToList();        // return sorted list (closest first)
                                         }
 
                                         for (int i= 0;i<points.Count();i++)
