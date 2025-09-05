@@ -45,6 +45,31 @@ namespace JortPob.Common
             return hash;
         }
 
+        public static string SanitizeTextForComment(string text)
+        {
+            return text.Replace("\r", "").Replace("\n", "");
+        }
+
+        public static bool StringIsNumeric(string text)
+        {
+            return int.TryParse(text, out _);
+        }
+
+        public static bool StringIsOperator(string text)
+        {
+            string allowableLetters = "+=<>!-*/";
+
+            foreach (char c in text)
+            {
+                // This is using String.Contains for .NET 2 compat.,
+                //   hence the requirement for ToString()
+                if (!allowableLetters.Contains(c.ToString()))
+                    return false;
+            }
+
+            return true;
+        }
+
         /* Sort binderfiles by id */
         /* Yes, for some god forsaken reason this seems to matter */
         /* Shitty slow sort, replace with something better eventually */

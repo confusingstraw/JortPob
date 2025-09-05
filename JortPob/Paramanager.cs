@@ -119,6 +119,8 @@ namespace JortPob
                 talkParam.RemoveRow(row);
                 i--;
             }
+
+            GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
         public void AddRow(FsParam param, FsParam.Row row)
@@ -433,27 +435,30 @@ namespace JortPob
             }
         }
 
-        public void GenerateTalkParam(TextManager textManager, List<NpcManager.TalkData> talkData)
+        public void GenerateTalkParam(TextManager textManager, List<NpcManager.TopicData> topicData)
         {
-            foreach (NpcManager.TalkData talk in talkData)
+            foreach (NpcManager.TopicData topic in topicData)
             {
-                int id = talk.row;
+                foreach (NpcManager.TopicData.TalkData talk in topic.talks)
+                {
+                    int id = talk.talkRow;
 
-                FsParam talkParam = param[ParamType.TalkParam];
+                    FsParam talkParam = param[ParamType.TalkParam];
 
-                // If exists skip, duplicates happen during gen of these params beacuse a single talkparam can be used by any number of npcs. Hundreds in some cases.
-                if (talkParam[id] != null) { continue; }
+                    // If exists skip, duplicates happen during gen of these params beacuse a single talkparam can be used by any number of npcs. Hundreds in some cases.
+                    if (talkParam[id] != null) { continue; }
 
-                FsParam.Row row = CloneRow(talkParam[1400000], talk.text, id); // 1400000 is a line from opening cutscene
+                    FsParam.Row row = CloneRow(talkParam[1400000], talk.dialogInfo.text, id); // 1400000 is a line from opening cutscene
 
-                row.Cells[3].SetValue(id * 10); // message id (male)
-                row.Cells[4].SetValue(id * 10); // message id (male)
+                    row.Cells[3].SetValue(id * 10); // message id (male)
+                    row.Cells[4].SetValue(id * 10); // message id (male)
 
-                row.Cells[12].SetValue(id * 10); // message id (female)
-                row.Cells[13].SetValue(id * 10); // message id (female)
+                    row.Cells[12].SetValue(id * 10); // message id (female)
+                    row.Cells[13].SetValue(id * 10); // message id (female)
 
-                textManager.AddTalk(id * 10, talk.text);
-                AddRow(talkParam, row);
+                    textManager.AddTalk(id * 10, talk.dialogInfo.text);
+                    AddRow(talkParam, row);
+                }
             }
         }
 
@@ -549,7 +554,7 @@ namespace JortPob
             return id;
         }
 
-        /* Die */
+        /* Die */ // @TODO: maybe move all row removal into the constructor since it can just *happen*
         public void KillMapHeightParams()
         {
             /* Delete most of these */

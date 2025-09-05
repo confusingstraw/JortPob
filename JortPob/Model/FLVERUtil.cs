@@ -150,7 +150,7 @@ namespace JortPob.Model
                         faceSet.Indices.Add(index);
                     }
                 }
-                Console.WriteLine("DEBUG");
+
             }
 
             return flver;
