@@ -150,7 +150,10 @@ namespace JortPob
             foreach (KeyValuePair<ParamType, FsParam> kvp in param)
             {
                 FsParam param = kvp.Value;
-                // Utility.SortPARAM(param);  // sort rows before writing since our newly added rows are just appended // NEVERMIND ITS SO FUCKING SLOW LMAOOOO @TODO: JESUS!
+                if (Const.DEBUG_ENABLE_FMG_PARAM_SORTING)
+                {
+                    Utility.SortFsParam(param);  // sort rows before writing since our newly added rows are just appended // NEVERMIND ITS SO FUCKING SLOW LMAOOOO @TODO: JESUS!
+                }
 
                 BinderFile file = new();
                 file.Bytes = param.Write();
