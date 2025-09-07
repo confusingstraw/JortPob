@@ -82,6 +82,7 @@ namespace JortPob.Common
 
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
+        public static readonly bool DEBUG_SET_ALL_FLAGS_DEFAULT_ON_LOAD = true; // set all flags to their default values (mostly 0) any time the game loads
         public static readonly bool DEBUG_SKIP_ESD = false; // skip building dialog esd for npcs, can be slow
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = false; // slow as shit, skipping this saves about a minute per build
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
@@ -98,6 +99,8 @@ namespace JortPob.Common
         public static readonly bool DEBUG_SKIP_INTERIOR = false;
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
         {
+            if (DEBUG_SKIP_INTERIOR) { return false; }
+
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
             string[] MATCHES = null; // = new[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Samarys Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
@@ -111,7 +114,6 @@ namespace JortPob.Common
 
             return false;
         }
-        public static readonly string DEBUG_PRINT_LOCATION_INFO = null; // set to null if you don't need it. prints msb name of a named location at build done
         public static readonly bool DEBUG_HKX_FORCE_BINARY = true;   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
         #endregion
 

@@ -46,7 +46,33 @@ namespace JortPob.Common
 
             return hash;
         }
+      
+        public static string SanitizeTextForComment(string text)
+        {
+            return text.Replace("\r", "").Replace("\n", "");
+        }
 
+        public static bool StringIsNumeric(string text)
+        {
+            return int.TryParse(text, out _);
+        }
+
+        public static bool StringIsOperator(string text)
+        {
+            string allowableLetters = "+=<>!-*/";
+
+            foreach (char c in text)
+            {
+                // This is using String.Contains for .NET 2 compat.,
+                //   hence the requirement for ToString()
+                if (!allowableLetters.Contains(c.ToString()))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /* Sort binderfiles by id */
         public static void SortBND4(BND4 bnd)
         {
             bnd.Files = bnd.Files.OrderBy(file => file.ID).ToList();
@@ -62,7 +88,6 @@ namespace JortPob.Common
             param.Rows = param.Rows.AsParallel().OrderBy(row => row.ID).ToList();
         }
 
-        // yep!
         public static void SortFMG(FMG fmg)
         {
             fmg.Entries = fmg.Entries.AsParallel().OrderBy(entry => entry.ID).ToList();
