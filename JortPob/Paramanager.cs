@@ -123,6 +123,8 @@ namespace JortPob
             foreach (FsParam.Row row in openingcustcenestuff) {
                 talkParam.AddRow(row);
             }
+
+            GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
         public void AddRow(FsParam param, FsParam.Row row)
@@ -153,7 +155,11 @@ namespace JortPob
             foreach (KeyValuePair<ParamType, FsParam> kvp in param)
             {
                 FsParam param = kvp.Value;
-                // Utility.SortPARAM(param);  // sort rows before writing since our newly added rows are just appended // NEVERMIND ITS SO FUCKING SLOW LMAOOOO @TODO: JESUS! also some params shouldn't be sorted
+              
+                if (Const.DEBUG_ENABLE_FMG_PARAM_SORTING)
+                {
+                    Utility.SortFsParam(param);  // sort rows, debug flag to turn this off for speed. fmg sorting isn't required but in order to mimick FS standards it should be done in prod
+                }
 
                 BinderFile file = new();
                 file.Bytes = param.Write();
@@ -466,10 +472,10 @@ namespace JortPob
             }
         }
 
-        public void GenerateTalkParam(TextManager textManager, List<NpcManager.TalkData> talkData)
+        public void GenerateTalkParam(TextManager textManager, List<NpcManager.TopicData> topicData)
         {
             FsParam talkParam = param[ParamType.TalkParam];
-            FsParam.Row blessed1400000 = talkParam[1400000];
+            FsParam.Row templateTalkRow = talkParam[1400000]; // 1400000 is a line from opening cutscene
 
             FsParam.Column msgId = talkParam["msgId"];
             FsParam.Column voiceId = talkParam["voiceId"];
@@ -477,24 +483,26 @@ namespace JortPob
             FsParam.Column msgId_female = talkParam["msgId_female"];
             FsParam.Column voiceId_female = talkParam["voiceId_female"];
 
-            foreach (NpcManager.TalkData talk in talkData)
+            foreach (NpcManager.TopicData topic in topicData)
             {
-                int id = talk.row;
+                foreach (NpcManager.TopicData.TalkData talk in topic.talks)
+                {
+                    int id = talk.talkRow;
 
+                    // If exists skip, duplicates happen during gen of these params beacuse a single talkparam can be used by any number of npcs. Hundreds in some cases.
+                    if (talkParam[id] != null) { continue; }
 
-                // If exists skip, duplicates happen during gen of these params beacuse a single talkparam can be used by any number of npcs. Hundreds in some cases.
-                if (talkParam[id] != null) { continue; }
+                    FsParam.Row row = CloneRow(templateTalkRow, talk.dialogInfo.text, id); // 1400000 is a line from opening cutscene
 
-                FsParam.Row row = CloneRow(blessed1400000, talk.text, id); // 1400000 is a line from opening cutscene
+                    msgId.SetValue(row, id * 10); // message id (male)
+                    voiceId.SetValue(row, id * 10); // message id (male)
 
-                msgId.SetValue(row, id * 10); // message id (male)
-                voiceId.SetValue(row, id * 10); // message id (male)
+                    msgId_female.SetValue(row, id * 10); // message id (female)
+                    voiceId_female.SetValue(row, id * 10); // message id (female)
 
-                msgId_female.SetValue(row, id * 10); // message id (female)
-                voiceId_female.SetValue(row, id * 10); // message id (female)
-
-                textManager.AddTalk(id * 10, talk.text);
-                AddRow(talkParam, row);
+                    textManager.AddTalk(id * 10, talk.dialogInfo.text);
+                    AddRow(talkParam, row);
+                }
             }
         }
 
@@ -592,7 +600,7 @@ namespace JortPob
             return id;
         }
 
-        /* Die */
+        /* Die */ // @TODO: maybe move all row removal into the constructor since it can just *happen*
         public void KillMapHeightParams()
         {
             /* Delete most of these */
