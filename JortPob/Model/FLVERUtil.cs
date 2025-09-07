@@ -1,4 +1,5 @@
-﻿using SoulsFormats;
+﻿using JortPob.Common;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -172,11 +173,11 @@ namespace JortPob.Model
 
                 for (int i = 0; i < uvs.Count(); i++)
                 {
-                    if (uvs[i] != other.uvs[i]) { return false; }
+                    if (!uvs[i].TolerantEquals(other.uvs[i], 0.0001f)) { return false; }
                 }
 
-                return position == other.position &&
-                       normal == other.normal;
+                return position.TolerantEquals(other.position, 0.0001f) &&
+                       normal.TolerantEquals(other.normal, 0.0001f);
             }
 
             public override bool Equals(object obj)

@@ -78,9 +78,9 @@ namespace JortPob.Common
             );
         }*/
 
-        public static bool TolerantEquals(this Vector3 A, Vector3 B)
+        public static bool TolerantEquals(this Vector3 A, Vector3 B, float precision = 0.001f)
         {
-            return Vector3.Distance(A, B) <= 0.001f; // imprecision really do be a cunt
+            return Vector3.Distance(A, B) <= precision; // imprecision really do be a cunt
         }
     }
 
