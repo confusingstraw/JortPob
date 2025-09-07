@@ -145,27 +145,38 @@ namespace JortPob.Model
         {
             private readonly Vector3 position;
             private readonly Vector3 normal;
-            private readonly Vector3 uv0;
-            private readonly Vector3? uv1;
+            private readonly List<Vector3> uvs;
             private readonly int hashCode;
 
             public VertexKey(FLVER.Vertex vertex)
             {
                 position = vertex.Position;
                 normal = vertex.Normal;
-                uv0 = vertex.UVs[0];
-                uv1 = vertex.UVs.Count > 1 ? vertex.UVs[1] : null;
+                foreach(Vector3 uv in  vertex.UVs)
+                {
+                    uvs.Add(uv);
+                }
 
-                hashCode = HashCode.Combine(position, normal, uv0, uv1);
+                string uvCombinedHash = "";
+                foreach (Vector3 uv in uvs)
+                {
+                    uvCombinedHash += $"[{uv.X},{uv.Y}]";  // prolly not ideal but i dont want a 8 way switch on uv.count() or smth like that
+                }
+
+                hashCode = HashCode.Combine(position, normal, uvCombinedHash);
             }
 
             public bool Equals(VertexKey other)
             {
-                // @TODO: probably not good enough tbh, should look into rounding and comparison of values directly
+                if (uvs.Count() != other.uvs.Count()) { return false; }
+
+                for (int i = 0; i < uvs.Count(); i++)
+                {
+                    if (uvs[i] != other.uvs[i]) { return false; }
+                }
+
                 return position == other.position &&
-                       normal == other.normal &&
-                       uv0 == other.uv0 &&
-                       uv1 == other.uv1;
+                       normal == other.normal;
             }
 
             public override bool Equals(object obj)
