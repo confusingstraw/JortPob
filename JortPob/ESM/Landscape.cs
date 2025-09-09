@@ -65,17 +65,9 @@ namespace JortPob
 
             textures = new();
             textures.Add(new Texture("Default Terrain Texture", $"{Const.MORROWIND_PATH}{Const.TERRAIN_DEFAULT_TEXTURE}", 65535));   // Default hardcoded terrain texture. Morrowind moment.
-            JsonNode GetLandscapeTextureRecord(int id)
-            {
-                foreach (JsonNode j in esm.records[ESM.Type.LandscapeTexture])
-                {
-                    if (int.Parse(j["index"].ToString()) == id)
-                    {
-                        return j;
-                    }
-                }
-                return null;
-            }
+
+            var landscapeTexturesByIndex = esm.GetAllRecordsByType(ESM.Type.LandscapeTexture)
+                .ToLookup(j => int.Parse(j["index"].ToString()));
 
             bool HasTexture(ushort id)
             {
@@ -90,7 +82,7 @@ namespace JortPob
             {
                 if (HasTexture(id)) { continue; }
 
-                JsonNode ltjson = GetLandscapeTextureRecord(id);
+                JsonNode ltjson = landscapeTexturesByIndex[id].FirstOrDefault();
 
                 if (ltjson != null)
                 {
