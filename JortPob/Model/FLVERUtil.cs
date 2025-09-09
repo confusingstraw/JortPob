@@ -151,8 +151,10 @@ namespace JortPob.Model
 
             public VertexKey(FLVER.Vertex vertex)
             {
+                uvs = [];
                 position = vertex.Position;
                 normal = vertex.Normal;
+    
                 foreach(Vector3 uv in  vertex.UVs)
                 {
                     uvs.Add(uv);
