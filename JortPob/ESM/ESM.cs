@@ -26,11 +26,11 @@ namespace JortPob
             Book, Alchemy, LevelledItem, LevelledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, DialogueInfo
         }
 
-        private Dictionary<Type, List<JsonNode>> unidentifiedRecordsByType;
-        private Dictionary<Type, Dictionary<string, JsonNode>> recordsByType;
+        private readonly Dictionary<Type, List<JsonNode>> unidentifiedRecordsByType;
+        private readonly Dictionary<Type, Dictionary<string, JsonNode>> recordsByType;
+        private readonly ConcurrentDictionary<Int2, Landscape> landscapesByCoordinate;
         public List<DialogRecord> dialog;
         public List<Cell> exterior, interior;
-        private ConcurrentBag<Landscape> landscapes;
 
         public ESM(string path, ScriptManager scriptManager)
         {
@@ -141,7 +141,7 @@ namespace JortPob
             List<List<Cell>> cells = CellWorker.Go(this);
             exterior = cells[0];
             interior = cells[1];
-            landscapes = new();
+            landscapesByCoordinate = new();
 
             /* Post processing of local variables. */
             /* Local variables need to be created and initialized as a fixed "unset" value */
@@ -221,12 +221,9 @@ namespace JortPob
         {
             if (GetCellByGrid(coordinate) == null) { return null; } // Performance hack.
 
-            foreach(var existingLandscape in landscapes)
+            if (landscapesByCoordinate.TryGetValue(coordinate, out var existingLandscape))
             {
-                if (existingLandscape.coordinate == coordinate)
-                {
-                    return existingLandscape;
-                }
+                return existingLandscape;
             }
 
             var matchingRecord = GetAllRecordsByType(Type.Landscape)
@@ -241,14 +238,14 @@ namespace JortPob
             }
 
             var landscape = new Landscape(this, coordinate, matchingRecord);
-            landscapes.Add(landscape);
+            landscapesByCoordinate[coordinate] = landscape;
             return landscape;
         }
 
         /* Same as above but only returns a landscape if its already fully loaded. Returns null if its not loaded */
         public Landscape GetLoadedLandscape(Int2 coordinate)
         {
-            return landscapes.FirstOrDefault(landscape => landscape.coordinate == coordinate);
+            return landscapesByCoordinate.GetValueOrDefault(coordinate);
         }
 
         /* Load all landscapes, single threaded */
