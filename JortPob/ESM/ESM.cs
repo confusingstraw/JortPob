@@ -26,10 +26,11 @@ namespace JortPob
             Book, Alchemy, LevelledItem, LevelledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, DialogueInfo
         }
 
-        public Dictionary<Type, List<JsonNode>> records;
+        private readonly Dictionary<Type, List<JsonNode>> unidentifiedRecordsByType;
+        private readonly Dictionary<Type, Dictionary<string, JsonNode>> recordsByType;
+        private readonly ConcurrentDictionary<Int2, Landscape> landscapesByCoordinate;
         public List<DialogRecord> dialog;
         public List<Cell> exterior, interior;
-        private ConcurrentBag<Landscape> landscapes;
 
         public ESM(string path, ScriptManager scriptManager)
         {
@@ -38,25 +39,48 @@ namespace JortPob
             string tempRawJson = File.ReadAllText(path);
             JsonArray json = JsonNode.Parse(tempRawJson).AsArray();
 
-            records = new Dictionary<Type, List<JsonNode>>();
+            recordsByType = new Dictionary<Type, Dictionary<string, JsonNode>>();
+            unidentifiedRecordsByType = new Dictionary<Type, List<JsonNode>>();
+            var enumNames = Enum.GetNames(typeof(Type)).ToHashSet();
+
             foreach (string name in Enum.GetNames(typeof(Type)))
             {
                 Enum.TryParse(name, out Type type);
                 if (type == Type.Dialogue || type == Type.DialogueInfo) { continue; } // special records, need to be handled specially
-                records.Add(type, new List<JsonNode>());
+                recordsByType.Add(type, new Dictionary<string, JsonNode>());
+                unidentifiedRecordsByType.Add(type, []);
             }
 
-            for (int i = 0; i < json.Count; i++)
+            foreach (var record in json)
             {
-                JsonNode record = json[i];
-                foreach (string name in Enum.GetNames(typeof(Type)))
+                if (record?["type"] == null)
                 {
-                    if (record["type"].ToString() == name)
-                    {
-                        Enum.TryParse(name, out Type type);
-                        if (type == Type.Dialogue || type == Type.DialogueInfo) { continue; } // special records, need to be handled specially
-                        records[type].Add(record);
-                    }
+                    continue;
+                }
+
+                var rawRecordType = record["type"].ToString();
+                if (!enumNames.Contains(rawRecordType))
+                {
+                    continue;
+                }
+                if (!Enum.TryParse(rawRecordType, out Type type))
+                {
+                    continue;
+                }
+
+                // special records, need to be handled specially
+                if (type is Type.Dialogue or Type.DialogueInfo)
+                {
+                    continue;
+                }
+
+                if (record["id"] == null)
+                {
+                    unidentifiedRecordsByType[type].Add(record);
+                }
+                else
+                {
+                    recordsByType[type].Add(record["id"].ToString(), record);
                 }
             }
 
@@ -117,7 +141,7 @@ namespace JortPob
             List<List<Cell>> cells = CellWorker.Go(this);
             exterior = cells[0];
             interior = cells[1];
-            landscapes = new();
+            landscapesByCoordinate = new();
 
             /* Post processing of local variables. */
             /* Local variables need to be created and initialized as a fixed "unset" value */
@@ -155,19 +179,20 @@ namespace JortPob
         /* @TODO: well actually i think the 'flags' int value in some records is useed as a 32bit boolean array and that may specify record types possibly. Look into it? */
         public Record FindRecordById(string id)
         {
-            foreach (ESM.Type type in VALID_CONTENT_TYPES)
+            foreach (var type in VALID_CONTENT_TYPES)
             {
-                List<JsonNode> list = records[type];
-
-                foreach(JsonNode record in list)
+                var recordsById = recordsByType[type];
+                if (recordsById.TryGetValue(id, out var value))
                 {
-                    if (record["id"] != null && record["id"].ToString() == id)
-                    {
-                        return new Record(type, record);
-                    }
+                    return new Record(type, value);
                 }
             }
             return null; // Not found!
+        }
+
+        public IEnumerable<JsonNode> GetAllRecordsByType(Type type)
+        {
+            return recordsByType[type].Values.Concat(unidentifiedRecordsByType[type]);
         }
 
         public Cell GetCellByGrid(Int2 position)
@@ -196,35 +221,31 @@ namespace JortPob
         {
             if (GetCellByGrid(coordinate) == null) { return null; } // Performance hack.
 
-            foreach(Landscape landscape in landscapes)
+            if (landscapesByCoordinate.TryGetValue(coordinate, out var existingLandscape))
             {
-                if (landscape.coordinate == coordinate) { return landscape; }
+                return existingLandscape;
             }
 
-            foreach (JsonNode json in records[Type.Landscape])
+            var matchingRecord = GetAllRecordsByType(Type.Landscape)
+                .FirstOrDefault(
+                    json => int.Parse(json["grid"][0].ToString()) == coordinate.x &&
+                            int.Parse(json["grid"][1].ToString()) == coordinate.y
+                );
+
+            if (matchingRecord == null)
             {
-                int x = int.Parse(json["grid"][0].ToString());
-                int y = int.Parse(json["grid"][1].ToString());
-
-                if (coordinate.x == x && coordinate.y == y)
-                {
-                    Landscape landscape = new Landscape(this, coordinate, json);
-                    landscapes.Add(landscape);
-                    return landscape;
-                }
+                return null;
             }
-            return null;
 
+            var landscape = new Landscape(this, coordinate, matchingRecord);
+            landscapesByCoordinate[coordinate] = landscape;
+            return landscape;
         }
 
-        /* Same as above but only retursn a landscape if its already fully loaded. Returns null if its not loaded */
+        /* Same as above but only returns a landscape if its already fully loaded. Returns null if its not loaded */
         public Landscape GetLoadedLandscape(Int2 coordinate)
         {
-            foreach (Landscape landscape in landscapes)
-            {
-                if (landscape.coordinate == coordinate) { return landscape; }
-            }
-            return null;
+            return landscapesByCoordinate.GetValueOrDefault(coordinate);
         }
 
         /* Load all landscapes, single threaded */
