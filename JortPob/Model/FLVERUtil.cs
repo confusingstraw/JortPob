@@ -153,6 +153,7 @@ namespace JortPob.Model
             {
                 position = vertex.Position;
                 normal = vertex.Normal;
+                uvs = new();
                 foreach(Vector3 uv in  vertex.UVs)
                 {
                     uvs.Add(uv);

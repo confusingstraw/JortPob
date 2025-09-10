@@ -80,15 +80,15 @@ namespace JortPob
         public void Write()
         {
             /* Debuggy thing */
+            List<Flag> allFlags = new();
+            allFlags.AddRange(common.flags);
+            foreach (Script script in scripts)
+            {
+                allFlags.AddRange(script.flags);
+            }
+
             if (Const.DEBUG_SET_ALL_FLAGS_DEFAULT_ON_LOAD)
             {
-                List<Flag> allFlags = new();
-                allFlags.AddRange(common.flags);
-                foreach(Script script in scripts)
-                {
-                    allFlags.AddRange(script.flags);
-                }
-
                 EMEVD.Event init = common.emevd.Events[0];
 
                 foreach (Flag flag in allFlags)
@@ -101,6 +101,14 @@ namespace JortPob
                     }
                 }
             }
+
+            /* Output a cheatsheet with every flag and it's id and starting value */
+            List<string> flagInfo = new();
+            foreach (Flag flag in allFlags)
+            {
+                flagInfo.Add($"{flag.category.ToString().PadRight(16)} {flag.type.ToString().PadRight(16)} {flag.designation.ToString().PadRight(24)} {flag.name.ToString().PadRight(48)} {flag.value.ToString().PadRight(6)} {flag.id.ToString()}");
+            }
+            System.IO.File.WriteAllLines($"{Const.OUTPUT_PATH}flag information.txt", flagInfo.ToArray());
 
             Lort.Log($"Writing {scripts.Count + 1} EMEVDs...", Lort.Type.Main);
             common.Write();

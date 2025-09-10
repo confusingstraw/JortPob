@@ -61,6 +61,20 @@ namespace JortPob
             fmg.Entries.Add(new(id, text));
         }
 
+        /* Check if this text already exists before adding it to avoid duplicates */
+        public int AddChoice(string text)
+        {
+            foreach(FMG.Entry entry in menu[TextType.EventTextForTalk].Entries)
+            {
+                if (entry.Text == text) { return entry.ID; }
+            }
+
+            int id = nextTopicId++;
+            FMG fmg = menu[TextType.EventTextForTalk];
+            fmg.Entries.Add(new(id, text));
+            return id;
+        }
+
         public int AddTopic(string text)
         {
             int id = nextTopicId++;

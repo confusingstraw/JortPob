@@ -21,6 +21,12 @@ namespace JortPob
         public List<Flag> flags;
         private Dictionary<Flag.Category, uint> flagUsedCounts;
 
+        public enum Event
+        {
+            LoadDoor
+        }
+        public readonly Dictionary<Event, uint> events;
+
         public ScriptCommon()
         {
             AUTO = new(Utility.ResourcePath(@"script\\er-common.emedf.json"), true, true);
@@ -36,12 +42,45 @@ namespace JortPob
                 { Flag.Category.Saved, 0 },
                 { Flag.Category.Temporary, 0 }
             };
+
+            events = new();
+
+            /* Create an event for going through load doors */
+            Flag eventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DoorLoad");
+            EMEVD.Event loadDoor = new(eventFlag.id);
+
+            int pc = 0;
+            string NextParameterName()
+            {
+                return $"X{pc++ * 4}_4";
+            }
+
+            string[] loadDoorEventRaw = new string[]
+            {
+                $"IfActionButtonInArea(MAIN, {NextParameterName()}, {NextParameterName()});",
+                $"RotateCharacter(10000, {NextParameterName()}, 60000, false);",
+                $"WaitFixedTimeSeconds(0.25);",
+                $"PlaySE({NextParameterName()}, SoundType.Asset, 200);",
+                $"WaitFixedTimeSeconds(0.75);",
+                $"WarpPlayer({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, -1);",
+                $"EndUnconditionally(EventEndType.End);"
+            };
+
+            for (int i = 0; i < loadDoorEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(loadDoorEventRaw[i], i);
+                loadDoor.Parameters.AddRange(newPs);
+                loadDoor.Instructions.Add(instr);
+            }
+
+            func.Events.Add(loadDoor);
+            events.Add(Event.LoadDoor, eventFlag.id);
         }
 
         /* There are some bugs with this system. It defo wastes some flag space. We have lots tho. Maybe fix later */
         private static readonly uint[] COMMON_FLAG_BASES = new uint[]  // using flags from every msb slot along the bottom most edge of the world
         {
-            1030290000, 1031290000, 1032290000, 1033290000 // if we run out of flag space it will throw an exception. adding more is easy tho
+            1030290000, 1031290000, 1032290000, 1033290000, 1034290000, 1035290000, 1036290000, 1037290000, 1038290000, 1039290000 // if we run out of flag space it will throw an exception. adding more is easy tho
         };
         private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
         {

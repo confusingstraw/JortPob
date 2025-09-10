@@ -74,17 +74,25 @@ namespace JortPob
                     string typestr = idstr.Replace(" ", "");
                     string diatype = record["dialogue_type"].ToString();
                     typestr = new String(typestr.Where(c => c != '-' && (c < '0' || c > '9')).ToArray());
-                    if(!Enum.TryParse(typestr, out DialogRecord.Type dtype)) { dtype = DialogRecord.Type.Topic; }
+                    if (!Enum.TryParse(typestr, out DialogRecord.Type dtype)) { dtype = DialogRecord.Type.Topic; }
                     if (diatype.ToLower() == "journal") { dtype = DialogRecord.Type.Journal; }
 
-                    if(current != null && current.type == DialogRecord.Type.Greeting && dtype == DialogRecord.Type.Greeting) { continue; } // skip so we can merge all 9 greeting levels into a single thingy
+                    if (current != null && current.type == DialogRecord.Type.Greeting && dtype == DialogRecord.Type.Greeting) { continue; } // skip so we can merge all 9 greeting levels into a single thingy
 
                     current = new(dtype, idstr, scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TopicEnabled, idstr));
                     dialog.Add(current);
                 }
-                else if(type == Type.DialogueInfo)
+                else if (type == Type.DialogueInfo)
                 {
-                    DialogInfoRecord dialogInfoRecord = new(current.type, json[i]);
+                    // check for a "choice" filter and mark this as a Choice type dialoginforecord if that's the case
+                    // choice type dialoginfo are only accessed through a choice papyrus call and have to be handled differently than other dialoginfos
+                    bool isChoice = false;
+                    foreach (JsonNode filterNode in record["filters"].AsArray())
+                    {
+                        if (filterNode["filter_type"].ToString() == "Function" && filterNode["function"].ToString() == "Choice") { isChoice = true; break; }
+                    }
+
+                    DialogInfoRecord dialogInfoRecord = new(isChoice ? DialogRecord.Type.Choice : current.type, record);
                     current.infos.Add(dialogInfoRecord);
                 }
             }
@@ -92,9 +100,10 @@ namespace JortPob
             /* Post process, looking for topic unlocks */
             foreach (DialogRecord topic in dialog)
             {
-                foreach(DialogInfoRecord info in topic.infos)
+                foreach (DialogInfoRecord info in topic.infos)
                 {
-                    foreach (DialogRecord otherTopic in dialog) {
+                    foreach (DialogRecord otherTopic in dialog)
+                    {
                         if (info.text.ToLower().Contains(otherTopic.id.ToLower()))
                         {
                             if (topic == otherTopic) { continue; } // prevent self succ
@@ -109,6 +118,29 @@ namespace JortPob
             exterior = cells[0];
             interior = cells[1];
             landscapes = new();
+
+            /* Post processing of local variables. */
+            /* Local variables need to be created and initialized as a fixed "unset" value */
+            /* We cannot simply instance local vars on the fly as some contexts that are looking for them need to know if they exists (filters for examlpe) */
+            /* So we do a quick scan through all papyrus dialog snippets and papyrus scripts (@TODO that part) to find them and create them now */
+            foreach (DialogRecord topic in dialog)
+            {
+                foreach (DialogInfoRecord info in topic.infos)
+                {
+                    if (info.script != null)
+                    {
+                        foreach (DialogPapyrus.PapyrusCall call in info.script.calls)
+                        {
+                            if (call.type == DialogPapyrus.PapyrusCall.Type.Set)
+                            {
+                                if(!call.parameters[0].Contains(".")) { continue; } // if the variable name doesn't contain a '.' then it's a global not a local
+                                Script.Flag lvar = scriptManager.GetFlag(Flag.Designation.Local, call.parameters[0]);
+                                if(lvar == null) { scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.Local, call.parameters[0], (uint)Utility.Pow(2, (uint)Flag.Type.Short) - 1); }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /* List of types that we should search for references */
@@ -225,7 +257,7 @@ namespace JortPob
                     if (info.job != null && info.job != npc.job) { continue; }
                     if (info.faction != null && info.faction != npc.faction) { continue; }
                     if (info.rank > npc.rank) { continue; }
-                    if (info.cell != null && info.cell != npc.cell.name) { continue; }
+                    if (info.cell != null && npc.cell.name != null && !npc.cell.name.ToLower().StartsWith(info.cell.ToLower())) { continue; }
                     if (info.sex != NpcContent.Sex.Any && info.sex != npc.sex) { continue; }
 
                     infos.Add(info);

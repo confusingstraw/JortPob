@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static JortPob.Script;
+using static SoulsFormats.MQB;
 
 namespace JortPob
 {
@@ -17,7 +18,7 @@ namespace JortPob
         {
             public enum Type
             {
-                Greeting, Topic, Journal,
+                Greeting, Topic, Journal, Choice,
                 Alarm, Attack, Flee, Hello, Hit, Idle, Intruder, Thief,
                 AdmireFail, AdmireSuccess, BribeFail, BribeSuccess, InfoRefusal, InfoFail, IntimidateFail, IntimidateSuccess, ServiceRefusal, TauntFail, TauntSuccess
             }
@@ -96,13 +97,14 @@ namespace JortPob
                 else
                 {
                     DialogPapyrus parsed = new DialogPapyrus(json["script_text"].ToString());
-                    script = parsed.calls.Count() > 0 ? parsed : null;  // if we parse the script and find its empty (for example, just a comment) discard it
+                    script = parsed.calls.Count() > 0 || parsed.choice != null ? parsed : null;  // if we parse the script and find its empty (for example, just a comment) discard it
                 }
 
                 unlocks = new();
             }
 
             /* Generates an ESD condition for this line using the data from its filters */ // used by DialogESD.cs
+            private static List<String> debugUnsupportedFiltersLogging = new();
             public string GenerateCondition(ScriptManager scriptManager, NpcContent npcContent)
             {
                 List<string> conditions = new();
@@ -131,6 +133,15 @@ namespace JortPob
                                             Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.id);
                                             return $"GetEventFlag({flag.id}) == False";
                                         }
+                                    case DialogFilter.Function.PcLevel:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.RuneLevel, {filter.OperatorString()}, {filter.value})";
+                                        }
+                                    case DialogFilter.Function.Level:
+                                        {
+                                            // npcs level can't change so static comparison is fine  @TODO: could uhhh resolve this to just true or false but i'm lazy
+                                            return $"{npcContent.level} {filter.OperatorSymbol()} {filter.value}";
+                                        }
 
                                     default: return "False";
                                 }
@@ -150,6 +161,7 @@ namespace JortPob
                             case DialogFilter.Type.Global:
                                 switch (filter.function)
                                 {
+                                    case DialogFilter.Function.Global:
                                     case DialogFilter.Function.VariableCompare:
                                         {
                                             // Random 100 handled by rng gen in the esd. Other globals are handled normally
@@ -165,7 +177,70 @@ namespace JortPob
 
                                     default: return "False";
                                 }
+                            case DialogFilter.Type.NotLocal:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.VariableCompare:
+                                        {
+                                            string localId = $"{npcContent.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                            Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
+                                            if(lvar == null) { return "False"; } // if we don't find the flag for a local var it doesn't exist
+                                            // local vars are set to their maxvalue when uninitialized. check if its maxvalue and return true if it is, false if not
+                                            return $"GetEventFlagValue({lvar.id}, {(int)lvar.type}) == {Utility.Pow(2, (uint)lvar.type)-1}";
+                                        }
 
+                                    default: return "False";
+                                }
+                            case DialogFilter.Type.NotId:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.NotIdType:
+                                        {
+                                            // Checking speaker id, static true/false is fine for this one
+                                            if(npcContent.id != filter.id) { return "True"; }
+                                            else { return "False"; }
+                                        }
+
+                                    default: return "False";
+                                }
+                            case DialogFilter.Type.NotClass:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.NotClass:
+                                        {
+                                            // Checking speakers class, static true/false is fine for this as well
+                                            if (npcContent.job != filter.id) { return "True"; }
+                                            else { return "False"; }
+                                        }
+
+                                    default: return "False";
+                                }
+                            case DialogFilter.Type.NotRace:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.NotRace:
+                                        {
+                                            // Checking speakers race, static true/false is fine for this as well
+                                            if (npcContent.race.ToString().ToLower() != filter.id) { return "True"; }
+                                            else { return "False"; }
+                                        }
+
+                                    default: return "False";
+                                }
+                            case DialogFilter.Type.Local:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.VariableCompare:
+                                        {
+                                            string localId = $"{npcContent.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                            Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag, if not found it dosent exist so return false
+                                            if (lvar == null) { return "False"; }
+                                            // local vars are set to their maxvalue when uninitialized. so when doing comparisons we check the value to see if it is maxvalue first, then do our actual check if that passes. for a short maxvalue is 65536 since eventvalue are unsigned
+                                            return $"(GetEventFlagValue({lvar.id}, {(int)lvar.type}) {filter.OperatorSymbol()} {filter.value} and GetEventFlagValue({lvar.id}, {(int)lvar.type}) != {Utility.Pow(2, (uint)lvar.type)-1})";
+                                        }
+
+                                    default: return "False";
+                                }
                             case DialogFilter.Type.Item:
                                 switch (filter.function)
                                 {
@@ -186,7 +261,18 @@ namespace JortPob
                         }
                     }
 
-                    conditions.Add(handleFilter(filter));
+                    string filterCond = handleFilter(filter);
+                    if(filterCond == "False")
+                    {
+                        string unsupportedFilterType = $"{filter.type}::{filter.function}";
+                        if (!debugUnsupportedFiltersLogging.Contains(unsupportedFilterType))
+                        {
+                            Lort.Log($" ## WARNING ## Unsupported filter type {unsupportedFilterType}", Lort.Type.Debug);
+                            debugUnsupportedFiltersLogging.Add(unsupportedFilterType);
+                        }
+                    }
+
+                    conditions.Add(filterCond);
                 }
 
                 // Collapse to string
@@ -204,15 +290,22 @@ namespace JortPob
         public class DialogPapyrus
         {
             public readonly List<PapyrusCall> calls;
+            public readonly PapyrusChoice choice;    // usually null unless the papyrus script had a choice call. choice is always the last call in a script and there can only be 1
 
             public DialogPapyrus(string script)
             {
                 calls = new();
                 string[] lines = script.Split("\r\n");
+                choice = null;
                 foreach (string line in lines)
                 {
                     PapyrusCall call = new(line);
                     if (call.type == PapyrusCall.Type.None) { continue; } // discard empty calls
+                    if(call.type == PapyrusCall.Type.Choice)  // choice calls are special and are stored differently
+                    {
+                        choice = new PapyrusChoice(call);
+                        continue;
+                    }
                     calls.Add(call);
                 }
             }
@@ -249,10 +342,12 @@ namespace JortPob
                     {
                         case PapyrusCall.Type.Set:
                             {
-                                Flag gvar = scriptManager.GetFlag(Script.Flag.Designation.Global, call.parameters[0]); // look for flag, if not found make one
-                                if (gvar == null) { gvar = scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Script.Flag.Designation.Global, call.parameters[0]); }
+                                // This var can be either global or local so check for both. since locals are preprocessed if we dont find either we make a global
+                                Flag var = scriptManager.GetFlag(Script.Flag.Designation.Global, call.parameters[0]);
+                                if (var == null) { var = scriptManager.GetFlag(Flag.Designation.Local, call.parameters[0]); }
+                                if (var == null) { var = scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Script.Flag.Designation.Global, call.parameters[0]); }
 
-                                string code = $"SetEventFlagValue({gvar.id}, {(int)gvar.type}, {ParseParameters(call.parameters, 2)});";
+                                string code = $"SetEventFlagValue({var.id}, {(int)var.type}, {ParseParameters(call.parameters, 2)});";
 
                                 lines.Add(code);
 
@@ -291,6 +386,8 @@ namespace JortPob
                         default: break;
                     }
                 }
+
+                if(lines.Count() <= 0) { return ""; } // if empty just return nothing lol lmao
 
                 string space = "";
                 for (int i = 0; i < indent; i++)
@@ -339,6 +436,12 @@ namespace JortPob
                     // Fix a specific single case where a stupid -> has a space in it
                     if (sanitize.Contains("-> ")) { sanitize = sanitize.Replace("-> ", "->"); }
 
+                    // Fix a specific single case of weird syntax
+                    if (sanitize.Contains("\"1 ")) { sanitize = sanitize.Replace("\"1 ", "\" 1 "); }
+
+                    // Fix a specific case where a single quote is used at random for no fucking reason
+                    if (sanitize.Contains("land deed'")) { sanitize = sanitize.Replace("land deed'", "land deed\""); }
+
                     // Handle targeted call
                     if (sanitize.Contains("->"))
                     {
@@ -372,11 +475,15 @@ namespace JortPob
                             string s = split[i];
                             if (s.StartsWith("\""))
                             {
-                                if (s.EndsWith("\"")) { recomb.Add(s.Replace("\"", "")); }
+                                if (s.Split("\"").Length - 1 == 2) { recomb.Add(s.Replace("\"", "")); }
                                 else
                                 {
-                                    string nxt = split[i++ + 1];
-                                    recomb.Add(($"{s} {nxt}").Replace("\"", ""));
+                                    string itrNxt = split[++i];
+                                    while(!itrNxt.Contains("\""))
+                                    {
+                                        itrNxt += $" {split[++i]}";
+                                    }
+                                    recomb.Add(($"{s} {itrNxt}").Replace("\"", ""));
                                 }
                                 continue;
                             }
@@ -385,6 +492,25 @@ namespace JortPob
                         }
 
                         parameters = recomb.ToArray();
+                    }
+                }
+            }
+
+            /* Very specially handled call */
+            /* This papyrus function is always singular and last in a dialog script so i can safely store as it's own thing */
+            public class PapyrusChoice
+            {
+                public readonly List<Tuple<int, string>> choices;
+
+                public PapyrusChoice(PapyrusCall call)
+                {
+                    choices = new();
+
+                    for(int i=0;i<call.parameters.Count();i+=2)
+                    {
+                        int ind = int.Parse(call.parameters[i + 1]);
+                        string text = call.parameters[i];
+                        choices.Add(new(ind, text));
                     }
                 }
             }

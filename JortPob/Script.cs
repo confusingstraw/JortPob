@@ -34,12 +34,6 @@ namespace JortPob
         private Dictionary<Flag.Category, uint> flagUsedCounts;
         private Dictionary<EntityType, uint> entityUsedCounts;
 
-        public enum Event
-        {
-            LoadDoor
-        }
-        public Dictionary<Event, uint> events;
-
         public Script(ScriptCommon common, int map, int x, int y, int block)
         {
             this.common = common;
@@ -50,9 +44,15 @@ namespace JortPob
 
             AUTO = new(Utility.ResourcePath(@"script\\er-common.emedf.json"), true, true);
 
+            EMEVD DEBUGTESTDELETE = EMEVD.Read($"{Const.ELDEN_PATH}\\game\\event\\m60_42_36_00.emevd.dcx");
+
             emevd = new EMEVD();
             emevd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
             emevd.Format = SoulsFormats.EMEVD.Game.Sekiro;
+
+            // Bytes here are raw string data that points to the filenames of common and common_func
+            emevd.StringData = new byte[] { 78, 0, 58, 0, 92, 0, 71, 0, 82, 0, 92, 0, 100, 0, 97, 0, 116, 0, 97, 0, 92, 0, 80, 0, 97, 0, 114, 0, 97, 0, 109, 0, 92, 0, 101, 0, 118, 0, 101, 0, 110, 0, 116, 0, 92, 0, 99, 0, 111, 0, 109, 0, 109, 0, 111, 0, 110, 0, 95, 0, 102, 0, 117, 0, 110, 0, 99, 0, 46, 0, 101, 0, 109, 0, 101, 0, 118, 0, 100, 0, 0, 0, 78, 0, 58, 0, 92, 0, 71, 0, 82, 0, 92, 0, 100, 0, 97, 0, 116, 0, 97, 0, 92, 0, 80, 0, 97, 0, 114, 0, 97, 0, 109, 0, 92, 0, 101, 0, 118, 0, 101, 0, 110, 0, 116, 0, 92, 0, 99, 0, 111, 0, 109, 0, 109, 0, 111, 0, 110, 0, 95, 0, 109, 0, 97, 0, 99, 0, 114, 0, 111, 0, 46, 0, 101, 0, 109, 0, 101, 0, 118, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            emevd.LinkedFileOffsets = new() { 0, 82 };
 
             init = new EMEVD.Event(0);
             emevd.Events.Add(init);
@@ -75,45 +75,12 @@ namespace JortPob
                 { EntityType.Collision, 0 },
                 { EntityType.Group, 0 }
             };
-
-            events = new();
-
-            /* Create an event for going through load doors */
-            Flag eventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"m{map}_{x}_{y}_{block}::DoorLoad");
-            EMEVD.Event loadDoor = new(eventFlag.id);
-
-            int pc = 0;
-            string NextParameterName()
-            {
-                return $"X{pc++ * 4}_4";
-            }
-
-            string[] loadDoorEventRaw = new string[]
-            {
-                $"IfActionButtonInArea(MAIN, {NextParameterName()}, {NextParameterName()});",
-                $"RotateCharacter(10000, {NextParameterName()}, 60000, false);",
-                $"WaitFixedTimeSeconds(0.25);",
-                $"PlaySE({NextParameterName()}, SoundType.Asset, 200);",
-                $"WaitFixedTimeSeconds(0.75);",
-                $"WarpPlayer({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, -1);",
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < loadDoorEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(loadDoorEventRaw[i], i);
-                loadDoor.Parameters.AddRange(newPs);
-                loadDoor.Instructions.Add(instr);
-            }
-
-            emevd.Events.Add(loadDoor);
-            events.Add(Event.LoadDoor, eventFlag.id);
         }
 
         public void RegisterLoadDoor(DoorContent door)
         {
             int actionParam = door.warp.map == 60 ? 1501 : 1500;  // enter or exit
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.LoadDoor]}, {actionParam}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.LoadDoor]}, {actionParam}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 
         private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
@@ -170,7 +137,7 @@ namespace JortPob
 
             public enum Designation
             {
-                Event, CharacterDead, Disabled, Global, TopicEnabled, Journal, TalkedToPc, Disposition
+                Event, CharacterDead, Disabled, Global, Local, TopicEnabled, Journal, TalkedToPc, Disposition
             }
 
             public readonly Category category;

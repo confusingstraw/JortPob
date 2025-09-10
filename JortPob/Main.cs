@@ -556,6 +556,7 @@ namespace JortPob
                 }
                 debugWarpScript.Write();
                 debugMSB.Write($"{Const.OUTPUT_PATH}\\map\\mapstudio\\m60_42_36_00.msb.dcx");
+                Lort.Log($"Created {debugCounty} debug warps...", Lort.Type.Main);
             }
 
             /* Write sound BNKs */
