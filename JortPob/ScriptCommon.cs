@@ -23,7 +23,7 @@ namespace JortPob
 
         public enum Event
         {
-            LoadDoor
+            LoadDoor, SpawnHandler
         }
         public readonly Dictionary<Event, uint> events;
 
@@ -46,8 +46,8 @@ namespace JortPob
             events = new();
 
             /* Create an event for going through load doors */
-            Flag eventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DoorLoad");
-            EMEVD.Event loadDoor = new(eventFlag.id);
+            Flag doorEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DoorLoad");
+            EMEVD.Event loadDoor = new(doorEventFlag.id);
 
             int pc = 0;
             string NextParameterName()
@@ -74,7 +74,37 @@ namespace JortPob
             }
 
             func.Events.Add(loadDoor);
-            events.Add(Event.LoadDoor, eventFlag.id);
+            events.Add(Event.LoadDoor, doorEventFlag.id);
+
+            /* Create an event for handling creature/npc spawn/respawn and disable/enable */
+            Flag spawnEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandler");
+            EMEVD.Event spawnHandler = new(spawnEventFlag.id);
+
+            pc = 0;
+
+            string[] spawnHandlerEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // check disabled flag
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
+                $"EndUnconditionally(EventEndType.End);",
+                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // check dead flag
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
+                $"EndUnconditionally(EventEndType.End);",
+                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
+                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
+                $"EndUnconditionally(EventEndType.End);"
+            };
+
+            for (int i = 0; i < spawnHandlerEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(spawnHandlerEventRaw[i], i);
+                spawnHandler.Parameters.AddRange(newPs);
+                spawnHandler.Instructions.Add(instr);
+            }
+
+            func.Events.Add(spawnHandler);
+            events.Add(Event.SpawnHandler, spawnEventFlag.id);
         }
 
         /* There are some bugs with this system. It defo wastes some flag space. We have lots tho. Maybe fix later */

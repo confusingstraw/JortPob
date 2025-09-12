@@ -93,7 +93,7 @@ namespace JortPob.Common
             fmg.Entries = fmg.Entries.AsParallel().OrderBy(entry => entry.ID).ToList();
         }
 
-        public static int Pow(int x, uint pow)
+        public static long Pow(int x, uint pow)
         {
             int ret = 1;
             while (pow != 0)

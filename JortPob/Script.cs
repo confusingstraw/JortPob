@@ -6,6 +6,7 @@ using SoulsIds;
 using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata.Ecma335;
+using static SoulsFormats.MSBAC4.Event;
 
 /* Individual script for an msb. */
 /* managed by ScriptManager 
@@ -83,6 +84,20 @@ namespace JortPob
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.LoadDoor]}, {actionParam}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 
+        public void RegisterNpc(NpcContent npc, Flag count)
+        {
+            Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc.entity.ToString());
+            Flag disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, npc.entity.ToString());
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {disableFlag.id}, {npc.entity}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
+        }
+
+        public void RegisterCreature(CreatureContent creature, Flag count)
+        {
+            Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, creature.entity.ToString());
+            Flag disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, creature.entity.ToString());
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {disableFlag.id}, {creature.entity}, {deadFlag.id}, {creature.entity}, {creature.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
+        }
+
         private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
         {
             { Flag.Category.Event, new uint[] { 1000, 3000, 6000 } },
@@ -137,7 +152,7 @@ namespace JortPob
 
             public enum Designation
             {
-                Event, CharacterDead, Disabled, Global, Local, TopicEnabled, Journal, TalkedToPc, Disposition
+                Event, Dead, DeadCount, Disabled, Global, Local, TopicEnabled, Journal, TalkedToPc, Disposition, PlayerRace, FactionJoined, FactionReputation, FactionRank
             }
 
             public readonly Category category;
@@ -154,6 +169,16 @@ namespace JortPob
                 this.name = name;
                 this.id = id;
                 this.value = value;
+            }
+
+            public uint Bits()
+            {
+                return (uint)type;
+            }
+
+            public uint MaxValue()
+            {
+                return (uint)Utility.Pow(2, (uint)type) - 1;
             }
         }
     }

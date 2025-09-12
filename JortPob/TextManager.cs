@@ -15,7 +15,7 @@ namespace JortPob
 
         private Dictionary<TextType, FMG> menu, item;
 
-        private int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId;
+        private int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId, nextMenuId;
 
         public TextManager()
         {
@@ -23,6 +23,7 @@ namespace JortPob
             nextNpcNameId = 11800000;
             nextActionButtonId = 10000;
             nextLocationId = 11000000;
+            nextMenuId = 508000;
 
             Dictionary<TextType, FMG> LoadMsgBnd(string path)
             {
@@ -112,6 +113,16 @@ namespace JortPob
             int id = nextLocationId++;
             FMG fmg = item[TextType.PlaceName];
             fmg.Entries.Add(new(id, text));
+            return id;
+        }
+
+        public int AddMenuText(string text, string desc)
+        {
+            int id = nextMenuId++;
+            FMG fmg = menu[TextType.GR_MenuText];
+            fmg.Entries.Add(new(id, text));
+            fmg = menu[TextType.GR_LineHelp];
+            fmg.Entries.Add(new(id, desc));
             return id;
         }
 

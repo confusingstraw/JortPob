@@ -2,7 +2,7 @@
 using HKLib.hk2018.hke;
 using JortPob.Common;
 using JortPob.Worker;
-using static JortPob.Dialog;
+using SoulsFormats;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using static JortPob.Dialog;
 using static JortPob.NpcContent;
 using static JortPob.NpcManager.TopicData;
 using static JortPob.Script;
@@ -23,13 +24,14 @@ namespace JortPob
         {
             Header, GameSetting, GlobalVariable, Class, Faction, Race, Sound, Skill, MagicEffect, Script, Region, Birthsign, LandscapeTexture, Spell, Static, Door,
             MiscItem, Weapon, Container, Creature, Bodypart, Light, Enchantment, Npc, Armor, Clothing, RepairTool, Activator, Apparatus, Lockpick, Probe, Ingredient,
-            Book, Alchemy, LevelledItem, LevelledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, DialogueInfo
+            Book, Alchemy, LeveledItem, LeveledCreature, Cell, Landscape, PathGrid, SoundGen, Dialogue, DialogueInfo
         }
 
         private readonly Dictionary<Type, List<JsonNode>> unidentifiedRecordsByType;
         private readonly Dictionary<Type, Dictionary<string, JsonNode>> recordsByType;
         private readonly ConcurrentDictionary<Int2, Landscape> landscapesByCoordinate;
         public List<DialogRecord> dialog;
+        public List<Faction> factions;
         public List<Cell> exterior, interior;
 
         public ESM(string path, ScriptManager scriptManager)
@@ -165,14 +167,23 @@ namespace JortPob
                     }
                 }
             }
+
+            /* Load faction info from esm */
+            factions = new();
+            List<JsonNode> factionJson = [.. GetAllRecordsByType(ESM.Type.Faction)];
+            foreach (JsonNode jsonNode in factionJson)
+            {
+                Faction faction = new(jsonNode);
+                factions.Add(faction);
+            }
         }
 
         /* List of types that we should search for references */
         // more const values we should move somewhere. @TODO
         public readonly Type[] VALID_CONTENT_TYPES = {
             Type.Static, Type.Container, Type.Light, Type.Sound, Type.Skill, Type.Region, Type.Door, Type.MiscItem, Type.Weapon,  Type.Creature, Type.Bodypart, Type.Npc,
-            Type.Armor, Type.Clothing, Type.RepairTool, Type.Activator, Type.Apparatus, Type.Lockpick, Type.Probe, Type.Ingredient, Type.Book, Type.Alchemy, Type.LevelledItem,
-            Type.LevelledCreature, Type.PathGrid, Type.SoundGen
+            Type.Armor, Type.Clothing, Type.RepairTool, Type.Activator, Type.Apparatus, Type.Lockpick, Type.Probe, Type.Ingredient, Type.Book, Type.Alchemy, Type.LeveledItem,
+            Type.LeveledCreature, Type.PathGrid, Type.SoundGen
         };
 
         /* References don't contain any explicit 'type' data so... we just gotta go find it lol */
@@ -291,6 +302,43 @@ namespace JortPob
             }
 
             return ds;
+        }
+    }
+
+    public class Faction
+    {
+        public readonly string id, name;
+        public readonly List<Rank> ranks;
+
+        public Faction(JsonNode json)
+        {
+            id = json["id"].GetValue<string>();
+            name = json["name"].GetValue<string>();
+            ranks = new();
+
+            JsonArray rankNames = json["rank_names"].AsArray();
+            JsonArray rankRequirements = json["data"]["requirements"].AsArray();
+
+            for (int i=0;i< rankNames.Count();i++)
+            {
+                string rankName = rankNames[i].GetValue<string>();
+                JsonNode rankRequiremnt = rankRequirements[i];
+                int reputation = rankRequiremnt["reputation"].GetValue<int>();
+                Rank rank = new(rankName, i, reputation);
+                ranks.Add(rank);
+            }
+        }
+
+        public class Rank
+        {
+            public readonly string name;
+            public readonly int level, reputation; // required reputation to reach this rank
+            public Rank(string name, int level, int reputation)
+            {
+                this.name = name;
+                this.level = level;
+                this.reputation = reputation;
+            }
         }
     }
 
