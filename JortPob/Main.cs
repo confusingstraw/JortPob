@@ -52,10 +52,7 @@ namespace JortPob
             foreach (BaseTile tile in layout.all)
             {
                 // Skip empty tiles.
-                if (tile.IsEmpty())
-                {
-                    continue;
-                }
+                if (tile.IsEmpty()) { continue; }
 
                 /* Generate msb from tile */
                 var msb = new MSBE
@@ -72,12 +69,12 @@ namespace JortPob
                 int nextC = 0, nextMPR = 0;
 
                 /* Add terrain */
-                foreach (var (position, terrainInfo) in terrains)
+                foreach ((Vector3 position, TerrainInfo terrainInfo) in terrains)
                 {
                     /* Terrain and terrain collision */
                     // Render goes in superoverworld for long view distance. Collision goes in tile for optimization
                     // superoverworld msb is  handled by its own class -> OverworldManager
-                    foreach (var collisionInfo in terrainInfo.collision)
+                    foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                     {
                         string collisionIndex =
                             $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
@@ -112,9 +109,7 @@ namespace JortPob
                     }
 
                     /* Add collision for cutouts. */
-                    if (terrainInfo.hasSwamp ||
-                        terrainInfo
-                            .hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
+                    if (terrainInfo.hasSwamp || terrainInfo.hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
                     {
                         CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
                         if (cutoutInfo != null)
@@ -146,13 +141,10 @@ namespace JortPob
                 }
 
                 /* Add assets */
-                foreach (var content in tile.assets)
+                foreach (AssetContent content in tile.assets)
                 {
                     // skip entries marked as "do not place"
-                    if (doNotPlace.Contains(content.mesh.ToLower()))
-                    {
-                        continue;
-                    }
+                    if (doNotPlace.Contains(content.mesh.ToLower())) { continue; }
 
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -176,7 +168,7 @@ namespace JortPob
                 }
 
                 /* Add doors */
-                foreach (var content in tile.doors)
+                foreach (DoorContent content in tile.doors)
                 {
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -197,7 +189,7 @@ namespace JortPob
                 }
 
                 /* Add warp destinations for load doors */
-                foreach (var warp in tile.warps)
+                foreach (Layout.WarpDestination warp in tile.warps)
                 {
                     MSBE.Part.Player player = MakePart.Player();
                     player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -207,7 +199,7 @@ namespace JortPob
                 }
 
                 /* Add emitters */
-                foreach (var content in tile.emitters)
+                foreach (EmitterContent content in tile.emitters)
                 {
                     /* Grab ModelInfo */
                     EmitterInfo emitterInfo = cache.GetEmitter(content.id);
@@ -222,13 +214,13 @@ namespace JortPob
                 }
 
                 /* Add lights */
-                foreach (var light in tile.lights)
+                foreach (LightContent light in tile.lights)
                 {
                     lightManager.CreateLight(light);
                 }
 
                 /* Create humanoid NPCs (c0000) */
-                foreach (var npc in tile.npcs)
+                foreach (NpcContent npc in tile.npcs)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Npc();
                     enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -242,7 +234,7 @@ namespace JortPob
                 }
 
                 /* TEST Creatures */ // make some goats where enemies would spawn just as a test
-                foreach (var creature in tile.creatures)
+                foreach (CreatureContent creature in tile.creatures)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Creature();
                     enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -255,7 +247,7 @@ namespace JortPob
                 /* Handle area names */
                 if (isTileType)
                 {
-                    foreach (var cell in tile.cells)
+                    foreach (Cell cell in tile.cells)
                     {
                         if (cell.name != null)
                         {
@@ -312,10 +304,7 @@ namespace JortPob
                 }
 
                 // Skip empty groups.
-                if (group.IsEmpty())
-                {
-                    continue;
-                }
+                if (group.IsEmpty()) { continue; }
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
@@ -384,10 +373,7 @@ namespace JortPob
                         }
 
                         // SKIP!
-                        if (CheckOverride(content.mesh))
-                        {
-                            continue;
-                        }
+                        if (CheckOverride(content.mesh)) { continue; }
 
                         /* Grab ModelInfo */
                         ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -649,25 +635,16 @@ namespace JortPob
                     debugScript.AUTO.ParseAdd(
                         $"IfActionButtonInArea(MAIN, {actionParamId}, {debugResetAsset.EntityID});"));
 
-                foreach (var flag in allFlags)
+                foreach (Flag flag in allFlags)
                 {
                     // not values, used for event ids
-                    if (flag.category == Flag.Category.Event)
-                    {
-                        continue;
-                    }
+                    if (flag.category == Flag.Category.Event) { continue; }
 
                     // not even saved anyways so skip
-                    if (flag.category == Flag.Category.Temporary)
-                    {
-                        continue;
-                    }
+                    if (flag.category == Flag.Category.Temporary) { continue; }
 
                     // do not reset these as they are only set at character creation
-                    if (flag.designation == Flag.Designation.PlayerRace)
-                    {
-                        continue;
-                    }
+                    if (flag.designation == Flag.Designation.PlayerRace) { continue; }
 
                     for (int i = 0; i < (int)flag.type; i++)
                     {

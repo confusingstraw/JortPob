@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using System;
+using JortPob.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +22,7 @@ namespace JortPob
         /* Either returns an existing bank meeting the requirements, or makes a new one */
         public SoundBankInfo GetBank(NpcContent npc)
         {
-            var key = (npc.race, npc.sex);
+            ValueTuple<NpcContent.Race, NpcContent.Sex> key = (npc.race, npc.sex);
             SoundBankInfo bnk;
 
             if (banksByDemographic.TryGetValue((npc.race, npc.sex), out bnk))
@@ -37,7 +38,7 @@ namespace JortPob
 
         public SoundBank.Sound FindSound(NpcContent npc, uint dialogInfo)
         {
-            if (banksByDemographic.TryGetValue((npc.race, npc.sex), out var bnk))
+            if (banksByDemographic.TryGetValue((npc.race, npc.sex), out SoundBankInfo bnk))
             {
                 return bnk.bank.sounds.FirstOrDefault(snd => snd.dialogInfo == dialogInfo);
             }
@@ -51,7 +52,7 @@ namespace JortPob
             Lort.Log($"Writing {banksByDemographic.Count()} BNKs...", Lort.Type.Main);
             Lort.NewTask("Writing BNKs", banksByDemographic.Count);
 
-            foreach (var bankInfo in banksByDemographic.Values)
+            foreach (SoundBankInfo bankInfo in banksByDemographic.Values)
             {
                 bankInfo.bank.Write(dir, bankInfo.id);
                 Lort.TaskIterate();

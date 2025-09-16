@@ -73,7 +73,7 @@ namespace JortPob
                 }
             };
 
-            var landscapeTexturesByIndex = esm.GetAllRecordsByType(ESM.Type.LandscapeTexture)
+            ILookup<int, JsonNode> landscapeTexturesByIndex = esm.GetAllRecordsByType(ESM.Type.LandscapeTexture)
                 .ToLookup(j => int.Parse(j["index"].ToString()));
 
             foreach (ushort index in ltex)
@@ -235,7 +235,7 @@ namespace JortPob
                     };
                 void AddTexture(Landscape land, ushort tex)
                 {
-                    if (land.texturesByIndex.TryGetValue(tex, out var texture))
+                    if (land.texturesByIndex.TryGetValue(tex, out Texture texture))
                     {
                         texturesByIndex.TryAdd(tex, texture);
                     }
@@ -526,7 +526,7 @@ namespace JortPob
 
         public Texture GetTexture(ushort id)
         {
-            if (texturesByIndex.TryGetValue(id, out var value))
+            if (texturesByIndex.TryGetValue(id, out Texture value))
             {
                 return value;
             }

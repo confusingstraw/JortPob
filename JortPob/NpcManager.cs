@@ -63,7 +63,7 @@ namespace JortPob
 
             // Second check if an esd already exists for the given NPC Record. Return that. This is sort of slimy since a few generaetd values may be incorrect for a given instance of an npc but w/e
             // @TODO: I can basically guarantee this will cause issues in the future. guards are the obvious thing since if every guard shares esd then they will share all values like disposition
-            var lookup = GetEsdInfoByContentId(content.id);
+            EsdInfo lookup = GetEsdInfoByContentId(content.id);
             if (lookup != null)
             {
                 lookup.AddMsb(msbIdList);
@@ -74,7 +74,7 @@ namespace JortPob
             SoundManager.SoundBankInfo bankInfo = sound.GetBank(content);
 
             List<TopicData> data = [];
-            foreach (var (dia, infos) in dialog)
+            foreach ((DialogRecord dia, List<DialogInfoRecord> infos) in dialog)
             {
                 int topicId;
                 if (dia.type == DialogRecord.Type.Topic)
@@ -139,15 +139,15 @@ namespace JortPob
             Dictionary<int, BND4> bnds = new();
 
             {
-                var i = 0;
-                foreach (var esdInfo in esdsByContentId.Values)
+                int i = 0;
+                foreach (EsdInfo esdInfo in esdsByContentId.Values)
                 {
-                    var esdPath = esdInfo.esd;
-                    var esdBytes = ESD.Read(esdPath).Write();
+                    string esdPath = esdInfo.esd;
+                    byte[] esdBytes = ESD.Read(esdPath).Write();
 
-                    foreach (var msbId in esdInfo.msbIds)
+                    foreach (int msbId in esdInfo.msbIds)
                     {
-                        if (!bnds.TryGetValue(msbId, out var bnd))
+                        if (!bnds.TryGetValue(msbId, out BND4 bnd))
                         {
                             bnd = new()
                             {
@@ -178,7 +178,7 @@ namespace JortPob
             foreach (KeyValuePair<int, BND4> kvp in bnds)
             {
                 BND4 bnd = kvp.Value;
-                var files = bnd.Files;
+                List<BinderFile> files = bnd.Files;
                 int n = files.Count;
 
                 if (n > 1)
