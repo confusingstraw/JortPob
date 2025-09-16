@@ -31,6 +31,15 @@ namespace JortPob
             SoundManager sound = new();                                                         // Manages vcbanks
             NpcManager character = new(esm, sound, param, text, scriptManager);                 // Manages dialog esd
 
+            // Helpers/shared values
+            List<Tuple<Vector3, TerrainInfo>> emptyTerrainList = [];
+
+            /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
+            var jsonDoNotPlace = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
+            var doNotPlace = jsonDoNotPlace != null
+                ? jsonDoNotPlace.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
+                : [];
+
             /* Some quick setup stuff */
             scriptManager.SetupSpecialFlags(esm);
 
@@ -39,102 +48,93 @@ namespace JortPob
 
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.tiles.Count);
+
             foreach (BaseTile tile in layout.all)
             {
                 if (tile.IsEmpty()) { continue; }   // Skip empty tiles.
 
                 /* Generate msb from tile */
-                MSBE msb = new();
+                var msb = new MSBE {
+                    Compression = SoulsFormats.DCX.Type.DCX_KRAK
+                };
+                var script = scriptManager.GetScript(tile);
+                var isTileType = tile.GetType() == typeof(Tile);
+                var terrains = isTileType ? tile.terrain : emptyTerrainList;
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
-                Script script = scriptManager.GetScript(tile);
                 ResourcePool pool = new(tile, msb, lightManager, script);
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
-                /* Variuos Indices */
+                /* Various Indices */
                 int nextC = 0, nextMPR = 0;
 
                 /* Add terrain */
-                foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)
+                foreach (var (position, terrainInfo) in terrains)
                 {
-                    Vector3 position = tuple.Item1;
-                    TerrainInfo terrainInfo = tuple.Item2;
-
                     /* Terrain and terrain collision */  // Render goes in superoverworld for long view distance. Collision goes in tile for optimization
-                    // superoverowrld msb is  handled by its own class -> OverworldManager
-                    if (tile.GetType() == typeof(Tile))
+                    // superoverworld msb is  handled by its own class -> OverworldManager
+                    foreach (var collisionInfo in terrainInfo.collision)
                     {
-                        foreach (CollisionInfo collisionInfo in terrainInfo.collision)
-                        {
-                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
 
-                            MSBE.Part.Collision collision = MakePart.Collision();
+                        MSBE.Part.Collision collision = MakePart.Collision();
+                        collision.Name = $"h{collisionIndex}_0000";
+                        collision.ModelName = $"h{collisionIndex}";
+                        collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+
+                        msb.Parts.Collisions.Add(collision);
+                        pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
+                    }
+
+                    /* Add water collision if terrain 'hasWater' */
+                    /* Water is done on a cell by cell basis, so I am simply tying it to the terrain data here */
+                    if (terrainInfo.hasWater)
+                    {
+                        LiquidInfo waterInfo = cache.GetWater();
+                        CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
+
+                        /* Make collision for water splashing */
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        MSBE.Part.Collision collision = MakePart.WaterCollision();
+                        collision.Name = $"h{collisionIndex}_0000";
+                        collision.ModelName = $"h{collisionIndex}";
+                        collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+
+                        msb.Parts.Collisions.Add(collision);
+                        pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
+                    }
+
+                    /* Add collision for cutouts. */
+                    if (terrainInfo.hasSwamp || terrainInfo.hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
+                    {
+                        CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
+                        if(cutoutInfo != null)
+                        {
+                            /* Make collision for swamp or lava splashy splashing, surface collision */
+                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                            MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                             collision.Name = $"h{collisionIndex}_0000";
                             collision.ModelName = $"h{collisionIndex}";
                             collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
-
                             msb.Parts.Collisions.Add(collision);
-                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
-                        }
+                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
 
-                        /* Add water collision if terrain 'hasWater' */
-                        /* Water is done on a cell by cell basis so I am simply tieing it to the terrain data here */
-                        if (terrainInfo.hasWater)
-                        {
-                            LiquidInfo waterInfo = cache.GetWater();
-                            CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
-
-                            /* Make collision for water splashing */
-                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
-                            MSBE.Part.Collision collision = MakePart.WaterCollision();
-                            collision.Name = $"h{collisionIndex}_0000";
+                            /* Make collision for swamp or lava floor, caps the depth of pools so they arent super deep */
+                            collision = MakePart.Collision(); // also works for lava and poison
+                            collision.Name = $"h{collisionIndex}_0001";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
-
+                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
                             msb.Parts.Collisions.Add(collision);
-                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
-                        }
-                        
-                        /* Add collision for cutouts. */
-                        if(terrainInfo.hasSwamp || terrainInfo.hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
-                        {
-                            CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
-                            if(cutoutInfo != null)
-                            {
-                                /* Make collision for swamp or lava splashy splashing, surface collision */
-                                string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
-                                MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
-                                collision.Name = $"h{collisionIndex}_0000";
-                                collision.ModelName = $"h{collisionIndex}";
-                                collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
-                                msb.Parts.Collisions.Add(collision);
-                                pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
-
-                                /* Make collision for swamp or lava floor, caps the depth of pools so they arent super deep */
-                                collision = MakePart.Collision(); // also works for lava and poison
-                                collision.Name = $"h{collisionIndex}_0001";
-                                collision.ModelName = $"h{collisionIndex}";
-                                collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
-                                msb.Parts.Collisions.Add(collision);
-                            }
                         }
                     }
                 }
 
                 /* Add assets */
-                foreach (AssetContent content in tile.assets)
+                foreach (var content in tile.assets)
                 {
-                    /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
-                    JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
-                    bool CheckOverride(string name)
+                    // skip entries marked as "do not place"
+                    if (doNotPlace.Contains(content.mesh.ToLower()))
                     {
-                        foreach (JsonNode node in json.AsArray())
-                        {
-                            if (node.ToString().ToLower() == name.ToLower()) { return true; }
-                        }
-                        return false;
+                        continue;
                     }
-
-                    if(CheckOverride(content.mesh)) { continue; } // SKIP!
 
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -157,7 +157,7 @@ namespace JortPob
                 }
 
                 /* Add doors */
-                foreach (DoorContent content in tile.doors)
+                foreach (var content in tile.doors)
                 {
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -178,7 +178,7 @@ namespace JortPob
                 }
 
                 /* Add warp destinations for load doors */
-                foreach (Layout.WarpDestination warp in tile.warps)
+                foreach (var warp in tile.warps)
                 {
                     MSBE.Part.Player player = MakePart.Player();
                     player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -188,7 +188,7 @@ namespace JortPob
                 }
 
                 /* Add emitters */
-                foreach (EmitterContent content in tile.emitters)
+                foreach (var content in tile.emitters)
                 {
                     /* Grab ModelInfo */
                     EmitterInfo emitterInfo = cache.GetEmitter(content.id);
@@ -203,13 +203,13 @@ namespace JortPob
                 }
 
                 /* Add lights */
-                foreach (LightContent light in tile.lights)
+                foreach (var light in tile.lights)
                 {
                     lightManager.CreateLight(light);
                 }
 
                 /* Create humanoid NPCs (c0000) */
-                foreach (NpcContent npc in tile.npcs)
+                foreach (var npc in tile.npcs)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Npc();
                     enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -223,7 +223,7 @@ namespace JortPob
                 }
 
                 /* TEST Creatures */  // make some goats where enemies would spawn just as a test
-                foreach (CreatureContent creature in tile.creatures)
+                foreach (var creature in tile.creatures)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Creature();
                     enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -234,9 +234,9 @@ namespace JortPob
                 }
 
                 /* Handle area names */
-                if (tile.GetType() == typeof(Tile))
+                if (isTileType)
                 {
-                    foreach (Cell cell in tile.cells)
+                    foreach (var cell in tile.cells)
                     {
                         if (cell.name != null)
                         {
