@@ -51,10 +51,15 @@ namespace JortPob
 
             foreach (BaseTile tile in layout.all)
             {
-                if (tile.IsEmpty()) { continue; }   // Skip empty tiles.
+                // Skip empty tiles.
+                if (tile.IsEmpty())
+                {
+                    continue;
+                }
 
                 /* Generate msb from tile */
-                var msb = new MSBE {
+                var msb = new MSBE
+                {
                     Compression = SoulsFormats.DCX.Type.DCX_KRAK
                 };
                 var script = scriptManager.GetScript(tile);
@@ -69,11 +74,13 @@ namespace JortPob
                 /* Add terrain */
                 foreach (var (position, terrainInfo) in terrains)
                 {
-                    /* Terrain and terrain collision */  // Render goes in superoverworld for long view distance. Collision goes in tile for optimization
+                    /* Terrain and terrain collision */
+                    // Render goes in superoverworld for long view distance. Collision goes in tile for optimization
                     // superoverworld msb is  handled by its own class -> OverworldManager
                     foreach (var collisionInfo in terrainInfo.collision)
                     {
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex =
+                            $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
 
                         MSBE.Part.Collision collision = MakePart.Collision();
                         collision.Name = $"h{collisionIndex}_0000";
@@ -92,36 +99,47 @@ namespace JortPob
                         CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
 
                         /* Make collision for water splashing */
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex =
+                            $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
                         MSBE.Part.Collision collision = MakePart.WaterCollision();
                         collision.Name = $"h{collisionIndex}_0000";
                         collision.ModelName = $"h{collisionIndex}";
                         collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
 
                         msb.Parts.Collisions.Add(collision);
-                        pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
+                        pool.collisionIndices.Add(
+                            new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
                     }
 
                     /* Add collision for cutouts. */
-                    if (terrainInfo.hasSwamp || terrainInfo.hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
+                    if (terrainInfo.hasSwamp ||
+                        terrainInfo
+                            .hasLava) // minor hack, no cell has both swamp and lava so we don't actually differentiate here
                     {
                         CutoutInfo cutoutInfo = cache.GetCutout(terrainInfo.coordinate);
-                        if(cutoutInfo != null)
+                        if (cutoutInfo != null)
                         {
                             /* Make collision for swamp or lava splashy splashing, surface collision */
-                            string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
-                            MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
+                            string collisionIndex =
+                                $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                            MSBE.Part.Collision
+                                collision = MakePart.WaterCollision(); // also works for lava and poison
                             collision.Name = $"h{collisionIndex}_0000";
                             collision.ModelName = $"h{collisionIndex}";
                             collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                             msb.Parts.Collisions.Add(collision);
-                            pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
+                            pool.collisionIndices.Add(
+                                new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
 
                             /* Make collision for swamp or lava floor, caps the depth of pools so they arent super deep */
                             collision = MakePart.Collision(); // also works for lava and poison
                             collision.Name = $"h{collisionIndex}_0001";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
+                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 +
+                                                 new Vector3(0f,
+                                                     terrainInfo.hasLava
+                                                         ? Const.LAVA_FLOOR_DEPTH
+                                                         : Const.SWAMP_FLOOR_DEPTH, 0f);
                             msb.Parts.Collisions.Add(collision);
                         }
                     }
@@ -143,12 +161,13 @@ namespace JortPob
                     MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
                     asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     asset.Rotation = content.rotation;
-                    asset.Scale = new Vector3(modelInfo.UseScale()?(content.scale*0.01f):1f);
+                    asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
                     /* Asset tileload config */
                     if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
                     {
-                        asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)tile.map };
+                        asset.TileLoad.MapID = new byte[]
+                            { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)tile.map };
                         asset.TileLoad.Unk04 = 13;
                         asset.TileLoad.CullingHeightBehavior = -1;
                     }
@@ -215,14 +234,14 @@ namespace JortPob
                     enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                     enemy.Rotation = npc.rotation;
 
-                    enemy.TalkID = character.GetESD(tile.IdList(), npc);       // creates and returns a character esd
+                    enemy.TalkID = character.GetESD(tile.IdList(), npc); // creates and returns a character esd
                     enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
                     enemy.EntityID = npc.entity;
 
                     msb.Parts.Enemies.Add(enemy);
                 }
 
-                /* TEST Creatures */  // make some goats where enemies would spawn just as a test
+                /* TEST Creatures */ // make some goats where enemies would spawn just as a test
                 foreach (var creature in tile.creatures)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Creature();
@@ -242,7 +261,8 @@ namespace JortPob
                         {
                             float x = (tile.coordinate.x * Const.TILE_SIZE);
                             float y = (tile.coordinate.y * Const.TILE_SIZE);
-                            Vector3 relative = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                            Vector3 relative = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) -
+                                               new Vector3(x, 0, y);
 
                             int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
 
@@ -254,7 +274,8 @@ namespace JortPob
                             mpr.Rotation = Vector3.Zero;
                             mpr.RegionID = nextMPR++;
                             mpr.MapStudioLayer = 4294967295;
-                            mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, tile, cell, relative, paramId);
+                            mpr.WorldMapPointParamID =
+                                param.GenerateWorldMapPoint(text, tile, cell, relative, paramId);
 
                             mpr.MapID = -1;
                             mpr.UnkE08 = 255;
@@ -285,9 +306,16 @@ namespace JortPob
             Lort.NewTask("Generating MSB", layout.interiors.Count);
             foreach (InteriorGroup group in layout.interiors)
             {
-                if (Const.DEBUG_SKIP_INTERIOR) { break; }
+                if (Const.DEBUG_SKIP_INTERIOR)
+                {
+                    break;
+                }
 
-                if (group.IsEmpty()) { continue; }   // Skip empty groups.
+                // Skip empty groups.
+                if (group.IsEmpty())
+                {
+                    continue;
+                }
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
@@ -300,7 +328,7 @@ namespace JortPob
                 msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
 
                 /* Handle chunks */
-                for (int i=0;i<group.chunks.Count();i++)
+                for (int i = 0; i < group.chunks.Count(); i++)
                 {
                     InteriorGroup.Chunk chunk = group.chunks[i];
 
@@ -308,17 +336,20 @@ namespace JortPob
                     uint chunkDrawGroup = (uint)0 | ((uint)1 << i);
 
                     /* Interior MSB chunk collision root */
-                    string collisionIndex = $"{group.area.ToString("D2")}{group.unk.ToString("D2")}{nextC++.ToString("D2")}";
+                    string collisionIndex =
+                        $"{group.area.ToString("D2")}{group.unk.ToString("D2")}{nextC++.ToString("D2")}";
                     MSBE.Part.Collision rootCollision = MakePart.Collision();
                     rootCollision.Name = $"h{collisionIndex}_0000";
                     rootCollision.ModelName = $"h{collisionIndex}";
-                    rootCollision.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Z, 0f);
+                    rootCollision.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 -
+                                             new Vector3(0f, chunk.bounds.Z, 0f);
                     rootCollision.Unk1.DisplayGroups[0] = 0;
                     rootCollision.Unk1.DisplayGroups[1] = chunkDrawGroup;
                     rootCollision.Unk1.CollisionMask[0] = 0;
                     rootCollision.Unk1.CollisionMask[1] = chunkDrawGroup;
                     msb.Parts.Collisions.Add(rootCollision);
-                    pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cache.defaultCollision));
+                    pool.collisionIndices.Add(
+                        new Tuple<string, CollisionInfo>(collisionIndex, cache.defaultCollision));
 
                     /* Interior MSB shadow box */
                     ModelInfo shadowBoxModelInfo = cache.GetModel("interiorshadowbox");
@@ -336,17 +367,27 @@ namespace JortPob
                     foreach (AssetContent content in chunk.assets)
                     {
                         /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
-                        JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
+                        JsonNode json =
+                            JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
+
                         bool CheckOverride(string name)
                         {
                             foreach (JsonNode node in json.AsArray())
                             {
-                                if (node.ToString().ToLower() == name.ToLower()) { return true; }
+                                if (node.ToString().ToLower() == name.ToLower())
+                                {
+                                    return true;
+                                }
                             }
+
                             return false;
                         }
 
-                        if (CheckOverride(content.mesh)) { continue; } // SKIP!
+                        // SKIP!
+                        if (CheckOverride(content.mesh))
+                        {
+                            continue;
+                        }
 
                         /* Grab ModelInfo */
                         ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
@@ -392,7 +433,7 @@ namespace JortPob
                     }
 
                     /* Add warp destinations for load doors */
-                    foreach(Layout.WarpDestination warp in chunk.warps)
+                    foreach (Layout.WarpDestination warp in chunk.warps)
                     {
                         MSBE.Part.Player player = MakePart.Player();
                         player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
@@ -427,14 +468,14 @@ namespace JortPob
                         lightManager.CreateLight(light);
                     }
 
-                    /* TEST NPCs */  // make some c0000 npcs where humanoid npcs would spawn as a test
+                    /* TEST NPCs */ // make some c0000 npcs where humanoid npcs would spawn as a test
                     foreach (NpcContent npc in chunk.npcs)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
                         enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
                         enemy.Rotation = npc.rotation;
 
-                        enemy.TalkID = character.GetESD(group.IdList(), npc);       // creates and returns a character esd
+                        enemy.TalkID = character.GetESD(group.IdList(), npc); // creates and returns a character esd
                         enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
                         enemy.EntityID = npc.entity;
 
@@ -444,7 +485,7 @@ namespace JortPob
                         msb.Parts.Enemies.Add(enemy);
                     }
 
-                    /* TEST Creatures */  // make some goats where enemies would spawn just as a test
+                    /* TEST Creatures */ // make some goats where enemies would spawn just as a test
                     foreach (CreatureContent creature in chunk.creatures)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Creature();
@@ -465,11 +506,13 @@ namespace JortPob
                     MSBE.Region.MapPoint mpr = new();
                     mpr.Name = $"{chunk.cell.name} placename";
                     mpr.Shape = new MSB.Shape.Box(chunk.bounds.X, chunk.bounds.Z, chunk.bounds.Y);
-                    mpr.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
+                    mpr.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 -
+                                   new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                     mpr.Rotation = Vector3.Zero;
                     mpr.RegionID = nextMPR++;
                     mpr.MapStudioLayer = 4294967295;
-                    mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, group, chunk.cell, chunk.root, paramId);
+                    mpr.WorldMapPointParamID =
+                        param.GenerateWorldMapPoint(text, group, chunk.cell, chunk.root, paramId);
 
                     mpr.MapID = -1;
                     mpr.UnkE08 = 255;
@@ -485,7 +528,8 @@ namespace JortPob
                     msb.Regions.MapPoints.Add(mpr);
                 }
 
-                /* EnvMap & REM for interior */ // @TODO: make this per chunk so we can setupd different rems for different interiors
+                /* EnvMap & REM for interior */
+                // @TODO: make this per chunk so we can setupd different rems for different interiors
                 {
                     /* Create envmap texture file */
                     int envId = 200;
@@ -503,7 +547,8 @@ namespace JortPob
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
                     envPoint.Name = $"Env_Point{envId.ToString("D3")}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
-                    envPoint.UnkMapID = new byte[] { (byte)group.map, (byte)group.area, (byte)group.unk, (byte)group.block };
+                    envPoint.UnkMapID = new byte[]
+                        { (byte)group.map, (byte)group.area, (byte)group.unk, (byte)group.block };
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
@@ -526,15 +571,22 @@ namespace JortPob
                 uint debugEntityIdNext = 1042360750;
                 foreach (MSBE.Part.Asset asset in debugMSB.Parts.Assets)
                 {
-                    if (asset.ModelName == "AEG099_309") { debugThingToDupe = asset; break; }
+                    if (asset.ModelName == "AEG099_309")
+                    {
+                        debugThingToDupe = asset;
+                        break;
+                    }
                 }
 
                 Script debugScript = new(scriptManager.common, 60, 42, 36, 0);
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360000, 1042361950, 0, 0, 0, 5);"));
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360001, 1042361951, 0, 0, 0, 5);"));
-                List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald Ruhn" };
+                debugScript.init.Instructions.Add(
+                    debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360000, 1042361950, 0, 0, 0, 5);"));
+                debugScript.init.Instructions.Add(
+                    debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360001, 1042361951, 0, 0, 0, 5);"));
+                List<String> debugWarpCellList = new()
+                    { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald Ruhn" };
                 int actionParamId = 1555, debugCounty = 0;
-                for (int i=0;i<debugWarpCellList.Count();i++)
+                for (int i = 0; i < debugWarpCellList.Count(); i++)
                 {
                     string areaName = debugWarpCellList[i];
                     Tile area = layout.GetTile(areaName);
@@ -550,14 +602,19 @@ namespace JortPob
                         debugAsset.InstanceID++;
                         debugMSB.Parts.Assets.Add(debugAsset);
 
-                        Script.Flag debugEventFlag = debugScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugWarp");
+                        Script.Flag debugEventFlag = debugScript.CreateFlag(Script.Flag.Category.Event,
+                            Script.Flag.Type.Bit, Script.Flag.Designation.Event,
+                            $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugWarp");
                         EMEVD.Event debugWarpEvent = new(debugEventFlag.id);
 
                         param.GenerateActionButtonParam(text, actionParamId, $"Debug Warp: {areaName}");
-                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionParamId}, {debugAsset.EntityID});"));
-                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WarpPlayer({area.map}, {area.coordinate.x}, {area.coordinate.y}, 0, {area.warps[0].id}, 0)"));
+                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd(
+                            $"IfActionButtonInArea(MAIN, {actionParamId}, {debugAsset.EntityID});"));
+                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd(
+                            $"WarpPlayer({area.map}, {area.coordinate.x}, {area.coordinate.y}, 0, {area.warps[0].id}, 0)"));
 
-                        debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugEventFlag.id})"));
+                        debugScript.init.Instructions.Add(
+                            debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugEventFlag.id})"));
 
                         debugScript.emevd.Events.Add(debugWarpEvent);
                         actionParamId++;
@@ -583,25 +640,46 @@ namespace JortPob
                 debugResetAsset.InstanceID++;
                 debugMSB.Parts.Assets.Add(debugResetAsset);
 
-                Script.Flag debugResetFlag = debugScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugReset");
+                Script.Flag debugResetFlag = debugScript.CreateFlag(Script.Flag.Category.Event,
+                    Script.Flag.Type.Bit, Script.Flag.Designation.Event,
+                    $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugReset");
                 param.GenerateActionButtonParam(text, actionParamId, $"Debug: Reset Save Data!");
                 EMEVD.Event debugResetEvent = new(debugResetFlag.id);
-                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionParamId}, {debugResetAsset.EntityID});"));
+                debugResetEvent.Instructions.Add(
+                    debugScript.AUTO.ParseAdd(
+                        $"IfActionButtonInArea(MAIN, {actionParamId}, {debugResetAsset.EntityID});"));
 
-                foreach (Flag flag in allFlags)
+                foreach (var flag in allFlags)
                 {
-                    if (flag.category == Flag.Category.Event) { continue; } // not values, used for event ids
-                    if (flag.category == Flag.Category.Temporary) { continue; } // not even saved anyways so skip
-                    if (flag.designation == Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
+                    // not values, used for event ids
+                    if (flag.category == Flag.Category.Event)
+                    {
+                        continue;
+                    }
+
+                    // not even saved anyways so skip
+                    if (flag.category == Flag.Category.Temporary)
+                    {
+                        continue;
+                    }
+
+                    // do not reset these as they are only set at character creation
+                    if (flag.designation == Flag.Designation.PlayerRace)
+                    {
+                        continue;
+                    }
+
                     for (int i = 0; i < (int)flag.type; i++)
                     {
                         bool bit = (flag.value & (1 << i)) != 0;
-                        debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
+                        debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd(
+                            $"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
                     }
                 }
 
                 debugScript.emevd.Events.Add(debugResetEvent);
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugResetFlag.id})"));
+                debugScript.init.Instructions.Add(
+                    debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugResetFlag.id})"));
 
                 debugScript.Write();
                 debugMSB.Write($"{Const.OUTPUT_PATH}\\map\\mapstudio\\m60_42_36_00.msb.dcx");
