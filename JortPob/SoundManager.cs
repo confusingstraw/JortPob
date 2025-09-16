@@ -8,52 +8,50 @@ namespace JortPob
     public class SoundManager
     {
         private int nextBankId;
-        private readonly List<SoundBankInfo> banks;
+        private readonly Dictionary<(NpcContent.Race, NpcContent.Sex), SoundBankInfo> banksByDemographic;
         private readonly SoundBankGlobals globals;
 
         public SoundManager()
         {
             nextBankId = 100;
-            banks = new();
+            banksByDemographic = new();
             globals = new();
         }
 
         /* Either returns an existing bank meeting the requirements, or makes a new one */
         public SoundBankInfo GetBank(NpcContent npc)
         {
-            foreach(SoundBankInfo bankInfo in banks)
+            var key = (npc.race, npc.sex);
+            SoundBankInfo bnk;
+
+            if (banksByDemographic.TryGetValue((npc.race, npc.sex), out bnk))
             {
-                if(bankInfo.race == npc.race && bankInfo.sex == npc.sex && bankInfo.uses < 3)
-                {
-                    return bankInfo;
-                }
+                return bnk;
             }
 
-            SoundBankInfo bnk = new(nextBankId++, npc.race, npc.sex, new SoundBank(globals));
-            banks.Add(bnk);
+            bnk = new SoundBankInfo(nextBankId++, npc.race, npc.sex, new SoundBank(globals));
+            banksByDemographic.Add(key, bnk);
+
             return bnk;
         }
 
         public SoundBank.Sound FindSound(NpcContent npc, uint dialogInfo)
         {
-            foreach (SoundBankInfo bankInfo in banks)
+            if (banksByDemographic.TryGetValue((npc.race, npc.sex), out var bnk))
             {
-                if (bankInfo.race != npc.race || bankInfo.sex != npc.sex) { continue; } // not a match
-                foreach(SoundBank.Sound snd in bankInfo.bank.sounds)
-                {
-                    if (snd.dialogInfo == dialogInfo) { return snd; }
-                }
+                return bnk.bank.sounds.FirstOrDefault(snd => snd.dialogInfo == dialogInfo);
             }
+
             return null; // no match found
         }
 
         /* Writes all soundbanks to given dir */
         public void Write(string dir)
         {
-            Lort.Log($"Writing {banks.Count()} BNKs...", Lort.Type.Main);
-            Lort.NewTask("Writing BNKs", banks.Count);
+            Lort.Log($"Writing {banksByDemographic.Count()} BNKs...", Lort.Type.Main);
+            Lort.NewTask("Writing BNKs", banksByDemographic.Count);
 
-            foreach (SoundBankInfo bankInfo in banks)
+            foreach (var bankInfo in banksByDemographic.Values)
             {
                 bankInfo.bank.Write(dir, bankInfo.id);
                 Lort.TaskIterate();
