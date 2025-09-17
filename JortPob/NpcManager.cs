@@ -20,9 +20,9 @@ namespace JortPob
         private TextManager text;
         private ScriptManager scriptManager;
 
-        private Dictionary<string, int> topicText; // topic text id map
-        private List<EsdInfo> esds;
-        private Dictionary<string, int> npcParamMap;
+        private readonly Dictionary<string, int> topicText; // topic text id map
+        private readonly Dictionary<string, EsdInfo> esdsByContentId;
+        private readonly Dictionary<string, int> npcParamMap;
 
         private int nextNpcParamId;  // increment by 10
 
@@ -34,7 +34,7 @@ namespace JortPob
             this.text = text;
             this.scriptManager = scriptManager;
 
-            esds = new();
+            esdsByContentId = new();
             npcParamMap = new();
             topicText = new();
 
@@ -64,23 +64,19 @@ namespace JortPob
 
             // Second check if an esd already exists for the given NPC Record. Return that. This is sort of slimy since a few generaetd values may be incorrect for a given instance of an npc but w/e
             // @TODO: I can basically guarantee this will cause issues in the future. guards are the obvious thing since if every guard shares esd then they will share all values like disposition
-            EsdInfo lookup = GetEsdInfo(content.id);
+            EsdInfo lookup = GetEsdInfoByContentId(content.id);
             if (lookup != null) { lookup.AddMsb(msbIdList); return lookup.id; }
 
             List<Tuple<DialogRecord, List<DialogInfoRecord>>> dialog = esm.GetDialog(content);
             SoundManager.SoundBankInfo bankInfo = sound.GetBank(content);
 
-            List<TopicData> data = new();
-            foreach (Tuple<DialogRecord, List<DialogInfoRecord>> tuple in dialog)
+            List<TopicData> data = [];
+            foreach ((DialogRecord dia, List<DialogInfoRecord> infos) in dialog)
             {
-                DialogRecord dia = tuple.Item1;
-                List<DialogInfoRecord> infos = tuple.Item2;
-
                 int topicId;
                 if (dia.type == DialogRecord.Type.Topic)
                 {
-                    topicId = topicText.ContainsKey(dia.id) ? topicText[dia.id] : -1;
-                    if (topicId < 0)
+                    if (!topicText.TryGetValue(dia.id, out topicId))
                     {
                         topicId = text.AddTopic(dia.id);
                         topicText.Add(dia.id, topicId);
@@ -126,7 +122,7 @@ namespace JortPob
 
             EsdInfo esdInfo = new(pyPath, esdPath, content.id, esdId);
             esdInfo.AddMsb(msbIdList);
-            esds.Add(esdInfo);
+            esdsByContentId[content.id] = esdInfo;
 
             return esdId;
         }
@@ -134,42 +130,46 @@ namespace JortPob
         /* I dont know what the fuck i was thinking when i wrote this function jesus */
         public void Write()
         {
-            EsdWorker.Go(esds);
+            EsdWorker.Go(esdsByContentId);
 
-            Lort.Log($"Binding {esds.Count()} ESDs...", Lort.Type.Main);
-            Lort.NewTask($"Binding ESDs", esds.Count());
+            Lort.Log($"Binding {esdsByContentId.Count()} ESDs...", Lort.Type.Main);
+            Lort.NewTask($"Binding ESDs", esdsByContentId.Count());
 
             Dictionary<int, BND4> bnds = new();
-            foreach(EsdInfo esdInfo in esds)
+
             {
-                foreach (int msbId in esdInfo.msbIds)
+                int i = 0;
+                foreach (EsdInfo esdInfo in esdsByContentId.Values)
                 {
-                    if(!bnds.ContainsKey(msbId))
+                    string esdPath = esdInfo.esd;
+                    byte[] esdBytes = ESD.Read(esdPath).Write();
+
+                    foreach (int msbId in esdInfo.msbIds)
                     {
-                        BND4 nubnd = new();
-                        nubnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
-                        nubnd.Version = "07D7R6";
-                        bnds.Add(msbId, nubnd);
+                        if (!bnds.TryGetValue(msbId, out BND4 bnd))
+                        {
+                            bnd = new()
+                            {
+                                Compression = SoulsFormats.DCX.Type.DCX_KRAK,
+                                Version = "07D7R6"
+                            };
+                            bnds.Add(msbId, bnd);
+                        }
+
+                        BinderFile file = new()
+                        {
+                            Bytes = esdBytes.ToArray(),
+                            Name =
+                                $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{msbId.ToString("D4").Substring(0, 2)}_{msbId.ToString("D4").Substring(2, 2)}_00_00\\{Utility.PathToFileName(esdPath)}.esd",
+                            ID = i
+                        };
+
+                        bnds[msbId].Files.Add(file);
                     }
+
+                    ++i;
+                    Lort.TaskIterate();
                 }
-            }
-
-            for (int i = 0; i < esds.Count() ; i++)
-            {
-                string esdPath = esds[i].esd;
-
-                foreach (int msbId in esds[i].msbIds)
-                {
-                    ESD esd = ESD.Read(esdPath);
-
-                    BinderFile file = new();
-                    file.Bytes = esd.Write();
-                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{msbId.ToString("D4").Substring(0, 2)}_{msbId.ToString("D4").Substring(2, 2)}_00_00\\{Utility.PathToFileName(esdPath)}.esd";
-                    file.ID = i;
-
-                    bnds[msbId].Files.Add(file);
-                }
-                Lort.TaskIterate();
             }
 
             Lort.Log($"Writing {bnds.Count} Binded ESDs... ", Lort.Type.Main);
@@ -177,7 +177,7 @@ namespace JortPob
             foreach (KeyValuePair<int, BND4> kvp in bnds)
             {
                 BND4 bnd = kvp.Value;
-                var files = bnd.Files;
+                List<BinderFile> files = bnd.Files;
                 int n = files.Count;
 
                 if (n > 1)
@@ -233,13 +233,9 @@ namespace JortPob
             //}
         }
 
-        private EsdInfo GetEsdInfo(string content)
+        private EsdInfo GetEsdInfoByContentId(string contentId)
         {
-            foreach(EsdInfo esdInfo in esds)
-            {
-                if (esdInfo.content == content) { return esdInfo; }
-            }
-            return null;
+            return esdsByContentId.GetValueOrDefault(contentId);
         }
 
         public class EsdInfo
