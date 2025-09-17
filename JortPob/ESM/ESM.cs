@@ -271,6 +271,15 @@ namespace JortPob
             }
         }
 
+        public Faction GetFaction(string id)
+        {
+            foreach (Faction faction in factions)
+            {
+                if (faction.id == id) { return faction; }
+            }
+            return null;
+        }
+
         /* Get dialog and character data for building esd */
         public List<Tuple<DialogRecord, List<DialogInfoRecord>>> GetDialog(NpcContent npc)
         {
@@ -324,7 +333,7 @@ namespace JortPob
                 string rankName = rankNames[i].GetValue<string>();
                 JsonNode rankRequiremnt = rankRequirements[i];
                 int reputation = rankRequiremnt["reputation"].GetValue<int>();
-                Rank rank = new(rankName, i, reputation);
+                Rank rank = new(rankName, i+1, reputation);
                 ranks.Add(rank);
             }
         }

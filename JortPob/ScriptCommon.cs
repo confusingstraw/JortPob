@@ -23,7 +23,7 @@ namespace JortPob
 
         public enum Event
         {
-            LoadDoor, SpawnHandler
+            LoadDoor, SpawnHandler, NpcHostilityHandler
         }
         public readonly Dictionary<Event, uint> events;
 
@@ -105,6 +105,31 @@ namespace JortPob
 
             func.Events.Add(spawnHandler);
             events.Add(Event.SpawnHandler, spawnEventFlag.id);
+
+            /* Create an event for handling friendly npc hostility */
+            Flag hostileEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcHostilityHandler");
+            EMEVD.Event hostileEvent = new(hostileEventFlag.id);
+
+            pc = 0;
+
+            string[] hostileEventRaw = new string[]
+            {
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", 
+                $"SetCharacterTeamType({NextParameterName()}, 27);",   // hostile flag on, hostile   >:(     // 27: TeamType.HostileNPC
+                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
+                $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
+            };
+
+            for (int i = 0; i < hostileEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(hostileEventRaw[i], i);
+                hostileEvent.Parameters.AddRange(newPs);
+                hostileEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(hostileEvent);
+            events.Add(Event.NpcHostilityHandler, hostileEventFlag.id);
         }
 
         /* There are some bugs with this system. It defo wastes some flag space. We have lots tho. Maybe fix later */
@@ -134,12 +159,17 @@ namespace JortPob
             uint mod = rawCount % 1000;
             uint mapOffset = COMMON_FLAG_BASES[perMsb];
             uint id = mapOffset + FLAG_TYPE_OFFSETS[category][perThou] + mod;
+            flagUsedCounts[category] += ((uint)type);
+
+            // Check for a collision with a common event flag, if we find a collision we recursviely try making another flag
+            if (ScriptManager.DO_NOT_USE_FLAGS.Contains(id))
+            {
+                Lort.Log($" ## WARNING ## Flag collision with commonevent found: {id}", Lort.Type.Debug);
+                return CreateFlag(category, type, designation, name, value);
+            }
 
             Flag flag = new(category, type, designation, name, id, value);
             flags.Add(flag);
-
-            flagUsedCounts[category] += ((uint)type);
-
             return flag;
         }
 

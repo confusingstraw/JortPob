@@ -75,6 +75,13 @@ namespace JortPob.Common
         public static readonly int FXR_START_ID = 900000000;
         #endregion
 
+        #region Papyrus
+        public static readonly int ESD_STATE_HARDCODE_MODDISPOSITION = 45;
+        public static readonly int ESD_STATE_HARDCODE_MODFACREP = 46;
+        public static readonly int ESD_STATE_HARDCODE_RANKREQUIREMENT = 49;
+        #endregion
+
+
         #region TEST
         public static readonly Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
         public static readonly Vector3 TEST_OFFSET2 = new(0, -15, 0); // these should both be deleted eventually
@@ -86,7 +93,7 @@ namespace JortPob.Common
         public static readonly bool DEBUG_SKIP_ESD = false; // skip building dialog esd for npcs, can be slow
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = true; // slow as shit, skipping this saves about a minute per build
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = new int[] { -4, -3, -2, -1 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = null; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         // seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         // seyda neen area (large) = new int[] { -5, -15, 5, -5 }
         // balmora area (small) = new int[] {-4, -3, -2, -1}
@@ -103,7 +110,7 @@ namespace JortPob.Common
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
-            string[] MATCHES = new[] { "Balmora" }; // = new[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Samarys Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
+            string[] MATCHES = null; // = new[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Samarys Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
 
             if (MATCHES == null) { return true; }
 

@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using HKLib.hk2018.hkAsyncThreadPool;
+using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
 using System;
@@ -116,7 +117,9 @@ namespace JortPob
 
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
-            DialogESD dialogEsd = new(scriptManager, text, areaScript, (uint)esdId, content, data);
+            areaScript.RegisterNpcHostility(content);  // setup hostility flag/event
+
+            DialogESD dialogEsd = new(esm, scriptManager, text, areaScript, (uint)esdId, content, data);
             string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
             string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
             dialogEsd.Write(pyPath);
@@ -277,6 +280,32 @@ namespace JortPob
                 this.talks = new();
             }
 
+            /* Special case where a topic contains only infos with the filter type "choice" making it unreachable */
+            public bool IsOnlyChoice()
+            {
+                foreach(TalkData talk in talks)
+                {
+                    if(talk.dialogInfo.type != DialogRecord.Type.Choice) { return false; }
+                }
+                return true;
+            }
+
+            /* Check if a rank requirment filter is used anywhere in this topicdata */
+            public bool HasRankRequirementFilter()
+            {
+                foreach (TalkData talk in talks)
+                {
+                    foreach (DialogFilter filter in talk.dialogInfo.filters)
+                    {
+                        if (filter.type == DialogFilter.Type.Function && filter.function == DialogFilter.Function.RankRequirement)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
             public class TalkData
             {
                 public readonly DialogInfoRecord dialogInfo;
@@ -286,6 +315,11 @@ namespace JortPob
                 {
                     this.dialogInfo = dialogInfo;
                     this.talkRow = talkRow;
+                }
+
+                public bool IsChoice()
+                {
+                    return dialogInfo.type == DialogRecord.Type.Choice;
                 }
             }
         }

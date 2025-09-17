@@ -506,6 +506,8 @@ namespace JortPob
                     AddRow(talkParam, row);
                 }
             }
+
+            if(talkParam.Rows.Count() >= ushort.MaxValue) { throw new Exception("Ran out of talk param rows! Will fail to compile params!"); }
         }
 
         public void GenerateNpcParam(TextManager textManager, int id, NpcContent npc)

@@ -112,7 +112,7 @@ namespace JortPob
             name = record.json["name"].ToString();
             race = (Race)System.Enum.Parse(typeof(Race), record.json["race"].ToString().Replace(" ", ""));
             job = record.json["class"].ToString();
-            faction = record.json["faction"].ToString();
+            faction = record.json["faction"].ToString().Trim() != "" ? record.json["faction"].ToString() : null;
 
             sex = record.json["npc_flags"].ToString().ToLower().Contains("female") ? Sex.Female : Sex.Male;
 

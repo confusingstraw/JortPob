@@ -534,7 +534,7 @@ namespace JortPob
                 debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360001, 1042361951, 0, 0, 0, 5);"));
                 List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald Ruhn" };
                 int actionParamId = 1555, debugCounty = 0;
-                for (int i=0;i<debugWarpCellList.Count();i++)
+                for (int i = 0; i < debugWarpCellList.Count(); i++)
                 {
                     string areaName = debugWarpCellList[i];
                     Tile area = layout.GetTile(areaName);
@@ -588,6 +588,7 @@ namespace JortPob
                 EMEVD.Event debugResetEvent = new(debugResetFlag.id);
                 debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionParamId}, {debugResetAsset.EntityID});"));
 
+                int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
                 foreach (Flag flag in allFlags)
                 {
                     if (flag.category == Flag.Category.Event) { continue; } // not values, used for event ids
@@ -598,10 +599,15 @@ namespace JortPob
                         bool bit = (flag.value & (1 << i)) != 0;
                         debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
                     }
+                    if(delayCounter++ > 100)
+                    {
+                        debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
+                        delayCounter = 0;
+                    }
                 }
 
                 debugScript.emevd.Events.Add(debugResetEvent);
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugResetFlag.id})"));
+                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugResetFlag.id}, 0)"));
 
                 debugScript.Write();
                 debugMSB.Write($"{Const.OUTPUT_PATH}\\map\\mapstudio\\m60_42_36_00.msb.dcx");

@@ -113,7 +113,7 @@ namespace JortPob
                 // Handle disposition check
                 if (disposition > 0)
                 {
-                    Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.id);
+                    Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
                     conditions.Add($"GetEventFlagValue({flag.id}, {(int)flag.type}) >= {disposition}");
                 }
 
@@ -121,6 +121,12 @@ namespace JortPob
                 {
                     Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, playerFaction);
                     conditions.Add($"GetEventFlag({flag.id}) == True");
+                }
+
+                if(playerRank > -1)
+                {
+                    Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, playerFaction);
+                    conditions.Add($"GetEventFlagValue({flag.id}, {flag.Bits()}) >= {playerRank + 1}"); // the +1 is because i made the first rank 1 and morrowind assumes 0
                 }
 
                 // Handle filters
@@ -137,14 +143,19 @@ namespace JortPob
                                 {
                                     case DialogFilter.Function.FactionRankDifference:
                                         {
-                                            return "False";
+                                            if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
+                                            Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, playerFaction);
+                                            return $"(GetEventFlagValue({rvar.id}, {rvar.Bits()}) - {rank+1}) {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.RankRequirement:
                                         {
-                                            return "False";
+                                            if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
+                                            Script.Flag retVal = scriptManager.GetFlag(Script.Flag.Designation.ReturnValueRankReq, npcContent.entity.ToString());
+                                            return $"GetEventFlagValue({retVal.id}, {retVal.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.SameFaction:
                                         {
+                                            if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
                                             Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, npcContent.faction);
                                             if (flag == null) { return "False"; }       // another static return. if the npc has no faction it is always false
                                             return $"GetEventFlag({flag.id}) == {filter.value}";
@@ -154,22 +165,52 @@ namespace JortPob
                                             Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.PlayerRace, npcContent.race.ToString());
                                             return $"GetEventFlag({flag.id}) == True";
                                         }
+                                    case DialogFilter.Function.SameSex:
+                                        {
+                                            int sexVal = npcContent.sex == NpcContent.Sex.Male ? 1 : 0; // elden ring values are :: male = 1, female = 0 
+                                            return $"ComparePlayerStat(PlayerStat.Gender, CompareType.Equal, {sexVal}) == {filter.value}";
+                                        }
                                     case DialogFilter.Function.TalkedToPc:
                                         {
-                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.id);
+                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
                                             return $"GetEventFlag({flag.id}) == False";
                                         }
                                     case DialogFilter.Function.PcLevel:
                                         {
                                             return $"ComparePlayerStat(PlayerStat.RuneLevel, {filter.OperatorString()}, {filter.value})";
                                         }
+                                    case DialogFilter.Function.PcSex:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.Gender, CompareType.Equal, 0) {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.PcExpelled:
+                                        {
+                                            if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
+                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, npcContent.faction);
+                                            return $"GetEventFlag({flag.id}) {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.Reputation:
+                                        {
+                                            Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
+                                            return $"GetEventFlagValue({rvar.id}, {rvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
+                                        }
                                     case DialogFilter.Function.Level:
                                         {
                                             // npcs level can't change so static comparison is fine  @TODO: could uhhh resolve this to just true or false but i'm lazy
                                             return $"{npcContent.level} {filter.OperatorSymbol()} {filter.value}";
                                         }
+                                    case DialogFilter.Function.HealthPercent:
+                                        {
+                                            return $"(GetSelfHP() / 10) {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.FriendHit:
+                                        {
+                                            Script.Flag hflag = scriptManager.GetFlag(Flag.Designation.Hostile, npcContent.entity.ToString());
+                                            Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent.entity.ToString());
+                                            return $"(not GetEventFlag({hflag.id}) and GetEventFlagValue({fvar.id}, {fvar.Bits()}) {filter.OperatorSymbol()} {filter.value - 1})";
+                                        }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
 
                             case DialogFilter.Type.Journal:
@@ -179,9 +220,9 @@ namespace JortPob
                                         {
                                             Flag jvar = scriptManager.GetFlag(Script.Flag.Designation.Journal, filter.id); // look for flag, if not found make one
                                             if (jvar == null) { jvar = scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Script.Flag.Designation.Journal, filter.id); }
-                                            return $"GetEventFlagValue({jvar.id}, {(int)jvar.type}) {filter.OperatorSymbol()} {filter.value}";
+                                            return $"GetEventFlagValue({jvar.id}, {jvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
-                                    default: return "False";
+                                    default: return null;
                                 }
 
                             case DialogFilter.Type.Global:
@@ -201,7 +242,7 @@ namespace JortPob
                                             return $"GetEventFlagValue({gvar.id}, {gvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
 
                             case DialogFilter.Type.Dead:
@@ -215,7 +256,7 @@ namespace JortPob
                                                 return $"GetEventFlagValue({deadCount.id}, {deadCount.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                             }
                                     }
-                                    return "False";
+                                    return null;
                                 }
 
                             case DialogFilter.Type.NotLocal:
@@ -230,7 +271,20 @@ namespace JortPob
                                             return $"GetEventFlagValue({lvar.id}, {lvar.Bits()}) == {lvar.MaxValue()}";
                                         }
 
-                                    default: return "False";
+                                    default: return null;
+                                }
+                            case DialogFilter.Type.NotCell:
+                                switch (filter.function)
+                                {
+                                    case DialogFilter.Function.NotCell:
+                                        {
+                                            // static check, characters in elden ring can't really travel around so it's fine for now. may need to change at some point tho
+                                            if(npcContent.cell.name == null) { return "True"; }
+                                            if (filter.id.ToLower().StartsWith(npcContent.cell.name.ToLower())) { return "False"; }
+                                            return "True";
+                                        }
+
+                                    default: return null;
                                 }
                             case DialogFilter.Type.NotId:
                                 switch (filter.function)
@@ -242,7 +296,7 @@ namespace JortPob
                                             else { return "False"; }
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
                             case DialogFilter.Type.NotClass:
                                 switch (filter.function)
@@ -254,7 +308,7 @@ namespace JortPob
                                             else { return "False"; }
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
                             case DialogFilter.Type.NotRace:
                                 switch (filter.function)
@@ -266,7 +320,7 @@ namespace JortPob
                                             else { return "False"; }
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
                             case DialogFilter.Type.NotFaction:
                                 switch (filter.function)
@@ -278,7 +332,7 @@ namespace JortPob
                                             else { return "False"; }
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
                             case DialogFilter.Type.Local:
                                 switch (filter.function)
@@ -292,7 +346,7 @@ namespace JortPob
                                             return $"(GetEventFlagValue({lvar.id}, {lvar.Bits()}) {filter.OperatorSymbol()} {filter.value} and GetEventFlagValue({lvar.id}, {lvar.Bits()}) != {lvar.MaxValue()})";
                                         }
 
-                                    default: return "False";
+                                    default: return null;
                                 }
                             case DialogFilter.Type.Item:
                                 switch (filter.function)
@@ -307,15 +361,15 @@ namespace JortPob
                                             // Any other item
                                             return "False"; // not supported yet
                                         }
-                                    default: return "False";
+                                    default: return null;
                                 }
 
-                            default: return "False"; // @TODO: debug thing while we are implementing these functions. if its not implemented it returns false always
+                            default: return null; // @TODO: debug thing while we are implementing these functions. if its not implemented it returns null which we convert to a "false" below
                         }
                     }
 
                     string filterCond = handleFilter(filter);
-                    if(filterCond == "False")
+                    if(filterCond == null)
                     {
                         string unsupportedFilterType = $"{filter.type}::{filter.function}";
                         if (!debugUnsupportedFiltersLogging.Contains(unsupportedFilterType))
@@ -323,6 +377,8 @@ namespace JortPob
                             Lort.Log($" ## WARNING ## Unsupported filter type {unsupportedFilterType}", Lort.Type.Debug);
                             debugUnsupportedFiltersLogging.Add(unsupportedFilterType);
                         }
+
+                        filterCond = "False";
                     }
 
                     conditions.Add(filterCond);
@@ -364,7 +420,8 @@ namespace JortPob
             }
 
             /* Creates code for a dialog esd to execute when the dialoginfo that this dialogpapyrus is owned by gets played */
-            public string GenerateEsdSnippet(ScriptManager scriptManager, NpcContent npcContent, int indent)
+            private static List<String> debugUnsupportedPapyrusCallLogging = new();
+            public string GenerateEsdSnippet(ScriptManager scriptManager, NpcContent npcContent, uint esdId, int indent)
             {
                 // Takes any mixed numeric parameter and converts it to an esd friendly format. for example  "1 + 2 + crimeGold + 7" or "crimeGold - valueValue" or just "5"
                 string ParseParameters(string[] parameters, int startIndex)
@@ -400,7 +457,7 @@ namespace JortPob
                                 if (var == null) { var = scriptManager.GetFlag(Flag.Designation.Local, call.parameters[0]); }
                                 if (var == null) { var = scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Script.Flag.Designation.Global, call.parameters[0]); }
 
-                                string code = $"SetEventFlagValue({var.id}, {var.Bits()}, {ParseParameters(call.parameters, 2)});";
+                                string code = $"SetEventFlagValue({var.id}, {var.Bits()}, {ParseParameters(call.parameters, 2)})";
 
                                 lines.Add(code);
 
@@ -412,12 +469,21 @@ namespace JortPob
                                 if (jvar == null) { jvar = scriptManager.common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Script.Flag.Designation.Journal, call.parameters[0]); }
                                 string code = $"SetEventFlagValue({jvar.id}, {jvar.Bits()}, {int.Parse(call.parameters[1])})";
                                 lines.Add(code);
+                                // debug @TODO: delete me
+                                lines.Add($"ChangePlayerStat(PlayerStat.RunesCollected, ChangeType.Add, {int.Parse(call.parameters[1])})");
+                                break;
+                            }
+                        case PapyrusCall.Type.AddTopic:
+                            {
+                                Flag tvar = scriptManager.GetFlag(Script.Flag.Designation.TopicEnabled, call.parameters[0]);
+                                string code = $"SetEventFlag({tvar.id}, FlagState.On)";
+                                lines.Add(code);
                                 break;
                             }
                         case PapyrusCall.Type.PcJoinFaction:
                             {
                                 Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, npcContent.faction);
-                                string code = $"SetEventFlag({fvar.id}, True);";
+                                string code = $"SetEventFlag({fvar.id}, FlagState.On);";
                                 lines.Add(code);
                                 break;
                             }
@@ -425,22 +491,32 @@ namespace JortPob
                             {
                                 int rep = int.Parse(call.parameters[0]);
                                 Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, call.parameters[1]);
-                                string code = $"SetEventFlagValue({fvar.id}, {fvar.Bits()}, ( GetEventFlagValue({fvar.id}, {fvar.Bits()}) + {rep} ))";
+                                string code = $"assert t{esdId:D9}_x{Const.ESD_STATE_HARDCODE_MODFACREP}(facrepflag={fvar.id}, value={call.parameters[0]})";
+                                lines.Add(code);
                                 break;
                             }
                         case PapyrusCall.Type.PcRaiseRank:
                             {
-                                // @TODO:
+                                Script.Flag jvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, npcContent.faction);
+                                Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, npcContent.faction);
+                                string joinFactionCode = $"SetEventFlag({jvar.id}, True);";
+                                string raiseRankCode = $"SetEventFlagValue({rvar.id}, {rvar.Bits()}, ( GetEventFlagValue({rvar.id}, {rvar.Bits()}) + {1} ))";
+                                lines.Add(joinFactionCode);
+                                lines.Add(raiseRankCode);
                                 break;
                             }
                         case PapyrusCall.Type.PcExpell:
                             {
-                                // @TODO:
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, npcContent.faction);
+                                string code = $"SetEventFlag({fvar.id}, FlagState.On);";
+                                lines.Add(code);
                                 break;
                             }
                         case PapyrusCall.Type.PcClearExpelled:
                             {
-                                // @TODO:
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, npcContent.faction);
+                                string code = $"SetEventFlag({fvar.id}, FlagState.Off);";
+                                lines.Add(code);
                                 break;
                             }
                         case PapyrusCall.Type.RemoveItem:
@@ -448,8 +524,9 @@ namespace JortPob
                                 // Gold specifically handled as souls so its diffo from other item checks
                                 if (call.target == "player" && call.parameters[0] == "gold_001")
                                 {
-                                    string code = $"ChangePlayerStat(PlayerStat.RunesCollected, ChangeType.Subtract, {ParseParameters(call.parameters, 1)});";
+                                    string code = $"ChangePlayerStat(PlayerStat.RunesCollected, ChangeType.Subtract, {ParseParameters(call.parameters, 1)})";
                                     lines.Add(code);
+                                    break;
                                 }
                                 // Any other item
                                 break; // not yet supported
@@ -459,13 +536,63 @@ namespace JortPob
                                 // Gold specifically handled as souls so its diffo from other item checks
                                 if (call.target == "player" && call.parameters[0] == "gold_001")
                                 {
-                                    string code = $"ChangePlayerStat(PlayerStat.RunesCollected, ChangeType.Add, {ParseParameters(call.parameters, 1)});";
+                                    string code = $"ChangePlayerStat(PlayerStat.RunesCollected, ChangeType.Add, {ParseParameters(call.parameters, 1)})";
                                     lines.Add(code);
+                                    break;
                                 }
                                 // Any other item
                                 break; // not yet supported
                             }
-                        default: break;
+                        case PapyrusCall.Type.ModDisposition:
+                            {
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                                string code = $"assert t{esdId:D9}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dvar.id}, value={call.parameters[0]})";
+                                lines.Add(code);
+                                break;
+                            }
+                        case PapyrusCall.Type.SetDisposition:
+                            {
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                                string code = $"SetEventFlagValue({dvar.id}, {dvar.Bits()}, {call.parameters[0]})";
+                                lines.Add(code);
+                                break;
+                            }
+                        case PapyrusCall.Type.ModReputation:
+                            {
+                                Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
+                                string code = $"SetEventFlagValue({rvar.id}, {rvar.Bits()}, ( GetEventFlagValue({rvar.id}, {rvar.Bits()}) + {call.parameters[0]} ))";
+                                lines.Add(code);
+                                break;
+                            }
+                        case PapyrusCall.Type.StartCombat:
+                            {
+                                if (call.parameters[0].Trim() == "player")
+                                {
+                                    Flag hvar = scriptManager.GetFlag(Flag.Designation.Hostile, npcContent.entity.ToString());
+                                    string code = $"SetEventFlag({hvar.id}, FlagState.On)";
+                                    lines.Add(code);
+                                    break;
+                                }
+
+                                // @TODO: startcombat with anything else than player is not supported yet
+                                break;
+                            }
+                        case PapyrusCall.Type.Goodbye:
+                            {
+                                // End conversation promptly
+                                string code = $"return 0";
+                                lines.Add(code);
+                                break;
+                            }
+                        default:
+                            { 
+                                if(!debugUnsupportedPapyrusCallLogging.Contains(call.type.ToString()))
+                                {
+                                    Lort.Log($" ## WARNING ## Unsupported papyrus call {call.type}", Lort.Type.Debug);
+                                    debugUnsupportedPapyrusCallLogging.Add(call.type.ToString());
+                                }
+                                break;
+                            }
                     }
                 }
 
@@ -659,8 +786,8 @@ namespace JortPob
                 {
                     case Operator.Equal: return "==";
                     case Operator.NotEqual: return "!=";
-                    case Operator.GreaterEqual: return ">=";
-                    case Operator.Greater: return ">";
+                    case Operator.GreaterEqual: return ">";
+                    case Operator.Greater: return ">=";
                     case Operator.LessEqual: return "<=";
                     case Operator.Less: return "<";
                     default: return "DADDY NO PLEASE!!!!";

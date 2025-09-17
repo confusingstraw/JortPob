@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -17,6 +18,8 @@ namespace JortPob
 {
     public class ScriptManager
     {
+        public static readonly List<uint> DO_NOT_USE_FLAGS = new();
+
         public ScriptCommon common;
         public List<Script> scripts; // map scripts
 
@@ -24,6 +27,17 @@ namespace JortPob
         {
             common = new();
             scripts = new();
+
+            // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
+            // I have these used numbers in a txt file and we parse that into a list
+            // We avoid using any of these numbers as flag ids because it can cause collisions with base game common functions
+            // This is technically a temporary measure @TODO: !! eventualy we will rewrite common.emevd and replace it with all custom code
+            // That will be tough though and not a high priority task for dev.
+            string[] lines = System.IO.File.ReadAllLines(Utility.ResourcePath(@"script\common_event_used_values.txt"));            
+            foreach(string line in lines)
+            {
+                DO_NOT_USE_FLAGS.Add(uint.Parse(line));
+            }
         }
 
         public Script GetScript(int map, int x, int y, int block)
@@ -84,6 +98,9 @@ namespace JortPob
         {
             List<JsonNode> raceJson = [.. esm.GetAllRecordsByType(ESM.Type.Race)];
 
+            // A short for reputation, maybe could fit in a byte but lets just be safe here
+            common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.Reputation, "Reputation", 0);
+
             // One flag for each race. Single bit. Name of the flag to identify it by is the same as the enum name from NpcContent.Race
             // Reason for doing 10 bits instead of a single byte is because I don't want to set an eventvalueflag from HKS becasue lua is a cursed language
             List<Script.Flag> raceFlags = new();
@@ -121,6 +138,7 @@ namespace JortPob
                 common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.FactionJoined, faction.id, 0);
                 common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Flag.Designation.FactionReputation, faction.id, 0);
                 common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Flag.Designation.FactionRank, faction.id, 0);
+                common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.FactionExpelled, faction.id, 0);
             }
         }
 

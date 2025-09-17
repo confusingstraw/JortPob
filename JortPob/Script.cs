@@ -84,8 +84,16 @@ namespace JortPob
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.LoadDoor]}, {actionParam}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 
+        public void RegisterNpcHostility(NpcContent npc)
+        {
+            CreateFlag(Flag.Category.Temporary, Flag.Type.Nibble, Flag.Designation.FriendHitCounter, npc.entity.ToString()); // setup friendly hit counter
+            Flag hostileFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc.entity.ToString());
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {hostileFlag.id}, {npc.entity});"));
+        }
+
         public void RegisterNpc(NpcContent npc, Flag count)
         {
+            /* Dead/disable spawn event */
             Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc.entity.ToString());
             Flag disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, npc.entity.ToString());
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {disableFlag.id}, {npc.entity}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
@@ -93,11 +101,13 @@ namespace JortPob
 
         public void RegisterCreature(CreatureContent creature, Flag count)
         {
+            /* Dead/disable spawn event */
             Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, creature.entity.ToString());
             Flag disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, creature.entity.ToString());
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {disableFlag.id}, {creature.entity}, {deadFlag.id}, {creature.entity}, {creature.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
         }
 
+        /* Create an EMEVD flag for this MSB */
         private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
         {
             { Flag.Category.Event, new uint[] { 1000, 3000, 6000 } },
@@ -114,19 +124,34 @@ namespace JortPob
             else { mapOffset = uint.Parse($"{map:D2}{x:D2}0000"); }
 
             uint id = mapOffset + FLAG_TYPE_OFFSETS[category][perThou] + mod;  // if we run out of flags this will throw an out of bounds exception. that situation would be bad but should't happen.
+            flagUsedCounts[category] += ((uint)type);
+
+            // Check for a collision with a common event flag, if we find a collision we recursviely try making another flag
+            if (ScriptManager.DO_NOT_USE_FLAGS.Contains(id))
+            {
+                Lort.Log($" ## WARNING ## Flag collision with commonevent found: {id}", Lort.Type.Debug);
+                return CreateFlag(category, type, designation, name, value);
+            }
 
             Flag flag = new(category, type, designation, name, id, value);
             flags.Add(flag);
-
-            flagUsedCounts[category] += ((uint)type);
-
             return flag;
         }
 
+        /* Create a unique entity id for this MSB */
         public uint CreateEntity(EntityType type)
         {
             uint rawCount = entityUsedCounts[type]++;
-            uint mapOffset = uint.Parse($"{(map == 60 ? "10" : "")}{x:D2}{y:D2}0000");
+            uint mapOffset;
+            if (map == 60)
+            {
+                mapOffset = uint.Parse($"10{x:D2}{y:D2}0000");
+            }
+            else
+            {
+                mapOffset = uint.Parse($"{map:D2}{x:D2}0000");
+            }
+            
 
             if (rawCount >= 1000) { Lort.Log($" ## CRITICAL ## ENTITY ID OVERFLOWED IN m{map:D2}_{x:D2}_{y:D2}", Lort.Type.Debug); }
 
@@ -152,7 +177,12 @@ namespace JortPob
 
             public enum Designation
             {
-                Event, Dead, DeadCount, Disabled, Global, Local, TopicEnabled, Journal, TalkedToPc, Disposition, PlayerRace, FactionJoined, FactionReputation, FactionRank
+                Event,                                          // Flag is an event ID
+                Global, Local, Reputation, Journal,
+                Dead, DeadCount, Disabled, Hostile, FriendHitCounter,        // hostile flag exists for friendly npcs, if you piss em off they stab you
+                TopicEnabled, TalkedToPc, Disposition, PlayerRace,
+                FactionJoined, FactionReputation, FactionRank, FactionExpelled,    // faction stuff
+                ReturnValueRankReq                              // these are temp values used by ESD to store variables
             }
 
             public readonly Category category;

@@ -898,6 +898,9 @@
     <None Update="Resources\script\common.emevd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\script\common_event_used_values.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\script\common_func.emevd.dcx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

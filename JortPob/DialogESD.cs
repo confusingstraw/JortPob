@@ -1,30 +1,38 @@
-﻿using System.Collections.Generic;
+﻿using HKLib.hk2018.hkaiCollisionAvoidance;
+using HKX2;
+using JortPob.Common;
+using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using static JortPob.Dialog;
+using static JortPob.Faction;
 using static JortPob.NpcManager.TopicData;
 using static SoulsFormats.DRB.Shape;
+using static SoulsFormats.MSB3.Region;
 using static SoulsFormats.MSBS.Event;
-using static JortPob.Dialog;
-using System;
-using HKX2;
 
 namespace JortPob
 {
     /* Handles python state machine code generation for a dialog ESD */
     public class DialogESD
     {
+        private readonly ESM esm;
         private readonly ScriptManager scriptManager;
         private readonly TextManager textManager;
         private readonly Script areaScript;
         private readonly NpcContent npcContent;
 
         private readonly List<string> defs;
+        private readonly List<string> generatedStates;
+        private int nxtGenStateId;
 
-        public DialogESD(ScriptManager scriptManager, TextManager textManager, Script areaScript, uint id, NpcContent npcContent, List<NpcManager.TopicData> topicData)
+        public DialogESD(ESM esm, ScriptManager scriptManager, TextManager textManager, Script areaScript, uint id, NpcContent npcContent, List<NpcManager.TopicData> topicData)
         {
+            this.esm = esm;
             this.scriptManager = scriptManager;
             this.textManager = textManager;
             this.areaScript = areaScript;
@@ -33,14 +41,24 @@ namespace JortPob
             defs = new();
 
             // Create flags for this character's disposition and first greeting
-            Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, npcContent.id);
-            Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, npcContent.id, (uint)npcContent.disposition);
+            Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
+            Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, npcContent.entity.ToString(), (uint)npcContent.disposition);
 
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
             NpcManager.TopicData hit = GetTalk(topicData, DialogRecord.Type.Hit)[0];
             NpcManager.TopicData attack = GetTalk(topicData, DialogRecord.Type.Attack)[0];
             List<NpcManager.TopicData> talk = GetTalk(topicData, DialogRecord.Type.Topic);
+
+            generatedStates = new();
+            nxtGenStateId = 50;
+
+            generatedStates.Add(GeneratedState_ModDisposition(id, Common.Const.ESD_STATE_HARDCODE_MODDISPOSITION));
+            generatedStates.Add(GeneratedState_ModFacRep(id, Common.Const.ESD_STATE_HARDCODE_MODFACREP));
+            if (npcContent.faction != null)
+            {
+                generatedStates.Add(GeneratedState_RankReq(id, Common.Const.ESD_STATE_HARDCODE_RANKREQUIREMENT, npcContent));
+            }
 
             defs.Add($"# dialog esd : {npcContent.id}\r\n");
 
@@ -95,13 +113,18 @@ namespace JortPob
             defs.Add(State_x36(id));
             defs.Add(State_x37(id));
             defs.Add(State_x38(id, hit.talks[0].talkRow));
-            defs.Add(State_x39(id, hit.talks[0].talkRow));
+            defs.Add(State_x39(id, hit));
 
             defs.Add(State_x40(id, attack.talks[0].talkRow));
             defs.Add(State_x41(id, hit.talks[0].talkRow));
             defs.Add(State_x42(id));
             defs.Add(State_x43(id));
             defs.Add(State_x44(id, npcContent.services, talk));
+
+            foreach (string genState in generatedStates)
+            {
+                defs.Add(genState);
+            }
         }
 
         /* Returns all topics that match the given type. */
@@ -132,15 +155,14 @@ namespace JortPob
         private string State_1(uint id)
         {
             string id_s = id.ToString("D9");
-            return $"def t{id_s}_1():\r\n    \"\"\"State 0,1\"\"\"\r\n    # actionbutton:6000:\"Talk\"\r\n    t{id_s}_x5(flag6=4743, flag7=4741, flag8=4742, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1)\r\n    Quit()\r\n";
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            return $"def t{id_s}_1():\r\n    \"\"\"State 0,1\"\"\"\r\n    # actionbutton:6000:\"Talk\"\r\n    t{id_s}_x5(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1)\r\n    Quit()\r\n";
         }
 
         private string State_1000(uint id)
         {
             string id_s = id.ToString("D9");
-            int shop1 = 100625;
-            int shop2 = 100649;
-            return $"def t{id_s}_1000():\r\n    \"\"\"State 0,2,3\"\"\"\r\n    assert t{id_s}_x37(shop1={shop1}, shop2={shop2})\r\n    \"\"\"State 1\"\"\"\r\n    EndMachine(1000)\r\n    Quit()\r\n";
+            return $"def t{id_s}_1000():\r\n    \"\"\"State 0,2,3\"\"\"\r\n    assert t{id_s}_x37()\r\n    \"\"\"State 1\"\"\"\r\n    EndMachine(1000)\r\n    Quit()\r\n";
         }
 
         private string State_1001(uint id)
@@ -152,8 +174,7 @@ namespace JortPob
         private string State_1101(uint id)
         {
             string id_s = id.ToString("D9");
-            int hurtFlag = 1043332705;
-            return $"def t{id_s}_1101():\r\n    \"\"\"State 0,2\"\"\"\r\n    assert t{id_s}_x39(flag5={hurtFlag})\r\n    \"\"\"State 1\"\"\"\r\n    EndMachine(1101)\r\n    Quit()\r\n";
+            return $"def t{id_s}_1101():\r\n    \"\"\"State 0,2\"\"\"\r\n    assert t{id_s}_x39()\r\n    \"\"\"State 1\"\"\"\r\n    EndMachine(1101)\r\n    Quit()\r\n";
         }
 
         private string State_1102(uint id)
@@ -210,7 +231,8 @@ namespace JortPob
         private string State_x5(uint id)
         {
             string id_s = id.ToString("D9");
-            return $"def t{id_s}_x5(flag6=4743, flag7=4741, flag8=4742, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    assert GetCurrentStateElapsedTime() > 1.5\r\n    while True:\r\n        \"\"\"State 2\"\"\"\r\n        call = t{id_s}_x22(flag6=flag6, flag7=flag7, flag8=flag8, val1=val1, val2=val2, val3=val3, val4=val4,\r\n                              val5=val5, actionbutton1=actionbutton1, flag9=flag9, flag10=flag10, flag11=flag11,\r\n                              flag12=flag12, flag13=flag13, z1=z1, z2=z2, z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        assert IsClientPlayer()\r\n        \"\"\"State 1\"\"\"\r\n        call = t{id_s}_x21()\r\n        assert not IsClientPlayer()\r\n";
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            return $"def t{id_s}_x5(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    assert GetCurrentStateElapsedTime() > 1.5\r\n    while True:\r\n        \"\"\"State 2\"\"\"\r\n        call = t{id_s}_x22(flag6=flag6, flag7=flag7, val1=val1, val2=val2, val3=val3, val4=val4,\r\n                              val5=val5, actionbutton1=actionbutton1, flag9=flag9, flag10=flag10, flag11=flag11,\r\n                              flag12=flag12, flag13=flag13, z1=z1, z2=z2, z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        assert IsClientPlayer()\r\n        \"\"\"State 1\"\"\"\r\n        call = t{id_s}_x21()\r\n        assert not IsClientPlayer()\r\n";
         }
 
         private string State_x6(uint id)
@@ -312,7 +334,8 @@ namespace JortPob
         private string State_x22(uint id)
         {
             string id_s = id.ToString("D9");
-            return $"def t{id_s}_x22(flag6=4743, flag7=4741, flag8=4742, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                   flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                   z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        RemoveMyAggro()\r\n        call = t{id_s}_x6(val1=val1, val2=val2, val3=val3, val4=val4, val5=val5, actionbutton1=actionbutton1,\r\n                             flag9=flag9, flag10=flag10, flag11=flag11, flag12=flag12, flag13=flag13, z1=z1, z2=z2,\r\n                             z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        if CheckSelfDeath() or GetEventFlag(flag6):\r\n            \"\"\"State 3\"\"\"\r\n            Label('L0')\r\n            call = t{id_s}_x8(flag6=flag6, val2=val2, val3=val3)\r\n            if not CheckSelfDeath() and not GetEventFlag(flag6):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(flag7) or GetEventFlag(flag8):\r\n            \"\"\"State 2\"\"\"\r\n            call = t{id_s}_x7(val2=val2, val3=val3)\r\n            if CheckSelfDeath() or GetEventFlag(flag6):\r\n                Goto('L0')\r\n            elif not GetEventFlag(flag7) and not GetEventFlag(flag8):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(9000) or IsPlayerDead():\r\n            pass\r\n        \"\"\"State 4\"\"\"\r\n        assert t{id_s}_x35() and not GetEventFlag(9000)\r\n";
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            return $"def t{id_s}_x22(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1=6000,\r\n                   flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                   z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        RemoveMyAggro()\r\n        call = t{id_s}_x6(val1=val1, val2=val2, val3=val3, val4=val4, val5=val5, actionbutton1=actionbutton1,\r\n                             flag9=flag9, flag10=flag10, flag11=flag11, flag12=flag12, flag13=flag13, z1=z1, z2=z2,\r\n                             z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        if CheckSelfDeath() or GetEventFlag(flag6):\r\n            \"\"\"State 3\"\"\"\r\n            Label('L0')\r\n            call = t{id_s}_x8(flag6=flag6, val2=val2, val3=val3)\r\n            if not CheckSelfDeath() and not GetEventFlag(flag6):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(flag7):\r\n            \"\"\"State 2\"\"\"\r\n            call = t{id_s}_x7(val2=val2, val3=val3)\r\n            if CheckSelfDeath() or GetEventFlag(flag6):\r\n                Goto('L0')\r\n            elif not GetEventFlag(flag7):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(9000) or IsPlayerDead():\r\n            pass\r\n        \"\"\"State 4\"\"\"\r\n        assert t{id_s}_x35() and not GetEventFlag(9000)\r\n";
         }
 
         private string State_x23(uint id)
@@ -356,6 +379,12 @@ namespace JortPob
             string id_s = id.ToString("D9");
             string s = $"def t{id_s}_x29(mode6=1):\r\n    \"\"\"State 0,4\"\"\"\r\n    assert t{id_s}_x2() and CheckSpecificPersonTalkHasEnded(0)\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
+            if (npcContent.faction != null)
+            {
+                s += $"    # rankreq call: \"{npcContent.faction}\"\r\n";
+                s += $"    assert t{id_s}_x{Common.Const.ESD_STATE_HARDCODE_RANKREQUIREMENT}()\r\n";
+            }
+
             // Build an if-else tree for each possible greeting and its conditions
             if (greeting.talks.Count > 1)
             {
@@ -369,7 +398,7 @@ namespace JortPob
                     if (filters == " " || !(i < greeting.talks.Count() - 1)) { ifop = "else"; filters = ""; }
 
                     greetLine += $"    {ifop}{filters}:\r\n";
-                    greetLine += $"        # talk: \"{Common.Utility.SanitizeTextForComment(talkData.dialogInfo.text)}\"\r\n";
+                    greetLine += $"        # greeting: \"{Common.Utility.SanitizeTextForComment(talkData.dialogInfo.text)}\"\r\n";
                     greetLine += $"        TalkToPlayer({talkData.talkRow}, -1, -1, 0)\r\n        assert CheckSpecificPersonTalkHasEnded(0)\r\n";
 
                     foreach (DialogRecord dialog in talkData.dialogInfo.unlocks)
@@ -379,7 +408,7 @@ namespace JortPob
 
                     if(talkData.dialogInfo.script != null)
                     {
-                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, 8);
+                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, id, 8);
                     }
 
                     s += greetLine;
@@ -400,7 +429,7 @@ namespace JortPob
             }
             s += "    \"\"\"State 3\"\"\"\r\n    if mode6 == 0:\r\n        pass\r\n    else:\r\n        \"\"\"State 2\"\"\"\r\n        ReportConversationEndToHavokBehavior()\r\n    \"\"\"State 5\"\"\"\r\n";
             // Also make sure to flag the TalkedToPC flag as it should be marked true once the player has finished the greeting with an npc for the first time
-            s += $"    SetEventFlag({scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.id).id}, FlagState.On)\r\n";
+            s += $"    SetEventFlag({scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString()).id}, FlagState.On)\r\n";
             s += "    return 0\r\n";
             return s;
         }
@@ -450,9 +479,7 @@ namespace JortPob
         private string State_x37(uint id)
         {
             string id_s = id.ToString("D9");
-            int shop1 = 100625;
-            int shop2 = 100649;
-            return $"def t{id_s}_x37(shop1={shop1}, shop2={shop2}):\r\n    \"\"\"State 0,1\"\"\"\r\n    assert t{id_s}_x43()\r\n    \"\"\"State 2\"\"\"\r\n    assert t{id_s}_x44(shop1=shop1, shop2=shop2)\r\n    \"\"\"State 3\"\"\"\r\n    return 0\r\n";
+            return $"def t{id_s}_x37():\r\n    \"\"\"State 0,1\"\"\"\r\n    assert t{id_s}_x43()\r\n    \"\"\"State 2\"\"\"\r\n    assert t{id_s}_x44()\r\n    \"\"\"State 3\"\"\"\r\n    return 0\r\n";
         }
 
         private string State_x38(uint id, int killTalk)
@@ -462,12 +489,56 @@ namespace JortPob
             return $"def t{id_s}_x38():\r\n    \"\"\"State 0,1\"\"\"\r\n    # talk:80181200:\"Stay away, Us wanderers have had enough.\"\r\n    assert t{id_s}_x30(text3={killTalk}, mode5=1)\r\n    \"\"\"State 2\"\"\"\r\n    return 0\r\n";
         }
 
-        private string State_x39(uint id, int hurt1Talk)
+        // Character gets hurt by player
+        private string State_x39(uint id, NpcManager.TopicData hurts)
         {
             string id_s = id.ToString("D9");
-            //int hurt1Talk = 80181000;
-            //int hurt2Talk = 80181010;
-            return $"def t{id_s}_x39(flag5=1043332705):\r\n    \"\"\"State 0,3\"\"\"\r\n    if not GetEventFlag(flag5):\r\n        \"\"\"State 1,4\"\"\"\r\n        # talk:80181000:\"Owgh!\"\r\n        assert t{id_s}_x34(text1={hurt1Talk}, flag3=flag5, mode3=1)\r\n    else:\r\n        \"\"\"State 2,5\"\"\"\r\n        # talk:80181010:\"What are you playing at! Stop this!\"\r\n        assert t{id_s}_x34(text1={hurt1Talk}, flag3=flag5, mode3=1)\r\n    \"\"\"State 6\"\"\"\r\n    return 0\r\n";
+
+            string s = $"def t{id_s}_x39():\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
+
+            /* decide if we go hostile from being hit */
+            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag friendHitCounter = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent.entity.ToString());
+            Script.Flag disposition = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+            s += $"    # decide if we are going hostile from this attack\r\n";
+            s += $"    if GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 1 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 15:\r\n";
+            s += $"        SetEventFlag({hostileFlag.id}, FlagState.On)\r\n";
+            s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 2 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 25:\r\n";
+            s += $"        SetEventFlag({hostileFlag.id}, FlagState.On)\r\n";
+            s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 3 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 35:\r\n";
+            s += $"        SetEventFlag({hostileFlag.id}, FlagState.On)\r\n";
+            s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) >= 4:\r\n";
+            s += $"        SetEventFlag({hostileFlag.id}, FlagState.On)\r\n";
+            s += $"    else:\r\n";
+            s += $"        pass\r\n\r\n";
+
+            /* lower disposition */
+            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+            s += $"    # lower disposition from being hit\r\n";
+            s += $"    assert t{id_s}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dvar.id}, value={-10})\r\n\r\n";
+
+            /* pick voice line to play */
+            s += $"    # play a voice line in response to being hit\r\n";
+            string ifop = "if";
+            for (int i = 0; i < hurts.talks.Count(); i++)
+            {
+                NpcManager.TopicData.TalkData hurt = hurts.talks[i];
+
+                string filters = hurt.dialogInfo.GenerateCondition(scriptManager, npcContent);
+                if (filters == "") { filters = "True"; }
+
+                s += $"    {ifop} {filters}:\r\n";
+                s += $"        # hurt: \"{Common.Utility.SanitizeTextForComment(hurt.dialogInfo.text)}\"\r\n";
+                s += $"        assert t{id_s}_x33(text2={hurt.talkRow}, mode4=1)\r\n";
+
+                if(ifop == "if") { ifop = "elif"; }
+            }
+
+            s += $"    else:\r\n        pass\r\n\r\n";
+            s += $"    # increment hit counter\r\n";
+            s += $"    SetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}, GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) + 1 )\r\n"; // increment friend hit value
+            s += $"    return 0\r\n";
+            return s;
         }
 
         private string State_x40(uint id, int hostileTalk)
@@ -499,16 +570,22 @@ namespace JortPob
             return s;
         }
 
+        // Some ESD calls have custom state machine calls because they are complex
+        // These are hardcoded in Const the Papyrus region
+        // All states 50 and beyond are Choice calls
         private string State_x44(uint id, bool hasShop, List<NpcManager.TopicData> topics)
         {
             string id_s = id.ToString("D9");
             int shop1 = 100625;
             int shop2 = 100649;
 
-            List<string> generatedStates = new();
-            int nxtGenStateId = 45;
+            string s = $"def t{id_s}_x44():\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        ClearPreviousMenuSelection()\r\n        ClearTalkActionState()\r\n        ClearTalkListData()\r\n        \"\"\"State 2\"\"\"\r\n";
 
-            string s = $"def t{id_s}_x44(shop1={shop1}, shop2={shop2}):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        ClearPreviousMenuSelection()\r\n        ClearTalkActionState()\r\n        ClearTalkListData()\r\n        \"\"\"State 2\"\"\"\r\n";
+            if (npcContent.faction != null)
+            {
+                s += $"        # rankreq call: \"{npcContent.faction}\"\r\n";
+                s += $"        assert t{id_s}_x{Common.Const.ESD_STATE_HARDCODE_RANKREQUIREMENT}()";
+            }
 
             int listCount = 1; // starts at 1 idk
             if(hasShop)
@@ -519,6 +596,8 @@ namespace JortPob
             for (int i = 0; i < topics.Count(); i++)
             {
                 NpcManager.TopicData topic = topics[i];
+                if (topic.IsOnlyChoice()) { continue; } // skip these as they aren't valid or reachable
+
                 List<string> filters = new();
                 foreach(NpcManager.TopicData.TalkData talk in topic.talks)
                 {
@@ -535,7 +614,7 @@ namespace JortPob
                 }
                 if(combinedFilters != "") { combinedFilters = $" and ({combinedFilters})"; }
 
-                s += $"        # action:{topic.topicText}:\"{topic.dialog.id}\"\r\n        if GetEventFlag({topic.dialog.flag.id}){combinedFilters}:\r\n            AddTalkListData({i+listCount}, {topic.topicText}, -1)\r\n        else:\r\n            pass\r\n";
+                s += $"        # topic: \"{topic.dialog.id}\"\r\n        if GetEventFlag({topic.dialog.flag.id}){combinedFilters}:\r\n            AddTalkListData({i+listCount}, {topic.topicText}, -1)\r\n        else:\r\n            pass\r\n";
             }
 
             s += $"        # action:20000009:\"Leave\"\r\n        AddTalkListData(99, 20000009, -1)\r\n        \"\"\"State 3\"\"\"\r\n        ShowShopMessage(TalkOptionsType.Regular)\r\n        \"\"\"State 4\"\"\"\r\n        assert not (CheckSpecificPersonMenuIsOpen(1, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n        \"\"\"State 5\"\"\"\r\n";
@@ -543,63 +622,120 @@ namespace JortPob
             listCount = 1; // reset
             if (hasShop)
             {
-                s += $"        if GetTalkListEntryResult() == {listCount++}:\r\n            \"\"\"State 6\"\"\"\r\n            OpenRegularShop(shop1, shop2)\r\n            \"\"\"State 7\"\"\"\r\n            assert not (CheckSpecificPersonMenuIsOpen(5, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n        elif GetTalkListEntryResult() == {listCount++}:\r\n            \"\"\"State 9\"\"\"\r\n            OpenSellShop(-1, -1)\r\n            \"\"\"State 8\"\"\"\r\n            assert not (CheckSpecificPersonMenuIsOpen(6, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n";
+                s += $"        if GetTalkListEntryResult() == {listCount++}:\r\n            \"\"\"State 6\"\"\"\r\n            OpenRegularShop({shop1}, {shop2})\r\n            \"\"\"State 7\"\"\"\r\n            assert not (CheckSpecificPersonMenuIsOpen(5, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n        elif GetTalkListEntryResult() == {listCount++}:\r\n            \"\"\"State 9\"\"\"\r\n            OpenSellShop(-1, -1)\r\n            \"\"\"State 8\"\"\"\r\n            assert not (CheckSpecificPersonMenuIsOpen(6, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n";
             }
 
-            string ifop = hasShop?"elif":"if";
+            string ifopA = hasShop ? "elif" : "if";
             for (int i = 0; i<topics.Count();i++)
             {
                 NpcManager.TopicData topic = topics[i];
+                if (topic.IsOnlyChoice()) { continue; } // skip these as they aren't valid or reachable
 
+                s += $"        {ifopA} GetTalkListEntryResult() == {i + listCount}:\r\n";
+                s += $"            # topic: \"{topic.dialog.id}\"\r\n";
+
+                string ifopB = "if";
                 foreach (NpcManager.TopicData.TalkData talk in topic.talks)
                 {
-                    if (talk.dialogInfo.type == DialogRecord.Type.Choice) { continue; } // choice dialogs are unreachable from this context, discard
+                    if (talk.IsChoice()) { continue; } // choice dialogs are unreachable from this context, discard
 
                     string filters = talk.dialogInfo.GenerateCondition(scriptManager, npcContent);
-                    if(filters != "") { filters = $" and {filters}"; }
+                    if (filters == "") { filters = "True"; }
 
-                    s += $"        {ifop} GetTalkListEntryResult() == {i + listCount}{filters}:\r\n";
-                    s += $"            # talk: \"{Common.Utility.SanitizeTextForComment(talk.dialogInfo.text)}\"\r\n";
-                    s += $"            assert t{id_s}_x33(text2={talk.talkRow}, mode4=1)\r\n";
+                    s += $"            {ifopB} {filters}:\r\n";
+                    s += $"                # talk: \"{Common.Utility.SanitizeTextForComment(talk.dialogInfo.text)}\"\r\n";
+                    s += $"                assert t{id_s}_x33(text2={talk.talkRow}, mode4=1)\r\n";
 
                     foreach (DialogRecord dialog in talk.dialogInfo.unlocks)
                     {
-                        s += $"            SetEventFlag({dialog.flag.id}, FlagState.On)\r\n";
+                        s += $"                SetEventFlag({dialog.flag.id}, FlagState.On)\r\n";
                     }
 
                     if (talk.dialogInfo.script != null)
                     {
                         if (talk.dialogInfo.script.calls.Count() > 0)
                         {
-                            s += talk.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, 12);
+                            s += talk.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, id, 16);
                         }
                         if(talk.dialogInfo.script.choice != null)
                         {
-                            string genState = GeneratedState_Choice(id, nxtGenStateId, talk.dialogInfo.script.choice, topic);
+                            string genState = GeneratedState_Choice(id, nxtGenStateId, talk, topic);
                             generatedStates.Add(genState);
-                            s += $"            assert t{id_s}_x{nxtGenStateId}()\r\n";
+                            s += $"                assert t{id_s}_x{nxtGenStateId}()\r\n";
                             nxtGenStateId++;
                         }
                     }
-
-
-                    if (ifop == "if") { ifop = "elif"; }
+                    if (ifopB == "if") { ifopB = "elif"; }
                 }
+
+                s += $"            else:\r\n                pass\r\n";  // not needed?
+                if (ifopA == "if") { ifopA = "elif"; }
             }
 
-            s += "        else:\r\n            \"\"\"State 10,11\"\"\"\r\n            return 0\r\n\r\n";
-
-            foreach(string genState in generatedStates)
-            {
-                s += genState;
-            }
+            s += $"        else:\r\n            return 0\r\n\r\n";
 
             return s;
         }
 
-        private string GeneratedState_Choice(uint id, int x, DialogPapyrus.PapyrusChoice choice, NpcManager.TopicData topic)
+        private string GeneratedState_ModDisposition(uint id, int x)
         {
             string id_s = id.ToString("D9");
+            string s = $"def t{id_s}_x{x}(dispositionflag=_, value=_):\r\n    if GetEventFlagValue(dispositionflag, 8) + value < 0:\r\n        # disposition change will result in a negative number so set to 0\r\n        SetEventFlagValue(dispositionflag, 8, 0)\r\n    elif GetEventFlagValue(dispositionflag, 8) + value > 100:\r\n        # disposition change will result in a value higher than 100\r\n        SetEventFlagValue(dispositionflag, 8, 100)\r\n    else:\r\n        # disposition change is within acceptable bounds!\r\n        SetEventFlagValue(dispositionflag, 8, GetEventFlagValue(dispositionflag, 8) + value)\r\n    return 0\r\n\r\n";
+            return s;
+        }
+
+        private string GeneratedState_ModFacRep(uint id, int x)
+        {
+            string id_s = id.ToString("D9");
+            string s = $"def t{id_s}_x{x}(facrepflag=_, value=_):\r\n    if GetEventFlagValue(facrepflag, 8) + value < 0:\r\n        # faction reputation change will result in a negative number so set to 0\r\n        SetEventFlagValue(facrepflag, 8, 0)\r\n    elif GetEventFlagValue(facrepflag, 8) + value > 255:\r\n        # faction reputation change will result in a value higher than 255\r\n        SetEventFlagValue(facrepflag, 8, 255)\r\n    else:\r\n        # faction reputation change is within acceptable bounds!\r\n        SetEventFlagValue(facrepflag, 8, GetEventFlagValue(facrepflag, 8) + value)\r\n    return 0\r\n\r\n";
+            return s;
+        }
+
+        private string GeneratedState_RankReq(uint id, int x, NpcContent npcContent)
+        {
+            string id_s = id.ToString("D9");
+            string s = "";
+            s += $"def t{id_s}_x{x}():\r\n";
+            s += $"    #rankreq state: \"{npcContent.faction}\"\r\n";
+
+            Script.Flag repFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, npcContent.faction);
+            Script.Flag rankFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, npcContent.faction);
+            Script.Flag returnValue = scriptManager.GetFlag(Script.Flag.Designation.ReturnValueRankReq, npcContent.entity.ToString()); // find return val flag or create new one
+            if (returnValue == null) { returnValue = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnValueRankReq, npcContent.entity.ToString()); }
+            Faction faction = esm.GetFaction(npcContent.faction);
+
+            // First rank
+            s += $"    if GetEventFlagValue({rankFlag.id}, {rankFlag.Bits()}) == 0:\r\n";
+            s += $"         SetEventFlagValue({returnValue.id}, {returnValue.Bits()}, 3)\r\n";
+
+            for (int i = 0; i < faction.ranks.Count()-1; i++)
+            {
+                Faction.Rank rank = faction.ranks[i];
+                Faction.Rank nextRank = faction.ranks[i + 1];
+
+                // Not max rank
+                if (rank != nextRank)
+                {
+                    s += $"    elif GetEventFlagValue({rankFlag.id}, {rankFlag.Bits()}) == {rank.level}:\r\n";
+                    s += $"        if GetEventFlagValue({repFlag.id}, {repFlag.Bits()}) >= {nextRank.reputation}:\r\n";
+                    s += $"            SetEventFlagValue({returnValue.id}, {returnValue.Bits()}, 3)\r\n";
+                    s += $"        else:\r\n";
+                    s += $"            SetEventFlagValue({returnValue.id}, {returnValue.Bits()}, 1)\r\n";
+                }
+            }
+
+            // Max rank
+            s += $"    else:\r\n";
+            s += $"        SetEventFlagValue({returnValue.id}, {returnValue.Bits()}, 0)\r\n";
+            s += $"    return 0\r\n\r\n";
+
+            return s;
+        }
+
+        private string GeneratedState_Choice(uint id, int x, NpcManager.TopicData.TalkData talk, NpcManager.TopicData topic)
+        {
+            string id_s = id.ToString("D9");
+            DialogPapyrus.PapyrusChoice choice = talk.dialogInfo.script.choice;
 
             string s = "";
             s += $"def t{id_s}_x{x}():\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        ClearPreviousMenuSelection()\r\n        ClearTalkActionState()\r\n        ClearTalkListData()\r\n        \"\"\"State 2\"\"\"\r\n";
@@ -633,9 +769,15 @@ namespace JortPob
 
                     createList += $"        # action:{choiceTextId}:\"{choiceText}\"\r\n        AddTalkListData({choiceId}, {choiceTextId}, -1)\r\n";
                     executeList += $"        {ifop} GetTalkListEntryResult() == {choiceId}:\r\n            assert t{id_s}_x33(text2={talkData.talkRow}, mode4=1)\r\n";
+
+                    foreach (DialogRecord dialog in talkData.dialogInfo.unlocks)
+                    {
+                        executeList += $"            SetEventFlag({dialog.flag.id}, FlagState.On)\r\n";
+                    }
+
                     if (talkData.dialogInfo.script != null)
                     {
-                        executeList += talkData.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, 12);
+                        executeList += talkData.dialogInfo.script.GenerateEsdSnippet(scriptManager, npcContent, id, 12);
                     }
 
                     if (ifop == "if") { ifop = "elif"; }
