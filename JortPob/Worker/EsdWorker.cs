@@ -35,13 +35,13 @@ namespace JortPob.Worker
             ExitCode = 0;
         }
 
-        public static void Go(List<NpcManager.EsdInfo> esds)
+        public static void Go(Dictionary<string, NpcManager.EsdInfo> esdsByContentId)
         {
-            Lort.Log($"Compiling {esds.Count} ESDs...", Lort.Type.Main); // Very slow! Calling python sub programs to do stuff
-            Lort.NewTask("Compiling ESDs", esds.Count);
+            Lort.Log($"Compiling {esdsByContentId.Count} ESDs...", Lort.Type.Main); // Very slow! Calling python sub programs to do stuff
+            Lort.NewTask("Compiling ESDs", esdsByContentId.Count);
 
             List<EsdWorker> workers = new();
-            foreach (NpcManager.EsdInfo esdInfo in esds)
+            foreach (NpcManager.EsdInfo esdInfo in esdsByContentId.Values)
             {
                 while (workers.Count >= Const.THREAD_COUNT)
                 {
