@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using FSParam;
+using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
 using System;
@@ -82,6 +83,7 @@ namespace JortPob
         }
 
         public readonly Dictionary<ParamType, FsParam> param;
+        public readonly LiveParam extendedTalkParam;
 
         public short terrainDrawParamID;
         private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
@@ -125,6 +127,23 @@ namespace JortPob
                 talkParam.AddRow(row);
             }
 
+            /* Load extenedTalkParam and do the same thing as above */
+            foreach(BinderFile bf in paramBnd.Files) { if (Utility.PathToFileName(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
+            extendedTalkParam.ApplyParamdef(SoulsFormats.PARAMDEF.XmlDeserialize(Utility.ResourcePath(@"misc\paramdefs\TalkParam.xml")));
+
+            List<LiveParam.Row> openingcustcenestuff2 = new();
+            foreach (LiveParam.Row row in extendedTalkParam.Rows)
+            {
+                if (row.ID > 1500080)
+                    break;
+                openingcustcenestuff2.Add(row);
+            }
+            extendedTalkParam.ClearRows();
+            foreach (LiveParam.Row row in openingcustcenestuff2)
+            {
+                extendedTalkParam.AddRow(row);
+            }
+
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
@@ -149,7 +168,8 @@ namespace JortPob
             Lort.Log($"Binding {param.Count()} PARAMs...", Lort.Type.Main);
             Lort.NewTask($"Binding PARAMs", param.Count());
             Lort.Log($"Total TalkParam rows: {param[Paramanager.ParamType.TalkParam].Rows.Count()} out of a max of {ushort.MaxValue}", Lort.Type.Debug);
-
+            
+            /* Write params */
             BND4 bnd = new();
             bnd.Compression = SoulsFormats.DCX.Type.DCX_ZSTD;
             bnd.Version = "11601000";
@@ -172,6 +192,9 @@ namespace JortPob
                 Lort.TaskIterate();
             }
             SFUtil.EncryptERRegulation($"{Const.OUTPUT_PATH}regulation.bin", bnd);
+
+            /* Write LiveParam extended talk rows */
+            extendedTalkParam.Write($"{Const.OUTPUT_PATH}\\ExtendedTalkParam.param");
         }
 
         /* picks the partdrawparam for an asset based on its size. smaller assets have shorter render distance etc */
@@ -475,22 +498,20 @@ namespace JortPob
         }
 
         public void GenerateTalkParam(TextManager textManager, List<NpcManager.TopicData> topicData)
-        {
-            FsParam talkParam = param[ParamType.TalkParam];
-            
+        {            
             /*
              * Since FsParam[ID] is actually a linear search for a matching row, we build a Dictionary up-front
              * to speed up checks. Because of this, however, we need to keep it up-to-date in the loop below.
              */
-            Dictionary<int, FsParam.Row> rowsById = talkParam.Rows.ToDictionary(r => r.ID);
+            Dictionary<int, LiveParam.Row> rowsById = extendedTalkParam.Rows.ToDictionary(r => r.ID);
 
-            FsParam.Row templateTalkRow = rowsById[1400000]; // 1400000 is a line from opening cutscene
+            LiveParam.Row templateTalkRow = rowsById[1400000]; // 1400000 is a line from opening cutscene
 
-            FsParam.Column msgId = talkParam["msgId"];
-            FsParam.Column voiceId = talkParam["voiceId"];
+            LiveParam.Column msgId = extendedTalkParam["msgId"];
+            LiveParam.Column voiceId = extendedTalkParam["voiceId"];
 
-            FsParam.Column msgId_female = talkParam["msgId_female"];
-            FsParam.Column voiceId_female = talkParam["voiceId_female"];
+            LiveParam.Column msgId_female = extendedTalkParam["msgId_female"];
+            LiveParam.Column voiceId_female = extendedTalkParam["voiceId_female"];
 
             foreach (NpcManager.TopicData topic in topicData)
             {
@@ -505,7 +526,9 @@ namespace JortPob
                         if (rowsById.ContainsKey(id)) { continue; }
 
                         // truncating the text in the row name because it can cause issues if it is too long
-                        FsParam.Row row = CloneRow(templateTalkRow, text.Substring(0, Math.Min(32, text.Length)), id); // 1400000 is a line from opening cutscene
+                        LiveParam.Row row = new LiveParam.Row(templateTalkRow);
+                        row.ID = id;
+                        row.Name = text.Substring(0, Math.Min(32, text.Length));
 
                         msgId.SetValue(row, id * 10); // message id (male)
                         voiceId.SetValue(row, id * 10); // message id (male)
@@ -514,7 +537,10 @@ namespace JortPob
                         voiceId_female.SetValue(row, id * 10); // message id (female)
 
                         textManager.AddTalk(id * 10, text);
-                        AddRow(talkParam, row);
+                        LiveParam.Row oldrow = extendedTalkParam[row.ID];
+                        if (oldrow != null)
+                            extendedTalkParam.RemoveRow(oldrow);
+                        extendedTalkParam.AddRow(row);
                         rowsById[id] = row; // this is where we keep the lookup up-to-date
                     }
                 }
