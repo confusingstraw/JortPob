@@ -808,6 +808,11 @@ namespace FSParam
                 throw new InvalidOperationException("Params cannot be written without applying a paramdef.");
             
             bw.BigEndian = BigEndian;
+
+            // Build wrapper data
+            bw.ReserveUInt32("SortedTableOffset");
+            bw.WriteInt32(Rows.Count);
+            bw.WriteUInt64(0);
             
             bw.ReserveUInt32("StringsOffset");
             if (Format2D.HasFlag(FormatFlags1.Flag01) && Format2D.HasFlag(FormatFlags1.IntDataOffset) || Format2D.HasFlag(FormatFlags1.LongDataOffset))
@@ -924,6 +929,28 @@ namespace FSParam
             }
             
             bw.WriteInt16(0); //FS Seems to end their params with an empty string
+
+            ulong len = (ulong)bw.Length;
+            // Align the sorted binary search array lest we never want to get in game.
+            ulong pad = ((len + 0xF) & 0xfffffffffffffff0) - len;
+            bw.WriteBytes(new byte[pad]);
+            
+            // Write the original length because the game also does this alignment calculation
+            bw.FillUInt32($"SortedTableOffset", (uint)len);
+            
+            List<(int id, int i)> sorted = new();
+
+            for (int i = 0; i < Rows.Count; i++) {
+                sorted.Add((Rows[i].ID, i));
+            }
+            
+            sorted.Sort((a, b) => a.id.CompareTo(b.id));
+
+            foreach (var (id, i) in sorted) {
+                bw.WriteInt32(id);
+                bw.WriteInt32(i);
+            }
+            
         }
 
 
