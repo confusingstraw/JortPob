@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using static JortPob.Dialog;
 using static JortPob.NpcManager;
 using static JortPob.NpcManager.TopicData;
+using static JortPob.Papyrus;
 using static JortPob.Script;
 
 namespace JortPob
@@ -391,8 +392,10 @@ namespace JortPob
         public Record ResolveLeveledCreature(string id)
         {
             LeveledCreature leveledCreatureList = GetLeveledCreature(id);
-            string creature = leveledCreatureList.Get();
-            return FindRecordById(creature);
+            string resolvedId = leveledCreatureList.Get();
+            Record resolvedRecord = FindRecordById(resolvedId);
+            if (resolvedRecord.type == ESM.Type.LeveledCreature) { resolvedRecord = ResolveLeveledCreature(resolvedId); }  // leveld lists can be recursive. jfk todd, why?
+            return resolvedRecord;
         }
 
         /* Checks if a creature has any dialog associated to it and returns true/false. */

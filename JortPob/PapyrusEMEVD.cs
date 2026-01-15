@@ -319,7 +319,7 @@ namespace JortPob
                             Script.Flag evar = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content.entity.ToString());
                             if (evar == null) { break; } // currently, disabilng/enabling assets is unsupported and so the flag doesnt exist. meaning we need to pass here. fixme later
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {evar.id}, OFF);");
-                            lines.Add($"ChangeCharacterEnableState({content.entity.ToString()}, 0);");
+                            lines.Add($"ChangeCharacterEnableState({content.entity.ToString()}, 1);");
                             break;
                         }
 
