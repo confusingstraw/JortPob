@@ -2,8 +2,10 @@
 using JortPob.Worker;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using static JortPob.Dialog;
 using static SoulsFormats.DRB.Shape;
 
@@ -11,7 +13,7 @@ namespace JortPob
 {
     public class SoundManager
     {
-        private int nextBankId;
+        private volatile int nextBankId;
         private readonly List<SoundBankInfo> banks;
         private readonly SoundBankGlobals globals;
 
@@ -121,9 +123,9 @@ namespace JortPob
             SAMData dat = new(dialog, info, line, hashName, npc);
             samQueue.Add(dat);
 
-            if (useCustom) { return $"{Const.CACHE_PATH}dialog\\{CharacterContent.Race.Custom}\\{npc.id}\\{dialog.id}\\{hashName}\\{hashName}.wem"; }
-            else if(isCreature) { return $"{Const.CACHE_PATH}dialog\\{CharacterContent.Race.Creature}\\{npc.id}\\{dialog.id}\\{hashName}\\{hashName}.wem"; }
-            else { return $"{Const.CACHE_PATH}dialog\\{npc.race}\\{npc.sex}\\{dialog.id}\\{hashName}\\{hashName}.wem"; }
+            if (useCustom) { return Path.Combine(Const.CACHE_PATH, @$"dialog\{CharacterContent.Race.Custom}\{npc.id}\{dialog.id}\{hashName}\{hashName}.wem"); }
+            else if(isCreature) { return Path.Combine(Const.CACHE_PATH, @$"dialog\{CharacterContent.Race.Creature}\{npc.id}\{dialog.id}\{hashName}\{hashName}.wem"); }
+            else { return Path.Combine(Const.CACHE_PATH, @$"dialog\{npc.race}\{npc.sex}\{dialog.id}\{hashName}\{hashName}.wem"); }
         }
 
         /* Writes all soundbanks to given dir */
@@ -143,23 +145,18 @@ namespace JortPob
 
         public class SoundBankGlobals
         {
+            private readonly object bnkIdLock = new(), headerIdLock = new(), sourceIdLock = new();
             private readonly uint[] usedHeaderIds, usedBnkIds, usedSourceIds;  // list of every single used bnk id (of the multiple id types) in stock elden ring. bnk ids are global so we want to avoid collisions
             private readonly List<uint> bnkCallIds; // list of every generating "play" or "stop" bnk id, these are not sequential like other ids so we track them here
-            private uint nextBnkId, nextHeaderId, nextSourceId;  // do not use directly, call NextID()
-            private uint nextRowId;  // increments by 10
+            private volatile uint nextBnkId, nextHeaderId, nextSourceId;  // do not use directly, call NextID()
+            private volatile uint nextRowId;  // increments by 10
 
             public SoundBankGlobals()
             {
                 uint[] LoadIdList(string path)
                 {
-                    string[] lines = System.IO.File.ReadAllLines(path);
-                    uint[] ids = new uint[lines.Length];
-                    for (int i = 0; i < lines.Length; i++)
-                    {
-                        ids[i] = uint.Parse(lines[i]);
-                    }
-
-                    return ids;
+                    string[] lines = File.ReadAllLines(path);
+                    return lines.Select(uint.Parse).ToArray();
                 }
 
                 usedBnkIds = LoadIdList(Utility.ResourcePath(@"sound\all_used_bnk_ids.txt"));
@@ -184,7 +181,7 @@ namespace JortPob
                     uint playCallId = Utility.FNV1_32(playCallBytes);
                     uint stopCallId = Utility.FNV1_32(stopCallBytes);
 
-                    return new uint[] { rowId, playCallId, stopCallId };
+                    return [rowId, playCallId, stopCallId];
                 }
 
                 uint[] ids = TryGetNextCallIds(NextRowId());
@@ -201,60 +198,59 @@ namespace JortPob
 
             public uint NextBnkId()
             {
-                while (bnkCallIds.Contains(nextBnkId) || usedBnkIds.Contains(nextBnkId))
+                lock (bnkIdLock)
                 {
-                    nextBnkId++;
-                }
+                    while (bnkCallIds.Contains(nextBnkId) || usedBnkIds.Contains(nextBnkId))
+                    {
+                        nextBnkId++;
+                    }
 
-                return nextBnkId++;
+                    return nextBnkId++;
+                }
             }
 
             public uint NextHeaderId()
             {
-                while (usedHeaderIds.Contains(nextHeaderId))
+                lock (headerIdLock)
                 {
-                    nextHeaderId++;
-                }
+                    while (usedHeaderIds.Contains(nextHeaderId))
+                    {
+                        nextHeaderId++;
+                    }
 
-                return nextHeaderId++;
+                    return nextHeaderId++;
+                }
             }
 
             public uint NextSourceId()
             {
-                while (usedSourceIds.Contains(nextSourceId))
+                lock (sourceIdLock)
                 {
-                    nextSourceId++;
-                }
+                    while (usedSourceIds.Contains(nextSourceId))
+                    {
+                        nextSourceId++;
+                    }
 
-                return nextSourceId++;
+                    return nextSourceId++;
+                }
             }
 
             public uint NextRowId()
             {
-                return nextRowId += 10;
+                return Interlocked.Add(ref nextRowId, 10);
             }
         }
 
-        public class SoundBankInfo
+        public record SoundBankInfo
+        (
+            int id,               // vc###.bnk id
+            NpcContent.Race race, // race of npcs that use this bank
+            NpcContent.Sex sex,
+            SoundBank bank,
+            string custom = null  // (usually null)!  If we use the Race enum 'Creature' or 'Custom' then this string is the id of the custom voice role used here
+        )
         {
-            public readonly int id;         // vc###.bnk id
-            public readonly CharacterContent.Race race;    // race of npcs that use this bank
-            public readonly CharacterContent.Sex sex;
-            public readonly string custom;           // (usually null)!  If we use the Race enum 'Creature' or 'Custom' then this string is the id of the custom voice role used here
-            public int uses;                // how many esds use this same bank, the max amount per bank is 100. 
-
-            public readonly SoundBank bank;
-
-            public SoundBankInfo(int id, CharacterContent.Race race, CharacterContent.Sex sex, SoundBank bank, string custom = null)
-            {
-                this.id = id;
-                this.race = race;
-                this.sex = sex;
-                this.bank = bank;
-                this.custom = custom; // optional
-
-                uses = 0;
-            }
+            public int uses { get; set; }
         }
     }
 }

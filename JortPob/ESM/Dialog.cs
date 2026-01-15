@@ -76,7 +76,7 @@ namespace JortPob
 
                 speaker = NullEmpty(json["speaker_id"].ToString());
                 string raceStr = NullEmpty(json["speaker_race"].ToString());
-                race = raceStr != null ? (CharacterContent.Race)System.Enum.Parse(typeof(CharacterContent.Race), raceStr.Replace(" ", "")) : CharacterContent.Race.Any;
+                race = raceStr != null ? Enum.Parse<CharacterContent.Race>(raceStr.Replace(" ", "")) : CharacterContent.Race.Any;
                 job = NullEmpty(json["speaker_class"].ToString());
                 faction = NullEmpty(json["speaker_faction"].ToString());
                 cell = NullEmpty(json["speaker_cell"].ToString());
@@ -367,7 +367,7 @@ namespace JortPob
                                         }
                                     case DialogFilter.Function.Level:
                                         {
-                                            // npcs level can't change so static comparison is fine  @TODO: could uhhh resolve this to just true or false but i'm lazy
+                                            // npcs level can't change so static comparison is fine
                                             return $"{npcContent.level} {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.HealthPercent:
@@ -614,7 +614,7 @@ namespace JortPob
                         else  // its (probably) a variable
                         {
                             Flag pvar = GetFlagByVariable(p); // get variable flag
-                            if (pvar == null) { parsed += "0"; } // @TODO: discarding function calls rn, should suppor them properly (like in papyrusemevd.cs)
+                            if (pvar == null) { parsed += "0"; } // @TODO: discarding function calls rn, should support them properly (like in papyrusemevd.cs)
                             else { parsed += $"GetEventFlagValue({pvar.id}, {(int)pvar.type})"; }
                         }
                         if (i < parameters.Length - 1) { parsed += " "; }

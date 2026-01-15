@@ -996,8 +996,7 @@ namespace JortPob
                 return sb.ToString();
             }
 
-            // Genearte Disposition ## set if it doesn't exist yet (should probably move this somewhere eventually idk) @TODO:
-            int dispText0 = textManager.GetTopic("Disposition: 0");
+            int dispText0 = textManager.GetTopic("Disposition: 0");  // all 100 dispoition texts are sequential so we grab the first one
 
             Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
             Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());

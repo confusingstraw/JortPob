@@ -255,7 +255,6 @@ namespace JortPob
         }
 
         /* List of types that we should search for references */
-        // more const values we should move somewhere. @TODO
         public readonly Type[] VALID_CONTENT_TYPES = {
             Type.Static, Type.Container, Type.Light, Type.Sound, Type.Skill, Type.Region, Type.Door, Type.MiscItem, Type.Weapon,  Type.Creature, Type.Bodypart, Type.Npc,
             Type.Armor, Type.Clothing, Type.RepairItem, Type.Activator, Type.Apparatus, Type.Lockpick, Type.Probe, Type.Ingredient, Type.Book, Type.Alchemy, Type.LeveledItem,
@@ -263,7 +262,6 @@ namespace JortPob
         };
 
         /* References don't contain any explicit 'type' data so... we just gotta go find it lol */
-        /* @TODO: well actually i think the 'flags' int value in some records is useed as a 32bit boolean array and that may specify record types possibly. Look into it? */
         public Record FindRecordById(string id)
         {
             foreach (var type in VALID_CONTENT_TYPES)
@@ -324,7 +322,7 @@ namespace JortPob
                 return null;
             }
 
-            var landscape = new Landscape(this, coordinate, matchingRecord);
+            Landscape landscape = new(this, coordinate, matchingRecord);
             landscapesByCoordinate[coordinate] = landscape;
             return landscape;
         }
@@ -477,19 +475,19 @@ namespace JortPob
             id = json["id"].GetValue<string>().ToLower();
             name = json["name"].GetValue<string>();
             description = json["description"].GetValue<string>();
-            specialization = (Specialization)System.Enum.Parse(typeof(Specialization), json["data"]["specialization"].GetValue<string>());
+            specialization = Enum.Parse<Specialization>(json["data"]["specialization"].GetValue<string>());
 
             attributes = new();
             major = new();
             minor = new();
             services = new();
 
-            attributes.Add((CharacterContent.Stats.Attribute)System.Enum.Parse(typeof(CharacterContent.Stats.Attribute), json["data"]["attribute1"].GetValue<string>()));
-            attributes.Add((CharacterContent.Stats.Attribute)System.Enum.Parse(typeof(CharacterContent.Stats.Attribute), json["data"]["attribute2"].GetValue<string>()));
+            attributes.Add(Enum.Parse<CharacterContent.Stats.Attribute>(json["data"]["attribute1"].GetValue<string>()));
+            attributes.Add(Enum.Parse<CharacterContent.Stats.Attribute>(json["data"]["attribute2"].GetValue<string>()));
             for(int i=1;i<=5;i++)
             {
-                major.Add((CharacterContent.Stats.Skill)System.Enum.Parse(typeof(CharacterContent.Stats.Skill), json["data"][$"major{i}"].GetValue<string>()));
-                minor.Add((CharacterContent.Stats.Skill)System.Enum.Parse(typeof(CharacterContent.Stats.Skill), json["data"][$"minor{i}"].GetValue<string>()));
+                major.Add(Enum.Parse<CharacterContent.Stats.Skill>(json["data"][$"major{i}"].GetValue<string>()));
+                minor.Add(Enum.Parse<CharacterContent.Stats.Skill>(json["data"][$"minor{i}"].GetValue<string>()));
             }
         }
 

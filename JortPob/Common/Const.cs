@@ -3,6 +3,7 @@ using HKX2;
 using SoulsAssetPipeline.Animation;
 using SoulsFormats;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 
 namespace JortPob.Common
@@ -10,16 +11,16 @@ namespace JortPob.Common
     public static class Const
     {
         #region Paths
-        public static string MORROWIND_PATH = Settable.Get("MORROWIND_PATH");
-        public static string ELDEN_PATH = Settable.Get("ELDEN_PATH");
-        public static string OUTPUT_PATH = Settable.Get("OUTPUT_PATH");
-        public static string WWISE_PATH = Settable.Get("WWISE_PATH");
-        public static string CACHE_PATH = $"{OUTPUT_PATH}cache\\";
-        public static string[] LOAD_ORDER = Settable.GetArray("LOAD_ORDER");
+        public static string MORROWIND_PATH { get; } = Settable.Get("MORROWIND_PATH");
+        public static string ELDEN_PATH { get; } = Settable.Get("ELDEN_PATH");
+        public static string OUTPUT_PATH { get; } = Settable.Get("OUTPUT_PATH");
+        public static string WWISE_PATH { get; } = Settable.Get("WWISE_PATH");
+        public static string CACHE_PATH { get; } = Path.Combine(OUTPUT_PATH, @"cache\");
+        public static string[] LOAD_ORDER { get; } = Settable.GetArray("LOAD_ORDER");
         #endregion
 
         #region Optimization
-        public static readonly int THREAD_COUNT = int.Parse(Settable.Get("THREAD_COUNT"));
+        public static int THREAD_COUNT { get; } = int.Parse(Settable.Get("THREAD_COUNT"));
         #endregion
 
         #region General
@@ -31,6 +32,7 @@ namespace JortPob.Common
         public static readonly float TILE_SIZE = 256f;
         public static readonly int CELL_GRID_SIZE = 64;    // terrain vertices
 
+        public static readonly Vector3 MSB_OFFSET = new(0, 185, 0); // generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
         public static readonly float NPC_ROOT_OFFSET = 75f * GLOBAL_SCALE;  // how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
 
         public static readonly float TERRAIN_UV_SCALE = 20f;  // uv scale for terrain textures
@@ -125,12 +127,6 @@ namespace JortPob.Common
         public static readonly int MAX_ESD_PER_VCBNK = 10;
         #endregion
 
-
-        #region TEST
-        public static readonly Vector3 TEST_OFFSET1 = new(0, 200, 0); // just shifting vertical position a bit so the morrowind map isn't super far down
-        public static readonly Vector3 TEST_OFFSET2 = new(0, -15, 0); // these should both be deleted eventually
-        #endregion
-
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
         public static readonly bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS = false; // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
@@ -141,11 +137,12 @@ namespace JortPob.Common
         public static readonly bool DEBUG_SKIP_ESD = false; // skip building dialog esd for npcs, can be slow
         public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = true; // slow as shit, skipping this saves about a minute per build
         public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = null; // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = null; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = new int[] { -4, -3, -1, 3 }; // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         // seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         // seyda neen area (large) = new int[] { -5, -15, 5, -5 }
         // balmora area (small) = new int[] {-4, -3, -2, -1}
         // caldera area (small) = new int[] {-3, 1, 0, 3}
+        // balmora + caldera combo = new int[] {-4, -3, -1, 3}
         // lava area near Marandus and Ashunartes = new int[] {1, -5, 5, -1}
         // all lava areas (big) = new int[] {0, -5, 15, 10}
         // lava area near Galom Daeus = new int[] {8, -2, 12, 2}
@@ -159,7 +156,7 @@ namespace JortPob.Common
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
-            string[] MATCHES = null;
+            string[] MATCHES = new string[] { "Balmora", "Caldera" };
 
             if (MATCHES == null) { return true; }
 
