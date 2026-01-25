@@ -495,8 +495,6 @@ namespace JortPob
     /* Abstract base class for any content that just ends up as a static mesh in the overworld, excluding some special cases like loose items */
     public abstract class StaticContent : Content
     {
-        public Script.Flag disabled;  // flag that is used by scripts to set this object as enabled/disabled. this flag is null if no scripts reference it!
-
         public StaticContent(Cell cell, JsonNode json, Record record) : base(cell, json, record) { }
         public StaticContent(Cell cell, string id, string name, ESM.Type type, Int2 load, string papyrus, Vector3 position, Vector3 rotation, int scale) : base(cell, id, name, type, load, papyrus, position, rotation, scale) { }
     }
