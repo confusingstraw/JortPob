@@ -8,6 +8,7 @@ using System.Linq;
 using System.IO;
 using WitchyFormats;
 using Xbrz;
+using static Community.CsharpSqlite.Sqlite3;
 using System.Runtime.InteropServices;
 
 namespace JortPob.Common
@@ -299,6 +300,85 @@ namespace JortPob.Common
             linearBitmap.UnlockBits(linearBitmapData);
 
             return linearBitmap;
+        }
+
+        public static unsafe Bitmap LinearToSRGBAlt(Bitmap bitmap)
+        {
+            Bitmap srgbBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
+
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+
+            // technically this can be done in place, but better safe than sorry
+            // due to bit manipulation shenanigens, bit locking is required
+            BitmapData bmpDataIn = bitmap.LockBits(rect, ImageLockMode.ReadOnly, bitmap.PixelFormat);
+            BitmapData bmpDataOut = srgbBitmap.LockBits(rect, ImageLockMode.WriteOnly, srgbBitmap.PixelFormat);
+
+            try
+            {
+                byte* ptrIn = (byte*)bmpDataIn.Scan0;
+                byte* ptrOut = (byte*)bmpDataOut.Scan0;
+
+                // LUT calculation
+                float[] sRGB_LUT = new float[256];
+                for (int i = 0; i < 256; i++)
+                {
+                    float linearValue = i / 255.0f;
+                    sRGB_LUT[i] = Value(linearValue);
+                }
+
+                int totalBytes = bmpDataIn.Stride * bitmap.Height;
+
+                for (int i = 0; i < totalBytes; i += 4)
+                {
+                    // since colors are big endian, they're reversed as b g r a
+                    byte linearB = ptrIn[i];
+                    byte linearG = ptrIn[i + 1];
+                    byte linearR = ptrIn[i + 2];
+                    byte alphaA = ptrIn[i + 3];
+
+                    // lut to the save
+                    float srgbR_float = sRGB_LUT[linearR];
+                    float srgbG_float = sRGB_LUT[linearG];
+                    float srgbB_float = sRGB_LUT[linearB];
+
+                    // squish the results back to range
+                    ptrOut[i] = (byte)Math.Round(srgbB_float * 255f);
+                    ptrOut[i + 1] = (byte)Math.Round(srgbG_float * 255f);
+                    ptrOut[i + 2] = (byte)Math.Round(srgbR_float * 255f);
+
+                    ptrOut[i + 3] = alphaA;
+                }
+            }
+            finally
+            {
+                // MUST unlock the bits after processing
+                bitmap.UnlockBits(bmpDataIn);
+                srgbBitmap.UnlockBits(bmpDataOut);
+            }
+
+            return srgbBitmap;
+
+            float Value(float linearValue)
+            {
+                linearValue = Math.Max(0f, Math.Min(1f, linearValue));
+
+                if (linearValue <= 0.0031308f)
+                {
+                    return linearValue * 12.92f;
+                }
+                else
+                {
+                    return 1.055f * ((float)FastPow(linearValue, 1.0f / 2.4f)) - 0.055f;
+                }
+            }
+        }
+
+        // source: trust me bro
+        public static double FastPow(double a, double b)
+        {
+            long tmp = BitConverter.DoubleToInt64Bits(a);
+            long tmp2 = (long)(b * (tmp - 4606921280493453312L)) + 4606921280493453312L;
+            return BitConverter.Int64BitsToDouble(tmp2);
         }
 
         /* Code borrowed from https://stackoverflow.com/questions/1922040/how-to-resize-an-image-c-sharp */

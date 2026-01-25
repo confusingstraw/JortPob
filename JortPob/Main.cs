@@ -55,6 +55,9 @@ namespace JortPob
             Papyrus papyrusMain = esm.GetPapyrus("main");
             PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, scriptManager.common, papyrusMain, null);
 
+            /* Write custom map */
+            if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
 

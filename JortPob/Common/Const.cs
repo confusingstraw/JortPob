@@ -1,4 +1,4 @@
-﻿using HKLib.hk2018.hknpRagdollState;
+using HKLib.hk2018.hknpRagdollState;
 using HKX2;
 using SoulsAssetPipeline.Animation;
 using SoulsFormats;
@@ -130,6 +130,7 @@ namespace JortPob.Common
 
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
+        public static readonly bool DEBUG_SKIP_CUSTOM_MAP = false;
         public static readonly bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS = false; // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
         public static readonly bool DEBUG_SKIP_ICONS = true; // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
         public static readonly bool DEBUG_DONT_WRITE_BLANK_MSBS = false; // if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here

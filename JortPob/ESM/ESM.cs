@@ -399,7 +399,7 @@ namespace JortPob
 
         public Record ResolveLeveledCreature(string id)
         {
-            LeveledCreature leveledCreatureList = GetLeveledCreature(id);
+            LeveledCreature leveledCreatureList = GetLeveledCreature(id) ?? throw new Exception($"Failed to resolve leveled creature list: {id}");
             string resolvedId = leveledCreatureList.Get();
             Record resolvedRecord = FindRecordById(resolvedId);
             if (resolvedRecord.type == ESM.Type.LeveledCreature) { resolvedRecord = ResolveLeveledCreature(resolvedId); }  // leveld lists can be recursive. jfk todd, why?

@@ -83,38 +83,22 @@ namespace JortPob
 
             if (useCustom)
             {
-                foreach (SoundBankInfo bankInfo in banks)
-                {
-                    if (bankInfo.race != CharacterContent.Race.Custom || bankInfo.custom != npc.id) { continue; } // not a match
-                    foreach (SoundBank.Sound snd in bankInfo.bank.sounds)
-                    {
-                        if (snd.dialogInfo == dialogInfo) { return snd; }
-                    }
-                }
+                return banks.Where(b => b.race == CharacterContent.Race.Custom && b.custom == npc.id)
+                            .SelectMany(b => b.bank.sounds)
+                            .FirstOrDefault(s => s.dialogInfo == dialogInfo, null);
             }
-            else if(isCreature)
+            else if (isCreature)
             {
-                foreach (SoundBankInfo bankInfo in banks)
-                {
-                    if (bankInfo.race != CharacterContent.Race.Creature || bankInfo.custom != npc.id) { continue; } // not a match
-                    foreach (SoundBank.Sound snd in bankInfo.bank.sounds)
-                    {
-                        if (snd.dialogInfo == dialogInfo) { return snd; }
-                    }
-                }
+                return banks.Where(b => b.race == CharacterContent.Race.Creature && b.custom == npc.id)
+                            .SelectMany(b => b.bank.sounds)
+                            .FirstOrDefault(s => s.dialogInfo == dialogInfo, null);
             }
             else
             {
-                foreach (SoundBankInfo bankInfo in banks)
-                {
-                    if (bankInfo.race != npc.race || bankInfo.sex != npc.sex) { continue; } // not a match
-                    foreach (SoundBank.Sound snd in bankInfo.bank.sounds)
-                    {
-                        if (snd.dialogInfo == dialogInfo) { return snd; }
-                    }
-                }
+                return banks.Where(b => b.race == npc.race && b.sex == npc.sex)
+                    .SelectMany(b => b.bank.sounds)
+                    .FirstOrDefault(s => s.dialogInfo == dialogInfo, null);
             }
-            return null; // no match found
         }
 
         /* Adds lines to a queue so we can do multithreaded tts gen on them */
