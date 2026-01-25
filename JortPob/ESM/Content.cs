@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
@@ -370,6 +371,7 @@ namespace JortPob
             foreach (string s in serviceFlags)
             {
                 string trim = s.Trim().ToLower().Replace("_", "");
+                if(trim == "") { continue; }
                 try
                 {
                     Service service = (Service)System.Enum.Parse(typeof(Service), trim, true);
@@ -490,8 +492,17 @@ namespace JortPob
         }
     }
 
+    /* Abstract base class for any content that just ends up as a static mesh in the overworld, excluding some special cases like loose items */
+    public abstract class StaticContent : Content
+    {
+        public Script.Flag disabled;  // flag that is used by scripts to set this object as enabled/disabled. this flag is null if no scripts reference it!
+
+        public StaticContent(Cell cell, JsonNode json, Record record) : base(cell, json, record) { }
+        public StaticContent(Cell cell, string id, string name, ESM.Type type, Int2 load, string papyrus, Vector3 position, Vector3 rotation, int scale) : base(cell, id, name, type, load, papyrus, position, rotation, scale) { }
+    }
+
     /* static meshes to be converted to assets */
-    public class AssetContent : Content
+    public class AssetContent : StaticContent
     {
         public AssetContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {
@@ -505,7 +516,7 @@ namespace JortPob
     }
 
     /* doors, both warp doors and activator doors */
-    public class DoorContent : Content
+    public class DoorContent : StaticContent
     {
         public class Warp
         {
@@ -582,7 +593,7 @@ namespace JortPob
     }
 
     /* static mesh of a container in the world that can **CAN** (but not always) be lootable */
-    public class ContainerContent : Content
+    public class ContainerContent : StaticContent
     {
         public readonly string ownerNpc; // npc record id of the owenr of this container, can be null
         public readonly string ownerFaction; // faction id that owns this container, player can take it if they are in that faction. can be null
@@ -615,7 +626,7 @@ namespace JortPob
     }
 
     /* PickableContent */    // plants you can pick for alchemy ingredients. EX: rowa berry bushes
-    public class PickableContent : Content
+    public class PickableContent : StaticContent
     {
         public List<(string id, int quantity)> inventory;
 
@@ -666,7 +677,7 @@ namespace JortPob
     }
 
     /* static meshes that have emitters/lights EX: candles/campfires -- converted to assets but also generates ffx files and params to make them work */
-    public class EmitterContent : Content
+    public class EmitterContent : StaticContent
     {
         public EmitterContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {

@@ -70,6 +70,21 @@ namespace JortPob
             return most;
         }
 
+        public List<Content> GetAllContent()
+        {
+            List<Content> all = new();
+            all.AddRange(assets);
+            all.AddRange(doors);
+            all.AddRange(emitters);
+            all.AddRange(lights);
+            all.AddRange(creatures);
+            all.AddRange(npcs);
+            all.AddRange(containers);
+            all.AddRange(pickables);
+            all.AddRange(items);
+            return all;
+        }
+
         public override void AddCell(Cell cell)
         {
             cells.Add(cell);
@@ -184,7 +199,7 @@ namespace JortPob
                 case CreatureContent c:
                     creatures.Add(c); break;
                 default:
-                    Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
+                    Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
             }
         }
     }

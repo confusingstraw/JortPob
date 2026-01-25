@@ -1025,7 +1025,7 @@ namespace JortPob
         }
 
         /* Generates an itemlot with a single item and no flag */
-        public int GenerateAddItemLot(ItemManager.ItemInfo itemInfo)
+        public int GenerateAddItemLot(ItemManager.ItemInfo itemInfo, int quantity)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             FsParam.Row row = CloneRow(itemLotParam[0], $"single, repeatable, scripted, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
@@ -1033,7 +1033,7 @@ namespace JortPob
             row["getItemFlagId"].Value.SetValue((uint)0);
             row["lotItemCategory01"].Value.SetValue(itemInfo.ItemLotCategory());
             row["lotItemId01"].Value.SetValue(itemInfo.row);
-            row["lotItemNum01"].Value.SetValue((byte)1);
+            row["lotItemNum01"].Value.SetValue((byte)quantity);
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
             AddRow(itemLotParam, row);
@@ -1056,6 +1056,7 @@ namespace JortPob
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
             script.RegisterItemAsset(itemContent);
+            script.RegisterItemDisable(itemContent, itemLotFlag);
 
             AddRow(itemLotParam, row);
             nextMapItemLotId += 10;

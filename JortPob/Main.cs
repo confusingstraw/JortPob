@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Text.Json.Nodes;
 using static IronPython.Modules._ast;
 using static JortPob.InteriorGroup;
@@ -34,11 +35,11 @@ namespace JortPob
             TextManager text = new();                                                           // Manages FMG text files
             IconManager icon = new(esm);                                                       // Manages the creation and assignment of item icons
             Paramanager param = new(text);                                                        // Class for managing PARAM files
-            SpeffManager speff = new(esm, param, icon, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
+            SpeffManager speff = new(esm, param, scriptManager, icon, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, icon, text);                         // Handles generation and reampping of items
             Layout layout = new(cache, esm, param, text, scriptManager);                          // Subdivides all content data from ESM into a more elden ring friendly format
             SoundManager sound = new();                                                         // Manages vcbanks
-            NpcManager character = new(esm, sound, param, text, item, scriptManager);                 // Manages dialog esd
+            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);    // Manages dialog esd
 
 
             // Helpers/shared values
@@ -49,6 +50,10 @@ namespace JortPob
 
             /* Create some needed text data that is ref'd later */
             for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
+
+            /* Compile Papyrus main global script and it's subscripts */
+            Papyrus papyrusMain = esm.GetPapyrus("main");
+            PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, scriptManager.common, papyrusMain, null);
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
@@ -154,7 +159,7 @@ namespace JortPob
                     {
                         if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                         Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                     }
 
                     /* Asset tileload config */
@@ -254,7 +259,7 @@ namespace JortPob
                     if (npc.papyrus != null)
                     {
                         Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                         //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
                     }
 
@@ -300,7 +305,7 @@ namespace JortPob
                     {
                         if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                         Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                     }
 
                     asset.EntityID = content.entity;
@@ -360,7 +365,7 @@ namespace JortPob
                     {
                         if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                         Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                     }
 
                     asset.EntityID = content.entity;
@@ -381,7 +386,7 @@ namespace JortPob
                     if (creature.papyrus != null)
                     {
                         Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                     }
 
                     (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
@@ -511,7 +516,7 @@ namespace JortPob
                         {
                             if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                             Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                         }
 
                         asset.EntityID = content.entity;
@@ -618,7 +623,7 @@ namespace JortPob
                         if (npc.papyrus != null)
                         {
                             Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                                                                                                                                          //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
                         }
 
@@ -667,7 +672,7 @@ namespace JortPob
                         {
                             if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                             Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                         }
 
                         asset.EntityID = content.entity;
@@ -713,7 +718,7 @@ namespace JortPob
                         {
                             if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
                             Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, content); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                         }
 
                         asset.EntityID = content.entity;
@@ -742,7 +747,7 @@ namespace JortPob
                         if (creature.papyrus != null)
                         {
                             Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(scriptManager, param, item, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
                         }
 
                         (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
@@ -819,7 +824,7 @@ namespace JortPob
             if (param.param[Paramanager.ParamType.TalkParam].Rows.Count() >= ushort.MaxValue) { throw new Exception("Ran out of talk param rows! Will fail to compile params!"); }
 
             /* Write sound BNKs */
-            sound.Write($"{Const.OUTPUT_PATH}sd\\enus\\");
+            sound.Write();
 
             /* Write ESD bnds */
             character.Write();

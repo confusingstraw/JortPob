@@ -98,6 +98,7 @@ namespace JortPob
             public readonly List<CreatureContent> creatures;
             public readonly List<NpcContent> npcs;
             public readonly List<ContainerContent> containers;
+            public readonly List<PickableContent> pickables;
             public readonly List<ItemContent> items;
 
             public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
@@ -118,6 +119,7 @@ namespace JortPob
                 creatures = new();
                 npcs = new();
                 containers = new();
+                pickables = new();
                 items = new();
 
                 warps = new();
@@ -129,6 +131,21 @@ namespace JortPob
 
                     AddContent(content);
                 }
+            }
+
+            public List<Content> GetAllContent()
+            {
+                List<Content> all = new();
+                all.AddRange(assets);
+                all.AddRange(doors);
+                all.AddRange(emitters);
+                all.AddRange(lights);
+                all.AddRange(creatures);
+                all.AddRange(npcs);
+                all.AddRange(containers);
+                all.AddRange(pickables);
+                all.AddRange(items);
+                return all;
             }
 
             public void AddWarp(DoorContent.Warp warp)
@@ -153,12 +170,14 @@ namespace JortPob
                         containers.Add(o); break;
                     case ItemContent i:
                         items.Add(i); break;
+                    case PickableContent p:
+                        pickables.Add(p); break;
                     case NpcContent n:
                         npcs.Add(n); break;
                     case CreatureContent c:
                         creatures.Add(c); break;
                     default:
-                        Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
+                        Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
                 }
             }
         }

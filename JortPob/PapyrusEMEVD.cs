@@ -1,9 +1,12 @@
 ﻿using HKLib.hk2018.hk;
+using HKLib.hk2018.hkaiCollisionAvoidance;
 using JortPob.Common;
 using SoulsFormats;
 using SoulsIds;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
@@ -16,9 +19,10 @@ namespace JortPob
     {
         public static List<Call.Type> UNSUPPORTED_CALL_LIST = new(), UNSUPPORTED_CONDITIONAL_LIST = new(), UNSUPPORTED_SET_LIST = new();
 
-        public static void Compile(ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, Script script, Papyrus papyrus, Content content)
+        public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
+            List<MSBE.Region> generatedRegions = new();  // return these back to the MSB generation in Main so it can add them.
 
             /* Returns a special EMEVD command that resets all condition groups by making a do-nothing call that checks MAIN */
             string ResetConditionGroups()
@@ -30,7 +34,7 @@ namespace JortPob
             Script.Flag GetFlagByVariable(string varName)
             {
                 Script.Flag retFlag = null;
-                if (!varName.Contains("."))  // probably a local var of this object
+                if (!varName.Contains(".") && script is not ScriptCommon)  // probably a local var of this object
                 {
                     retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.id}.{varName}");
                 }
@@ -117,6 +121,24 @@ namespace JortPob
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                         break;
 
+                    case Call.Type.OnDeath:
+                        {
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                bool flagState = int.Parse(call.right.parameters[0]) == 0;
+                                Script.Flag onDeathFlag = RegisterOnDeath(call.left);
+                                if (onDeathFlag == null) // if register fails due to missing target
+                                {
+                                    lines.Add($"SkipUnconditionally({(flagState ? 0 : pass.Count())})");
+                                    break;
+                                }
+                                post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, OFF);"); // switch on death flag back off after this conditional resolves
+                                lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {onDeathFlag.id});");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                            break;
+                        }
+
                     case Call.Type.CellChanged:
                         if(call.right.type == Call.Type.Literal)
                         {
@@ -133,7 +155,7 @@ namespace JortPob
                         {
                             bool flagState = int.Parse(call.right.parameters[0]) == 0;
                             Script.Flag dflag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content.entity.ToString());
-                            if(dflag == null)  // currently we dont have disable code for assets so they dont have disable flags. skip
+                            if(dflag == null)  // if flag not found skip. likely just due to partial builds or papyrus parsing
                             {
                                 lines.Add($"SkipUnconditionally({(flagState?0:pass.Count())})");
                                 break;
@@ -142,6 +164,50 @@ namespace JortPob
                         }
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                         break;
+
+                    case Call.Type.GetDistance:
+                        {
+                            if (script is ScriptCommon) { throw new Exception("GetDistance() not supported by global scripts"); } // i really hope this is unreachable
+
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                // find our target for this distance check, only works when one side of this is check is the player
+                                string a = call.left.target;
+                                string b = call.left.parameters[0].ToLower();
+                                Content targetA, targetB;
+                                // 3 possible player based distance checks
+                                if (a == null && b == "player") { targetA = content; targetB = null; }                                      // EX: (GetDistance Player < 50)
+                                else if (a != null && b == "player") { targetA = layout.FindScriptReference(content, a); targetB = null; }  // EX: (fargoth->GetDistance Player < 50)
+                                else if (a?.ToLower() == "player") { targetA = layout.FindScriptReference(content, b); targetB = null; }    // EX: (Player->GetDistance fargoth < 50)
+                                // remaining possible results
+                                else                                                            // EX: (fargoth->GetDistance fargoths_ring < 50)
+                                {
+                                    if (a == null) { targetA = content; }
+                                    else { targetA = layout.FindScriptReference(content, a); }
+                                    targetB = layout.FindScriptReference(content, b);
+
+                                    if (targetB == null) { /* Do nothing lol */ }
+                                    else if (targetA is CharacterContent && targetB is CharacterContent) { Lort.Log($"## ERROR ## GetDistance cannot measure distance between 2 characters! [{call.RAW}]", Lort.Type.Debug); }
+                                    else if (targetB is (StaticContent) || targetB is (ItemContent)) { Content temp = targetA; targetA = targetB; targetB = temp; } // swap so targetA is the static
+                                }
+
+                                // find area script for that target content
+                                Script areaScript = scriptManager.FindScriptFor(layout, targetA);
+
+                                // create a region for this distance check to use
+                                MSBE.Region.Other distanceRegion = new();
+                                distanceRegion.Name = $"{papyrus.id}->{call.RAW.Trim()}";
+                                distanceRegion.Shape = new MSB.Shape.Sphere(float.Parse(call.right.parameters[0]) * Const.GLOBAL_SCALE);
+                                distanceRegion.Position = targetA.relative + Const.MSB_OFFSET;
+                                distanceRegion.EntityID = areaScript.CreateEntity(Script.EntityType.Region, $"{papyrus.id}->{call.RAW.Trim()}");
+                                generatedRegions.Add(distanceRegion);
+
+                                string inOut = call.op == ">" || call.op == ">=" ? "Inside" : "Outside";
+                                lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{inOut}, {(targetB == null ? 10000 : targetB.entity)}, {distanceRegion.EntityID}, 1);");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                            break;
+                        }
 
                     case Call.Type.GetPcRank:
                         if (call.right.type == Call.Type.Literal)
@@ -189,6 +255,36 @@ namespace JortPob
                         }
                         break;
 
+                    // will be refering to any papyrus script that is managed by StartScript, StopScript, ScriptRunning as "subscript" for clarity
+                    case Call.Type.ScriptRunning:
+                        {
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                // Grab subscript papyrus
+                                Papyrus subscript = esm.GetPapyrus(call.left.parameters[0]);
+                                if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
+
+                                // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
+                                Script.Flag subscriptRunFlag;
+                                if (script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.Event, $"Global->{subscript.id}"); }
+                                else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.Event, $"{content.id}->{subscript.id}->{content.entity}"); }
+
+                                // If the subscript does not exist yet, we create it
+                                if (subscriptRunFlag == null)
+                                {
+                                    if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                    else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
+                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, content, subscriptRunFlag);
+                                }
+
+                                // Finally we just add some code here to start/stop the subscript
+                                bool flagState = int.Parse(call.right.parameters[0]) == 0;
+                                lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {subscriptRunFlag.id});");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                            break;
+                        }
+
                     default:   // unsupported calls will default to a FALSE result using SkipUnconditinoally()
                         if(!UNSUPPORTED_CONDITIONAL_LIST.Contains(call.type)) { Lort.Log($" ## WARNING ## Unsupported Papyrus->EMEVD conditional {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); UNSUPPORTED_CONDITIONAL_LIST.Add(call.type); }
                         if (pass.Count() > 0) { lines.Add($"SkipUnconditionally({pass.Count()});"); }
@@ -217,10 +313,20 @@ namespace JortPob
                 List<string> lines = new();
                 switch (call.type)
                 {
-                    case Call.Type.Short:
+                    case Call.Type.Short: 
                         {
-                            Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.id}.{call.parameters[0]}"); // Look for the flag, create it if it doesn't exist
-                            if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, $"{content.id}.{call.parameters[0]}"); }
+                            if (script is ScriptCommon)
+                            {
+                                string flagId = call.parameters[0];
+                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Global, flagId); // Look for the flag, create it if it doesn't exist
+                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, flagId); }
+                            }
+                            else
+                            {
+                                string flagId = $"{content.id}.{call.parameters[0]}";
+                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Local, flagId); // Look for the flag, create it if it doesn't exist
+                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId); }
+                            }
                             break;
                         }
 
@@ -305,21 +411,37 @@ namespace JortPob
                             break;
                         }
 
-                    case Call.Type.Disable:
+                    case Papyrus.Call.Type.Enable:
+                    case Papyrus.Call.Type.Disable:
                         {
-                            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content.entity.ToString());
-                            if(dvar == null) { break; } // currently, disabilng assets is unsupported and so the flag doesnt exist. meaning we need to pass here. fixme later
-                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {dvar.id}, ON);");
-                            lines.Add($"ChangeCharacterEnableState({content.entity.ToString()}, 0);");
-                            break;
-                        }
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                    case Call.Type.Enable:
-                        {
-                            Script.Flag evar = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content.entity.ToString());
-                            if (evar == null) { break; } // currently, disabilng/enabling assets is unsupported and so the flag doesnt exist. meaning we need to pass here. fixme later
-                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {evar.id}, OFF);");
-                            lines.Add($"ChangeCharacterEnableState({content.entity.ToString()}, 1);");
+                            // find area script for that target content
+                            Script script = scriptManager.FindScriptFor(layout, target);
+
+                            /* Get flag and/or register script */
+                            Script.Flag disabledFlag;
+                            if (target is StaticContent sc)
+                            {
+                                disabledFlag = script.GetOrRegisterStaticDisable(sc);
+                            }
+                            else if (target is ItemContent ic)
+                            {
+                                disabledFlag = script.PreRegisterItemDisable(ic);
+                            }
+                            else if (target is CharacterContent cc)
+                            {
+                                disabledFlag = script.GetOrRegisterCharacterDisable(cc);
+                            }
+                            else { throw new Exception("Invalid content type for enable/disable call"); }  // unreachable?
+
+                            /* Add code */
+                            string toggle = call.type == Papyrus.Call.Type.Disable ? "ON" : "OFF";
+                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {disabledFlag.id}, {toggle});");
                             break;
                         }
 
@@ -474,6 +596,93 @@ namespace JortPob
                             break;
                         }
 
+                    case Call.Type.Say:
+                        {
+                            string id = call.parameters[0].ToLower().Replace("\\", "_").Replace("/", "_").Replace(".mp3", "");
+                            string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", call.parameters[0]);
+                            int playId = sound.AddSound(id, MainSoundBank.Sound.Type.Voice, false, true, 1f, 1f, file);
+                            lines.Add($"PlaySE(10000, 7, {playId * 10});");  // 7 is "Voice"
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.PlaySound:
+                    case Papyrus.Call.Type.PlaySoundVP:
+                    case Papyrus.Call.Type.PlaySound3D:
+                    case Papyrus.Call.Type.PlaySound3DVP:
+                    case Papyrus.Call.Type.PlayLoopSound3D:
+                    case Papyrus.Call.Type.PlayLoopSound3DVP:
+                        {
+                            SoundInfo info = esm.GetSound(call.parameters[0].ToLower().Trim());
+                            float volume, pitch;
+                            switch (call.type)
+                            {
+                                case Papyrus.Call.Type.PlaySound:
+                                case Papyrus.Call.Type.PlaySound3D:
+                                case Papyrus.Call.Type.PlayLoopSound3D:
+                                    {
+                                        volume = 1f; pitch = 1f; break;
+                                    }
+                                case Papyrus.Call.Type.PlaySoundVP:
+                                case Papyrus.Call.Type.PlaySound3DVP:
+                                case Papyrus.Call.Type.PlayLoopSound3DVP:
+                                    {
+                                        volume = float.Parse(call.parameters[1]);
+                                        pitch = float.Parse(call.parameters[2]);
+                                        break;
+                                    }
+                                default: throw new Exception("Invalid PlaySound call type."); // unreachable or else
+                            }
+
+                            bool loop = call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
+                            bool spatialize = call.type == Papyrus.Call.Type.PlaySound3D || call.type == Papyrus.Call.Type.PlaySound3DVP || call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
+                            string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", info.path);
+
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            // If this is a non spatialized sound effect play it directly off the player
+                            uint targetId;
+                            if (spatialize) { targetId = target.entity; }
+                            else { targetId = 10000; }
+
+                            // Add sound to main bank and get playback id
+                            int seId = sound.AddSound(info.id, MainSoundBank.Sound.Type.SFX, loop, spatialize, volume, pitch, file);
+
+                            // Play SE call
+                            lines.Add($"PlaySE({targetId}, 5, {seId});");
+                            break;
+                        }
+
+                    // will be refering to any papyrus script that is managed by StartScript, StopScript, ScriptRunning as "subscript" for clarity
+                    case Call.Type.StartScript:
+                    case Call.Type.StopScript:
+                        {
+                            // Grab subscript papyrus
+                            Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
+                            if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
+
+                            // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
+                            Script.Flag subscriptRunFlag;
+                            if(script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                            else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
+
+                            // If the subscript does not exist yet, we create it
+                            if (subscriptRunFlag == null)
+                            {
+                                if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
+                                PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, content, subscriptRunFlag);
+                            }
+
+                            // Finally we just add some code here to start/stop the subscript
+                            string toggle = call.type == Call.Type.StartScript ? "ON" : "OFF";
+                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {subscriptRunFlag.id}, {toggle});");
+                            break;
+                        }
+
                     case Call.Type.Return:
                         {
                             lines.Add($"EndUnconditionally(EventEndType.Restart);");
@@ -491,7 +700,11 @@ namespace JortPob
             /* STUFF ACTUALLY HAPPENS BELOW THIS POINT */
 
             /* Setup some stuff */
-            Script.Flag evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"{content.id}->{papyrus.id}->{content.entity}");
+            Script.Flag evtFlag;
+            // papyrus script running from main (global)
+            if (script is ScriptCommon) { evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"Global->{papyrus.id}"); }
+            // papyrus script on an object (local)
+            else { evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"{content.id}->{papyrus.id}->{content.entity}"); }
             EMEVD.Event evt = new();
             evt.ID = evtFlag.id;
 
@@ -507,7 +720,7 @@ namespace JortPob
                 if (treasuerLootFlag != null)
                 {
                     Script.Flag onActivateFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content.entity.ToString());
-                    Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, content.entity.ToString());
+                    Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnActivate->{content.entity.ToString()}");
                     EMEVD.Event onActivateEvent = new();
                     onActivateEvent.ID = onActivateEventFlag.id;
                     onActivateEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {treasuerLootFlag.id});")); // if the looted flag is initially off
@@ -524,7 +737,7 @@ namespace JortPob
                 {
                     int actionButtonId = paramanager.GenerateActionButtonInteractParam($"Interact with {content.name}");
                     Script.Flag onActivateFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content.entity.ToString());
-                    Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, content.entity.ToString());
+                    Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnActivate->{content.entity.ToString()}");
                     EMEVD.Event onActivateEvent = new();
                     onActivateEvent.ID = onActivateEventFlag.id;
                     onActivateEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {onActivateFlag.id});"));
@@ -536,7 +749,34 @@ namespace JortPob
                 }
             }
 
-            /* If there is an "Cell Changed" call we need a temp flag created to use as our "run once" flag */
+            /* Emulate OnDeath papyruys call for a target object */
+            /* To make this work we need a paralell script that tracks when the flag for a character dieing is set */
+            /* Returns temp flag that is set when target character dies */
+            Script.Flag RegisterOnDeath(Papyrus.Call call)
+            {
+                // Find our target content
+                Content target;
+                if (call.target == null) { target = content; }
+                else { target = layout.FindScriptReference(content, call.target); }
+                if (target == null) { return null; } // Failed to find script reference. Should only happen when making partial builds.
+
+                // Grab their death flag
+                Script.Flag targetDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+
+                Script.Flag onDeathFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnDeath, target.entity.ToString());
+                Script.Flag onDeathEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnDeath->{target.entity.ToString()}");
+                EMEVD.Event onDeathEvent = new();
+                onDeathEvent.ID = onDeathEventFlag.id;
+                onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {targetDeathFlag.id});"));  // pause until target is alive
+                onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {targetDeathFlag.id});"));  // pause until target is dead
+                onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, ON);"));            // mark ondeath flag true
+                script.emevd.Events.Add(onDeathEvent);
+                script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {onDeathEventFlag.id}, 0);"));
+
+                return onDeathFlag;
+            }
+
+            /* If there is a "Cell Changed" call we need a temp flag created to use as our "run once" flag */
             if (papyrus.HasCall(Call.Type.CellChanged))
             {
                 Script.Flag cellChangedFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.CellChanged, content.entity.ToString());
@@ -544,12 +784,15 @@ namespace JortPob
 
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
-            if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
+            if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id}); "); }  // if this is a subscript, only runs when run flag is set true
+            if (lines.Count() <= 0) { return new(); } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart
             foreach (string line in lines) { evt.Instructions.Add(script.AUTO.ParseAdd(line)); }
             script.emevd.Events.Add(evt);
             script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {evtFlag.id}, 0);"));
+
+            return generatedRegions;
         }
     }
 }

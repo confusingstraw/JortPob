@@ -17,10 +17,12 @@ namespace JortPob
         /* Morrowind makes a distinction between these 2 types of characters but ER does not */
 
         private readonly ESM esm;
+        private readonly Layout layout;
         private readonly SoundManager soundManager;
         private readonly Paramanager paramanager;
         private readonly TextManager textManager;
         private readonly ItemManager itemManager;
+        private readonly SpeffManager speffManager;
         private readonly ScriptManager scriptManager;
 
         private readonly Dictionary<string, int> topicText; // topic text id map
@@ -30,13 +32,15 @@ namespace JortPob
 
         private int nextNpcParamId, nextNpcThinkParamId;  // increment by 10
 
-        public NpcManager(ESM esm, SoundManager sound, Paramanager param, TextManager text, ItemManager item, ScriptManager scriptManager)
+        public NpcManager(ESM esm, Layout layout, SoundManager sound, Paramanager param, TextManager text, ItemManager item, SpeffManager speff, ScriptManager scriptManager)
         {
             this.esm = esm;
+            this.layout = layout;
             this.soundManager = sound;
             this.paramanager = param;
             this.textManager = text;
             this.itemManager = item;
+            this.speffManager = speff;
             this.scriptManager = scriptManager;
 
             esds = new();
@@ -64,6 +68,7 @@ namespace JortPob
             int id = nextNpcParamId += 10;
             paramanager.GenerateNpcParam(itemManager, script, content, id);
             npcParamMap.Add(content.id, id);
+
             return id;
         }
 
@@ -194,7 +199,7 @@ namespace JortPob
             areaScript.RegisterNpcHostility(content);  // setup hostility flag/event
             areaScript.RegisterNpcHello(content);      // setup hello flags and turntoplayer script
 
-            DialogESD dialogEsd = new(esm, scriptManager, paramanager, textManager, itemManager, areaScript, (uint)esdId, content, data);
+            DialogESD dialogEsd = new(esm, layout, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
             string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
             string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
             dialogEsd.Write(pyPath);

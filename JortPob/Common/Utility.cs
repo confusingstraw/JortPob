@@ -362,6 +362,17 @@ namespace JortPob.Common
         }
     }
 
+    public static class MSBExtension
+    {
+        public static void AddRegions(this SoulsFormats.MSBE msbe, List<MSBE.Region> regions)
+        {
+            foreach(MSBE.Region region in regions)
+            {
+                msbe.Regions.Add(region);
+            }
+        }
+    }
+
 
     public static class IListExtensions
     {

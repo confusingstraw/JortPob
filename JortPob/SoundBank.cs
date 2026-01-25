@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using Microsoft.Scripting.Utils;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -52,13 +53,17 @@ namespace JortPob
         }
 
         /* Generates and writes JSON, then calls bnk2json to build the bnk */
-        public void Write(string dir, int id)
+        public void Write(int id)
         {
+            string dir = @$"{Const.OUTPUT_PATH}sd\enus\";
+
             JsonNode json = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\bnk_template.json")));
             JsonArray sections = json["sections"].AsArray();
-            JsonNode BKHD = sections[0]["BKHD"];
-            JsonNode HIRC = sections[1]["HIRC"];
+            JsonNode BKHD = sections[0]["body"]["BKHD"];
+            JsonNode HIRC = sections[1]["body"]["HIRC"];
             JsonArray objects = HIRC["objects"].AsArray();
+
+            List<JsonNode> sources = new(), mixers = new(), events = new();
 
             JsonNode templatePlay = objects[0]; objects.RemoveAt(0);
             JsonNode templatePlayCall = objects[0]; objects.RemoveAt(0);
@@ -66,7 +71,26 @@ namespace JortPob
             JsonNode templateStopCall = objects[0]; objects.RemoveAt(0);
             JsonNode templateData = objects[0]; objects.RemoveAt(0);
 
+            JsonNode attenuation = objects[0]; objects.RemoveAt(0);
+            JsonNode mixer = objects[0]; objects.RemoveAt(0);
+            JsonNode master = objects[0]; objects.RemoveAt(0);
+
             BKHD["bank_id"] = globals.NextHeaderId();
+            master["id"]["Hash"] = globals.NextBnkId();
+            mixer["id"]["Hash"] = globals.NextBnkId();
+            attenuation["id"]["Hash"] = globals.NextBnkId();
+
+
+            master["body"]["ActorMixer"]["children"]["items"].AsArray().Add((uint)mixer["id"]["Hash"]);
+            mixer["body"]["ActorMixer"]["node_base_params"]["direct_parent_id"] = (uint)master["id"]["Hash"];
+            master["body"]["ActorMixer"]["node_base_params"]["node_initial_params"]["prop_initial_values"].AsArray()[3]["AttenuationID"] = (uint)attenuation["id"]["Hash"];
+
+            //master["body"]["ActorMixer"]["node_base_params"]["override_bus_id"] = (uint)0;   // unk ass fields
+            //mixer["body"]["ActorMixer"]["node_base_params"]["override_bus_id"] = (uint)0;
+
+            mixers.Add(attenuation);
+            mixers.Add(mixer);
+            mixers.Add(master);
 
             foreach (Sound sound in sounds)
             {
@@ -77,24 +101,27 @@ namespace JortPob
                 JsonNode soundData = templateData.DeepClone();
 
                 uint sourceId = sound.source;
-                soundData["id"] = globals.NextBnkId();
-                soundData["object"]["Sound"]["bank_source_data"]["media_information"]["source_id"] = sourceId;
+                soundData["id"]["Hash"] = globals.NextBnkId();
+                soundData["body"]["Sound"]["bank_source_data"]["media_information"]["source_id"] = sourceId;
+                soundData["body"]["Sound"]["node_base_params"]["direct_parent_id"] = (uint)mixer["id"]["Hash"];
+                mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Add((uint)soundData["id"]["Hash"]);
 
-                soundPlayCall["id"] = globals.NextBnkId();
-                soundPlayCall["object"]["Action"]["initial_values"]["external_id"] = (uint)soundData["id"];
-                soundStopCall["id"] = globals.NextBnkId();
-                soundStopCall["object"]["Action"]["initial_values"]["external_id"] = (uint)soundData["id"];
+                soundPlayCall["id"]["Hash"] = globals.NextBnkId();
+                soundPlayCall["body"]["Action"]["external_id"] = (uint)soundData["id"]["Hash"];
+                soundPlayCall["body"]["Action"]["params"]["Play"]["bank_id"] = (uint)BKHD["bank_id"];
+                soundStopCall["id"]["Hash"] = globals.NextBnkId();
+                soundStopCall["body"]["Action"]["external_id"] = (uint)soundData["id"]["Hash"];
 
-                soundPlayEvent["id"] = sound.play;
-                soundPlayEvent["object"]["Event"]["actions"][0] = (uint)soundPlayCall["id"];
-                soundStopEvent["id"] = sound.stop;
-                soundStopEvent["object"]["Event"]["actions"][0] = (uint)soundStopCall["id"];
+                soundPlayEvent["id"]["String"] = $"Play_v{sound.row:D8}0";
+                soundPlayEvent["body"]["Event"]["actions"][0] = (uint)soundPlayCall["id"]["Hash"];
+                soundStopEvent["id"]["String"] = $"Stop_v{sound.row:D8}0";
+                soundStopEvent["body"]["Event"]["actions"][0] = (uint)soundStopCall["id"]["Hash"];
 
-                objects.Add(soundData);
-                objects.Add(soundPlayCall);
-                objects.Add(soundStopCall);
-                objects.Add(soundPlayEvent);
-                objects.Add(soundStopEvent);
+                sources.Add(soundData);
+                events.Add(soundPlayCall);
+                events.Add(soundStopCall);
+                events.Add(soundPlayEvent);
+                events.Add(soundStopEvent);
 
                 string wemSrcPath = sound.file;
                 string wemTgtPath = Path.Combine(dir, @$"wem\{sourceId.ToString("D9").Substring(0, 2)}\{sourceId:D9}.wem");
@@ -103,11 +130,21 @@ namespace JortPob
                 File.Copy(wemSrcPath, wemTgtPath);
             }
 
-            string bnkPath = Path.Combine(dir, $"vc{id.ToString("D3")}.bnk");
-            Directory.CreateDirectory(Path.GetDirectoryName(bnkPath));
-            File.WriteAllText($"{bnkPath}json", json.ToJsonString());
+            objects.AddRange(sources);  // ordering of nodes matters a lot for this json
+            objects.AddRange(mixers);
+            objects.AddRange(events);
 
-            ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkPath}json\"")
+            HIRC["object_count"] = objects.Count;                                                                                   // unsure if these fields matter or not
+            master["body"]["ActorMixer"]["children"]["count"] = master["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
+            mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
+
+            string bnkJsonPath = Path.Combine(dir, $"vc{id.ToString("D3")}", $"soundbank.json");
+            string bnkRebuiltPath = Path.Combine(dir, $"vc{id.ToString("D3")}.created.bnk");
+            string bnkPath = Path.Combine(dir, $"vc{id.ToString("D3")}.bnk");
+            Directory.CreateDirectory(Path.GetDirectoryName(bnkJsonPath));
+            File.WriteAllText(bnkJsonPath, json.ToJsonString());
+
+            ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{Path.GetDirectoryName(bnkJsonPath)}\"")
             {
                 WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
                 UseShellExecute = false,
@@ -117,7 +154,7 @@ namespace JortPob
             process.WaitForExit();
 
             if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
-            File.Move($"{bnkPath}.rebuilt", bnkPath);
+            File.Move(bnkRebuiltPath, bnkPath);
         }
 
         public class Sound

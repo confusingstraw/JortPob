@@ -110,7 +110,8 @@ namespace JortPob.Common
         public static readonly int ESD_STATE_HARDCODE_PICKPOCKET = 55;
         public static readonly int ESD_STATE_HARDCODE_TRAVELMENU = 56;
         public static readonly int ESD_STATE_HARDCODE_RANKREQUIREMENT = 57;
-        public static readonly int ESD_STATE_HARDCODE_CHOICE = 58;  // this one must be last as it can generate multiple ones after this number
+        public static readonly int ESD_STATE_HARDCODE_REACTIONCALC = 58;
+        public static readonly int ESD_STATE_HARDCODE_CHOICE = 59;  // this one must be last as it can generate multiple ones after this number
         public static readonly int CRIME_GOLD_PICKPOCKET = 50;
         public static readonly int CRIME_GOLD_ASSAULT = 250;
         public static readonly int CRIME_GOLD_RESIST = 100;

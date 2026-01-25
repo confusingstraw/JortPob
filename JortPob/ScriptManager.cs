@@ -106,6 +106,9 @@ namespace JortPob
             // Temp flag that is set to the players current soul/rune count. For use when comparing your cash dosh money count in EMEVD
             Script.Flag playerRuneCount = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Int, Flag.Designation.PlayerRuneCount, "PlayerRuneCount");
 
+            // Temp flag that is set to the players current MaxHP value
+            Script.Flag playerMaxHP = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Int, Flag.Designation.PlayerMaxHP, "PlayerMaxHP");
+
             // Temp flag that is set true when a player is sneaking
             Script.Flag playerIsSneakingFlag = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
 
@@ -153,9 +156,8 @@ namespace JortPob
 
                                             	-- writing the players rune count to a 32bit flag so emevd can look at It
                                                 if env(IsCOMPlayer) == FALSE then
-                                                    local DEBUG_PRINT = 10001
-                                                    local TraversePointerChain = 10000
                                                     local SetEventFlag = 10003
+                                                    local TraversePointerChain = 10000
                                                     local GAME_DATA_MAN = 0x3D5DF38
                                                     local PLAYER_GAME_INFO = 0x8
                                                     local SOUL_COUNT = 0x6c
@@ -169,6 +171,23 @@ namespace JortPob
 
 
                                             """";
+
+            string playerMaxHpBase = playerMaxHP.id.ToString()[..7];
+            string playerMaxHpOffset = playerMaxHP.id.ToString()[7..];
+            string hksMaxHealthShitCode = $""""
+
+                                              -- writing the players max hp to a 16bit flag so esd/emevd can look at it
+                                              if env(IsCOMPlayer) == FALSE then
+                                          	    local SetEventFlag = 10003
+                                                  local maxHp = env(2013)
+                                                  for i = 0, 15 do
+                                                      local flagBit = tostring("{playerMaxHpBase}".. string.format("%03d", i + {playerMaxHpOffset})) -- kill me more
+                                                      act(SetEventFlag, flagBit, value_of_bit(maxHp, i))
+                                                  end
+                                              end
+
+
+                                          """";
 
             string hksBitwiseShitCode =    $""""
 
@@ -191,7 +210,7 @@ namespace JortPob
                                             """";
 
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE FUNCTION HERE $$ --", $"{hksJankStart}{hksJankGen}{hksJankEnd}{hksBitwiseShitCode}");
-            hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksJankCall}");
+            hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksMaxHealthShitCode}{hksJankCall}");
             string hksOutPath = $"{Const.OUTPUT_PATH}action\\script\\c0000.hks";
             if (File.Exists(hksOutPath)) { File.Delete(hksOutPath); }
             System.IO.Directory.CreateDirectory(Path.GetDirectoryName(hksOutPath));
@@ -253,6 +272,24 @@ namespace JortPob
                 script.GenerateCrimeEvents();
                 script.GenerateThieveryEvent();
             }
+        }
+
+        /* Finds an area script for a piece of content */
+        /* Called by script compiling in DialogESD.cs and PapyrusEMEVD.cs */
+        public Script FindScriptFor(Layout layout, Content content)
+        {
+            Tile tile = layout.FindTile(content);
+            if (tile != null)
+            {
+                return GetScript(tile);
+            }
+            else
+            {
+                InteriorGroup.Chunk chunk = layout.FindChunk(content);
+                return GetScript(chunk.group);
+            }
+
+            throw new Exception("Could not find area script for a content object"); // should be unreacahable
         }
 
         /* Write all EMEVD scripts this class has created */

@@ -1,15 +1,24 @@
-﻿using IronPython.Compiler;
+﻿using HKLib.hk2018.hke;
+using IronPython.Compiler;
 using JortPob.Common;
 using SharpAssimp.Unmanaged;
+using SoulsAssetPipeline.Animation;
+using SoulsFormats;
+using SoulsFormats.MWC;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static HKLib.hk2018.hkSerialize.CompatTypeParentInfo;
+using static IronPython.Modules._ast;
 using static JortPob.Script;
 using static SoulsFormats.MQB;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -38,6 +47,42 @@ namespace JortPob
                 this.flag = flag;
 
                 infos = new();
+            }
+
+            /* Return all calls of a given type inside this dialog record */
+            public List<Papyrus.Call> GetCalls(Papyrus.Call.Type type)
+            {
+                List<Papyrus.Call> calls = new();
+                foreach(DialogInfoRecord info in infos)
+                {
+                    if (info.script != null)
+                    {
+                        foreach (Papyrus.Call call in info.script.calls)
+                        {
+                            if (call.type == type)
+                            {
+                                calls.Add(call);
+                            }
+                        }
+                    }
+                }
+                return calls;
+            }
+
+            public List<Papyrus.Call> GetCalls()
+            {
+                List<Papyrus.Call> calls = new();
+                foreach (DialogInfoRecord info in infos)
+                {
+                    if (info.script != null)
+                    {
+                        foreach (Papyrus.Call call in info.script.calls)
+                        {
+                            calls.Add(call);
+                        }
+                    }
+                }
+                return calls;
             }
         }
 
@@ -268,7 +313,7 @@ namespace JortPob
 
             /* Generates an ESD condition for this line using the data from its filters */ // used by DialogESD.cs
             private static List<String> debugUnsupportedFiltersLogging = new();
-            public string GenerateCondition(ItemManager itemManager, ScriptManager scriptManager, CharacterContent npcContent)
+            public string GenerateCondition(ItemManager itemManager, SpeffManager speffManager, ScriptManager scriptManager, CharacterContent npcContent)
             {
                 List<string> conditions = new();
 
@@ -303,6 +348,15 @@ namespace JortPob
                             case DialogFilter.Type.Function:
                                 switch (filter.function)
                                 {
+                                    case DialogFilter.Function.Alarmed:
+                                        {
+                                            return $"DoesPlayerHaveSpEffect({(int)SpeffManager.Functional.Alarming}) == {filter.ResolveBinaryComparison()}";
+                                        }
+                                    case DialogFilter.Function.Attacked:
+                                        {
+                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent.entity.ToString());
+                                            return $"GetEventFlag({flag.id}) == {filter.ResolveBinaryComparison()}";
+                                        }
                                     case DialogFilter.Function.FactionRankDifference:
                                         {
                                             if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
@@ -325,7 +379,7 @@ namespace JortPob
                                     case DialogFilter.Function.SameRace:
                                         {
                                             Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.PlayerRace, npcContent.race.ToString());
-                                            return $"GetEventFlag({flag.id}) == True";
+                                            return $"GetEventFlag({flag.id}) == {filter.ResolveBinaryComparison()}";
                                         }
                                     case DialogFilter.Function.SameSex:
                                         {
@@ -335,7 +389,7 @@ namespace JortPob
                                     case DialogFilter.Function.TalkedToPc:
                                         {
                                             Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
-                                            return $"GetEventFlag({flag.id}) == False";
+                                            return $"GetEventFlag({flag.id}) == {filter.ResolveBinaryComparison()}";
                                         }
                                     case DialogFilter.Function.PcLevel:
                                         {
@@ -365,6 +419,67 @@ namespace JortPob
                                             Flag cvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel"); // grab crime gold flag
                                             return $"GetEventFlagValue({cvar.id}, {cvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
+                                    case DialogFilter.Function.PcAgility:
+                                    case DialogFilter.Function.PcSneak:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.Dexterity, {filter.OperatorString()}, {filter.value})";
+                                        }
+                                    case DialogFilter.Function.PcStrength:
+                                    case DialogFilter.Function.PcBluntWeapon:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.Strength, {filter.OperatorString()}, {filter.value})";
+                                        }
+                                    case DialogFilter.Function.PcIntelligence:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.Intelligence, {filter.OperatorString()}, {filter.value})";
+                                        }
+                                    case DialogFilter.Function.PcPersonality:
+                                    case DialogFilter.Function.PcMercantile:
+                                    case DialogFilter.Function.PcSpeechcraft:
+                                        {
+                                            return $"ComparePlayerStat(PlayerStat.Arcane, {filter.OperatorString()}, {filter.value})";
+                                        }
+                                    case DialogFilter.Function.PcHealthPercent:
+                                        {
+                                            // GetPlayerRemainingHP() returns 0 to 100 as an int. Morrowind also does this so it lines up lmao. Lucky.
+                                            return $"GetPlayerRemainingHP() {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.PcHealth:
+                                        {
+                                            // Calculate actual health from Max HP and current HP percent (0 to 100 int)
+                                            Script.Flag hpFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerMaxHP, "PlayerMaxHP");
+                                            return $"((GetEventFlagValue({hpFlag.id}, {hpFlag.Bits()}) * GetPlayerRemainingHP()) / 100) {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.PcBlightDisease:
+                                        {
+                                            List<SpeffManager.SpeffSpell> speffs = speffManager.GetBlights();
+                                            List<string> conditions = new();
+                                            foreach(SpeffManager.SpeffSpell speff in speffs)
+                                            {
+                                                conditions.Add($"DoesPlayerHaveSpEffect({speff.row}) == True");
+                                            }
+                                            return $"({String.Join(" or ", conditions)}) == {filter.ResolveBinaryComparison()}";
+                                        }
+                                    case DialogFilter.Function.PcCommonDisease:
+                                        {
+                                            List<SpeffManager.SpeffSpell> speffs = speffManager.GetDiseases();
+                                            List<string> conditions = new();
+                                            foreach (SpeffManager.SpeffSpell speff in speffs)
+                                            {
+                                                conditions.Add($"DoesPlayerHaveSpEffect({speff.row}) == True");
+                                            }
+                                            return $"({String.Join(" or ", conditions)}) == {filter.ResolveBinaryComparison()}";
+                                        }
+                                    case DialogFilter.Function.PcCorprus:
+                                        {
+                                            SpeffManager.SpeffSpell speff = speffManager.GetCorprus();
+                                            return $"DoesPlayerHaveSpEffect({speff.row}) == {filter.ResolveBinaryComparison()}";
+                                        }
+                                    case DialogFilter.Function.PcVampire:
+                                        {
+                                            SpeffManager.SpeffSpell speff = speffManager.GetVampirism();
+                                            return $"DoesPlayerHaveSpEffect({speff.row}) == {filter.ResolveBinaryComparison()}";
+                                        }
                                     case DialogFilter.Function.Level:
                                         {
                                             // npcs level can't change so static comparison is fine
@@ -372,7 +487,37 @@ namespace JortPob
                                         }
                                     case DialogFilter.Function.HealthPercent:
                                         {
-                                            return $"(GetSelfHP() / 10) {filter.OperatorSymbol()} {filter.value}";
+                                            // It just so happens that ESD GetSelfHP() returns a percent as an integer from 0 to 100.
+                                            // Morrowind does the same thing with HealthPercent so it lines up.
+                                            return $"GetSelfHP() {filter.OperatorSymbol()} {filter.value}";
+                                        }
+                                    case DialogFilter.Function.ReactionHigh:
+                                        {
+                                            // NPC is in a faction so we need to call the substate for calculating reaction values
+                                            if (npcContent.faction != null)
+                                            {
+                                                Script.Flag highFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionHigh, npcContent.entity.ToString());
+                                                return $"GetEventFlagValue({highFlag.id}, {highFlag.Bits()}) {filter.OperatorSymbol()} {filter.value}";
+                                            }
+                                            // NPC not in a faction so reaction is 0
+                                            else
+                                            {
+                                                return $"0 {filter.OperatorSymbol()} {filter.value}";
+                                            }
+                                        }
+                                    case DialogFilter.Function.ReactionLow:
+                                        {
+                                            // NPC is in a faction so we need to call the substate for calculating reaction values
+                                            if (npcContent.faction != null)
+                                            {
+                                                Script.Flag lowFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionLow, npcContent.entity.ToString());
+                                                return $"(0 - GetEventFlagValue({lowFlag.id}, {lowFlag.Bits()})) {filter.OperatorSymbol()} {filter.value}";
+                                            }
+                                            // NPC not in a faction so reaction is 0
+                                            else
+                                            {
+                                                return $"0 {filter.OperatorSymbol()} {filter.value}";
+                                            }
                                         }
                                     case DialogFilter.Function.FriendHit:
                                         {
@@ -380,6 +525,12 @@ namespace JortPob
                                             Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent.entity.ToString());
                                             Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
                                             return $"(not GetEventFlag({hflag.id}) and GetEventFlagValue({dvar.id}, {dvar.Bits()}) > 60 and GetEventFlagValue({fvar.id}, {fvar.Bits()}) {filter.OperatorSymbol()} {filter.value - 1})";
+                                        }
+
+                                    case DialogFilter.Function.Weather:
+                                        {
+                                            Script.Flag weatherFlag = scriptManager.GetFlag(Flag.Designation.CurrentWeather, "CurrentWeather");
+                                            return $"GetEventFlagValue({weatherFlag.id}, {weatherFlag.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.Choice:
                                         {
@@ -513,6 +664,7 @@ namespace JortPob
                                 switch (filter.function)
                                 {
                                     case DialogFilter.Function.VariableCompare:
+                                    case DialogFilter.Function.Global:  // This appears to be a bug where Locals that are floats get marked as FunctionType 'Global'
                                         {
                                             string localId = $"{npcContent.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
                                             Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag, if not found it dosent exist so return false
@@ -600,7 +752,7 @@ namespace JortPob
 
             /* Creates code for a dialog esd to execute when the dialoginfo that this dialogpapyrus is owned by gets played */
             private static List<String> debugUnsupportedPapyrusCallLogging = new();
-            public string GenerateEsdSnippet(Paramanager paramanager, ItemManager itemManager, ScriptManager scriptManager, CharacterContent npcContent, uint esdId, int indent)
+            public string GenerateEsdSnippet(ESM esm, Layout layout, MainSoundBank sound, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, ScriptManager scriptManager, CharacterContent npcContent, uint esdId, int indent)
             {
                 // Takes any mixed numeric parameter and converts it to an esd friendly format. for example  "1 + 2 + crimeGold + 7" or "crimeGold - valueValue" or just "5"
                 string ParseParameters(string[] parameters, int startIndex)
@@ -713,7 +865,8 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.MessageBox:
                             {
-                                scriptManager.common.GetOrRegisterMessage(paramanager, "Message", call.parameters[0]);
+                                Script.Flag msgFlag = scriptManager.common.GetOrRegisterMessage(paramanager, "Message", call.parameters[0]);
+                                string code = $"SetEventFlag({msgFlag.id}, FlagState.On)";
                                 break;
                             }
                         case Papyrus.Call.Type.RemoveItem:
@@ -755,10 +908,108 @@ namespace JortPob
                                     {
                                         ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
                                         if (itemInfo == null) { throw new Exception("Script failed to find referenced item! This should not happen!"); }
-                                        int row = paramanager.GenerateAddItemLot(itemInfo);
+                                        int row = paramanager.GenerateAddItemLot(itemInfo, int.Parse(call.parameters[1]));
                                         string code = $"AwardItemLot({row})";
                                         lines.Add(code);
                                     }
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.AddSpell:
+                            {
+                                SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                                if (call.target == "player")
+                                {
+                                    if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                    {
+                                        // @TODO: stub. should give the player the item of a spell. we don't really have those all mapped out yet though so guh
+                                    }
+                                    else
+                                    {
+                                        string code = $"SetEventFlag({spell.flag.id}, FlagState.On)";
+                                        lines.Add(code);
+                                    }
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.RemoveSpell:
+                            {
+                                SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                                if (call.target == "player")
+                                {
+                                    if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                    {
+                                        // @TODO: stub. this should remove a spell item from a players inventory but we dont have those mapped out yet
+                                    }
+                                    else
+                                    {
+                                        string code = $"SetEventFlag({spell.flag.id}, FlagState.Off)";
+                                        lines.Add(code);
+                                    }
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.Cast:
+                            {
+                                SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                                if (call.target == "player")
+                                {
+                                    if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                    {
+                                        string code = $"SetSpEffect(10000, {spell.row})";
+                                        lines.Add(code);
+                                    }
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.Enable:
+                        case Papyrus.Call.Type.Disable:
+                            {
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // find area script for that target content
+                                Script script = scriptManager.FindScriptFor(layout, target);
+
+                                /* Get flag and/or register script */
+                                Script.Flag disabledFlag;
+                                if (target is StaticContent sc) {
+                                    disabledFlag = script.GetOrRegisterStaticDisable(sc);
+                                }
+                                else if (target is ItemContent ic)
+                                {
+                                    disabledFlag = script.PreRegisterItemDisable(ic);
+                                }
+                                else if(target is CharacterContent cc)
+                                {
+                                    disabledFlag = script.GetOrRegisterCharacterDisable(cc);
+                                }
+                                else { throw new Exception("Invalid content type for enable/disable call"); }  // unreachable?
+
+                                /* Add code */
+                                string toggle = call.type == Papyrus.Call.Type.Disable ? "On" : "Off";
+                                lines.Add($"SetEventFlag({disabledFlag.id}, FlagState.{toggle})");
+                                break;
+                            }
+                        case Papyrus.Call.Type.ModStrength:
+                        case Papyrus.Call.Type.ModAxe:
+                            {
+                                if (call.target == "player")  // only for player
+                                {
+                                    string code = $"ChangePlayerStat(PlayerStat.Strength, ChangeType.Add, {call.parameters[0]})";
+                                    lines.Add(code);
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.ModMercantile:
+                            {
+                                if (call.target == "player")  // only for player
+                                {
+                                    string code = $"ChangePlayerStat(PlayerStat.Arcane, ChangeType.Add, {call.parameters[0]})";
+                                    lines.Add(code);
                                 }
                                 break;
                             }
@@ -823,6 +1074,91 @@ namespace JortPob
                                 }
 
                                 // @TODO: startcombat with anything else than player is not supported yet
+                                break;
+                            }
+                        case Papyrus.Call.Type.PlaySound:
+                        case Papyrus.Call.Type.PlaySoundVP:
+                        case Papyrus.Call.Type.PlaySound3D:
+                        case Papyrus.Call.Type.PlaySound3DVP:
+                        case Papyrus.Call.Type.PlayLoopSound3D:
+                        case Papyrus.Call.Type.PlayLoopSound3DVP:
+                            {
+                                SoundInfo info = esm.GetSound(call.parameters[0].ToLower().Trim());
+                                float volume, pitch;
+                                switch(call.type)
+                                {
+                                    case Papyrus.Call.Type.PlaySound:
+                                    case Papyrus.Call.Type.PlaySound3D:
+                                    case Papyrus.Call.Type.PlayLoopSound3D:
+                                        {
+                                            volume = 1f; pitch = 1f; break;
+                                        }
+                                    case Papyrus.Call.Type.PlaySoundVP:
+                                    case Papyrus.Call.Type.PlaySound3DVP:
+                                    case Papyrus.Call.Type.PlayLoopSound3DVP:
+                                        {
+                                            volume = float.Parse(call.parameters[1]);
+                                            pitch = float.Parse(call.parameters[2]);
+                                            break;
+                                        }
+                                    default: throw new Exception("Invalid PlaySound call type."); // unreachable or else
+                                }
+
+                                bool loop = call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
+                                bool spatialize = call.type == Papyrus.Call.Type.PlaySound3D || call.type == Papyrus.Call.Type.PlaySound3DVP || call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
+                                string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", info.path);
+
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // If this is a non spatialized sound effect play it directly off the player
+                                uint targetId;
+                                if (spatialize) { targetId = target.entity; }
+                                else { targetId = 10000; }
+
+                                // find area script for that target content
+                                Script script = scriptManager.FindScriptFor(layout, target);
+
+                                // Add sound to main bank and get playback id
+                                int seId = sound.AddSound(info.id, MainSoundBank.Sound.Type.SFX, loop, spatialize, volume, pitch, file);
+
+                                // Get PlaySE event
+                                Script.Flag playFlag = script.GetOrRegisterPlaySE(targetId, seId);
+
+                                // Trigger flag for the event
+                                string code = $"SetEventFlag({playFlag.id}, FlagState.On)";
+                                lines.Add(code);
+                                break;
+                            }
+                        case Papyrus.Call.Type.StopScript:
+                        case Papyrus.Call.Type.StartScript:
+                            {
+                                // Grab subscript papyrus
+                                Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
+                                if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
+
+                                // find area script for this npc
+                                Script script = scriptManager.FindScriptFor(layout, npcContent);
+
+                                // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
+                                Script.Flag subscriptRunFlag;
+                                if (script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{npcContent.id}->{subscript.id}->{npcContent.entity}"); }
+
+                                // If the subscript does not exist yet, we create it
+                                if (subscriptRunFlag == null)
+                                {
+                                    if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                    else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{npcContent.id}->{subscript.id}->{npcContent.entity}"); }
+                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, npcContent, subscriptRunFlag);
+                                }
+
+                                // Finally we just add some code here to start/stop the subscript
+                                string toggle = call.type == Papyrus.Call.Type.StartScript ? "On" : "Off";
+                                lines.Add($"SetEventFlag({subscriptRunFlag.id}, FlagState.{toggle})");
                                 break;
                             }
                         case Papyrus.Call.Type.Goodbye:
@@ -913,6 +1249,14 @@ namespace JortPob
                     value = 0;
                 }
 
+            }
+
+            /* Resolve the comparison value for 0=False / 1=True style filter conditions. EX: SameRace or SameFaction */
+            public string ResolveBinaryComparison()
+            {
+                bool compare = value == 1;
+                if (op == DialogFilter.Operator.NotEqual) { compare = !compare; }
+                return compare ? "True" : "False";
             }
 
             /* Actually resolve a comparison operation from this filter with a given value */

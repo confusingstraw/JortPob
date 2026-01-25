@@ -16,6 +16,7 @@ namespace JortPob
         private volatile int nextBankId;
         private readonly List<SoundBankInfo> banks;
         private readonly SoundBankGlobals globals;
+        public readonly MainSoundBank main;
 
         private readonly List<SAMData> samQueue;
 
@@ -42,6 +43,8 @@ namespace JortPob
             banks = new();
             globals = new();
             samQueue = new();
+
+            main = new(globals);
         }
 
         /* Either returns an existing bank meeting the requirements, or makes a new one */
@@ -129,16 +132,19 @@ namespace JortPob
         }
 
         /* Writes all soundbanks to given dir */
-        public void Write(string dir)
+        public void Write()
         {
             SamWorker.Go(samQueue); // actually generate and convert wems
 
-            Lort.Log($"Writing {banks.Count()} BNKs...", Lort.Type.Main);
+            Lort.Log($"Writing {banks.Count()+1} BNKs...", Lort.Type.Main);
             Lort.NewTask("Writing BNKs", banks.Count);
+
+            main.Write();
+            Lort.TaskIterate();           // @TODO: We really need some multithreading here. Also a flag to skip rebuilding main as it not super important anyways!
 
             foreach (SoundBankInfo bankInfo in banks)
             {
-                bankInfo.bank.Write(dir, bankInfo.id);
+                bankInfo.bank.Write(bankInfo.id);
                 Lort.TaskIterate();
             }
         }
@@ -167,16 +173,16 @@ namespace JortPob
 
                 nextHeaderId = 100;
                 nextSourceId = 100000000;
-                nextBnkId = 1000;
+                nextBnkId = 1000000;
                 nextRowId = 20000000;
             }
 
-            public uint[] GetEventBnkId()
+            public uint[] GetEventBnkId(string sfxType = "v")
             {
                 uint[] TryGetNextCallIds(uint rowId)
                 {
-                    byte[] playCallBytes = Encoding.ASCII.GetBytes($"Play_v{rowId.ToString("D8")}0".ToLower());
-                    byte[] stopCallBytes = Encoding.ASCII.GetBytes($"Stop_v{rowId.ToString("D8")}0".ToLower());
+                    byte[] playCallBytes = Encoding.ASCII.GetBytes($"Play_{sfxType}{rowId.ToString("D8")}0".ToLower());
+                    byte[] stopCallBytes = Encoding.ASCII.GetBytes($"Stop_{sfxType}{rowId.ToString("D8")}0".ToLower());
 
                     uint playCallId = Utility.FNV1_32(playCallBytes);
                     uint stopCallId = Utility.FNV1_32(stopCallBytes);

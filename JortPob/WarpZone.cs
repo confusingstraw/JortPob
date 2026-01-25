@@ -114,18 +114,19 @@ namespace JortPob
                 if (flag.category == Script.Flag.Category.Event) { continue; } // not values, used for event ids
                 if (flag.category == Script.Flag.Category.Temporary) { continue; } // not even saved anyways so skip
                 if (flag.designation == Script.Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
+                if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
 
-                for (int i = 0; i < (int)flag.type; i++)
-                {
-                    bool bit = (flag.value & (1 << i)) != 0;
-                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
-                }
+
+                //debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
+                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {(int)flag.type}, {flag.value}, 0, 1, CalculationType.Assign);"));
                 if (delayCounter++ > 512)
                 {
                     debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;
                 }
             }
+            Script.Flag mainRunOnceFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "runonce");
+            debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({mainRunOnceFlag.id}, {(int)mainRunOnceFlag.type}, {mainRunOnceFlag.value}, 0, 1, CalculationType.Assign);")); // after all other flags, reset main runonce so main can rerun initializer scripts
             debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"DisplayBanner(31);")); // display a banner when save data reset is done. it takes a secondish
 
             debugScript.emevd.Events.Add(debugResetEvent);

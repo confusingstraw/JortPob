@@ -579,6 +579,47 @@ namespace JortPob
                     HandleCreatureFlags(script, chunk.creatures);
                 }
             }
+
+            /* Preprocess run of scripts to identify StaticContent that has a script reference pointing to its record */
+            /* This is needed because I do not want to have script data for every single static in the entire game world. */
+            /* So instead the play here is to preprocess and see what statics get referenced by script calls and create script data only for those specific statics */
+            List<Papyrus.Call> ableCalls = new();
+            foreach(Papyrus papyrus in esm.scripts)
+            {
+                ableCalls.AddRange(papyrus.GetCalls());
+            }
+
+            foreach(Dialog.DialogRecord dialog in esm.dialog)
+            {
+                ableCalls.AddRange(dialog.GetCalls());
+            }
+
+            int debugCount = 0;
+            List<string> ableIds = new();
+            foreach(Papyrus.Call call in ableCalls)
+            {
+                if (call.target != null && !ableIds.Contains(call.target)) { ableIds.Add(call.target); }
+            }
+
+            void HandleAbles(Script areaScript, List<Content> contents)
+            {
+                foreach(Content content in contents)
+                {
+                    if(content.GetType().IsSubclassOf(typeof(StaticContent)) && ableIds.Contains(content.id))
+                    {
+                        debugCount++;
+                        StaticContent staticContent = content as StaticContent;
+                        staticContent.entity = areaScript.CreateEntity(Script.EntityType.Asset, staticContent.id);
+                        //staticContent.disabled = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, staticContent.entity.ToString());
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles) { HandleAbles(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { HandleAbles(scriptManager.GetScript(group), chunk.GetAllContent()); }
+            }
         }
 
         public HugeTile GetHugeTile(Vector3 position)
@@ -669,6 +710,105 @@ namespace JortPob
             }
 
             return list;
+        }
+
+
+        /* These 2 funcs search by reference. It's finding where this specific content object is located */
+        public Tile FindTile(Content source)
+        {
+            foreach(Tile tile in tiles)
+            {
+                foreach(Content content in tile.GetAllContent())
+                {
+                    if(content == source)
+                    {
+                        return tile;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public Chunk FindChunk(Content source)
+        {
+            foreach(InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    foreach(Content content in chunk.GetAllContent())
+                    {
+                        if(content == source)
+                        {
+                            return chunk;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /* Called by script compilers in DialogESD.cs and PapyrusEMEVD.cs */
+        /* When a Papyrus script references an object by it's record name we need to find that object to do operations on it */
+        /* Example is like "fargoth"->disable */
+        /* In that case we search through all content to find the first Content with the record id of "fargoth" */
+        /* In this search we return the first result even if there are multiple references using that same record */
+        /* Morrowind prioritizes loaded cells in this search so we will try to emulate this behaviour */
+        /* This function takes a content "source" as an input parameter so we can search the area around the origination of this script call first before searching the full world */
+        /* Source can also be null and we skip the local search. Reason for this is that global scripts coming from the papyrus 'Main' do not have a local object they are attached to so it's null */
+        public Content FindScriptReference(Content source, string reference)
+        {
+            if (source != null)
+            {
+                List<Content> local;
+                Tile tile = FindTile(source);
+                if (tile != null)
+                {
+                    local = tile.GetAllContent();
+                }
+                else
+                {
+                    Chunk chunk = FindChunk(source);
+                    local = chunk.GetAllContent();
+                }
+
+                foreach (Content content in local)
+                {
+                    if (content.id.ToLower() == reference.ToLower())
+                    {
+                        return content;
+                    }
+                }
+            }
+
+            // not found in local area, search whole world now
+            foreach(Tile t in tiles)
+            {
+                List<Content> all = t.GetAllContent();
+                foreach(Content c in all)
+                {
+                    if(c.id.ToLower() == reference.ToLower())
+                    {
+                        return c;
+                    }
+                }
+            }
+
+            foreach(InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    List<Content> all = chunk.GetAllContent();
+                    foreach(Content c in all)
+                    {
+                        if(c.id.ToLower() == reference.ToLower())
+                        {
+                            return c;
+                        }
+                    }
+                }
+            }
+
+            return null; // not found anywhere!
         }
 
         public class WarpDestination
