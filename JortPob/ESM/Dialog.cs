@@ -952,11 +952,11 @@ namespace JortPob
                         case Papyrus.Call.Type.Cast:
                             {
                                 SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
-                                if (call.target == "player")
+                                if (call.parameters[1].ToLower().Trim() == "player")
                                 {
                                     if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
                                     {
-                                        string code = $"SetSpEffect(10000, {spell.row})";
+                                        string code = $"GiveSpEffectToPlayer({spell.row})";
                                         lines.Add(code);
                                     }
                                 }
@@ -1153,7 +1153,7 @@ namespace JortPob
                                 {
                                     if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                     else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{npcContent.id}->{subscript.id}->{npcContent.entity}"); }
-                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, npcContent, subscriptRunFlag);
+                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, npcContent, subscriptRunFlag);
                                 }
 
                                 // Finally we just add some code here to start/stop the subscript

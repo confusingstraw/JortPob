@@ -19,7 +19,7 @@ namespace JortPob
     {
         public static List<Call.Type> UNSUPPORTED_CALL_LIST = new(), UNSUPPORTED_CONDITIONAL_LIST = new(), UNSUPPORTED_SET_LIST = new();
 
-        public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
+        public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
             List<MSBE.Region> generatedRegions = new();  // return these back to the MSB generation in Main so it can add them.
@@ -274,7 +274,7 @@ namespace JortPob
                                 {
                                     if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                     else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, content, subscriptRunFlag);
+                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
                                 }
 
                                 // Finally we just add some code here to start/stop the subscript
@@ -404,10 +404,81 @@ namespace JortPob
                             break;
                         }
 
+                    case Papyrus.Call.Type.AddSpell:
+                        {
+                            SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                            if (call.target == "player")
+                            {
+                                if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                {
+                                    // @TODO: stub. should give the player the item of a spell. we don't really have those all mapped out yet though so guh
+                                }
+                                else
+                                {
+                                    lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {spell.flag.id}, ON);");
+                                }
+                            }
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.RemoveSpell:
+                        {
+                            SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                            if (call.target == "player")
+                            {
+                                if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                {
+                                    // @TODO: stub. this should remove a spell item from a players inventory but we dont have those mapped out yet
+                                }
+                                else
+                                {
+                                    lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {spell.flag.id}, OFF);");
+                                }
+                            }
+                            break;
+                        }
+
                     case Call.Type.AddTopic:
                         {
                             Script.Flag tvar = scriptManager.GetFlag(Script.Flag.Designation.TopicEnabled, call.parameters[0]);
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {tvar.id}, ON);");
+                            break;
+                        }
+
+                    case Call.Type.Cast:
+                        {
+                            SpeffManager.SpeffSpell spell = speffManager.GetSpellSpeff(call.parameters[0]);
+                            if (call.parameters[1].ToLower().Trim() == "player")
+                            {
+                                if (spell.spellType == SpeffManager.SpeffSpell.SpellType.Spell || spell.spellType == SpeffManager.SpeffSpell.SpellType.Power)
+                                {
+                                    string code = $"SetSpEffect(10000, {spell.row});";
+                                    lines.Add(code);
+                                }
+                            }
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.ChangeWeather:
+                        {
+                            ScriptCommon.WeatherPapyrus mww = (ScriptCommon.WeatherPapyrus)int.Parse(call.parameters[1]);
+                            ScriptCommon.WeatherEMEVD erw;
+                            switch(mww)
+                            {
+                                case ScriptCommon.WeatherPapyrus.Clear: erw = ScriptCommon.WeatherEMEVD.None; break;
+                                case ScriptCommon.WeatherPapyrus.Cloudy: erw = ScriptCommon.WeatherEMEVD.PuffyClouds; break;
+                                case ScriptCommon.WeatherPapyrus.Foggy: erw = ScriptCommon.WeatherEMEVD.Fog; break;
+                                case ScriptCommon.WeatherPapyrus.Overcast: erw = ScriptCommon.WeatherEMEVD.FlatClouds; break;
+                                case ScriptCommon.WeatherPapyrus.Rain: erw = ScriptCommon.WeatherEMEVD.Rain; break;
+                                case ScriptCommon.WeatherPapyrus.Thunder: erw = ScriptCommon.WeatherEMEVD.WindyRain; break;
+                                case ScriptCommon.WeatherPapyrus.Ash: erw = ScriptCommon.WeatherEMEVD.HeavyFog; break;
+                                case ScriptCommon.WeatherPapyrus.Blight: erw = ScriptCommon.WeatherEMEVD.HeavyFog; break;
+                                case ScriptCommon.WeatherPapyrus.Snow: erw = ScriptCommon.WeatherEMEVD.Snow; break;
+                                case ScriptCommon.WeatherPapyrus.Blizzard: erw = ScriptCommon.WeatherEMEVD.SnowyHeavyFog; break;
+                                default: throw new Exception("Invalid weather enum"); // unreachable
+                            }
+                            string code = $"ChangeWeather({(int)erw}, 1000, true);";
+                            lines.Add(code);
                             break;
                         }
 
@@ -463,6 +534,22 @@ namespace JortPob
                                     lines.Add($"DirectlyGivePlayerItem({(int)itemInfo.type}, {itemInfo.row}, 0, 0);");
                                 }
                             }
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeIn:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            string code = $"FadeToColor(0, {time}, false, 0);";
+                            lines.Add(code);
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeOut:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            string code = $"FadeToBlack(1, {time}, true, 0);";
+                            lines.Add(code);
                             break;
                         }
 
@@ -601,7 +688,16 @@ namespace JortPob
                             string id = call.parameters[0].ToLower().Replace("\\", "_").Replace("/", "_").Replace(".mp3", "");
                             string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", call.parameters[0]);
                             int playId = sound.AddSound(id, MainSoundBank.Sound.Type.Voice, false, true, 1f, 1f, file);
-                            lines.Add($"PlaySE(10000, 7, {playId * 10});");  // 7 is "Voice"
+
+                            uint entityId;
+                            if(call.target == null) { entityId = content.entity; }                       // case 1: no target so current object is target
+                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else                                                                         // case 3: target is a direct reference to an object record
+                            {
+                                entityId = layout.FindScriptReference(content, call.target).entity;
+                            }
+
+                            lines.Add($"PlaySE({entityId}, 7, {playId * 10});");  // 7 is "Voice"
                             break;
                         }
 
@@ -674,7 +770,7 @@ namespace JortPob
                             {
                                 if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                 else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, script, subscript, content, subscriptRunFlag);
+                                PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
                             }
 
                             // Finally we just add some code here to start/stop the subscript

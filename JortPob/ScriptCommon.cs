@@ -588,14 +588,14 @@ namespace JortPob
         }
 
         /* Create a simple common event that tracks the current weather and writes it to a flag for dialog filter conditions to read from */
-        private enum WeatherEMEVD
+        public enum WeatherEMEVD
         {
             None = -1, Default = 0, Rain = 1, Snow = 2, WindyRain = 3, Fog = 4, Cloudless = 5, FlatClouds = 6, PuffyClouds = 7, RainyClouds = 8, WindyFog = 9, HeavySnow = 10,
             HeavyFog = 11, WindyPuffyClouds = 12, Default2 = 13, Default3 = 14, RainyHeavyFog = 15, SnowyHeavyFog = 16, ScatteredRain = 17, Unknown18 = 18, Unknown19 = 19,
             Unknown20 = 20, Unknown21 = 21, Unknown22 = 22, Unknown23 = 23
         }
 
-        private enum WeatherPapyrus
+        public enum WeatherPapyrus
         {
             Clear = 0, Cloudy = 1, Foggy = 2, Overcast = 3, Rain = 4, Thunder = 5, Ash = 6, Blight = 7, Snow = 8, Blizzard = 9
         }
