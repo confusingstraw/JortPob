@@ -348,6 +348,93 @@ namespace JortPob
             return null;
         }
 
+        /* Called by Papyrus compiling to create one off effects for certain Papyrus calls */
+        /* For the most part it is simple things like ModStrength where we give an NPC +5 strength or something like that */
+        /* In most cases this is used on NPCs as we can't directly modify NPC stats */
+        /* But in some cases like ModFatigue or ModMagicka we will use it on player to change their current stamina/mana values */
+        /* Input is what we are changing and how much */
+        /* Returns row id of creates speff */
+        public enum StatMod { CurrentHP, CurrentMP, CurrentSP, Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane }
+        public int CreateScriptedEffect(StatMod stat, int amount, string name)
+        {
+            FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
+            FsParam.Row row;
+
+            switch (stat)
+            {
+                case StatMod.CurrentHP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeHpPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.CurrentMP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeMpPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.CurrentSP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeStaminaPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.Vigor:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addLifeForceStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Mind:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addWillpowerStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Endurance:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addEndureStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Strength:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addStrengthStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Dexterity:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addDexterityStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Intelligence:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addMagicStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Faith:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addFaithStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                case StatMod.Arcane:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addLuckStatus"].Value.SetValue(amount);
+                        break;
+                    }
+                default: throw new Exception("Invalid one shot scripted effect type."); // unreachable
+            }
+
+            speffParam.AddRow(row);
+            return row.ID;
+        }
+
         /* Stores info on an item */
         [DebuggerDisplay("Speff :: {type} :: {id} :: {row}")]
         public abstract class Speff

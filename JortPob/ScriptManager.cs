@@ -106,8 +106,16 @@ namespace JortPob
             // Temp flag that is set to the players current soul/rune count. For use when comparing your cash dosh money count in EMEVD
             Script.Flag playerRuneCount = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Int, Flag.Designation.PlayerRuneCount, "PlayerRuneCount");
 
-            // Temp flag that is set to the players current MaxHP value
-            Script.Flag playerMaxHP = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Int, Flag.Designation.PlayerMaxHP, "PlayerMaxHP");
+            // Temp flags that are set for various player stats
+            Script.Flag playerMaxHP = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Short, Flag.Designation.PlayerStat, "MaxHP");
+            Script.Flag playerVigor = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Vigor");
+            Script.Flag playerMind = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Mind");
+            Script.Flag playerEndurance = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Endurance");
+            Script.Flag playerStrength = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Strength");
+            Script.Flag playerDexterity = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Dexterity");
+            Script.Flag playerIntelligence = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Intelligence");
+            Script.Flag playerFaith = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Faith");
+            Script.Flag playerArcane = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Arcane");
 
             // Temp flag that is set true when a player is sneaking
             Script.Flag playerIsSneakingFlag = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
@@ -174,17 +182,83 @@ namespace JortPob
 
             string playerMaxHpBase = playerMaxHP.id.ToString()[..7];
             string playerMaxHpOffset = playerMaxHP.id.ToString()[7..];
-            string hksMaxHealthShitCode = $""""
+            string hksPlayerStatShitcode = $""""
 
-                                              -- writing the players max hp to a 16bit flag so esd/emevd can look at it
-                                              if env(IsCOMPlayer) == FALSE then
-                                          	    local SetEventFlag = 10003
-                                                  local maxHp = env(2013)
-                                                  for i = 0, 15 do
-                                                      local flagBit = tostring("{playerMaxHpBase}".. string.format("%03d", i + {playerMaxHpOffset})) -- kill me more
-                                                      act(SetEventFlag, flagBit, value_of_bit(maxHp, i))
-                                                  end
-                                              end
+                                            -- writing the players max hp to a 16bit flag so esd/emevd can look at it
+                                            -- and also writing players stats to 8bit flags so emevd can read them
+                                                if env(IsCOMPlayer) == FALSE then
+                                                -- vars
+                                                local SetEventFlag = 10003
+                                                local TraversePointerChain = 10000
+                                                local CHR_INS_BASE = 1
+                                                local SIGNED_INT = 5
+                                                local PLAYER_GAME_DATA = 0x580
+                                                local VIGOR = 0x288
+                                                local MIND = 0x28C
+                                                local ENDURANCE = 0x290
+                                                local STRENGTH = 0x298
+                                                local DEXTERITY = 0x29C
+                                                local INTELLIGENCE = 0x2A0
+                                                local FAITH = 0x2A4
+                                                local ARCANE = 0x2A8
+
+                                                -- max hp
+                                                    local maxHp = env(2013)
+                                                    for i = 0, 15 do
+                                                        local flagBit = tostring("{playerMaxHpBase}".. string.format("%03d", i + {playerMaxHpOffset}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(maxHp, i))
+                                                    end
+
+                                                local vig = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, VIGOR)
+                                                local mnd = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, MIND)
+                                                local edu = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, ENDURANCE)
+                                                local str = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, STRENGTH)
+                                                local dex = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, DEXTERITY)
+                                                local int = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, INTELLIGENCE)
+                                                local fth = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, FAITH)
+                                                local arc = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, ARCANE)
+
+                                                -- vig
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerVigor.id.ToString()[..7]}".. string.format("%03d", i + {playerVigor.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(vig, i))
+                                                    end
+                                                -- mnd
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerMind.id.ToString()[..7]}".. string.format("%03d", i + {playerMind.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(mnd, i))
+                                                    end
+                                                -- edu
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerEndurance.id.ToString()[..7]}".. string.format("%03d", i + {playerEndurance.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(edu, i))
+                                                    end
+                                                -- str
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerStrength.id.ToString()[..7]}".. string.format("%03d", i + {playerStrength.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(str, i))
+                                                    end
+                                                -- dex
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerDexterity.id.ToString()[..7]}".. string.format("%03d", i + {playerDexterity.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(dex, i))
+                                                    end
+                                                -- int
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerIntelligence.id.ToString()[..7]}".. string.format("%03d", i + {playerIntelligence.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(int, i))
+                                                    end
+                                                -- fth
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerFaith.id.ToString()[..7]}".. string.format("%03d", i + {playerFaith.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(fth, i))
+                                                    end
+                                                -- arc
+                                                for i = 0, 7 do
+                                                        local flagBit = tostring("{playerArcane.id.ToString()[..7]}".. string.format("%03d", i + {playerArcane.id.ToString()[7..]}))
+                                                        act(SetEventFlag, flagBit, value_of_bit(arc, i))
+                                                    end
+                                            end
 
 
                                           """";
@@ -210,7 +284,7 @@ namespace JortPob
                                             """";
 
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE FUNCTION HERE $$ --", $"{hksJankStart}{hksJankGen}{hksJankEnd}{hksBitwiseShitCode}");
-            hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksMaxHealthShitCode}{hksJankCall}");
+            hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksPlayerStatShitcode}{hksJankCall}");
             string hksOutPath = $"{Const.OUTPUT_PATH}action\\script\\c0000.hks";
             if (File.Exists(hksOutPath)) { File.Delete(hksOutPath); }
             System.IO.Directory.CreateDirectory(Path.GetDirectoryName(hksOutPath));

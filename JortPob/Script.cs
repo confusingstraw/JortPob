@@ -472,7 +472,7 @@ namespace JortPob
                 HasBeenAttacked, // used by a specific filter condition. if the npc is ever hit by the player this is permanently true
                 TopicEnabled, TalkedToPc, Disposition, PlayerRace,
                 FactionJoined, FactionReputation, FactionRank, FactionExpelled,    // faction stuff
-                GuardIsGreeting, PlayerIsTalking, PlayerIsSneaking, PlayerRuneCount, PlayerMaxHP,
+                GuardIsGreeting, PlayerIsTalking, PlayerIsSneaking, PlayerRuneCount, PlayerStat,
                 ReturnValueRankReq, ReturnReactionHigh, ReturnReactionLow,          // these are temp values used by ESD to store variables
                 CurrentWeather,
                 CrimeAbsolved,            // temp value, setting it to 1 triggers a common emevd event that clears all crime and hostility flags

@@ -1,6 +1,5 @@
-﻿using HKLib.hk2018.hk;
-using HKLib.hk2018.hkaiCollisionAvoidance;
-using JortPob.Common;
+﻿using JortPob.Common;
+using Microsoft.Scripting.Runtime;
 using SoulsFormats;
 using SoulsIds;
 using System;
@@ -12,6 +11,7 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using static JortPob.Papyrus;
+using static JortPob.SpeffManager;
 
 namespace JortPob
 {
@@ -680,6 +680,128 @@ namespace JortPob
                                 lines.Add($"EventValueOperation({buttonChoiceValue.id}, {buttonChoiceValue.Bits()}, {buttonRow.Count() - 1}, 0, 1, 5);");
 
                             }
+                            break;
+                        }
+
+                    case Call.Type.ModCurrentHealth:
+                    case Call.Type.ModCurrentMagicka:
+                    case Call.Type.ModCurrentFatigue:
+                        {
+                            uint entityId;
+                            if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
+                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else                                                                         // case 3: target is a direct reference to an object record
+                            {
+                                entityId = layout.FindScriptReference(content, call.target).entity;
+                            }
+
+                            int amount = int.Parse(call.parameters[0]);
+                            SpeffManager.StatMod statToMod;
+                            switch (call.type)
+                            {
+                                case Call.Type.ModCurrentHealth: statToMod = SpeffManager.StatMod.CurrentHP; break;
+                                case Call.Type.ModCurrentMagicka: statToMod = SpeffManager.StatMod.CurrentMP; break;
+                                case Call.Type.ModCurrentFatigue: statToMod = SpeffManager.StatMod.CurrentSP; break;
+                                default: throw new Exception("Invalid papyrus call type");  // unreachable
+                            }
+
+                            int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
+
+                            lines.Add($"SetSpEffect({entityId}, {speffId});");
+
+                            break;
+                        }
+
+                    case Call.Type.ModAgility:
+                    case Call.Type.ModEndurance:
+                    case Call.Type.ModIntelligence:
+                    case Call.Type.ModLuck:
+                    case Call.Type.ModMercantile:
+                    case Call.Type.ModPersonality:
+                    case Call.Type.ModRestoration:
+                    case Call.Type.ModSpeed:
+                    case Call.Type.ModStrength:
+                    case Call.Type.ModWillpower:
+                    case Call.Type.ModHealth:
+                    case Call.Type.ModMagicka:
+                    case Call.Type.ModFatigue:
+                        {
+                            uint entityId;
+                            if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
+                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else                                                                         // case 3: target is a direct reference to an object record
+                            {
+                                entityId = layout.FindScriptReference(content, call.target).entity;
+                            }
+
+                            /* Not the player, modify stat via SPEFF */
+                            if (entityId != 10000)
+                            {
+                                int amount = int.Parse(call.parameters[0]);
+                                SpeffManager.StatMod statToMod;
+                                switch (call.type)
+                                {
+                                    case Call.Type.ModAgility: statToMod = SpeffManager.StatMod.Dexterity; break;
+                                    case Call.Type.ModEndurance: statToMod = SpeffManager.StatMod.Endurance; break;
+                                    case Call.Type.ModIntelligence: statToMod = SpeffManager.StatMod.Intelligence; break;
+                                    case Call.Type.ModLuck: statToMod = SpeffManager.StatMod.Arcane; break;
+                                    case Call.Type.ModMercantile: statToMod = SpeffManager.StatMod.Arcane; break;
+                                    case Call.Type.ModPersonality: statToMod = SpeffManager.StatMod.Arcane; break;
+                                    case Call.Type.ModRestoration: statToMod = SpeffManager.StatMod.Mind; break;
+                                    case Call.Type.ModSpeed: statToMod = SpeffManager.StatMod.Dexterity; break;
+                                    case Call.Type.ModStrength: statToMod = SpeffManager.StatMod.Strength; break;
+                                    case Call.Type.ModWillpower: statToMod = SpeffManager.StatMod.Mind; break;
+                                    case Call.Type.ModHealth: statToMod = SpeffManager.StatMod.Vigor; break;
+                                    case Call.Type.ModMagicka: statToMod = SpeffManager.StatMod.Mind; break;
+                                    case Call.Type.ModFatigue: statToMod = SpeffManager.StatMod.Endurance; break;
+                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                }
+
+                                int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
+
+                                lines.Add($"SetSpEffect({entityId}, {speffId});");
+                            }
+                            /* For player, modify stats via HKS nonsense */
+                            else
+                            {
+                                // @TODO: modify player stats from EMEVD through HKS hackz
+                            }
+
+                            break;
+                        }
+
+                    case Call.Type.ModDisposition:
+                        {
+                            Content target;
+                            if (call.target == null) { target = content; }                      // case 1: no target so current object is target
+                            else                                                                // case 2: target is a direct reference to an object record
+                            {
+                                target = layout.FindScriptReference(content, call.target);
+                            }
+
+                            Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to dispoition
+                            lines.Add($"IfEventValue(OR_01, {rvar.id}, {rvar.Bits()}, 4, 100);");                                   // if disposition is greater or equal to 100
+                            lines.Add($"SkipIfConditionGroupStateUncompiled(1, FAIL, OR_01);");
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, 100, 0, 1, 0);");                           // set disposition to 100
+                            break;
+                        }
+
+                    case Call.Type.ModReputation:
+                        {
+                            Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
+                            string code = $"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
+                            lines.Add(code);
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.ModPcFacRep:
+                        {
+                            int rep = int.Parse(call.parameters[0]);
+                            Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, call.parameters[1]);
+                            string code = $"EventValueOperation({fvar.id}, {fvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
+                            lines.Add(code);
                             break;
                         }
 

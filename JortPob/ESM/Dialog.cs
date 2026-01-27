@@ -447,7 +447,7 @@ namespace JortPob
                                     case DialogFilter.Function.PcHealth:
                                         {
                                             // Calculate actual health from Max HP and current HP percent (0 to 100 int)
-                                            Script.Flag hpFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerMaxHP, "PlayerMaxHP");
+                                            Script.Flag hpFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerStat, "MaxHP");
                                             return $"((GetEventFlagValue({hpFlag.id}, {hpFlag.Bits()}) * GetPlayerRemainingHP()) / 100) {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.PcBlightDisease:
