@@ -895,11 +895,11 @@ namespace FSParam
                 bw.WriteBytes(data.ToArray());
             }
             
-            bw.FillUInt32("StringsOffset", (uint)bw.Position);
+            bw.FillUInt32("StringsOffset", (uint)bw.Position - 0x10);
             
             if (Format2D.HasFlag(FormatFlags1.OffsetParamType))
             {
-                bw.FillInt64("ParamTypeOffset", bw.Position);
+                bw.FillInt64("ParamTypeOffset", bw.Position - 0x10);
                 bw.WriteASCII(ParamType, true);
             }
             
@@ -913,7 +913,7 @@ namespace FSParam
                 stringOffsetDictionary.TryGetValue(rowName, out long nameOffset);
                 if (nameOffset == 0) 
                 {
-                    nameOffset = bw.Position;
+                    nameOffset = bw.Position - 0x10;
                     if (Format2E.HasFlag(FormatFlags2.UnicodeRowNames))
                         bw.WriteUTF16(rowName, true);
                     else
