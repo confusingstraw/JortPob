@@ -1,42 +1,42 @@
 ﻿[
   {
-    "class": "Warrior",
+    "name": "Warrior",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Archer",
+    "name": "Archer",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Sorcerer",
+    "name": "Sorcerer",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Monk",
+    "name": "Monk",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Thief",
+    "name": "Thief",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Barbarian",
+    "name": "Barbarian",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Knight",
+    "name": "Knight",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Spellsword",
+    "name": "Spellsword",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Bard",
+    "name": "Bard",
     "description": "Descriptions describe things!"
   },
   {
-    "class": "Pilgrim",
+    "name": "Pilgrim",
     "description": "Descriptions describe things!"
   }
 ]

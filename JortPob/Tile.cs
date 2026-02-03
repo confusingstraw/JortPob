@@ -1,12 +1,15 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using static SoulsFormats.MSBE.Region;
 
 namespace JortPob
 {
     /* A Tile is what we call a single square on the Elden Ring cell grid. It's basically the Elden Ring version of a "cell" */
+    [DebuggerDisplay("Tile m{map}_{coordinate.x}_{coordinate.y}_{block} :: [{cells.Count}] Cells")]
     public class Tile : BaseTile
     {
         public HugeTile huge;
@@ -41,10 +44,13 @@ namespace JortPob
             Dictionary<string, int> regions = new();
             foreach(Cell cell in cells)
             {
+                if (cell.region == null) { continue; }
                 string r = cell.region.Trim().ToLower();
                 if (regions.ContainsKey(r)) { regions[r]++; }
                 else { regions.Add(r, 1); }
             }
+
+            if (regions.Count() <= 0) { return "Default Region"; } // no regions set so guh
 
             string most = regions.Keys.First();
             foreach(KeyValuePair<string, int> kvp in regions)
@@ -56,13 +62,28 @@ namespace JortPob
             }
 
             /* Red Mountain has priority for skybox */
-            string redMountain = "Red Mountain Region".Trim().ToLower();
+            string redMountain = "red mountain region"; // Case sensitive
             if (regions.ContainsKey(redMountain))
             {
                 if (regions[redMountain] >= 3) { most = redMountain; }
             }
 
             return most;
+        }
+
+        public List<Content> GetAllContent()
+        {
+            List<Content> all = new();
+            all.AddRange(assets);
+            all.AddRange(doors);
+            all.AddRange(emitters);
+            all.AddRange(lights);
+            all.AddRange(creatures);
+            all.AddRange(npcs);
+            all.AddRange(containers);
+            all.AddRange(pickables);
+            all.AddRange(items);
+            return all;
         }
 
         public override void AddCell(Cell cell)
@@ -95,6 +116,15 @@ namespace JortPob
             Layout.WarpDestination dest = new((warp.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y), warp.rotation, warp.entity);
             warps.Add(dest);
         }
+
+        public void AddMapPoint(Layout.MapPoint point)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+
+            point.relative = (point.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            points.Add(point);
+        }
     }
 
 
@@ -114,8 +144,12 @@ namespace JortPob
         public readonly List<EmitterContent> emitters;
         public readonly List<CreatureContent> creatures;
         public readonly List<NpcContent> npcs;
+        public readonly List<ContainerContent> containers;
+        public readonly List<PickableContent> pickables;
+        public readonly List<ItemContent> items;
 
-        public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells
+        public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
+        public readonly List<Layout.MapPoint> points;
 
         public BaseTile(int m, int x, int y, int b)
         {
@@ -133,13 +167,17 @@ namespace JortPob
             lights = new();
             creatures = new();
             npcs = new();
+            containers = new();
+            pickables = new();
+            items = new();
 
+            points = new();
             warps = new();
         }
 
         public int[] IdList()
         {
-            return new int[] { map, coordinate.x, coordinate.y, block };
+            return [map, coordinate.x, coordinate.y, block];
         }
 
         public bool IsEmpty()
@@ -162,12 +200,18 @@ namespace JortPob
                     emitters.Add(e); break;
                 case LightContent l:
                     lights.Add(l); break;
+                case ContainerContent o:
+                    containers.Add(o); break;
+                case PickableContent p:
+                    pickables.Add(p); break;
+                case ItemContent i:
+                    items.Add(i); break;
                 case NpcContent n:
                     npcs.Add(n); break;
                 case CreatureContent c:
                     creatures.Add(c); break;
                 default:
-                    Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
+                    Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
             }
         }
     }

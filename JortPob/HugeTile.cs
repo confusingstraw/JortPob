@@ -1,11 +1,14 @@
-﻿using JortPob.Common;
+﻿using IronPython.Compiler.Ast;
+using JortPob.Common;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
 namespace JortPob
 {
-    /* HugeTile is a 4x4 grid of Tiles. Sort of like an LOD type thing. (????) */
+    /* HugeTile is a 4x4 grid of Tiles. Sort of like an LOD type thing. HugeTile contains 4 big tiles & 16 regular tiles. */
+    [DebuggerDisplay("Huge m{map}_{coordinate.x}_{coordinate.y}_{block} :: [{cells.Count}] Cells")]
     public class HugeTile : BaseTile
     {
         public List<BigTile> bigs;
@@ -39,6 +42,7 @@ namespace JortPob
         {
             cells.Add(cell);
             BigTile big = GetBigTile(cell.center);
+            if(big == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B01", Lort.Type.Debug); return; }
             big.AddCell(cell);
         }
 
@@ -51,12 +55,16 @@ namespace JortPob
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));*/
 
             Tile tile = GetTile(position);
-            tile.AddTerrain(position, terrainInfo);
+            if (tile != null) { tile.AddTerrain(position, terrainInfo); }
+            else { Lort.Log($" ## WARNING ## Terrain fell outside of reality [{terrainInfo.coordinate.x}, {terrainInfo.coordinate.y}] :: B01", Lort.Type.Debug); }
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
         public new void AddContent(Cache cache, Cell cell, Content content)
         {
+            // Special case: if content has a papyrus script it needs to be put in the small tile. large tiles dont have attached EMEVD scripts so they cant live there
+            if(content.papyrus != null) { GetTile(cell.center).AddContent(cache, cell, content); return; }
+
             switch (content)
             {
                 case AssetContent a:
@@ -67,6 +75,7 @@ namespace JortPob
                         float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile tile = GetTile(cell.center);
+                        if(tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                         content.load = tile.coordinate;
                         base.AddContent(cache, cell, content);
                         break;
@@ -74,6 +83,7 @@ namespace JortPob
                     goto default;
                 default:
                     BigTile big = GetBigTile(cell.center);
+                    if (big == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                     big.AddContent(cache, cell, content);
                     break;
             }
@@ -120,10 +130,13 @@ namespace JortPob
             Dictionary<string, int> regions = new();
             foreach (Cell cell in cells)
             {
+                if (cell.region == null) { continue; }
                 string r = cell.region.Trim().ToLower();
                 if (regions.ContainsKey(r)) { regions[r]++; }
                 else { regions.Add(r, 1); }
             }
+
+            if (regions.Count() <= 0) { return "Default Region"; } // no regions set so guh
 
             string most = regions.Keys.First();
             foreach (KeyValuePair<string, int> kvp in regions)

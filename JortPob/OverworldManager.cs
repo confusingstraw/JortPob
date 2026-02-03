@@ -56,22 +56,22 @@ namespace JortPob
             {
                 // if we have the const debug flag set for building a specific cell or group of cells the esm 0,0 cell may not be loaded
                 // in that case here is the correct value under normal circumstances, its better to calc it for safety but its debug so w/e
-                center = new Vector3(15.360352f, 0f, 2831.3604f);
+                center = new Vector3(608.051758f, 0f, 2472.96f);
             }
 
             /* Add water */
             MSBE.Part.Asset water = MakePart.Asset(cache.GetWater());
-            water.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+            water.Position = center + Const.MSB_OFFSET;
             msb.Parts.Assets.Add(water);
 
             /* Add swamp */
             MSBE.Part.Asset swamp = MakePart.Asset(cache.GetSwamp());
-            swamp.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+            swamp.Position = center + Const.MSB_OFFSET;
             msb.Parts.Assets.Add(swamp);
 
             /* Add lava */
             MSBE.Part.Asset lava = MakePart.Asset(cache.GetLava());
-            lava.Position = center + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, Const.LAVA_VISUAL_OFFSET, 0f);
+            lava.Position = center + Const.MSB_OFFSET + new Vector3(0f, Const.LAVA_VISUAL_OFFSET, 0f);
             msb.Parts.Assets.Add(lava);
 
             /* Add terrain */
@@ -82,7 +82,7 @@ namespace JortPob
                 MSBE.Part.MapPiece map = MakePart.MapPiece();
                 map.Name = $"m{terrainInfo.id.ToString("D8")}_0000";
                 map.ModelName = $"m{terrainInfo.id.ToString("D8")}";
-                map.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                map.Position = position + Const.MSB_OFFSET;
                 map.PartsDrawParamID = param.terrainDrawParamID;
 
                 msb.Parts.MapPieces.Add(map);
@@ -92,9 +92,8 @@ namespace JortPob
             Lort.TaskIterate();
 
             //MSBE SOURCE = MSBE.Read(Utility.ResourcePath(@"msb\m60_00_00_99.msb.dcx"));
-            if (true) // literally the worst fucking thing ever
             {
-                Int2 min = new(-1, 1);
+                Int2 min = new(-2, 1);
                 Int2 max = new(3, 6);
                 int[] start = new int[] { 60, 10, 8, 2 }; // first msb at the min coord
                 float size = 1024f; float crossfade = 32f;
@@ -108,7 +107,7 @@ namespace JortPob
                         /* Grab tile */
                         int[] msbid = new int[] { start[0], start[1] + x, start[2] + y, start[3] };
                         HugeTile tile = layout.GetHugeTile(new Int2(msbid[1], msbid[2]));
-                        if (tile.IsEmpty()) { continue; } // skip empty
+                        if (tile == null || tile.IsEmpty()) { continue; } // skip empty or unreal
 
                         /* Create envmap texture file */
                         EnvManager.CreateEnvMaps(tile, id);

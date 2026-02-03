@@ -1,0 +1,71 @@
+{
+  "iron shardaxe": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 2,
+    "comment": "Remapping the iron shardaxe to a regular battle axe with +2 lightning infusion and the lightning slash skill."
+  },
+  "iron longsword": {
+    "type": "Weapon",
+    "row": 2000000,
+    "comment": "Remapping 'iron longsword' to the Elden Ring Longsword."
+  },
+  "miner's pick": {
+    "type": "Weapon",
+    "row": 12140000,
+    "comment": "Pickaxe"
+  },
+  "long bow": {
+    "type": "Weapon",
+    "row": 41000000,
+    "comment": "Longbow"
+  },
+  "steel flameslayer": {
+    "type": "CustomWeapon",
+    "row": 3050000,
+    "infusion": "FlameArt",
+    "skill": 21400,
+    "upgrade": 3,
+    "comment": "Remapping the steel flameslayer to a flamberge with +3 fire infusion and the flaming slash skill."
+  },
+  "steel flamesword": {
+    "type": "CustomWeapon",
+    "row": 7140000,
+    "infusion": "FlameArt",
+    "skill": 21400,
+    "upgrade": 3,
+    "comment": "Remapping the steel flamesword to a scimitar with +3 fire infusion and the flaming slash skill."
+  },
+  "steel frostsword": {
+    "type": "CustomWeapon",
+    "row": 7140000,
+    "infusion": "Cold",
+    "skill": 22700,
+    "upgrade": 3,
+    "comment": "Remapping the steel frostsword to a scimitar with +3 cold infusion and the chilling mist skill."
+  },
+  "steel halberd": {
+    "type": "CustomWeapon",
+    "row": 18000000,
+    "upgrade": 3,
+    "comment": "Remapping the steel halberd to a halberd +3"
+  },
+  "steel jinkblade": {
+    "type": "CustomWeapon",
+    "row": 1000000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping the steel jinkblade to a poison dagger +3"
+  },
+   "steel jinkblade of the aegis": {
+    "type": "CustomWeapon",
+    "row": 1030000,
+    "infusion": "Poison",
+    "skill": 11900,
+    "upgrade": 3,
+    "comment": "Remapping the steel jinkblade of the aegis to a Misericorde +3"
+  }
+}

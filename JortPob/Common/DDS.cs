@@ -1,5 +1,7 @@
 ﻿using DirectXTexNet;
+using SoulsFormats;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -18,6 +20,10 @@ namespace JortPob.Common
 
                 switch (format)
                 {
+                    //Elden Ring:
+                    case TeximpNet.DDS.DXGIFormat.BC7_UNorm:
+                    case TeximpNet.DDS.DXGIFormat.BC7_UNorm_SRGB:
+                        return 102;
                     //DSR:
                     case DXGIFormat.BC1_UNorm:
                     case DXGIFormat.BC1_UNorm_SRGB:
@@ -34,9 +40,9 @@ namespace JortPob.Common
                         return 36;
                     case DXGIFormat.BC6H_UF16:
                         return 37;
-                    case DXGIFormat.BC7_UNorm:
-                    case DXGIFormat.BC7_UNorm_SRGB:
-                        return 38;
+                    //case DXGIFormat.BC7_UNorm:  // wrong for elden ring possibly?
+                    //case DXGIFormat.BC7_UNorm_SRGB:
+                        //return 38;
                     //DS3:
                     case DXGIFormat.B5G5R5A1_UNorm:
                         return 6;
@@ -166,26 +172,110 @@ namespace JortPob.Common
         public static byte[] Scale(byte[] dds)
         {
             GCHandle pinnedArray = GCHandle.Alloc(dds, GCHandleType.Pinned);
-            ScratchImage img = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), dds.Length, DDS_FLAGS.NONE);
-            int w = img.GetMetadata().Width / 2;
-            int h = img.GetMetadata().Height / 2;
-            if (TexHelper.Instance.IsCompressed(img.GetMetadata().Format))
+            try
             {
-                img = img.Decompress(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM);
-            }
-            img = img.Resize(0, w, h, TEX_FILTER_FLAGS.LINEAR);
-            img = img.Compress(DirectXTexNet.DXGI_FORMAT.BC1_UNORM, TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
-            //img.OverrideFormat(DirectXTexNet.DXGI_FORMAT.BC2_UNORM_SRGB);
+                ScratchImage img = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), dds.Length, DDS_FLAGS.NONE);
+                int w = img.GetMetadata().Width / 2;
+                int h = img.GetMetadata().Height / 2;
+                if (TexHelper.Instance.IsCompressed(img.GetMetadata().Format))
+                {
+                    img = img.Decompress(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM);
+                }
+                img = img.Resize(0, w, h, TEX_FILTER_FLAGS.LINEAR);
+                img = img.Compress(DirectXTexNet.DXGI_FORMAT.BC1_UNORM, TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
+                //img.OverrideFormat(DirectXTexNet.DXGI_FORMAT.BC2_UNORM_SRGB);
             
-            byte[] scaled;
-            using (UnmanagedMemoryStream uStream = img.SaveToDDSMemory(DDS_FLAGS.FORCE_DX10_EXT))
-            {
-                scaled = new byte[uStream.Length];
-                uStream.Read(scaled);
+                byte[] scaled;
+                using (UnmanagedMemoryStream uStream = img.SaveToDDSMemory(DDS_FLAGS.FORCE_DX10_EXT))
+                {
+                    scaled = new byte[uStream.Length];
+                    uStream.Read(scaled);
+                }
+                pinnedArray.Free();
+                img.Dispose();
+                return scaled;
+            } catch (Exception ex) {
+                Lort.Log($"{ex.Message} {ex.StackTrace} {ex.Source}", Lort.Type.Debug);
+                return null;
             }
+        }
+
+        /* dds file bytes in, bitmap object out */
+        public static Bitmap DDStoBitmap(byte[] dds, int width = 0, int height = 0)
+        {
+            GCHandle pinnedArray = GCHandle.Alloc(dds, GCHandleType.Pinned);
+            DirectXTexNet.ScratchImage scratchImage = DirectXTexNet.TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), dds.Length, DirectXTexNet.DDS_FLAGS.NONE);
+            if (TexHelper.Instance.IsCompressed(scratchImage.GetMetadata().Format))
+            {
+                scratchImage = scratchImage.Decompress(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM);
+            }
+
+            if(width > 0 || height > 0)
+            {
+                scratchImage = scratchImage.Resize(0, width, height, TEX_FILTER_FLAGS.CUBIC);
+            }
+
+            Bitmap bitmap = new(scratchImage.GetImage(0).Width, scratchImage.GetImage(0).Height);
+
+            int bytesPerPixel = (int)scratchImage.GetImage(0).RowPitch / scratchImage.GetImage(0).Width;
+            for (int y = 0; y < scratchImage.GetImage(0).Height; y++)
+            {
+                for (int x = 0; x < scratchImage.GetImage(0).Width; x++)
+                {
+                    int offset = (int)((y * scratchImage.GetImage(0).Width * bytesPerPixel) + (x * bytesPerPixel));
+                    byte r = Marshal.ReadByte(scratchImage.GetImage(0).Pixels, offset);
+                    byte g = Marshal.ReadByte(scratchImage.GetImage(0).Pixels, offset + 1);
+                    byte b = Marshal.ReadByte(scratchImage.GetImage(0).Pixels, offset + 2);
+                    byte a = Marshal.ReadByte(scratchImage.GetImage(0).Pixels, offset + 3);
+
+                    bitmap.SetPixel(x, y, Color.FromArgb(a, r, g, b));
+                }
+            }
+
             pinnedArray.Free();
-            img.Dispose();
-            return scaled;
+            scratchImage.Dispose();
+
+            return bitmap;
+        }
+
+        /* c# bitmap object in, bytes for a dds file out */
+        public static byte[] BitmapToDDS
+        (
+            Bitmap bitmap,
+            DirectXTexNet.DXGI_FORMAT format = DirectXTexNet.DXGI_FORMAT.BC2_UNORM_SRGB,
+            TEX_COMPRESS_FLAGS texCompFlag = TEX_COMPRESS_FLAGS.DEFAULT,
+            DDS_FLAGS ddsFlags = DDS_FLAGS.FORCE_DX10_EXT,
+            TEX_FILTER_FLAGS filterFlags = TEX_FILTER_FLAGS.LINEAR
+        )
+        {
+            /* Bitmap only supports saving to a file or a stream. Let's just save to a stream and get the stream as and array */
+            byte[] pngBytes;
+            using (MemoryStream stream = new())
+            {
+                bitmap.Save(stream, ImageFormat.Png);
+                pngBytes = stream.ToArray();
+            }
+
+            /* pin the array to memory so the garbage collector can't mess with it, */
+            GCHandle pinnedArray = GCHandle.Alloc(pngBytes, GCHandleType.Pinned);
+            ScratchImage sImage = TexHelper.Instance.LoadFromWICMemory(pinnedArray.AddrOfPinnedObject(), pngBytes.Length, WIC_FLAGS.DEFAULT_SRGB);
+
+            //sImage = sImage.Compress(DXGI_FORMAT.BC2_UNORM_SRGB, texCompFlag, 0.5f);
+           // sImage = sImage.Decompress(DirectXTexNet.DXGI_FORMAT.R8G8B8A8_UNORM);
+            sImage = sImage.Compress(format, texCompFlag, 0.5f);
+            sImage.OverrideFormat(format);
+
+            /* Save the DDS to memory stream and then read the stream into a byte array. */
+            byte[] bytes;
+            using (UnmanagedMemoryStream uStream = sImage.SaveToDDSMemory(ddsFlags))
+            {
+                bytes = new byte[uStream.Length];
+                uStream.Read(bytes);
+            }
+
+            pinnedArray.Free(); //We have to manually free pinned stuff, or it will never be collected.
+            sImage.Dispose();
+            return bytes;
         }
 
         public static bool IsAlpha(string texPath)

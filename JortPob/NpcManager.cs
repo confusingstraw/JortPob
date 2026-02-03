@@ -1,65 +1,127 @@
-﻿using HKLib.hk2018.hkAsyncThreadPool;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using static JortPob.Dialog;
-using static SoulsAssetPipeline.Audio.Wwise.WwiseBlock;
 
 namespace JortPob
 {
     public class NpcManager
     {
-        /* This class is responsible for creating all the data/files needed for NPC dialog */
-        /* This includes soundbanks, esd, and fmgs */
+        /* This class is responsible for managing the creation of ``Enemy`` objects in an MSB */
+        /* In morrowind this is both the NPC and Creature record types */
+        /* This class handles both the creation and assignment of params (NPCPARAM, NPCTHINKPARAM, CHARAINITPARAM) and manages ESDs and data for dialog generation and compiling */
+        /* Morrowind makes a distinction between these 2 types of characters but ER does not */
 
-        private ESM esm;
-        private SoundManager sound;
-        private Paramanager param;
-        private TextManager text;
-        private ScriptManager scriptManager;
+        private readonly ESM esm;
+        private readonly Layout layout;
+        private readonly SoundManager soundManager;
+        private readonly Paramanager paramanager;
+        private readonly TextManager textManager;
+        private readonly ItemManager itemManager;
+        private readonly SpeffManager speffManager;
+        private readonly ScriptManager scriptManager;
 
         private readonly Dictionary<string, int> topicText; // topic text id map
         private readonly List<EsdInfo> esds;
-        private readonly Dictionary<string, int> npcParamMap;
 
-        private int nextNpcParamId;  // increment by 10
+        private readonly Dictionary<string, int> npcParamMap, npcThinkParamMap;
 
-        public NpcManager(ESM esm, SoundManager sound, Paramanager param, TextManager text, ScriptManager scriptManager)
+        private int nextNpcParamId, nextNpcThinkParamId;  // increment by 10
+
+        public NpcManager(ESM esm, Layout layout, SoundManager sound, Paramanager param, TextManager text, ItemManager item, SpeffManager speff, ScriptManager scriptManager)
         {
             this.esm = esm;
-            this.sound = sound;
-            this.param = param;
-            this.text = text;
+            this.layout = layout;
+            this.soundManager = sound;
+            this.paramanager = param;
+            this.textManager = text;
+            this.itemManager = item;
+            this.speffManager = speff;
             this.scriptManager = scriptManager;
 
             esds = new();
             npcParamMap = new();
+            npcThinkParamMap = new();
             topicText = new();
 
             nextNpcParamId = 544900010;
+            nextNpcThinkParamId = 544900010;
         }
 
-        public int GetParam(NpcContent content)
+        public (int npc, int think) GetParams(ItemManager itemManager, Script script, NpcContent content)
+        {
+            int npcRow = GetNpcParam(itemManager, script, content);
+            int thinkRow = GetThinkParam(itemManager, script, content);
+
+            return (npcRow, thinkRow);
+        }
+
+        private int GetNpcParam(ItemManager itemManager, Script script, NpcContent content)
         {
             // First check if we already generated one for this npc record. If we did return that one. Some npcs like guards and dreamers have multiple placements
-            if(npcParamMap.ContainsKey(content.id)) { return npcParamMap[content.id]; }
+            if (npcParamMap.ContainsKey(content.id)) { return npcParamMap[content.id]; }
 
             int id = nextNpcParamId += 10;
-            param.GenerateNpcParam(text, id, content);
+            paramanager.GenerateNpcParam(itemManager, script, content, id);
+            npcParamMap.Add(content.id, id);
+
+            return id;
+        }
+
+        private int GetThinkParam(ItemManager itemManager, Script script, NpcContent content)
+        {
+            // First check if we already generated one for this npc record. If we did return that one. Some npcs like guards and dreamers have multiple placements
+            if (npcThinkParamMap.ContainsKey(content.id)) { return npcThinkParamMap[content.id]; }
+
+            int id = nextNpcThinkParamId += 10;
+            paramanager.GenerateThinkParam(itemManager, script, content, id);
+            npcThinkParamMap.Add(content.id, id);
+            return id;
+        }
+
+        public (int npc, int think) GetParams(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        {
+            int npcRow = GetNpcParam(itemManager, script, content, remap);
+            int thinkRow = GetThinkParam(itemManager, script, content, remap);
+
+            return (npcRow, thinkRow);
+        }
+
+        private int GetNpcParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        {
+            if (npcParamMap.ContainsKey(content.id)) { return npcParamMap[content.id]; }
+
+            int id = nextNpcParamId += 10;
+            paramanager.GenerateNpcParam(itemManager, script, content, id, remap);
             npcParamMap.Add(content.id, id);
             return id;
         }
 
+        private int GetThinkParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        {
+            if (npcThinkParamMap.ContainsKey(content.id)) { return npcThinkParamMap[content.id]; }
+
+            int id = nextNpcThinkParamId += 10;
+            paramanager.GenerateThinkParam(itemManager, script, content, id, remap);
+            npcThinkParamMap.Add(content.id, id);
+            return id;
+        }
+
+        public int GetESD(BaseTile tile, CharacterContent content) { return GetESD(tile.IdList(), content); }
+        public int GetESD(InteriorGroup group, CharacterContent content) { return GetESD(group.IdList(), content); }
+
         /* Creates an ESD for the given instance of a npc */
         /* ESDs are generally 1 to 1 with characters but there are some exceptions like guards */
         // @TODO: THIS SYSTEM USING AN ARRAY OF INTS IS FUCKING SHIT PLEASE GOD REFACTOR THIS TO JUST USE THE ACTUAL TILE OR INTERIOR GROUP
-        public int GetESD(int[] msbIdList, NpcContent content)
+        public int GetESD(int[] msbIdList, CharacterContent content)
         {
             if (Const.DEBUG_SKIP_ESD) { return 0; } // debug skip
+
+            if (content.race == CharacterContent.Race.Creature && !esm.HasDialog((CreatureContent)content)) { return 0; } // if this is a creature, verify it has dialog lines to build dialog for
 
             // First check if we even need one, hostile or dead npcs dont' get talk data for now
             if (content.dead || content.hostile) { return 0; }
@@ -69,7 +131,7 @@ namespace JortPob
             /* ESDs and event flags now use the entity id of the individual npc as their unique identifying value NOT THE RECORD ID */
 
             List<Tuple<DialogRecord, List<DialogInfoRecord>>> dialog = esm.GetDialog(scriptManager, content);
-            SoundManager.SoundBankInfo bankInfo = sound.GetBank(content);
+            SoundManager.SoundBankInfo bankInfo = soundManager.GetBank(content);
 
             List<TopicData> data = [];
             foreach ((DialogRecord dia, List<DialogInfoRecord> infos) in dialog)
@@ -79,7 +141,7 @@ namespace JortPob
                 {
                     if (!topicText.TryGetValue(dia.id, out topicId))
                     {
-                        topicId = text.AddTopic(dia.id);
+                        topicId = textManager.AddTopic(dia.id);
                         topicText.Add(dia.id, topicId);
                     }
                 }
@@ -91,24 +153,36 @@ namespace JortPob
                     /* If this dialog is too long for a single subtitle we split it into pieces */
                     List<string> lines = Utility.CivilizedSplit(info.text);
                     List<int> talkRows = new();
+                    int baseRow = -1;
                     for (int i=0;i<lines.Count();i++)
                     {
                         string line = lines[i];
                         /* Search existing soundbanks for the specific dialoginfo we are about to generate. if it exists just yoink it instead of generating a new one */
                         /* If we generate a new talkparam row for every possible line we run out of talkparam rows entirely and the project fails to build */
                         /* This sharing is required, and unfortunately it had to be added in at the end so its not a great implementation */
-                        SoundBank.Sound snd = sound.FindSound(content, info.id + i); // look for a generated wem sound that matches the npc (race/sex) and dialog line (dialoginforecord id)
+                        SoundBank.Sound snd = soundManager.FindSound(content, info.id + i); // look for a generated wem sound that matches the npc (race/sex) and dialog line (dialoginforecord id)
 
                         // Use an existing wem and talkparam we already generated because it's a match
-                        if (snd != null) { talkRows.Add(bankInfo.bank.AddSound(snd)); }
+                        if (snd != null) { talkRows.Add(bankInfo.bank.AddSound(snd)); continue; } // and continue here
+
+                        /* Debug voice acting using SAM */
+                        string wemFile;
+                        uint nxtid = (uint)(info.id + i);
+                        string hashName = $"{info.text.GetMD5Hash()}+{i}"; // Get the hash of the actual text string for this line, it will be our unique identier and filename for the cached wav/wem
+                        if (Const.USE_SAM) { wemFile = soundManager.GenerateLine(dia, info, line, hashName, content); }
+                        else { wemFile = Const.DEFAULT_DIALOG_WEM; }
+
                         // If this is not the first line in a talkparam group we must generate with sequential ids!
-                        else if (talkRows.Count() > 0)
+                        if (baseRow >= 0)
                         {
-                            uint nxtid = (uint)(talkRows[0] + i);
-                            talkRows.Add(bankInfo.bank.AddSound(@"sound\test_sound.wav", info.id + i, line, nxtid));
+                            talkRows.Add(bankInfo.bank.AddSound(wemFile, info.id + i, line, (uint)(baseRow + i)));
                         }
                         // Make a new sound and talkparam row because no suitable match was found!
-                        else { talkRows.Add(bankInfo.bank.AddSound(@"sound\test_sound.wav", info.id + i, line)); }
+                        else
+                        {
+                            baseRow = bankInfo.bank.AddSound(wemFile, info.id + i, line);
+                            talkRows.Add(baseRow);
+                        }
                     }
                     // The parmanager function will automatically skip duplicates when addign talkparam rows so we don't need to do anything here. the esd gen needs those dupes so ye
                     topicData.talks.Add(new(info, talkRows, lines));
@@ -116,15 +190,16 @@ namespace JortPob
 
                 if (topicData.talks.Count > 0) { data.Add(topicData); } // if no valid lines for a topic, discard
             }
-            param.GenerateTalkParam(text, data);
+            paramanager.GenerateTalkParam(data);
 
             int esdId = int.Parse($"{bankInfo.id.ToString("D3")}{bankInfo.uses++.ToString("D2")}{msbIdList[0]:D2}{(msbIdList[0]==60?0:msbIdList[1]):D2}");  // i know guh guhhhhh
 
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
             areaScript.RegisterNpcHostility(content);  // setup hostility flag/event
+            areaScript.RegisterNpcHello(content);      // setup hello flags and turntoplayer script
 
-            DialogESD dialogEsd = new(esm, scriptManager, text, areaScript, (uint)esdId, content, data);
+            DialogESD dialogEsd = new(esm, layout, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
             string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
             string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
             dialogEsd.Write(pyPath);
@@ -213,6 +288,14 @@ namespace JortPob
                 this.dialog = dialog;
                 this.topicText = topicText;
                 this.talks = new();
+            }
+
+            /* Blank constructor only used by creature dialog generation for blank topics like voice */
+            public TopicData()
+            {
+                dialog = null;
+                topicText = -1;
+                talks = new();
             }
 
             /* Special case where a topic contains only infos with the filter type "choice" making it unreachable */

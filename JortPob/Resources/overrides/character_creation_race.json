@@ -1,51 +1,51 @@
 ﻿[
   {
-    "race": "Imperial",
+    "name": "Imperial",
     "description": "Descriptions describe things!",
     "id": 5
   },
   {
-    "race": "Nord",
+    "name": "Nord",
     "description": "Descriptions describe things!",
     "id": 7
   },
   {
-    "race": "Redguard",
+    "name": "Redguard",
     "description": "Descriptions describe things!",
     "id": 9
   },
   {
-    "race": "Breton",
+    "name": "Breton",
     "description": "Descriptions describe things!",
     "id": 2
   },
   {
-    "race": "Wood Elf",
+    "name": "Wood Elf",
     "description": "Descriptions describe things!",
     "id": 10
   },
   {
-    "race": "Dark Elf",
+    "name": "Dark Elf",
     "description": "Descriptions describe things!",
     "id": 3
   },
   {
-    "race": "High Elf",
+    "name": "High Elf",
     "description": "Descriptions describe things!",
     "id": 4
   },
   {
-    "race": "Orc",
+    "name": "Orc",
     "description": "Descriptions describe things!",
     "id": 8
   },
   {
-    "race": "Argonian",
+    "name": "Argonian",
     "description": "Descriptions describe things!",
     "id": 1
   },
   {
-    "race": "Khajiit",
+    "name": "Khajiit",
     "description": "Descriptions describe things!",
     "id": 6
   }

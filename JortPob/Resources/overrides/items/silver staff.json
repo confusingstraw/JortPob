@@ -1,0 +1,17 @@
+{
+  "comment": "Silver staff created from a copy of demi human queen staff",
+  "type": "Weapon",
+  "row": 33060000,
+  "useIcon": true,
+  "text": {
+    "name": "Silver Staff",
+    "description": "A nice silver staff!",
+    "enchant": [ "Boosts mind.", "Line 2 test.", "Line 3 test!" ]
+  },
+  "data": {
+    "residentSpEffectId": "test_speff",
+    "properMagic": 12,
+    "attackBasePhysics": 75,
+    "correctStrength": 85
+  }
+}

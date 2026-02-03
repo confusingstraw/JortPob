@@ -1,0 +1,22 @@
+{
+  "steel_helm": {
+    "type": "Armor",
+    "row": 1500000,
+    "comment": "Knight Armor Helm"
+  },
+  "steel_cuirass": {
+    "type": "Armor",
+    "row": 1500100,
+    "comment": "Knight Armor Torso"
+  },
+  "steel_gauntlet_left": {
+    "type": "Armor",
+    "row": 1500200,
+    "comment": "Knight Armor Gloves"
+  },
+  "steel_greaves": {
+    "type": "Armor",
+    "row": 1500300,
+    "comment": "Knight Armor Legs"
+  }
+}

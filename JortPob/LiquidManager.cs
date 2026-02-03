@@ -662,13 +662,13 @@ namespace JortPob
             float s;
             Cutout.Type type;
             bool shaped;
-            if (content.mesh == @"f\terrain_bc_scum_01.nif") { s = 20.48f; type = Cutout.Type.Swamp; shaped = false; }  // measured these meshes in blender. could read actual vert data but they are just squares so why bother
-            else if (content.mesh == @"f\terrain_bc_scum_02.nif") { s = 10.24f; type = Cutout.Type.Swamp; shaped = false; }
-            else if (content.mesh == @"f\terrain_bc_scum_03.nif") { s = 5.12f; type = Cutout.Type.Swamp; shaped = false; }
-            else if (content.mesh == @"i\in_lava_1024.nif") { s = 10.24f; type = Cutout.Type.Lava; shaped = false; }
-            else if (content.mesh == @"i\in_lava_1024_01.nif") { s = 10.24f; type = Cutout.Type.Lava; shaped = false; }
-            else if (content.mesh == @"i\in_lava_512.nif") { s = 5.12f; type = Cutout.Type.Lava; shaped = false; }
-            else if (content.mesh == @"i\in_lava_256.nif") { s = 2.56f; type = Cutout.Type.Lava; shaped = false; }
+            if (content.mesh == @"f\terrain_bc_scum_01.nif") { s = 2048f * Const.GLOBAL_SCALE; type = Cutout.Type.Swamp; shaped = false; }  // measured these meshes in blender. could read actual vert data but they are just squares so why bother
+            else if (content.mesh == @"f\terrain_bc_scum_02.nif") { s = 1024f * Const.GLOBAL_SCALE; type = Cutout.Type.Swamp; shaped = false; }
+            else if (content.mesh == @"f\terrain_bc_scum_03.nif") { s = 512f * Const.GLOBAL_SCALE; type = Cutout.Type.Swamp; shaped = false; }
+            else if (content.mesh == @"i\in_lava_1024.nif") { s = 1024f * Const.GLOBAL_SCALE; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_1024_01.nif") { s = 1024f * Const.GLOBAL_SCALE; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_512.nif") { s = 512f * Const.GLOBAL_SCALE; type = Cutout.Type.Lava; shaped = false; }
+            else if (content.mesh == @"i\in_lava_256.nif") { s = 256f * Const.GLOBAL_SCALE; type = Cutout.Type.Lava; shaped = false; }
             else if (content.mesh == @"i\in_lava_oval.nif") { s = 0f; type = Cutout.Type.Lava; shaped = true; } // fuck
             else if (content.mesh == @"i\in_lava_256a.nif") { s = 0f; type = Cutout.Type.Lava; shaped = true; } // off
             else return false;
@@ -702,12 +702,12 @@ namespace JortPob
 
         public static bool PointInCutout(Cutout.Type type, Vector3 position, bool includeShapedCutouts = false)
         {
-            var positionY = position.Y;
+            float positionY = position.Y;
 
             // Check regular cutouts of this type only
-            if (CUTOUTS_BY_TYPE.TryGetValue(type, out var regularCutouts))
+            if (CUTOUTS_BY_TYPE.TryGetValue(type, out List<Cutout> regularCutouts))
             {
-                foreach (var cutout in regularCutouts)
+                foreach (Cutout cutout in regularCutouts)
                 {
                     if (positionY <= cutout.height && cutout.IsInside(position, false))
                         return true;
@@ -715,9 +715,9 @@ namespace JortPob
             }
 
             // Check shaped cutouts of this type only
-            if (includeShapedCutouts && SHAPED_CUTOUTS_BY_TYPE.TryGetValue(type, out var shapedCutouts))
+            if (includeShapedCutouts && SHAPED_CUTOUTS_BY_TYPE.TryGetValue(type, out List<Cutout> shapedCutouts))
             {
-                foreach (var cutout in shapedCutouts)
+                foreach (Cutout cutout in shapedCutouts)
                 {
                     if (positionY <= cutout.height && cutout.IsInside(position, false))
                         return true;

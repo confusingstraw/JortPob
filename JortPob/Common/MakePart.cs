@@ -1,6 +1,10 @@
 ﻿using SoulsFormats;
+using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Numerics;
+using static SoulsIds.Events;
+using System.Threading;
 
 namespace JortPob.Common
 {
@@ -9,10 +13,12 @@ namespace JortPob.Common
     /* The reason I made this it's own class is because generating parts is very bulky in Elden Ring and this is cleaner than doing it inline */
     public class MakePart
     {
-        public static Dictionary<ModelInfo, int> AssetInstances = new(); // counts instances of assets
-        public static Dictionary<EmitterInfo, int> EmitterInstances = new(); // counts instances of emitter assets
-        public static Dictionary<string, int> EnemyInstances = new();      // counts instances of enemies
-        public static Dictionary<LiquidInfo, int> WaterInstances = new();
+        public static ConcurrentDictionary<ModelInfo, int> AssetInstances { get; } = new(); // counts instances of assets
+        public static ConcurrentDictionary<PickableInfo, int> PickableInstances { get; } = new(); // counts instances of pickables
+        public static ConcurrentDictionary<EmitterInfo, int> EmitterInstances { get; } = new(); // counts instances of emitter assets
+        public static ConcurrentDictionary<string, int> EnemyInstances { get; } = new();      // counts instances of enemies
+        public static ConcurrentDictionary<LiquidInfo, int> WaterInstances { get; } = new();
+        public static ConcurrentDictionary<string, int> VanillaAssetInstances { get; } = new();
         public static int PlayerInstances = 9000;
 
         /* Makes simple collideable asset */
@@ -22,9 +28,7 @@ namespace JortPob.Common
             MSBE.Part.Asset asset = new();
 
             /* Instance */
-            int inst;
-            if(AssetInstances.ContainsKey(modelInfo)) { inst = ++AssetInstances[modelInfo]; }
-            else { inst = 0; AssetInstances.Add(modelInfo, inst); }
+            int inst = AssetInstances.AddOrUpdate(modelInfo, 0, (_, oldVal) => oldVal + 1);
             asset.InstanceID = inst;
 
             /* Model Stuff */
@@ -107,6 +111,26 @@ namespace JortPob.Common
             return asset;
         }
 
+        public static MSBE.Part.Asset Asset(PickableInfo pickableInfo)
+        {
+            MSBE.Part.Asset asset = Asset(pickableInfo.model);  // kind of lazy but it works guh
+
+            /* Instance */
+            int inst = PickableInstances.AddOrUpdate(pickableInfo, 0, (_, oldVal) => oldVal + 1);
+            asset.InstanceID = inst;
+
+            /* Model Stuff */
+            asset.Name = $"{pickableInfo.AssetName().ToUpper()}_{asset.InstanceID.ToString("D4")}";
+            asset.ModelName = pickableInfo.AssetName().ToUpper();
+
+            /* Asset Partnames */
+            asset.UnkT54PartName = asset.Name;
+            asset.UnkPartNames[4] = asset.Name;
+            asset.UnkPartNames[5] = asset.Name;
+
+            return asset;
+        }
+
         /* Makes asset with some sfx stuff */
         /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
         public static MSBE.Part.Asset Asset(EmitterInfo emitterInfo)
@@ -114,11 +138,9 @@ namespace JortPob.Common
             MSBE.Part.Asset asset = new();
 
             /* Instance */
-            int inst;
-            if (EmitterInstances.ContainsKey(emitterInfo)) { inst = ++EmitterInstances[emitterInfo]; }
-            else { inst = 0; EmitterInstances.Add(emitterInfo, inst); }
+            int inst = EmitterInstances.AddOrUpdate(emitterInfo, 0, (_, oldVal) => oldVal + 1);
             asset.InstanceID = inst;
-
+            
             /* Model Stuff */
             asset.Name = $"{emitterInfo.AssetName().ToUpper()}_{inst.ToString("D4")}";
             asset.ModelName = emitterInfo.AssetName().ToUpper();
@@ -209,11 +231,9 @@ namespace JortPob.Common
             MSBE.Part.Asset asset = new();
 
             /* Instance */
-            int inst;
-            if (WaterInstances.ContainsKey(waterInfo)) { inst = ++WaterInstances[waterInfo]; }
-            else { inst = 0; WaterInstances.Add(waterInfo, inst); }
+            int inst = WaterInstances.AddOrUpdate(waterInfo, 0, (_, oldVal) => oldVal + 1);
             asset.InstanceID = inst;
-
+            
             /* Model Stuff */
             asset.Name = $"{waterInfo.AssetName().ToUpper()}_{inst.ToString("D4")}";
             asset.ModelName = waterInfo.AssetName().ToUpper();
@@ -404,9 +424,7 @@ namespace JortPob.Common
             MSBE.Part.Enemy enemy = new();
 
             /* Instance */
-            int inst;
-            if (EnemyInstances.ContainsKey("c0000")) { inst = ++EnemyInstances["c0000"]; }
-            else { inst = 0; EnemyInstances.Add("c0000", inst); }
+            int inst = EnemyInstances.AddOrUpdate("c0000", 0, (_, oldVal) => oldVal + 1);
             enemy.InstanceID = inst;
 
             /* Model and Enemy Stuff */
@@ -443,20 +461,18 @@ namespace JortPob.Common
             return enemy;
         }
 
-        /* makes a goat */
-        public static MSBE.Part.Enemy Creature()
+        /* makes an Enemy object of the given cXXXX character id */
+        public static MSBE.Part.Enemy Creature(string character)
         {
             MSBE.Part.Enemy enemy = new();
 
             /* Instance */
-            int inst;
-            if (EnemyInstances.ContainsKey("c0000")) { inst = ++EnemyInstances["c0000"]; }
-            else { inst = 0; EnemyInstances.Add("c0000", inst); }
+            int inst = EnemyInstances.AddOrUpdate(character, 0, (_, oldVal) => oldVal + 1);
             enemy.InstanceID = inst;
-
+            
             /* Model and Enemy Stuff */
-            enemy.Name = $"c6060_{inst.ToString("D4")}";
-            enemy.ModelName = "c6060";
+            enemy.Name = $"{character}_{inst.ToString("D4")}";
+            enemy.ModelName = character;
             enemy.NPCParamID = 60600010;
             enemy.EntityID = 0;
             enemy.PlatoonID = 0;
@@ -492,7 +508,7 @@ namespace JortPob.Common
         public static MSBE.Part.Player Player()
         {
             MSBE.Part.Player player = new();
-            int inst = PlayerInstances++;
+            int inst = Interlocked.Increment(ref PlayerInstances);
 
             player.Name = $"c0000_{inst.ToString("D4")}";
             player.ModelName = "c0000";
@@ -577,6 +593,101 @@ namespace JortPob.Common
             envPoint.UnkT2C = 0;
             envPoint.UnkT2D = 1;
             return envPoint;
+        }
+
+        public static MSBE.Event.Treasure Treasure()
+        {
+            MSBE.Event.Treasure treasure = new();
+            return treasure;
+        }
+
+        // invis object to put a treasure on
+        public static MSBE.Part.Asset TreasureAsset()
+        {
+            MSBE.Part.Asset asset = new();
+
+            /* Model Stuff */
+            asset.ModelName = "AEG099_090";
+
+            /* Instance */
+            int inst = VanillaAssetInstances.AddOrUpdate(asset.ModelName, 0, (_, oldVal) => oldVal + 1);
+            asset.Name = $"{asset.ModelName}_{inst.ToString("D4")}";
+            asset.InstanceID = inst;
+
+            /* Top stuff */
+            asset.AssetSfxParamRelativeID = -1;
+            asset.MapStudioLayer = 4294967295;
+            asset.IsShadowDest = true;
+
+            /* Gparam */
+            asset.Gparam.FogParamID = -1;
+            asset.Gparam.LightSetID = -1;
+
+            /* Various Unks */
+            asset.UnkE0F = 1;
+            asset.UnkE3C = -1;
+            asset.UnkT12 = 255;
+            asset.UnkT1E = -1;
+            asset.UnkT24 = -1;
+            asset.UnkT30 = -1;
+            asset.UnkT34 = -1;
+
+            /* Display Groups */
+            asset.Unk1.DisplayGroups[0] = 16;
+            asset.Unk1.UnkC4 = -1;
+
+            /* Unk Groups */
+            asset.Unk2.Condition = -1;
+            asset.Unk2.Unk26 = -1;
+
+            /* TileLoad */
+            asset.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+            asset.TileLoad.CullingHeightBehavior = -1;
+
+            /* Grass */
+            asset.Grass.Unk18 = -1;
+
+            /* Asset Partnames */
+            asset.UnkT54PartName = asset.Name;
+            asset.UnkPartNames[4] = asset.Name;
+            asset.UnkPartNames[5] = asset.Name;
+            asset.UnkModelMaskAndAnimID = -1;
+            asset.UnkT5C = -1;
+            asset.UnkT60 = -1;
+            asset.UnkT64 = -1;
+
+            /* AssetUnk1 */
+            asset.AssetUnk1.Unk1C = -1;
+            asset.AssetUnk1.Unk24 = -1;
+            asset.AssetUnk1.Unk26 = -1;
+            asset.AssetUnk1.Unk28 = -1;
+            asset.AssetUnk1.Unk2C = -1;
+
+            /* AssetUnk2 */
+            asset.AssetUnk2.Unk04 = 100;
+            asset.AssetUnk2.Unk14 = -1f;
+            asset.AssetUnk2.Unk1C = 255;
+            asset.AssetUnk2.Unk1D = 255;
+            asset.AssetUnk2.Unk1E = 255;
+            asset.AssetUnk2.Unk1F = 255;
+
+            /* AssetUnk3 */
+            asset.AssetUnk3.Unk04 = 64.808716f;
+            asset.AssetUnk3.Unk09 = 255;
+            asset.AssetUnk3.Unk0B = 255;
+            asset.AssetUnk3.Unk0C = -1;
+            asset.AssetUnk3.Unk10 = -1f;
+            asset.AssetUnk3.DisableWhenMapLoadedMapID = new sbyte[] { -1, -1, -1, -1 };
+            asset.AssetUnk3.Unk18 = -1;
+            asset.AssetUnk3.Unk1C = -1;
+            asset.AssetUnk3.Unk20 = -1;
+            asset.AssetUnk3.Unk24 = 255;
+
+            /* AssetUnk4 */
+            asset.AssetUnk4.Unk01 = 255;
+            asset.AssetUnk4.Unk02 = 255;
+
+            return asset;
         }
     }
 }

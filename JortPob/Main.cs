@@ -1,5 +1,7 @@
-﻿using JortPob.Common;
+﻿using IronPython.Hosting;
+using JortPob.Common;
 using JortPob.Worker;
+using Microsoft.Scripting.Hosting;
 using PortJob;
 using SoulsFormats;
 using System;
@@ -7,7 +9,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata;
+using System.Text;
 using System.Text.Json.Nodes;
+using static IronPython.Modules._ast;
+using static JortPob.InteriorGroup;
 using static JortPob.Script;
 using static SoulsFormats.MSBAC4.Event;
 
@@ -17,30 +23,40 @@ namespace JortPob
     {
         public static void Convert()
         {
-            /* Startup logging */
-            Lort.Initialize();
+            /* Init */
+            Lort.Initialize(); // startup logging
+            Override.Initialize(); // load all override jsons
+            Utility.InitSRGBCache();
 
             /* Loading stuff */
             ScriptManager scriptManager = new();                                                // Manages EMEVD scripts
             ESM esm = new ESM(scriptManager);                                               // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
-            Paramanager param = new();                                                        // Class for managing PARAM files
             TextManager text = new();                                                           // Manages FMG text files
+            IconManager icon = new(esm);                                                       // Manages the creation and assignment of item icons
+            Paramanager param = new(text);                                                        // Class for managing PARAM files
+            SpeffManager speff = new(esm, param, scriptManager, icon, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
+            ItemManager item = new(esm, param, scriptManager, speff, icon, text);                         // Handles generation and reampping of items
             Layout layout = new(cache, esm, param, text, scriptManager);                          // Subdivides all content data from ESM into a more elden ring friendly format
             SoundManager sound = new();                                                         // Manages vcbanks
-            NpcManager character = new(esm, sound, param, text, scriptManager);                 // Manages dialog esd
+            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);    // Manages dialog esd
+
 
             // Helpers/shared values
             List<Tuple<Vector3, TerrainInfo>> emptyTerrainList = [];
 
-            /* Load overrides list for do not place @TODO: MAKE THIS A STATIC CLASS */
-            JsonNode jsonDoNotPlace = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
-            var doNotPlace = jsonDoNotPlace != null
-                ? jsonDoNotPlace.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
-                : [];
-
             /* Some quick setup stuff */
             scriptManager.SetupSpecialFlags(esm);
+
+            /* Create some needed text data that is ref'd later */
+            for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
+
+            /* Compile Papyrus main global script and it's subscripts */
+            Papyrus papyrusMain = esm.GetPapyrus("main");
+            PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null);
+
+            /* Write custom map */
+            if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
@@ -50,8 +66,8 @@ namespace JortPob
 
             foreach (BaseTile tile in layout.all)
             {
-                // Skip empty tiles.
-                if (tile.IsEmpty()) { continue; }
+                // Just write empty tiles as empty msbs and scripts to prevent base game stuff from loading in the distance. Debug flag if you want to skip this behaviour
+                if (tile.IsEmpty() && Const.DEBUG_DONT_WRITE_BLANK_MSBS) { continue; }
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
@@ -79,7 +95,7 @@ namespace JortPob
                         MSBE.Part.Collision collision = MakePart.Collision();
                         collision.Name = $"h{collisionIndex}_0000";
                         collision.ModelName = $"h{collisionIndex}";
-                        collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        collision.Position = position + Const.MSB_OFFSET;
 
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
@@ -97,7 +113,7 @@ namespace JortPob
                         MSBE.Part.Collision collision = MakePart.WaterCollision();
                         collision.Name = $"h{collisionIndex}_0000";
                         collision.ModelName = $"h{collisionIndex}";
-                        collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        collision.Position = position + Const.MSB_OFFSET;
 
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, waterCollisionInfo));
@@ -114,7 +130,7 @@ namespace JortPob
                             MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                             collision.Name = $"h{collisionIndex}_0000";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                            collision.Position = position + Const.MSB_OFFSET;
                             msb.Parts.Collisions.Add(collision);
                             pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, cutoutInfo.collision));
 
@@ -122,7 +138,7 @@ namespace JortPob
                             collision = MakePart.Collision(); // also works for lava and poison
                             collision.Name = $"h{collisionIndex}_0001";
                             collision.ModelName = $"h{collisionIndex}";
-                            collision.Position = position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
+                            collision.Position = position + Const.MSB_OFFSET + new Vector3(0f, terrainInfo.hasLava ? Const.LAVA_FLOOR_DEPTH : Const.SWAMP_FLOOR_DEPTH, 0f);
                             msb.Parts.Collisions.Add(collision);
                         }
                     }
@@ -131,16 +147,23 @@ namespace JortPob
                 /* Add assets */
                 foreach (AssetContent content in tile.assets)
                 {
-                    if (doNotPlace.Contains(content.mesh.ToLower())) { continue; } // skip any meshes listed in the do_not_place override json
+                    if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
                     /* Make part */
                     MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
-                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                    if (content.papyrus != null)
+                    {
+                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                    }
 
                     /* Asset tileload config */
                     if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
@@ -149,6 +172,8 @@ namespace JortPob
                         asset.TileLoad.Unk04 = 13;
                         asset.TileLoad.CullingHeightBehavior = -1;
                     }
+
+                    asset.EntityID = content.entity;
 
                     msb.Parts.Assets.Add(asset);
                 }
@@ -161,12 +186,13 @@ namespace JortPob
 
                     /* Make part */
                     MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
-                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
                     asset.EntityID = content.entity;
 
-                    if (content.warp != null) { script.RegisterLoadDoor(content); } // if the door is a load door we need to generate scripts for it
+                    if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it
+                    else if (Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
 
                     msb.Parts.Assets.Add(asset);
                 }
@@ -175,7 +201,7 @@ namespace JortPob
                 foreach (Layout.WarpDestination warp in tile.warps)
                 {
                     MSBE.Part.Player player = MakePart.Player();
-                    player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    player.Position = warp.position + Const.MSB_OFFSET;
                     player.Rotation = warp.rotation;
                     player.EntityID = warp.id;
                     msb.Parts.Players.Add(player);
@@ -186,10 +212,15 @@ namespace JortPob
                 {
                     /* Grab ModelInfo */
                     EmitterInfo emitterInfo = cache.GetEmitter(content.id);
+                    if (emitterInfo == null)
+                    {
+                        Lort.Log($" ## WARNING ## Skipping EmitterContent with id {content.id} as is has no associated EmitterInfo", Lort.Type.Debug);
+                        continue;
+                    }
 
                     /* Make part */
                     MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
-                    asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(content.scale * 0.01f);
 
@@ -206,22 +237,165 @@ namespace JortPob
                 foreach (NpcContent npc in tile.npcs)
                 {
                     MSBE.Part.Enemy enemy = MakePart.Npc();
-                    enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    enemy.Position = npc.relative + Const.MSB_OFFSET;
                     enemy.Rotation = npc.rotation;
 
-                    enemy.TalkID = character.GetESD(tile.IdList(), npc); // creates and returns a character esd
-                    enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
+                    // If the npc is a deadbody we create a treasure on their body
+                    List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(npc);
+                    if (npc.dead && inventory.Count() > 0)
+                    {
+                        MSBE.Event.Treasure treasure = MakePart.Treasure();
+                        treasure.ItemLotID = param.GenerateDeadBodyItemLot(script, npc, inventory);
+
+                        MSBE.Part.Asset treasurePart = MakePart.TreasureAsset();
+                        treasurePart.Position = enemy.Position;
+
+                        treasure.Name = $"DeadBodyTreaure->{npc.id}";
+                        treasure.ActionButtonID = param.GenerateActionButtonItemParam($"Loot {npc.name}");
+                        treasure.TreasurePartName = treasurePart.Name;
+
+                        msb.Parts.Assets.Add(treasurePart);
+                        msb.Events.Treasures.Add(treasure);
+                    }
+
+                    // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
+                    if (npc.papyrus != null)
+                    {
+                        Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
+                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
+                    }
+
+                    (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
+                    enemy.TalkID = character.GetESD(tile, npc); // creates and returns a character esd
+                    enemy.NPCParamID = paramRows.npc;
+                    enemy.ThinkParamID = paramRows.think;
                     enemy.EntityID = npc.entity;
 
                     msb.Parts.Enemies.Add(enemy);
                 }
 
-                /* TEST Creatures */ // make some goats where enemies would spawn just as a test
+                /* Add items */ // must happen after npcs since items can be owned by npcs so we need all npcs registerd before we do items
+                foreach (ItemContent content in tile.items)
+                {
+                    if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                    /* Grab ModelInfo + iteminfo */
+                    ItemManager.ItemInfo itemInfo = item.GetItem(content.id);
+                    ModelInfo modelInfo;
+                    if (itemInfo != null) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
+                    else { modelInfo = cache.GetModel(content.mesh, content.scale); }  // otherwise it doesn't matter. treasure events can only work on dynamic assets for whatever reason
+
+                    /* Make part */
+                    MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                    asset.Position = content.relative + Const.MSB_OFFSET;
+                    asset.Rotation = content.rotation;
+                    asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                    if (itemInfo != null)
+                    {
+                        MSBE.Event.Treasure treasure = MakePart.Treasure();
+                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                        treasure.ItemLotID = param.GenerateContentItemLot(script, content, itemInfo);
+                        treasure.Name = $"ItemTreasure->{content.id}";
+                        treasure.ActionButtonID = param.GenerateActionButtonItemParam(content.ActionText());
+                        treasure.TreasurePartName = asset.Name;
+
+                        msb.Events.Treasures.Add(treasure);
+                    }
+
+                    if (content.papyrus != null)
+                    {
+                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                    }
+
+                    asset.EntityID = content.entity;
+
+                    msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add pickables */
+                foreach (PickableContent content in tile.pickables)
+                {
+                    if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                    /* Grab ModelInfo */
+                    PickableInfo pickableInfo = cache.GetPickableModel(content);
+
+                    /* Make part */
+                    MSBE.Part.Asset asset = MakePart.Asset(pickableInfo);
+                    asset.Position = content.relative + Const.MSB_OFFSET;
+                    asset.Rotation = content.rotation;
+                    asset.Scale = new Vector3(content.scale * 0.01f);
+
+                    asset.EntityID = content.entity;
+
+                    msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add container */
+                foreach (ContainerContent content in tile.containers)
+                {
+                    if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                    /* Grab ModelInfo + iteminfo */
+                    List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(content);
+                    ModelInfo modelInfo;
+                    if (inventory.Count() > 0) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
+                    else { modelInfo = cache.GetModel(content.mesh, content.scale); }  // otherwise it doesn't matter. treasure events can only work on dynamic assets for whatever reason
+
+                    /* Make part */
+                    MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                    asset.Position = content.relative + Const.MSB_OFFSET;
+                    asset.Rotation = content.rotation;
+                    asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                    if (inventory.Count() > 0)
+                    {
+                        MSBE.Event.Treasure treasure = MakePart.Treasure();
+                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                        treasure.ItemLotID = param.GenerateContainerItemLot(script, content, inventory);
+                        treasure.Name = $"ContainerTreasure->{content.id}";
+                        treasure.ActionButtonID = param.GenerateActionButtonItemParam(content.ActionText());
+                        treasure.TreasurePartName = asset.Name;
+
+                        msb.Events.Treasures.Add(treasure);
+                    }
+
+                    if (content.papyrus != null)
+                    {
+                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                    }
+
+                    asset.EntityID = content.entity;
+
+                    msb.Parts.Assets.Add(asset);
+                }
+
+                /* Creatures */
                 foreach (CreatureContent creature in tile.creatures)
                 {
-                    MSBE.Part.Enemy enemy = MakePart.Creature();
-                    enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
+
+                    MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
+                    enemy.Position = creature.relative + Const.MSB_OFFSET;
                     enemy.Rotation = creature.rotation;
+
+                    // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
+                    if (creature.papyrus != null)
+                    {
+                        Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
+                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                    }
+
+                    (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                    enemy.TalkID = character.GetESD(tile, creature); // creates and returns a character esd
+                    enemy.NPCParamID = paramRows.npc;
+                    enemy.ThinkParamID = paramRows.think;
                     enemy.EntityID = creature.entity;
 
                     msb.Parts.Enemies.Add(enemy);
@@ -230,39 +404,31 @@ namespace JortPob
                 /* Handle area names */
                 if (isTileType)
                 {
-                    foreach (Cell cell in tile.cells)
+                    foreach (Layout.MapPoint point in tile.points)
                     {
-                        if (cell.name != null)
-                        {
-                            float x = (tile.coordinate.x * Const.TILE_SIZE);
-                            float y = (tile.coordinate.y * Const.TILE_SIZE);
-                            Vector3 relative = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
 
-                            int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
+                        MSBE.Region.MapPoint mpr = new();
+                        mpr.Name = $"{point.name} placename";
+                        mpr.Shape = new MSB.Shape.Sphere(point.radius);
+                        mpr.Position = point.relative + Const.MSB_OFFSET;
+                        mpr.Rotation = Vector3.Zero;
+                        mpr.RegionID = nextMPR++;
+                        mpr.MapStudioLayer = 4294967295;
+                        mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
 
+                        mpr.MapID = -1;
+                        mpr.UnkE08 = 255;
+                        mpr.UnkS04 = 0;
+                        mpr.UnkS0C = -1;
+                        mpr.UnkT04 = -1;
+                        mpr.UnkT08 = -1;
+                        mpr.UnkT0C = -1;
+                        mpr.UnkT10 = -1;
+                        mpr.UnkT14 = -1;
+                        mpr.UnkT18 = -1;
 
-                            MSBE.Region.MapPoint mpr = new();
-                            mpr.Name = $"{cell.name} placename";
-                            mpr.Shape = new MSB.Shape.Box(Const.CELL_SIZE, Const.CELL_SIZE, Const.CELL_SIZE * 8);
-                            mpr.Position = relative;
-                            mpr.Rotation = Vector3.Zero;
-                            mpr.RegionID = nextMPR++;
-                            mpr.MapStudioLayer = 4294967295;
-                            mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, tile, cell, relative, paramId);
-
-                            mpr.MapID = -1;
-                            mpr.UnkE08 = 255;
-                            mpr.UnkS04 = 0;
-                            mpr.UnkS0C = -1;
-                            mpr.UnkT04 = -1;
-                            mpr.UnkT08 = -1;
-                            mpr.UnkT0C = -1;
-                            mpr.UnkT10 = -1;
-                            mpr.UnkT14 = -1;
-                            mpr.UnkT18 = -1;
-
-                            msb.Regions.MapPoints.Add(mpr);
-                        }
+                        msb.Regions.MapPoints.Add(mpr);
                     }
                 }
 
@@ -283,6 +449,8 @@ namespace JortPob
 
                 // Skip empty groups.
                 if (group.IsEmpty()) { continue; }
+
+                Lort.Log($"@{group.map}_{group.area} we have ItemLots[{param.param[Paramanager.ParamType.ItemLotParam_map].Rows.Count}] and TalkParams[{param.param[Paramanager.ParamType.TalkParam].Rows.Count}]", Lort.Type.Debug);
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
@@ -307,7 +475,7 @@ namespace JortPob
                     MSBE.Part.Collision rootCollision = MakePart.Collision();
                     rootCollision.Name = $"h{collisionIndex}_0000";
                     rootCollision.ModelName = $"h{collisionIndex}";
-                    rootCollision.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Z, 0f);
+                    rootCollision.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Z, 0f);
                     rootCollision.Unk1.DisplayGroups[0] = 0;
                     rootCollision.Unk1.DisplayGroups[1] = chunkDrawGroup;
                     rootCollision.Unk1.CollisionMask[0] = 0;
@@ -318,7 +486,7 @@ namespace JortPob
                     /* Interior MSB shadow box */
                     ModelInfo shadowBoxModelInfo = cache.GetModel("interiorshadowbox");
                     MSBE.Part.Asset shadowBoxAsset = MakePart.Asset(shadowBoxModelInfo);
-                    shadowBoxAsset.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    shadowBoxAsset.Position = chunk.root + Const.MSB_OFFSET;
                     shadowBoxAsset.Rotation = Vector3.Zero;
                     shadowBoxAsset.Scale = chunk.bounds;
                     shadowBoxAsset.Unk1.DisplayGroups[0] = 0;
@@ -330,16 +498,25 @@ namespace JortPob
                     /* Add assets */
                     foreach (AssetContent content in chunk.assets)
                     {
-                        if (doNotPlace.Contains(content.mesh.ToLower())) { continue; } // skip any meshes listed in the do_not_place override json
+                        if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
                         /* Grab ModelInfo */
                         ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
                         /* Make part */
                         MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
-                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                        if (content.papyrus != null)
+                        {
+                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        }
+
+                        asset.EntityID = content.entity;
 
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
@@ -357,7 +534,7 @@ namespace JortPob
 
                         /* Make part */
                         MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
-                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
                         asset.EntityID = content.entity;
@@ -367,7 +544,8 @@ namespace JortPob
                         asset.UnkPartNames[3] = rootCollision.Name;
                         asset.UnkPartNames[5] = rootCollision.Name;
 
-                        if (content.warp != null) { script.RegisterLoadDoor(content); } // if the door is a load door we need to register scripts for it
+                        if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to register scripts for it
+                        else if (Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
 
                         msb.Parts.Assets.Add(asset);
                     }
@@ -376,7 +554,7 @@ namespace JortPob
                     foreach (Layout.WarpDestination warp in chunk.warps)
                     {
                         MSBE.Part.Player player = MakePart.Player();
-                        player.Position = warp.position + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        player.Position = warp.position + Const.MSB_OFFSET;
                         player.Rotation = warp.rotation;
                         player.EntityID = warp.id;
                         msb.Parts.Players.Add(player);
@@ -387,10 +565,15 @@ namespace JortPob
                     {
                         /* Grab ModelInfo */
                         EmitterInfo emitterInfo = cache.GetEmitter(content.id);
+                        if (emitterInfo == null)
+                        {
+                            Lort.Log($" ## WARNING ## Skipping EmitterContent with id {content.id} as it has no associated EmmitterInfo!", Lort.Type.Debug);
+                            continue;
+                        }
 
                         /* Make part */
                         MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
-                        asset.Position = content.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(content.scale * 0.01f);
 
@@ -408,15 +591,43 @@ namespace JortPob
                         lightManager.CreateLight(light);
                     }
 
-                    /* TEST NPCs */ // make some c0000 npcs where humanoid npcs would spawn as a test
+                    /* Create humanoid NPCs (c0000) */
                     foreach (NpcContent npc in chunk.npcs)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
-                        enemy.Position = npc.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        enemy.Position = npc.relative + Const.MSB_OFFSET;
                         enemy.Rotation = npc.rotation;
 
-                        enemy.TalkID = character.GetESD(group.IdList(), npc); // creates and returns a character esd
-                        enemy.NPCParamID = character.GetParam(npc); // creates and returns an npcparam
+                        // If the npc is a deadbody we create a treasure on their body
+                        List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(npc);
+                        if (npc.dead && inventory.Count() > 0)
+                        {
+                            MSBE.Event.Treasure treasure = MakePart.Treasure();
+                            treasure.ItemLotID = param.GenerateDeadBodyItemLot(script, npc, inventory);
+
+                            MSBE.Part.Asset treasurePart = MakePart.TreasureAsset();
+                            treasurePart.Position = enemy.Position;
+
+                            treasure.Name = $"DeadBodyTreaure->{npc.id}";
+                            treasure.ActionButtonID = param.GenerateActionButtonItemParam($"Loot {npc.name}");
+                            treasure.TreasurePartName = treasurePart.Name;
+
+                            msb.Parts.Assets.Add(treasurePart);
+                            msb.Events.Treasures.Add(treasure);
+                        }
+
+                        // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
+                        if (npc.papyrus != null)
+                        {
+                            Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
+                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                                                                                                                                         //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
+                        }
+
+                        (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
+                        enemy.TalkID = character.GetESD(group, npc); // creates and returns a character esd
+                        enemy.NPCParamID = paramRows.npc;
+                        enemy.ThinkParamID = paramRows.think;
                         enemy.EntityID = npc.entity;
 
                         enemy.Unk1.DisplayGroups[0] = 0;
@@ -425,15 +636,121 @@ namespace JortPob
                         msb.Parts.Enemies.Add(enemy);
                     }
 
-                    /* TEST Creatures */ // make some goats where enemies would spawn just as a test
+                    /* Add items */ // must happen after npcs since items can be owned by npcs so we need all npcs registerd before we do items
+                    foreach (ItemContent content in chunk.items)
+                    {
+                        if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                        /* Grab ModelInfo + iteminfo */
+                        ItemManager.ItemInfo itemInfo = item.GetItem(content.id);
+                        ModelInfo modelInfo;
+                        if (itemInfo != null) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
+                        else { modelInfo = cache.GetModel(content.mesh, content.scale); }  // otherwise it doesn't matter. treasure events can only work on dynamic assets for whatever reason
+
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                        asset.Position = content.relative + Const.MSB_OFFSET;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                        if (itemInfo != null)
+                        {
+                            MSBE.Event.Treasure treasure = MakePart.Treasure();
+                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                            treasure.ItemLotID = param.GenerateContentItemLot(script, content, itemInfo);
+                            treasure.Name = $"ItemTreasure->{content.id}";
+                            treasure.ActionButtonID = param.GenerateActionButtonItemParam(content.ActionText());
+                            treasure.TreasurePartName = asset.Name;
+
+                            msb.Events.Treasures.Add(treasure);
+                        }
+
+                        if (content.papyrus != null)
+                        {
+                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        }
+
+                        asset.EntityID = content.entity;
+
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Add container */
+                    foreach (ContainerContent content in chunk.containers)
+                    {
+                        if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                        /* Grab ModelInfo + iteminfo */
+                        List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(content);
+                        ModelInfo modelInfo;
+                        if (inventory.Count() > 0) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
+                        else { modelInfo = cache.GetModel(content.mesh, content.scale); }  // otherwise it doesn't matter. treasure events can only work on dynamic assets for whatever reason
+
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(modelInfo);
+                        asset.Position = content.relative + Const.MSB_OFFSET;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+
+                        if (inventory.Count() > 0)
+                        {
+                            MSBE.Event.Treasure treasure = MakePart.Treasure();
+                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                            treasure.ItemLotID = param.GenerateContainerItemLot(script, content, inventory);
+                            treasure.Name = $"ContainerTreasure->{content.id}";
+                            treasure.ActionButtonID = param.GenerateActionButtonItemParam(content.ActionText());
+                            treasure.TreasurePartName = asset.Name;
+
+                            msb.Events.Treasures.Add(treasure);
+                        }
+
+                        if (content.papyrus != null)
+                        {
+                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
+                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
+                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        }
+
+                        asset.EntityID = content.entity;
+
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Creatures */
                     foreach (CreatureContent creature in chunk.creatures)
                     {
-                        MSBE.Part.Enemy enemy = MakePart.Creature();
-                        enemy.Position = creature.relative + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                        Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
+
+                        MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
+                        enemy.Position = creature.relative + Const.MSB_OFFSET;
                         enemy.Rotation = creature.rotation;
 
                         enemy.Unk1.DisplayGroups[0] = 0;
                         enemy.CollisionPartName = rootCollision.Name;
+
+                        // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
+                        if (creature.papyrus != null)
+                        {
+                            Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
+                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        }
+
+                        (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                        enemy.TalkID = character.GetESD(group, creature); // creates and returns a character esd
+                        enemy.NPCParamID = paramRows.npc;
+                        enemy.ThinkParamID = paramRows.think;
                         enemy.EntityID = creature.entity;
 
                         msb.Parts.Enemies.Add(enemy);
@@ -446,11 +763,11 @@ namespace JortPob
                     MSBE.Region.MapPoint mpr = new();
                     mpr.Name = $"{chunk.cell.name} placename";
                     mpr.Shape = new MSB.Shape.Box(chunk.bounds.X, chunk.bounds.Z, chunk.bounds.Y);
-                    mpr.Position = chunk.root + Const.TEST_OFFSET1 + Const.TEST_OFFSET2 - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
+                    mpr.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                     mpr.Rotation = Vector3.Zero;
                     mpr.RegionID = nextMPR++;
                     mpr.MapStudioLayer = 4294967295;
-                    mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(text, group, chunk.cell, chunk.root, paramId);
+                    mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, chunk.cell, chunk.root, paramId);
 
                     mpr.MapID = -1;
                     mpr.UnkE08 = 255;
@@ -478,13 +795,13 @@ namespace JortPob
                     MSBE.Region.EnvironmentMapEffectBox envBox = MakePart.EnvBox();
                     envBox.Name = $"Env_Box{envId.ToString("D3")}";
                     envBox.Shape = new MSB.Shape.Box(size + crossfade, size + crossfade, size + crossfade);
-                    envBox.Position = new Vector3(0f, size * -0.5f, 0f) + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    envBox.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
                     envBox.TransitionDist = crossfade / 2f;
                     msb.Regions.EnvironmentMapEffectBoxes.Add(envBox);
 
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
                     envPoint.Name = $"Env_Point{envId.ToString("D3")}";
-                    envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.TEST_OFFSET1 + Const.TEST_OFFSET2;
+                    envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
                     envPoint.UnkMapID = new byte[] { (byte)group.map, (byte)group.area, (byte)group.unk, (byte)group.block };
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
@@ -499,131 +816,30 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
-            /* Create debug warp area */
-            {
-                /* DEBUG - Add a warp from church of elleh to Seyda Neen */ // @TODO: Move this into it's own class or smth?
-                /* @TODO: DELETE THIS WHEN IT IS NO LONGER NEEDED! */
-                MSBE debugMSB = MSBE.Read(Utility.ResourcePath(@"test\m60_42_36_00.msb.dcx"));
-                MSBE.Part.Asset debugThingToDupe = null;
-                uint debugEntityIdNext = 1042360750;
-                foreach (MSBE.Part.Asset asset in debugMSB.Parts.Assets)
-                {
-                    if (asset.ModelName == "AEG099_309")
-                    {
-                        debugThingToDupe = asset;
-                        break;
-                    }
-                }
-
-                Script debugScript = new(scriptManager.common, 60, 42, 36, 0);
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360000, 1042361950, 0, 0, 0, 5);"));
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(1042360001, 1042361951, 0, 0, 0, 5);"));
-                List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald Ruhn" };
-                int actionParamId = 1555, debugCounty = 0;
-                for (int i = 0; i < debugWarpCellList.Count(); i++)
-                {
-                    string areaName = debugWarpCellList[i];
-                    Tile area = layout.GetTile(areaName);
-                    if (area != null && area.warps.Count() > 0)
-                    {
-                        MSBE.Part.Asset debugAsset = (MSBE.Part.Asset)(debugThingToDupe.DeepCopy());
-                        debugAsset.Position = debugAsset.Position + new Vector3(2f * i, 0.5f, -1.1f * i);
-                        debugAsset.EntityID = debugEntityIdNext++;
-                        debugAsset.Name = $"AEG099_309_{9001 + debugCounty}";
-                        debugAsset.UnkPartNames[4] = $"AEG099_309_{9001 + debugCounty}";
-                        debugAsset.UnkPartNames[5] = $"AEG099_309_{9001 + debugCounty}";
-                        debugAsset.UnkT54PartName = $"AEG099_309_{9001 + debugCounty}";
-                        debugAsset.InstanceID++;
-                        debugMSB.Parts.Assets.Add(debugAsset);
-
-                        Script.Flag debugEventFlag = debugScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugWarp");
-                        EMEVD.Event debugWarpEvent = new(debugEventFlag.id);
-
-                        param.GenerateActionButtonParam(text, actionParamId, $"Debug Warp: {areaName}");
-                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionParamId}, {debugAsset.EntityID});"));
-                        debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WarpPlayer({area.map}, {area.coordinate.x}, {area.coordinate.y}, 0, {area.warps[0].id}, 0)"));
-
-                        debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugEventFlag.id})"));
-
-                        debugScript.emevd.Events.Add(debugWarpEvent);
-                        actionParamId++;
-                        debugCounty++;
-                    }
-                }
-
-                /* Create a mass flag reset button next to the warps */
-                List<Flag> allFlags = new();
-                allFlags.AddRange(scriptManager.common.flags);
-                foreach (Script script in scriptManager.scripts)
-                {
-                    allFlags.AddRange(script.flags);
-                }
-
-                MSBE.Part.Asset debugResetAsset = (MSBE.Part.Asset)(debugThingToDupe.DeepCopy());
-                debugResetAsset.Position = debugResetAsset.Position + new Vector3(7f, 1f, 0f);
-                debugResetAsset.EntityID = debugEntityIdNext++;
-                debugResetAsset.Name = $"AEG099_309_{9001 + debugCounty}";
-                debugResetAsset.UnkPartNames[4] = $"AEG099_309_{9001 + debugCounty}";
-                debugResetAsset.UnkPartNames[5] = $"AEG099_309_{9001 + debugCounty}";
-                debugResetAsset.UnkT54PartName = $"AEG099_309_{9001 + debugCounty}";
-                debugResetAsset.InstanceID++;
-                debugMSB.Parts.Assets.Add(debugResetAsset);
-
-                Script.Flag debugResetFlag = debugScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"m{debugScript.map}_{debugScript.x}_{debugScript.y}_{debugScript.block}::DebugReset");
-                param.GenerateActionButtonParam(text, actionParamId, $"Debug: Reset Save Data!");
-                EMEVD.Event debugResetEvent = new(debugResetFlag.id);
-                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionParamId}, {debugResetAsset.EntityID});"));
-
-                int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
-                foreach (Flag flag in allFlags)
-                {
-                    
-                    if (flag.category == Flag.Category.Event) { continue; } // not values, used for event ids
-                    if (flag.category == Flag.Category.Temporary) { continue; } // not even saved anyways so skip
-                    if (flag.designation == Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
-
-                    for (int i = 0; i < (int)flag.type; i++)
-                    {
-                        bool bit = (flag.value & (1 << i)) != 0;
-                        debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
-                    }
-                    if(delayCounter++ > 100)
-                    {
-                        debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
-                        delayCounter = 0;
-                    }
-                }
-                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"DisplayBanner(31);")); // display a banner when save data reset is done. it takes a secondish
-
-                debugScript.emevd.Events.Add(debugResetEvent);
-                debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugResetFlag.id}, 0)"));
-
-                debugScript.Write();
-                debugMSB.Write($"{Const.OUTPUT_PATH}\\map\\mapstudio\\m60_42_36_00.msb.dcx");
-                Lort.Log($"Created {debugCounty} debug warps...", Lort.Type.Main);
-            }
-
+            WarpZone.Generate(layout, scriptManager, param);
 
             if (param.param[Paramanager.ParamType.TalkParam].Rows.Count() >= ushort.MaxValue) { throw new Exception("Ran out of talk param rows! Will fail to compile params!"); }
 
             /* Write sound BNKs */
-            sound.Write($"{Const.OUTPUT_PATH}sd\\enus\\");
+            sound.Write();
 
             /* Write ESD bnds */
             character.Write();
+
+            /* Generate some needed scripts after msb gen */
+            scriptManager.GenerateAreaEvents();
+            scriptManager.GenerateGlobalCrimeAbsolvedEvent();
 
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
             param.GeneratePartDrawParams();
             param.GenerateAssetRows(cache.assets);
             param.GenerateAssetRows(cache.emitters);
+            param.GeneratePickableAssetRows(item, cache.GetPickables());
             param.GenerateAssetRows(cache.liquids);
             param.GenerateMapInfoParam(layout);
-            param.GenerateActionButtonParam(text, 1500, "Enter");
-            param.GenerateActionButtonParam(text, 1501, "Exit");
-            param.SetAllMapLocation(text);
-            param.GenerateCustomCharacterCreation(text);
-            param.KillMapHeightParams();    // murder kill
+            param.SetAllMapLocation();
+            param.GenerateCustomCharacterCreation();
             param.Write();
 
             /* Write FMGs */
@@ -637,13 +853,15 @@ namespace JortPob
             /* Bind and write all materials and textures */
             Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
             Bind.BindTPF(cache, layout.ListCommon());
+            icon.Write();
 
             /* Bind all assets */    // Multithreaded because slow
             Lort.Log($"Binding {cache.assets.Count} assets...", Lort.Type.Main);
             Lort.NewTask("Binding Assets", cache.assets.Count);
             Bind.BindAssets(cache);
             Bind.BindEmitters(cache);
-            foreach(LiquidInfo water in cache.liquids)  // bind up them waters toooooo
+            Bind.BindPickables(cache);
+            foreach (LiquidInfo water in cache.liquids)  // bind up them waters toooooo
             {
                 Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");
             }
@@ -658,6 +876,7 @@ namespace JortPob
             /* Write msbs */
             esm = null;  // free some memory here
             param = null;
+            icon = null;
             GC.Collect();
             MsbWorker.Go(msbs);
 
@@ -665,68 +884,6 @@ namespace JortPob
             Lort.Log("Done!", Lort.Type.Main);
             Lort.NewTask("Done!", 1);
             Lort.TaskIterate();
-        }
-    }
-
-    public class ResourcePool
-    {
-        public int[] id;
-        public List<Tuple<int, string>> mapIndices;
-        public MSBE msb;
-        public LightManager lights;
-        public Script script;
-        public List<Tuple<string, CollisionInfo>> collisionIndices;
-
-        /* Exterior cells */
-        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights, Script script = null)
-        {
-            id = new int[]
-            {
-                    tile.map, tile.coordinate.x, tile.coordinate.y, tile.block
-            };
-            mapIndices = new();
-            collisionIndices = new();
-            this.msb = msb;
-            this.lights = lights;
-            this.script = script;
-        }
-
-        /* Interior cells */
-        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights, Script script = null)
-        {
-            id = new int[]
-            {
-                    group.map, group.area, group.unk, group.block
-            };
-            mapIndices = new();
-            this.msb = msb;
-            this.lights = lights;
-            this.script = script;
-            collisionIndices = new();
-        }
-
-        /* Super overworld */
-        public ResourcePool(MSBE msb, LightManager lights)
-        {
-            id = new int[]
-            {
-                    60, 00, 00, 99
-            };
-            mapIndices = new();
-            this.msb = msb;
-            this.lights = lights;
-            script = null;
-            collisionIndices = new();
-        }
-
-        public void Add(TerrainInfo terrain)
-        {
-            mapIndices.Add(new Tuple<int, string>(terrain.id, terrain.path));
-        }
-
-        public void Add(string index, CollisionInfo collision)
-        {
-            collisionIndices.Add(new Tuple<string, CollisionInfo>(index, collision));
         }
     }
 }

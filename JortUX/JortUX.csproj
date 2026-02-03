@@ -13,12 +13,96 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="BouncyCastle.Cryptography">
+      <HintPath>..\JortPob\DLL\BouncyCastle.Cryptography.dll</HintPath>
+    </Reference>
+    <Reference Include="DrSwizzler">
+      <HintPath>..\JortPob\DLL\DrSwizzler.dll</HintPath>
+    </Reference>
+    <Reference Include="ESDLang">
+      <HintPath>..\JortPob\DLL\ESDLang.dll</HintPath>
+    </Reference>
+    <Reference Include="esdtool">
+      <HintPath>..\JortPob\DLL\esdtool.dll</HintPath>
+    </Reference>
+    <Reference Include="HKLib">
+      <HintPath>..\JortPob\DLL\HKLib.dll</HintPath>
+    </Reference>
+    <Reference Include="HKLib.Reflection">
+      <HintPath>..\JortPob\DLL\HKLib.Reflection.dll</HintPath>
+    </Reference>
+    <Reference Include="HKLib.Serialization">
+      <HintPath>..\JortPob\DLL\HKLib.Serialization.dll</HintPath>
+    </Reference>
+    <Reference Include="HkxUpgradeLib">
+      <HintPath>..\JortPob\DLL\HkxUpgradeLib.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython">
+      <HintPath>..\JortPob\DLL\IronPython.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.Modules">
+      <HintPath>..\JortPob\DLL\IronPython.Modules.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.SQLite">
+      <HintPath>..\JortPob\DLL\IronPython.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.Wpf">
+      <HintPath>..\JortPob\DLL\IronPython.Wpf.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Dynamic">
+      <HintPath>..\JortPob\DLL\Microsoft.Dynamic.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Scripting">
+      <HintPath>..\JortPob\DLL\Microsoft.Scripting.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Scripting.Metadata">
+      <HintPath>..\JortPob\DLL\Microsoft.Scripting.Metadata.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Unix">
+      <HintPath>..\JortPob\DLL\Mono.Unix.dll</HintPath>
+    </Reference>
+    <Reference Include="NativeFileDialogSharp">
+      <HintPath>..\JortPob\DLL\NativeFileDialogSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\JortPob\DLL\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="SoulsAssetPipeline">
+      <HintPath>..\JortPob\DLL\SoulsAssetPipeline.dll</HintPath>
+    </Reference>
+    <Reference Include="SoulsFormats">
+      <HintPath>..\JortPob\DLL\SoulsFormats.dll</HintPath>
+    </Reference>
+    <Reference Include="SoulsIds">
+      <HintPath>..\JortPob\DLL\SoulsIds.dll</HintPath>
+    </Reference>
     <Reference Include="StudioUtils">
       <HintPath>..\JortPob\DLL\StudioUtils.dll</HintPath>
+    </Reference>
+    <Reference Include="tes3-interop">
+      <HintPath>..\JortPob\DLL\tes3-interop.dll</HintPath>
+	</Reference>
+    <Reference Include="Tommy">
+      <HintPath>..\JortPob\DLL\Tommy.dll</HintPath>
     </Reference>
     <Reference Include="WitchyFormats">
       <HintPath>..\JortPob\DLL\WitchyFormats.dll</HintPath>
     </Reference>
+    <Reference Include="ZstdNet">
+      <HintPath>..\JortPob\DLL\ZstdNet.dll</HintPath>
+    </Reference>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="tes3.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Target Name="CopyESDLangDocs" AfterTargets="AfterBuild">
+    <ItemGroup Label="ESDLangDocs">
+      <ESDLangDocsSourceFiles Include="..\JortPob\Resources\tools\ESDTool\dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ESDLangDocsSourceFiles)" DestinationFolder="$(OutDir)\dist" SkipUnchangedFiles="true" ContinueOnError="false" />
+  </Target>
 
 </Project>

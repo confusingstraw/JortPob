@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace JortPob
 {
@@ -15,7 +16,7 @@ namespace JortPob
 
         private Dictionary<TextType, FMG> menu, item;
 
-        private int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId, nextMenuId;
+        private volatile int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId, nextMenuId, nextTutorial, nextMapEventText, nextWeaponEffectId;
 
         public TextManager()
         {
@@ -24,6 +25,9 @@ namespace JortPob
             nextActionButtonId = 10000;
             nextLocationId = 11000000;
             nextMenuId = 508000;
+            nextTutorial = 500000;
+            nextMapEventText = 20209000;
+            nextWeaponEffectId = 7000;
 
             Dictionary<TextType, FMG> LoadMsgBnd(string path)
             {
@@ -58,8 +62,7 @@ namespace JortPob
 
         public void AddTalk(int id, string text)
         {
-            FMG fmg = menu[TextType.TalkMsg];
-            fmg.Entries.Add(new(id, text));
+            menu[TextType.TalkMsg].Entries.Add(new(id, text));
         }
 
         /* Check if this text already exists before adding it to avoid duplicates */
@@ -71,15 +74,27 @@ namespace JortPob
             }
 
             int id = nextTopicId++;
-            FMG fmg = menu[TextType.EventTextForTalk];
-            fmg.Entries.Add(new(id, text));
+            menu[TextType.EventTextForTalk].Entries.Add(new(id, text));
             return id;
         }
 
         public int AddTopic(string text)
         {
             int id = nextTopicId++;
+            menu[TextType.EventTextForTalk].Entries.Add(new(id, text));
+            return id;
+        }
+
+        /* Find and return a topic, or create it and return that */
+        public int GetTopic(string text)
+        {
             FMG fmg = menu[TextType.EventTextForTalk];
+            foreach (FMG.Entry entry in fmg.Entries)
+            {
+                if(entry.Text == text) { return entry.ID; }
+            }
+
+            int id = nextTopicId++;
             fmg.Entries.Add(new(id, text));
             return id;
         }
@@ -87,16 +102,14 @@ namespace JortPob
         public int AddNpcName(string text)
         {
             int id = nextNpcNameId++;
-            FMG fmg = item[TextType.NpcName];
-            fmg.Entries.Add(new(id, text));
+            item[TextType.NpcName].Entries.Add(new(id, text));
             return id;
         }
 
         public int AddActionButton(string text)
         {
             int id = nextActionButtonId++;
-            FMG fmg = menu[TextType.ActionButtonText];
-            fmg.Entries.Add(new(id, text));
+            menu[TextType.ActionButtonText].Entries.Add(new(id, text));
             return id;
         }
 
@@ -111,8 +124,7 @@ namespace JortPob
         public int AddLocation(string text)
         {
             int id = nextLocationId++;
-            FMG fmg = item[TextType.PlaceName];
-            fmg.Entries.Add(new(id, text));
+            item[TextType.PlaceName].Entries.Add(new(id, text));
             return id;
         }
 
@@ -126,26 +138,153 @@ namespace JortPob
             return id;
         }
 
+        public int AddTutorial(string title, string text)
+        {
+            int id = nextTutorial++;
+            menu[TextType.TutorialTitle].Entries.Add(new(id, title));
+            menu[TextType.TutorialBody].Entries.Add(new(id, text));
+            return id;
+        }
+
+        public int AddMapEventText(string text)
+        {
+            foreach (FMG.Entry entry in menu[TextType.EventTextForMap].Entries)
+            {
+                if (entry.Text == text) { return entry.ID; }
+            }
+
+            int id = nextMapEventText++;
+            menu[TextType.EventTextForMap].Entries.Add(new(id, text));
+            return id;
+        }
+
+        public void AddWeapon(int id, string name, string description)
+        {
+            AddWeapon(id, name, description, ItemManager.Infusion.None);
+        }
+
+        public void AddWeapon(int id, string name, string description, ItemManager.Infusion infusion)
+        {
+            string InfusionName(ItemManager.Infusion inf, string name)
+            {
+                switch(inf)
+                {
+                    case ItemManager.Infusion.FlameArt: return $"Flame Art {name}";
+                    case ItemManager.Infusion.None: return name;
+                    default: return $"{inf.ToString()} {name}";
+                }
+            }
+
+            item[TextType.WeaponName].Entries.Add(new(id, InfusionName(infusion, name)));
+            item[TextType.WeaponCaption].Entries.Add(new(id, description));
+        }
+
+        public int AddWeaponEffect(string text)
+        {
+            int id = nextWeaponEffectId++;
+            item[TextType.WeaponEffect].Entries.Add(new(id, text));
+            return id;
+        }
+
+        public void AddArmor(int id, string name, string summary, string description)
+        {
+            item[TextType.ProtectorName].Entries.Add(new(id, name));
+            item[TextType.ProtectorInfo].Entries.Add(new(id, summary));
+            item[TextType.ProtectorCaption].Entries.Add(new(id, description));
+        }
+
+        public void AddGoods(int id, string name, string summary, string description, string effect)
+        {
+            item[TextType.GoodsName].Entries.Add(new(id, name));
+            item[TextType.GoodsInfo].Entries.Add(new(id, summary));
+            item[TextType.GoodsCaption].Entries.Add(new(id, description));
+            item[TextType.GoodsInfo2].Entries.Add(new(id, effect));
+        }
+
+        public void AddAccessory(int id, string name, string summary, string description)
+        {
+            item[TextType.AccessoryName].Entries.Add(new(id, name));
+            item[TextType.AccessoryInfo].Entries.Add(new(id, summary));
+            item[TextType.AccessoryCaption].Entries.Add(new(id, description));
+        }
+        public void RenameWeapon(int id, string name, string description)
+        {
+            FMG.Entry entryName = GetEntry(item[TextType.WeaponName], id);
+            FMG.Entry entryDescription = GetEntry(item[TextType.WeaponCaption], id);
+
+            if (name != null) { entryName.Text = name; }
+            if (description != null) { entryDescription.Text = description; }
+        }
+
+        public void RenameArmor(int id, string name, string summary, string description)
+        {
+            FMG.Entry entryName = GetEntry(item[TextType.ProtectorName], id);
+            FMG.Entry entrySummary = GetEntry(item[TextType.ProtectorInfo], id);
+            FMG.Entry entryDescription = GetEntry(item[TextType.ProtectorCaption], id);
+
+            if (name != null) { entryName.Text = name; }
+            if (summary != null) { entrySummary.Text = summary; }
+            if (description != null) { entryDescription.Text = description; }
+        }
+
+        public void RenameGoods(int id, string name, string summary, string description, string effect)
+        {
+            FMG.Entry entryName = GetEntry(item[TextType.GoodsName], id);
+            FMG.Entry entrySummary = GetEntry(item[TextType.GoodsInfo], id);
+            FMG.Entry entryDescription = GetEntry(item[TextType.GoodsCaption], id);
+            FMG.Entry entryEffect = GetEntry(item[TextType.GoodsInfo2], id);
+
+            if (name != null) { entryName.Text = name; }
+            if (summary != null) { entrySummary.Text = summary; }
+            if (description != null) { entryDescription.Text = description; }
+            if (effect != null && entryEffect != null) { entryEffect.Text = effect; }
+        }
+
+        public void RenameAccessory(int id, string name, string summary, string description)
+        {
+            FMG.Entry entryName = GetEntry(item[TextType.AccessoryName], id);
+            FMG.Entry entrySummary = GetEntry(item[TextType.AccessoryInfo], id);
+            FMG.Entry entryDescription = GetEntry(item[TextType.AccessoryCaption], id);
+
+            if (name != null) { entryName.Text = name; }
+            if (summary != null) { entrySummary.Text = summary; }
+            if (description != null) { entryDescription.Text = description; }
+        }
+
+        public void RenameGem(int id, string name, string description)
+        {
+            FMG.Entry entryName = GetEntry(item[TextType.GemName], id);
+            FMG.Entry entrySummary = GetEntry(item[TextType.GemInfo], id);
+            FMG.Entry entryDescription = GetEntry(item[TextType.GemCaption], id);
+
+            if (name != null) { entryName.Text = name; }
+            entrySummary.Text = "Can be used to enchant a weapon or shield";
+            if (description != null) { entryDescription.Text = description; }
+        }
+
+        public void EditMenuText(int id, string text)
+        {
+            GetEntry(menu[TextType.GR_MenuText], id).Text = text;
+        }
+
         public void Write(string dir)
         {
-
             void WriteBnd(string fileName, Dictionary<TextType, FMG> fmgs)
             {
                 BND4 bnd = new();
                 bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
                 bnd.Version = "07D7R6";
 
-
                 foreach (KeyValuePair<TextType, FMG> kvp in fmgs)
                 {
                     FMG fmg = kvp.Value;
-                    if (Const.DEBUG_ENABLE_FMG_PARAM_SORTING)
+                    if (!Const.DEBUG_SKIP_FMG_PARAM_SORTING)
                     {
-                        Utility.SortFMG(fmg);  // it's too slow!!!!!! jesus fucking christ make a faster sort @TODO: !!
+                        Utility.SortFMG(fmg);
                     }
 
                     BinderFile file = new();
-                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\msg\\engUS\\{kvp.Key.ToString()}.fmg";
+                    file.Name = $@"N:\GR\data\INTERROOT_win64\msg\engUS\{kvp.Key.ToString()}.fmg";
                     file.ID = (int)kvp.Key;
                     file.Bytes = fmg.Write();
 

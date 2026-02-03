@@ -1,9 +1,13 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using static IronPython.Modules._ast;
+using static JortPob.InteriorGroup;
+using static JortPob.NpcContent;
 
 namespace JortPob
 {
@@ -176,13 +180,13 @@ namespace JortPob
                 if (terrain != null)
                 {
                     if (huge != null) { huge.AddTerrain(cell.center, terrain); }
-                    else { Lort.Log($" ## WARNING ## Terrain fell outside of reality {cell.coordinate} -- {cell.region}", Lort.Type.Debug); }
+                    else { Lort.Log($" ## WARNING ## Terrain fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.region} :: B02", Lort.Type.Debug); }
                 }
-
-                huge.AddCell(cell);
 
                 if (huge != null)
                 {
+                    huge.AddCell(cell);
+
                     foreach (Content content in cell.contents)
                     {
                         Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
@@ -190,8 +194,25 @@ namespace JortPob
                         huge.AddContent(cache, cell, c);
                     }
                 }
-                else { Lort.Log($" ## WARNING ## Cell fell outside of reality {cell.coordinate} -- {cell.name}", Lort.Type.Debug); }
+                else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
                 Lort.TaskIterate(); // Progress bar update
+            }
+
+            /* Render an ASCII image of the tiles for verification! */
+            Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
+            for (int y = 28; y < 66; y++)
+            {
+                string line = "";
+                for (int x = 30; x < 64; x++)
+                {
+                    Tile tile = GetTile(new Int2(x, y));
+                    if (tile == null) { line += "-"; }
+                    else
+                    {
+                        line += tile.assets.Count > 0 ? "X" : "~";
+                    }
+                }
+                Lort.Log(line, Lort.Type.Debug);
             }
 
 
@@ -212,7 +233,7 @@ namespace JortPob
                 end += partition;
             }
 
-            /* Resolve load doors */
+            /* Resolve load doors and travel npcs */
             InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
             {
                 foreach(InteriorGroup group in interiors)
@@ -239,6 +260,13 @@ namespace JortPob
                 return null; // may happen if debug options are enabled to build only some cells
             }
 
+            Cell FindCell(Vector3 position)  // getting an ext cell by morrowind coordinates. used to find exterior cell name
+            {
+                int x = (int)Math.Floor(position.X / Const.CELL_SIZE);
+                int y = (int)Math.Floor(position.Z / Const.CELL_SIZE);
+                return esm.GetCellByGrid(new Int2(x,y));
+            }
+
             void HandleDoor(DoorContent door)
             {
                 if (door.warp != null)
@@ -253,6 +281,10 @@ namespace JortPob
                         door.warp.y = to.group.unk;
                         door.warp.block = to.group.block;
                         door.warp.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
+                        string areaName;
+                        if (to.cell.name.Contains(",")) { areaName = to.cell.name.Split(",")[^1].Trim(); }
+                        else { areaName = to.cell.name; }
+                        door.warp.prompt = $"Enter {areaName}";
                         to.AddWarp(door.warp);
                     }
                     // Door goes to exterior cell
@@ -265,7 +297,56 @@ namespace JortPob
                         door.warp.y = to.coordinate.y;
                         door.warp.block = to.block;
                         door.warp.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]");
+                        door.warp.prompt = $"Exit";
                         to.AddWarp(door.warp);
+                    }
+                }
+            }
+
+            void HandleTravel(NpcContent npc, Tile from = null)
+            {
+                if (npc.travel.Count() > 0)
+                {
+                    // Travel goes to interior cell
+                    for (int i = 0; i < npc.travel.Count; i++)
+                    {
+                        CharacterContent.Travel travel = npc.travel[i];
+                        if (travel.cell != null)
+                        {
+                            InteriorGroup.Chunk to = FindChunk(travel.cell);
+                            if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
+                            travel.map = to.group.map;
+                            travel.x = to.group.area;
+                            travel.y = to.group.unk;
+                            travel.block = to.group.block;
+                            travel.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
+                            travel.name = to.cell.name;
+                            travel.cost = Const.TRAVEL_DEFAULT_COST;
+
+                            to.AddWarp(travel);
+                        }
+                        // Travel goes to exterior cell
+                        else
+                        {
+                            Tile to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
+                            Cell cell = FindCell(travel.position);
+                            if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
+                            travel.map = to.map;
+                            travel.x = to.coordinate.x;
+                            travel.y = to.coordinate.y;
+                            travel.block = to.block;
+                            travel.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
+                            travel.name = cell.name;
+                            // calculate distance for cost of travel
+                            if (from != null)
+                            {
+                                Vector2 a = new(from.coordinate.x, from.coordinate.y);
+                                Vector2 b = new(to.coordinate.x, to.coordinate.y);
+                                travel.cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
+                            }
+                            else { travel.cost = Const.TRAVEL_DEFAULT_COST; }
+                                to.AddWarp(travel);
+                        }
                     }
                 }
             }
@@ -279,6 +360,11 @@ namespace JortPob
                         HandleDoor(door);
                         if(door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
                     }
+
+                    foreach(NpcContent npc in chunk.npcs)
+                    {
+                        HandleTravel(npc);
+                    }
                 }
             }
 
@@ -289,6 +375,11 @@ namespace JortPob
                     HandleDoor(door);
                     if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
                 }
+
+                foreach (NpcContent npc in tile.npcs)
+                {
+                    HandleTravel(npc, tile);
+                }
             }
 
             // default location name value for interiors
@@ -296,6 +387,134 @@ namespace JortPob
             {
                 int textId = int.Parse($"{group.map:D2}{group.area:D2}0");
                 text.SetLocation(textId, "Interior");
+            }
+
+            /* Handle npc hasWitness flag */ // this check is very similar to and patially entwined with Script.GenerateCrimeEvents() and the ESD state HANDLECRIME
+            /* We can't determine witnesses at runtime so we just do some test now and determine if an npc has witneses to report crimes to */
+            void CheckWitnesses(List<NpcContent> npcs)
+            {
+                foreach (NpcContent npc in npcs)
+                {
+                    if (npc.alarm >= 50 || npc.IsGuard()) { npc.hasWitness = true; continue; } // will report crimes themselves
+                    foreach (NpcContent other in npcs)
+                    {
+                        if (npc == other) { continue; } // dont' self succ
+
+                        // guards get bonus range because I said so
+                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 23) { npc.hasWitness = true; break; }
+                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 12) { npc.hasWitness = true; break; }
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles) { CheckWitnesses(tile.npcs); }
+            foreach (InteriorGroup group in interiors) {
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.npcs); }
+            }
+
+            /* Statically resolve shop inventories for npcs (also creatures too) */
+            void ResolveShop(CharacterContent npc)
+            {
+                if (!npc.HasBarter()) { return; } // nope!
+
+                bool WillBarter(CharacterContent npc, ESM.Type type)
+                {
+                    switch(type)
+                    {
+                        case ESM.Type.Armor:
+                            return npc.services.Contains(CharacterContent.Service.BartersArmor);
+                        case ESM.Type.Book:
+                            return npc.services.Contains(CharacterContent.Service.BartersBooks);
+                        case ESM.Type.Clothing:
+                            return npc.services.Contains(CharacterContent.Service.BartersClothing);
+                        case ESM.Type.Ingredient:
+                            return npc.services.Contains(CharacterContent.Service.BartersIngredients);
+                        case ESM.Type.Light:
+                            return npc.services.Contains(CharacterContent.Service.BartersLights);
+                        case ESM.Type.MiscItem:
+                            return npc.services.Contains(CharacterContent.Service.BartersMiscItems);
+                        case ESM.Type.Weapon:
+                            return npc.services.Contains(CharacterContent.Service.BartersWeapons);
+                        case ESM.Type.Probe:
+                            return npc.services.Contains(CharacterContent.Service.BartersProbes);
+                        case ESM.Type.Lockpick:
+                            return npc.services.Contains(CharacterContent.Service.BartersLockpicks);
+                        case ESM.Type.RepairItem:
+                            return npc.services.Contains(CharacterContent.Service.BartersRepairItems);
+                        case ESM.Type.Alchemy:
+                            return npc.services.Contains(CharacterContent.Service.BartersAlchemy);
+                        case ESM.Type.Apparatus:
+                            return npc.services.Contains(CharacterContent.Service.BartersApparatus);
+                        default:
+                            return false;
+                    }
+                }
+
+                Cell cell = npc.cell;
+                List<(string id, int quantity)> shopInv = new();
+
+                void AddOrIncrement(List<(string id, int quantity)> list, (string id, int quantity) tuple)
+                {
+                    for(int i=0;i<list.Count();i++)
+                    {
+                        (string id, int quantity) entry = list[i];
+                        if(entry.id.ToLower() == tuple.id.ToLower()) {
+                            list.RemoveAt(i);
+                            list.Add((entry.id, entry.quantity + tuple.quantity)); // can't increment value in a tuple because fuck
+                            return;
+                        }
+                    }
+                    list.Add(tuple);
+                }
+
+                foreach (ItemContent item in cell.items) // add loose items this npc owns
+                {
+                    if (item.ownerNpc == npc.id)
+                    {
+                        if (WillBarter(npc, item.type))
+                        {
+                            AddOrIncrement(shopInv, (item.id, 1));
+                        }
+                    }
+                }
+                foreach (ContainerContent container in cell.containers) // add containers this npc owns
+                {
+                    if (container.ownerNpc == npc.id)
+                    {
+                        foreach ((string id, int quantity) tuple in container.inventory)
+                        {
+                            Record record = esm.FindRecordById(tuple.id);
+                            if (WillBarter(npc, record.type))
+                            {
+                                AddOrIncrement(shopInv, tuple);
+                            }
+                        }
+                    }
+                }
+
+                foreach((string id, int quantity) tuple in npc.inventory) // add own inventory to potential barter
+                {
+                    Record record = esm.FindRecordById(tuple.id);
+                    if (WillBarter(npc, record.type))
+                    {
+                        AddOrIncrement(shopInv, tuple);
+                    }
+                }
+                if (shopInv.Count() > 0) { npc.barter = shopInv; }
+            }
+
+            foreach (Tile tile in tiles)
+            {
+                foreach (NpcContent npc in tile.npcs) { ResolveShop(npc); }
+                foreach(CreatureContent creature in tile.creatures) { ResolveShop(creature); }
+            }
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    foreach (NpcContent npc in chunk.npcs) { ResolveShop(npc); }
+                    foreach (CreatureContent creature in chunk.creatures) { ResolveShop(creature); }
+                }
             }
 
             /* Handling npc/creature death and respawn flags */
@@ -325,7 +544,8 @@ namespace JortPob
                 {
                     Script.Flag countFlag = GetTypeCountFlag(npc.id);
                     npc.entity = script.CreateEntity(Script.EntityType.Enemy, $"NPC::{npc.id}");
-                    script.RegisterNpc(npc, countFlag);
+                    if (npc.dead) { script.RegisterDeadNpc(npc); }
+                    else { script.RegisterNpc(param, npc, countFlag); }
                 }
             }
 
@@ -360,22 +580,131 @@ namespace JortPob
                 }
             }
 
-            /* Render an ASCII image of the tiles for verification! */
-            Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
-            for (int y = 66; y >= 28; y--)
+            /* Preprocess run of scripts to identify StaticContent that has a script reference pointing to its record */
+            /* This is needed because I do not want to have script data for every single static in the entire game world. */
+            /* So instead the play here is to preprocess and see what statics get referenced by script calls and create script data only for those specific statics */
+            List<Papyrus.Call> ableCalls = new();
+            foreach(Papyrus papyrus in esm.scripts)
             {
-                string line = "";
-                for (int x = 30; x < 64; x++)
+                ableCalls.AddRange(papyrus.GetCalls());
+            }
+
+            foreach(Dialog.DialogRecord dialog in esm.dialog)
+            {
+                ableCalls.AddRange(dialog.GetCalls());
+            }
+
+            int debugCount = 0;
+            List<string> ableIds = new();
+            foreach(Papyrus.Call call in ableCalls)
+            {
+                if (call.target != null && !ableIds.Contains(call.target)) { ableIds.Add(call.target); }
+            }
+
+            void HandleAbles(Script areaScript, List<Content> contents)
+            {
+                foreach(Content content in contents)
                 {
-                    Tile tile = GetTile(new Int2(x, y));
-                    if(tile == null) { line += "-"; }
-                    else
+                    if(content.GetType().IsSubclassOf(typeof(StaticContent)) && ableIds.Contains(content.id))
                     {
-                        line += tile.assets.Count > 0 ? "X" : "~";
+                        debugCount++;
+                        StaticContent staticContent = content as StaticContent;
+                        staticContent.entity = areaScript.CreateEntity(Script.EntityType.Asset, staticContent.id);
+                        //staticContent.disabled = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, staticContent.entity.ToString());
                     }
                 }
-                Lort.Log(line, Lort.Type.Debug);
             }
+
+            foreach (Tile tile in tiles) { HandleAbles(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { HandleAbles(scriptManager.GetScript(group), chunk.GetAllContent()); }
+            }
+
+            /* Generate map point placements */
+            Dictionary<string, List<Vector3>> mapPoints = new();
+
+            // collect em all
+            foreach (Cell cell in esm.exterior)
+            {
+                if(!string.IsNullOrEmpty(cell.name))
+                {
+                    Landscape landscape = esm.GetLandscape(cell.coordinate);
+                    Vector3 center;
+                    if (landscape == null) { center = new(); }
+                    else { center = cell.center + new Vector3(0f, landscape.GetHeightAverage(), 0f); }
+
+                    if (mapPoints.ContainsKey(cell.name)) { mapPoints[cell.name].Add(center); }
+                    else { mapPoints.Add(cell.name, new() { center }); }
+                }
+            }
+
+            // merge similar
+            List<string> pointNames = new();
+            List<MapPoint> importants = new();
+            foreach(var kvp in mapPoints)
+            {
+                string name = kvp.Key;                // name
+                Vector3 center = new();               // average of all points with same name
+                float radius = Const.CELL_SIZE / 2;   // minimum size for radius of map point is 1 cell
+
+                Vector3 first = kvp.Value.First();
+                foreach(Vector3 pos in kvp.Value)
+                {
+                    radius = Math.Max(radius, Vector3.Distance(first, pos));
+                    center += pos;
+                }
+
+                center = center * (1f / kvp.Value.Count());
+
+                MapPoint.Icon icon = Override.GetMapIcon(name);
+                if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name);
+                Layout.MapPoint mapPoint = new(name, center, radius, true, discoverFlag, icon);
+                Tile tile = GetTile(center);
+                tile.AddMapPoint(mapPoint);
+                importants.Add(mapPoint);
+                pointNames.Add(name.ToLower().Trim());
+            }
+
+            // Search for interior doors to add markers for
+            bool IsInsideImportant(Vector3 position)  // checks if a position is inside of one of the important map points we created above. returns true if it is
+            {
+                foreach(MapPoint important in importants)
+                {
+                    if (Vector3.Distance(position, important.position) <= important.radius) { return true; }
+                }
+                return false;
+            }
+
+            bool AlreadyExists(string name)  // see if map point has already been made. some areas have multiple entrances or exits
+            {
+                if(pointNames.Contains(name.ToLower().Trim())) { return true; }
+                pointNames.Add(name.ToLower().Trim());
+                return false;
+            }
+
+            foreach(Tile tile in tiles)
+            {
+                foreach(DoorContent door in tile.doors)
+                {
+                    if(door.warp != null)
+                    {
+                        string name = door.warp.cell;
+                        if (name.Contains(",")) { name = name.Split(",")[0].Trim(); } // Split area sub names so we just have the main area name. Changes things like "Shipwreck, Upper Level" to just "Shipwreck"
+                        MapPoint.Icon icon = Override.GetMapIcon(name);
+
+                        if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                        if (IsInsideImportant(door.position)) { continue; } // skip these too!
+                        if (AlreadyExists(name)) { continue; }    // skip this one as well!
+
+                        Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
+                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE / 3f, false, discoverFlag, icon);
+                        tile.AddMapPoint(mapPoint);
+                    }
+                }
+            }
+
         }
 
         public HugeTile GetHugeTile(Vector3 position)
@@ -466,6 +795,177 @@ namespace JortPob
             }
 
             return list;
+        }
+
+
+        /* These 2 funcs search by reference. It's finding where this specific content object is located */
+        public Tile FindTile(Content source)
+        {
+            foreach(Tile tile in tiles)
+            {
+                foreach(Content content in tile.GetAllContent())
+                {
+                    if(content == source)
+                    {
+                        return tile;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public Chunk FindChunk(Content source)
+        {
+            foreach(InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    foreach(Content content in chunk.GetAllContent())
+                    {
+                        if(content == source)
+                        {
+                            return chunk;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /* Called by script compilers in DialogESD.cs and PapyrusEMEVD.cs */
+        /* When a Papyrus script references an object by it's record name we need to find that object to do operations on it */
+        /* Example is like "fargoth"->disable */
+        /* In that case we search through all content to find the first Content with the record id of "fargoth" */
+        /* In this search we return the first result even if there are multiple references using that same record */
+        /* Morrowind prioritizes loaded cells in this search so we will try to emulate this behaviour */
+        /* This function takes a content "source" as an input parameter so we can search the area around the origination of this script call first before searching the full world */
+        /* Source can also be null and we skip the local search. Reason for this is that global scripts coming from the papyrus 'Main' do not have a local object they are attached to so it's null */
+        public Content FindScriptReference(Content source, string reference)
+        {
+            if (source != null)
+            {
+                List<Content> local;
+                Tile tile = FindTile(source);
+                if (tile != null)
+                {
+                    local = tile.GetAllContent();
+                }
+                else
+                {
+                    Chunk chunk = FindChunk(source);
+                    local = chunk.GetAllContent();
+                }
+
+                foreach (Content content in local)
+                {
+                    if (content.id.ToLower() == reference.ToLower())
+                    {
+                        return content;
+                    }
+                }
+            }
+
+            // not found in local area, search whole world now
+            foreach(Tile t in tiles)
+            {
+                List<Content> all = t.GetAllContent();
+                foreach(Content c in all)
+                {
+                    if(c.id.ToLower() == reference.ToLower())
+                    {
+                        return c;
+                    }
+                }
+            }
+
+            foreach(InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    List<Content> all = chunk.GetAllContent();
+                    foreach(Content c in all)
+                    {
+                        if(c.id.ToLower() == reference.ToLower())
+                        {
+                            return c;
+                        }
+                    }
+                }
+            }
+
+            return null; // not found anywhere!
+        }
+
+        public class MapPoint
+        {
+            public enum Icon
+            {
+                None = 0,                 // discards map point completely!
+                Auto = 1,                 // Take a wild guess
+                StoneBuilding = 3,        // Gnisis, Suran, Maar Gan
+                LargeStoneCity = 51,      // Balmora & Ald-ruhn
+                Tomb = 4,
+                RuinPillars = 5,
+                WoodShack = 6,
+                WoodTownA = 7,            // Caldera
+                RuinTower = 8,
+                Circle = 9,               // Default if not specified
+                LargeStoneGate = 10,
+                LargeBridge = 11,
+                CaveEntrance = 13,
+                MineEntrance = 14,
+                TombSpeical = 16,
+                MageTower = 17,
+                Fort = 18,
+                Farm = 19,
+                RuinStoneLarge = 20,
+                Encampment = 22,
+                StoneTown = 35,         // Pelagiad, Ald Velothi
+                WoodTownB = 37,         // Dagon Fel
+                WoodTownC = 38,         // Seyda Neen, Gnaar Mok
+                WoodTownD = 39,         // Khuul
+                WoodTownE = 40,         // Hla Oad
+                TombOrnate = 47,
+                Canton = 15,            // All vivec cantons
+                TreeTown = 55,          // Sadrith Mora and other mushroom towns
+                VolcanoTown = 58,       // Molag Mar
+                SwampFort = 27,
+                Tree = 30,
+                TowerTemple = 65,          // Vivec palace
+                TreeFort = 26,             // Vos
+                SeasideCastle = 28,        // Ebonheart
+                DwarvenRuin = 25,          // Ye
+                DaedricRuin = 59           // Ye
+            }
+
+            public readonly string name;
+            public readonly Vector3 position;
+            public Vector3 relative;
+            public readonly float radius;
+            public readonly bool important; // if true then displays text on screen when you enter the area, otherwise just marks it on your map. EX: cities are important, cave entrances are not.
+            public Script.Flag discovered;  // 1 bit flag that is flipped when you discover an area. marks it on your map. preston garvey would be proud
+            public MapPoint.Icon icon;
+
+            public MapPoint(string name, Vector3 position, float radius, bool important, Script.Flag discovered, MapPoint.Icon icon)
+            {
+                this.name = name;
+                this.position = position;
+                this.radius = radius;
+                this.important = important;
+                this.discovered = discovered;
+                if(icon == MapPoint.Icon.Auto)
+                {
+                    string n = name.ToLower().Trim();
+                    if (n.Contains("cave") || n.Contains("groto")) { this.icon = MapPoint.Icon.CaveEntrance; }
+                    else if (n.Contains("farm") || n.Contains("plantation")) { this.icon = MapPoint.Icon.Farm; }
+                    else if (n.Contains("shack") || n.Contains("house")) { this.icon = MapPoint.Icon.WoodShack; }
+                    else { this.icon = MapPoint.Icon.Circle; }  // default result
+                }
+                else
+                {
+                    this.icon = icon;
+                }
+            }
         }
 
         public class WarpDestination

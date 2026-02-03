@@ -1,16 +1,22 @@
-﻿using System;
+﻿using HKX2;
+using System;
 using System.Collections.Concurrent;
+using System.IO;
+using System.Threading.Tasks;
 using System.Linq;
+using System.Threading;
 
 namespace JortPob.Common
 {
     public class Lort
     {
-        public static ConcurrentBag<string> mainOutput;
-        public static ConcurrentBag<string> debugOutput;
-        public static string progressOutput;
-        public static int total, current;
-        public static bool update;
+        public static ConcurrentBag<string> mainOutput { get; private set; }
+        public static ConcurrentBag<string> debugOutput { get; private set; }
+        public static string progressOutput { get; private set; }
+        public static int total { get; private set; }
+        public static int current { get; private set; }
+        public static bool update { get; set; }
+        public static string logFilePath { get; private set; }
 
         public static void Initialize()
         {
@@ -20,6 +26,14 @@ namespace JortPob.Common
             total = 0;
             current = 0;
             update = false;
+
+            if (!Directory.Exists(Path.Combine(Const.OUTPUT_PATH, "logs")))
+            {
+                Directory.CreateDirectory(Path.Combine(Const.OUTPUT_PATH, "logs"));
+            }
+
+            logFilePath = Path.Combine(Const.OUTPUT_PATH, @$"logs\jortpob-log-{DateTime.UtcNow.ToLongTimeString().Replace(":", "").Replace(" PM", "")}.txt");
+            File.WriteAllText(logFilePath, "");
         }
 
         public enum Type
@@ -38,6 +52,7 @@ namespace JortPob.Common
                     debugOutput.Add(message); break;
             }
             update = true;
+            AppendTextToLog(message, type);
         }
 
         public static void NewTask(string task, int max)
@@ -52,6 +67,19 @@ namespace JortPob.Common
         {
             current = Math.Min(current+1, total);
             update = true;
+        }
+
+        private static void AppendTextToLog(string message, Type type)
+        {
+            switch (type)
+            {
+                case Type.Main:
+                    Task.Run(async () => await File.AppendAllTextAsync(logFilePath, $"[MAIN] {message}\n"));
+                    break;
+                case Type.Debug:
+                    Task.Run(async () => await File.AppendAllTextAsync(logFilePath, $"[DEBUG] {message}\n"));
+                    break;
+            }
         }
     }
 }

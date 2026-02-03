@@ -28,12 +28,15 @@ namespace JortPob
         public readonly List<DoorContent> doors;
         public readonly List<LightContent> lights;
         public readonly List<EmitterContent> emitters;
+        public readonly List<ContainerContent> containers;
+        public readonly List<PickableContent> pickables;
+        public readonly List<ItemContent> items;
 
         public Cell(ESM esm, JsonNode json)
         {
             /* Cell Data */
-            name = json["name"].ToString() == "" ? null : json["name"].ToString();
-            region = json["region"] != null ? json["region"].ToString() : "null";
+            name = json["name"]?.ToString();
+            region = json["region"]?.ToString();
 
             flags = new();
             string[] fs = json["data"]["flags"].GetValue<string>().ToLower().Split("|");
@@ -41,7 +44,7 @@ namespace JortPob
             {
                 string trim = f.Trim().ToLower().Replace("_", "");
                 if(trim == "0x40") { trim = "unk40"; }
-                Flag flag = (Flag)Enum.Parse(typeof(Flag), trim, true);
+                Flag flag = Enum.Parse<Flag>(trim, true);
                 flags.Add(flag);
             }
 
@@ -60,6 +63,9 @@ namespace JortPob
             doors = new();
             emitters = new();
             lights = new();
+            containers = new();
+            pickables = new();
+            items = new();
 
             foreach (JsonNode reference in json["references"].AsArray())
             {
@@ -68,29 +74,50 @@ namespace JortPob
 
                 if(record == null) { continue; }
 
-                string mesh = record.json["mesh"] != null ? record.json["mesh"].ToString() : null;
-                if (mesh != null && mesh.Trim() == "") { mesh = null; }                             // For some reason a null mesh can just be "" sometimes?
+                string mesh = record.json["mesh"]?.ToString(); // mesh can just be "" sometimes
 
                 switch(record.type)
                 {
                     case ESM.Type.Static:
-                    case ESM.Type.Container:
                     case ESM.Type.Activator:
-                        if (mesh != null) { assets.Add(new AssetContent(this, reference, record)); }
+                        if (!string.IsNullOrEmpty(mesh)) { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
-                        if (mesh != null) { doors.Add(new DoorContent(this, reference, record)); }
+                        if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }
                         break;
                     case ESM.Type.Light:
-                        if (mesh == null) { lights.Add(new LightContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { lights.Add(new LightContent(this, reference, record)); }
                         else { emitters.Add(new EmitterContent(this, reference, record)); }
                         break;
                     case ESM.Type.Npc:
-                        npcs.Add(new NpcContent(this, reference, record));
+                        npcs.Add(new NpcContent(esm, this, reference, record));
                         break;
                     case ESM.Type.Creature:
+                        creatures.Add(new CreatureContent(esm, this, reference, record));
+                        break;
                     case ESM.Type.LeveledCreature:
-                        creatures.Add(new CreatureContent(this, reference, record));
+                        Record resolvedRecord = esm.ResolveLeveledCreature(id);
+                        creatures.Add(new CreatureContent(esm, this, reference, resolvedRecord));
+                        break;
+                    case ESM.Type.Container:
+                        if (id.ToLower().StartsWith("flora_") && id.ToLower() != "flora_treestump_unique") // this specific id is a weird outlier so just adding it as a condition here
+                        {
+                            pickables.Add(new PickableContent(this, reference, record));
+                        }
+                        else { containers.Add(new ContainerContent(this, reference, record)); }
+                        break;
+                    case ESM.Type.Weapon:
+                    case ESM.Type.Armor:
+                    case ESM.Type.Clothing:
+                    case ESM.Type.Ingredient:
+                    case ESM.Type.Alchemy:
+                    case ESM.Type.Apparatus:
+                    case ESM.Type.Book:
+                    case ESM.Type.MiscItem:
+                    case ESM.Type.Lockpick:
+                    case ESM.Type.Probe:
+                    case ESM.Type.RepairItem:
+                        items.Add(new ItemContent(this, reference, record));
                         break;
                 }
             }
@@ -101,6 +128,9 @@ namespace JortPob
             contents.AddRange(doors);
             contents.AddRange(emitters);
             contents.AddRange(lights);
+            contents.AddRange(containers);
+            contents.AddRange(pickables);
+            contents.AddRange(items);
 
 
             /* Calculate bounding box */

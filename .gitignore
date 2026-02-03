@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Copyrighted, non-distrubtable files
+oo2core_6_win64.dlls
+
 # Settings file for project
 settings.json
 

@@ -1,0 +1,13 @@
+{
+  "comment": "Silver shortsword remapped to black knife. Testing origin weapon auto generation!",
+  "type": "Weapon",
+  "row": 1010000,
+  "useIcon": false,
+  "text": {
+    "name": "Silver Daggy",
+    "description": "Wowie! Daggerliciuos!"
+  },
+  "data": {
+    "correctStrength": 125
+  }
+}

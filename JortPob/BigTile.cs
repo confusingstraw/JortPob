@@ -1,10 +1,13 @@
 ﻿using JortPob.Common;
+using SoulsFormats.Formats.Morpheme.MorphemeBundle;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Numerics;
 
 namespace JortPob
 {
-    /* BigTile is a 2x2 grid of Tiles. Sort of like an LOD type thing. (????) */
+    /* BigTile is a 2x2 grid of Tiles. Sort of like an LOD type thing. */
+    [DebuggerDisplay("Big m{map}_{coordinate.x}_{coordinate.y}_{block} :: [{cells.Count}] Cells")]
     public class BigTile : BaseTile
     {
         public HugeTile huge;
@@ -37,6 +40,7 @@ namespace JortPob
         {
             cells.Add(cell);
             Tile tile = GetTile(cell.center);
+            if (tile == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B00", Lort.Type.Debug); return; }
             tile.AddCell(cell);
         }
 
@@ -52,6 +56,7 @@ namespace JortPob
                         float y = (coordinate.y * 2f * Const.TILE_SIZE) + (Const.TILE_SIZE * 0.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile t = GetTile(cell.center);
+                        if (t == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                         content.load = t.coordinate;
                         base.AddContent(cache, cell, content);
                         break;
@@ -59,6 +64,7 @@ namespace JortPob
                     goto default;
                 default:
                     Tile tile = GetTile(cell.center);
+                    if (tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                     tile.AddContent(cache, cell, content);
                     break;
             }

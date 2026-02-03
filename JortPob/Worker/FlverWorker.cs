@@ -3,6 +3,7 @@ using JortPob.Model;
 using SharpAssimp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace JortPob.Worker
@@ -40,11 +41,20 @@ namespace JortPob.Worker
             {
                 PreModel premodel = meshes[i];
 
+                if (string.IsNullOrEmpty(premodel.mesh))
+                {
+                    Lort.Log(" ## ERROR ## Premodel mesh name is invalid!", Lort.Type.Debug);
+                    Lort.TaskIterate();
+                    continue;
+                }
+
                 /* Generate the 100 scale version of the model. This is the baseline. After this we generate dynamics and baked scale versions from this */
-                string meshIn = $"{Const.MORROWIND_PATH}Data Files\\meshes\\{premodel.mesh.ToLower().Replace(".nif", ".fbx")}";
+                string meshIn = $"{Const.MORROWIND_PATH}Data Files\\meshes\\{premodel.mesh.ToLower()/*.Replace(".nif", ".fbx")*/}";
                 string meshOut = $"{Const.CACHE_PATH}meshes\\{premodel.mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_").Replace(" ", "")}";
                 ModelInfo modelInfo = new(premodel.mesh, $"meshes\\{premodel.mesh.ToLower().Replace(".nif", ".flver").Replace(@"\", "_").Replace(" ", "")}", 100);
-                modelInfo = ModelConverter.FBXtoFLVER(assimpContext, materialContext, modelInfo, premodel.forceCollision, meshIn, meshOut);
+                //modelInfo = ModelConverter.FBXtoFLVER(assimpContext, materialContext, modelInfo, premodel.forceCollision, meshIn, meshOut);
+
+                modelInfo = ModelConverter.NIFToFLVER(materialContext, modelInfo, premodel.forceCollision, meshIn, meshOut);
                 models.Add(modelInfo);
 
                 /* if a model has no collision we don't need baked scale or dynamic versions. nocollide static meshes can just be scaled freely */
@@ -78,7 +88,7 @@ namespace JortPob.Worker
                             models.Add(baked);
                         }
                     }
-                    if (makeDynamic)
+                    if (makeDynamic || premodel.forceDynamic) // force dynamic does not force all instances to be dynamic, it just forces us to make a dynamic version. used by itemcontent specifically
                     {
                         ModelInfo dynamic = new(modelInfo.name, modelInfo.path, Const.DYNAMIC_ASSET);
                         dynamic.collision = modelInfo.collision;
@@ -91,6 +101,10 @@ namespace JortPob.Worker
             }
             assimpContext.Dispose();
 
+            //var barkbark = models.AsParallel().Where(m => m.textures.Any(t => t.name.ToLower().Contains("wood")) || m.textures.Any(t => t.name.ToLower().Contains("wood") || m.textures.Any(t => t.name.ToLower().Contains("wood")))).Count();
+
+            //Lort.Log($"{barkbark} models contain wood materials", Lort.Type.Debug);
+
             IsDone = true;
             ExitCode = 0;
         }
@@ -98,7 +112,7 @@ namespace JortPob.Worker
         public static List<ModelInfo> Go(MaterialContext materialContext, List<PreModel> meshes)
         {
             Lort.Log($"Converting {meshes.Count} models...", Lort.Type.Main); // Not that slow but multithreading good
-            Lort.NewTask("Converting FBX", meshes.Count);
+            Lort.NewTask("Converting NIF", meshes.Count);
 
             int partition = (int)Math.Ceiling(meshes.Count / (float)Const.THREAD_COUNT);
             List<FlverWorker> workers = new();

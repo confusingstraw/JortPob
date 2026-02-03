@@ -1,6 +1,7 @@
 ﻿using FSParam;
 using JortPob.Common;
 using JortPob.Worker;
+using Microsoft.Scripting.Hosting;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,8 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 using WitchyFormats;
+using static JortPob.Override;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -82,14 +85,29 @@ namespace JortPob
             WORLD_MAP_PLACE_NAME_PARAM_ST, WORLD_MAP_POINT_PARAM_ST, WWISE_VALUE_TO_STR_CONVERT_PARAM_ST
         }
 
+        public readonly TextManager textManager;
+
         public readonly Dictionary<ParamType, FsParam> param;
         public readonly LiveParam extendedTalkParam;
 
+        public Dictionary<string, int> interactActionButtons, itemActionButtons; // string is the text of the button prompt, int is the row id
+
         public short terrainDrawParamID;
         private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
+        private int nextMessageParam, nextMapItemLotId, nextEnemyItemLotId, nextActionButtonId;
 
-        public Paramanager()
+        public Paramanager(TextManager textManager)
         {
+            this.textManager = textManager;
+
+            nextMessageParam = 3000;
+            nextMapItemLotId = 120000;
+            nextEnemyItemLotId = 720000000;
+            nextActionButtonId = 300000;
+
+            interactActionButtons = new();
+            itemActionButtons = new();
+
             SoulsFormats.BND4 paramBnd = SoulsFormats.SFUtil.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
             string[] files = Directory.GetFiles(Utility.ResourcePath(@"misc\paramdefs"));
 
@@ -100,10 +118,10 @@ namespace JortPob
                 Lort.TaskIterate();
                 try
                 {
-                    ParamDefType ty = (ParamDefType)System.Enum.Parse(typeof(ParamDefType), p.ParamType);
+                    ParamDefType ty = Enum.Parse<ParamDefType>(p.ParamType);
                     paramdefs.Add(ty, p);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Lort.Log($"Skipped unknown paramdef: {p.ParamType}", Lort.Type.Debug);
                     continue;
@@ -144,11 +162,95 @@ namespace JortPob
                 extendedTalkParam.AddRow(row);
             }
 
+            /* Clear out recipe and recipe material params */
+            FsParam recipeParam = param[Paramanager.ParamType.ShopLineupParam_Recipe];
+            FsParam materialParam = param[Paramanager.ParamType.EquipMtrlSetParam];
+            List<FsParam.Row> keepRecipes = new();
+            List<FsParam.Row> keepMaterials = new();
+            keepRecipes.Add(recipeParam.Rows[0]); // just the one template row
+            foreach(FsParam.Row row in materialParam.Rows)
+            {
+                if(row.ID >= 300000 && row.ID < 400000)
+                {
+                    continue;
+                }
+                keepMaterials.Add(row);
+            }
+            recipeParam.ClearRows();
+            materialParam.ClearRows();
+            foreach(FsParam.Row row in keepRecipes) { recipeParam.AddRow(row); }
+            foreach(FsParam.Row row in keepMaterials) { materialParam.AddRow(row); }
+
+            /* Clear out some itemlots to make space because idk dumb param limits. Also make a template row */
+            FsParam itemLotParamMap = param[Paramanager.ParamType.ItemLotParam_map];
+            List<FsParam.Row> keepMapLots = new();
+            foreach (FsParam.Row row in itemLotParamMap.Rows)
+            {
+                if (row.ID >= 18000000 && row.ID < 19000000)
+                {
+                    keepMapLots.Add(row);
+                }
+
+                if(row.ID == 0)
+                {
+                    // Create blank template
+                    row["lotItem_Rarity"].Value.SetValue((sbyte)-1);
+                    row["GameClearOffset"].Value.SetValue((sbyte)-1);
+                    row["getItemFlagId"].Value.SetValue((uint)0);
+                    for(int i=1;i<=8;i++)
+                    {
+                        row[$"lotItemId{i:D2}"].Value.SetValue(0);
+                        row[$"lotItemCategory{i:D2}"].Value.SetValue(0);
+                        row[$"lotItemNum{i:D2}"].Value.SetValue((byte)0);
+                        row[$"lotItemBasePoint{i:D2}"].Value.SetValue((ushort)0);
+                        row[$"enableLuck{i:D2}"].Value.SetValue((ushort)0);
+                    }
+                    keepMapLots.Add(row);
+                }
+            }
+            itemLotParamMap.ClearRows();
+            foreach (FsParam.Row row in keepMapLots) { itemLotParamMap.AddRow(row); }
+
+            /* Clear out mapheight params, these are 1000% not needed for the morrowind map. Just trust me */
+            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
+            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightParam.Rows[i];
+                if (row.ID >= 99999901) { continue; } // keep some base params
+                mapGridHeightParam.RemoveRow(row);
+                i--;
+            }
+
+            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
+            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
+                if (row.ID <= 2) { continue; } // keep some base params
+                mapGridHeightDetailParam.RemoveRow(row);
+                i--;
+            }
+
+            /* Clear out WorldMapPointParam. We don't need any of these from the base game. */
+            FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
+            FsParam.Row worldMapPointParamTemplate = GetRow(worldMapPointParam, 61413800);   // grab stormhill shack as our template
+            worldMapPointParamTemplate.ID = 1;
+            worldMapPointParamTemplate["eventFlagId"].Value.SetValue(6000u); // always off
+            worldMapPointParam.ClearRows();
+            AddRow(worldMapPointParam, worldMapPointParamTemplate);
+
+            /* Clear out WorldMapPlaceNaemParam. We don't need any of these from the base game. */
+            FsParam worldMapPlaecNameParam = param[ParamType.WorldMapPlaceNameParam];
+            FsParam.Row worldMapPlaecNameParamTemplate = GetRow(worldMapPlaecNameParam, 1);   // grab the blank one as a template
+            worldMapPlaecNameParam.ClearRows();
+            AddRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
+
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
         public void AddRow(FsParam param, FsParam.Row row)
         {
+            if (param.Rows.Count() >= ushort.MaxValue - 3) { throw new Exception($"{param.ParamType.ToString()} exceeded {ushort.MaxValue} rows!"); }
+
             FsParam.Row oldrow = param[row.ID];
             if (oldrow != null)
                 param.RemoveRow(oldrow);
@@ -157,10 +259,15 @@ namespace JortPob
 
         public FsParam.Row CloneRow(FsParam.Row row, string name, int newId)
         {
-            var clone = new FsParam.Row(row);
+            FsParam.Row clone = new FsParam.Row(row);
             clone.ID = newId;
             clone.Name = name;
             return clone;
+        }
+
+        public FsParam.Row GetRow(FsParam param, int row)
+        {
+            return param[row];
         }
 
         public void Write()
@@ -178,7 +285,7 @@ namespace JortPob
             {
                 FsParam param = kvp.Value;
               
-                if (Const.DEBUG_ENABLE_FMG_PARAM_SORTING)
+                if (!Const.DEBUG_SKIP_FMG_PARAM_SORTING)
                 {
                     Utility.SortFsParam(param);  // sort rows, debug flag to turn this off for speed. fmg sorting isn't required but in order to mimick FS standards it should be done in prod
                 }
@@ -221,7 +328,7 @@ namespace JortPob
             foreach (ModelInfo asset in assets)
             {
                 /* Dynamic */
-                if (asset.IsDynamic())
+                if (asset.IsDynamic() || !asset.HasCollision())
                 {
                     // Clone a specific row as our baseline
                     FsParam.Row row = CloneRow(electedStoneBuildingRow, asset.name, asset.AssetRow());   // 7077 is a big stone building part in the overworld
@@ -319,6 +426,88 @@ namespace JortPob
 
                     AddRow(emitterParam, row);
                 }
+            }
+        }
+
+        /* Generates assetparam rows for pickable (harvestable) plants */
+        public void GeneratePickableAssetRows(ItemManager itemManager, List<PickableInfo> pickables)
+        {
+            FsParam assetParam = param[ParamType.AssetEnvironmentGeometryParam];
+            FsParam lotParam = param[ParamType.ItemLotParam_map];
+            FsParam actionParam = param[ParamType.ActionButtonParam];
+
+            foreach (PickableInfo pickable in pickables)
+            {
+                // Resolve inventory to something we can actually use here
+                List<(ItemManager.ItemInfo item, int max)> possibleItems = new();
+                foreach((string id, int quantity) tuple in pickable.inventory)
+                {
+                    ItemManager.LeveledList list = itemManager.GetList(tuple.id);
+                    ItemManager.ItemInfo item = itemManager.GetItem(tuple.id);
+                    if(list != null)
+                    {
+                        foreach(ItemManager.ItemInfo entry in list.Possibilites())
+                        {
+                            possibleItems.Add((entry, Math.Min(8, tuple.quantity + 1)));
+                        }
+                    }
+                    else if(item != null)
+                    {
+                        possibleItems.Add((item, Math.Min(8, tuple.quantity + 1)));
+                    }
+                }
+
+                // Setup itemlot param
+                for (int i = 0; i < possibleItems.Count; i++)
+                {
+                    (ItemManager.ItemInfo item, int max) tuple = possibleItems[i];
+
+                    FsParam.Row lotRow = CloneRow(lotParam[0], $"Pickable->{pickable.name}::{tuple.item.id}", nextMapItemLotId + i);
+                    lotRow["getItemFlagId"].Value.SetValue((uint)0);
+
+                    int k = tuple.max;
+                    for (int j=0;j<8&&k>0;j++)
+                    {
+                        (ItemManager.ItemInfo item, int max) possibility = possibleItems[i];
+
+                        lotRow[$"lotItemCategory{j+1:D2}"].Value.SetValue(possibility.item.ItemLotCategory());
+                        lotRow[$"lotItemId{j+1:D2}"].Value.SetValue(possibility.item.row);
+                        lotRow[$"enableLuck{j+1:D2}"].Value.SetValue((ushort)(k==tuple.max?1:0));
+                        lotRow[$"lotItemNum{j+1:D2}"].Value.SetValue((byte)k--);
+                        lotRow[$"lotItemBasePoint{j+1:D2}"].Value.SetValue((ushort)(1000/tuple.max));
+                    }
+
+                    AddRow(lotParam, lotRow);
+                }
+
+                // Setup action param
+                FsParam.Row actionRow = CloneRow(actionParam[7817], pickable.ActionText(), nextActionButtonId++); // 7817 is rowa berry harvest prompt
+                int textId = textManager.AddActionButton(pickable.ActionText());
+
+                actionRow["radius"].Value.SetValue(1.45f); // radius
+                actionRow["angle"].Value.SetValue(180); // angle from dmy
+                actionRow["depth"].Value.SetValue(0f);
+                actionRow["width"].Value.SetValue(0f);
+                actionRow["height"].Value.SetValue(2.25f);
+                actionRow["baseHeightOffset"].Value.SetValue(-1.75f);
+                actionRow["angleCheckType"].Value.SetValue((byte)0);
+                actionRow["allowAngle"].Value.SetValue(180);  // player look angle
+                actionRow["textId"].Value.SetValue(textId);
+                actionRow["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+                actionRow["execInvalidTime"].Value.SetValue(0f); // cooldown
+
+                AddRow(actionParam, actionRow);
+
+                // Setup asset param
+                FsParam.Row assetRow = CloneRow(assetParam[99680], $"Pickable->{pickable.name}", pickable.AssetRow()); // 99680 is an erdleaf flower
+
+                assetRow["refDrawParamId"].Value.SetValue(AssetPartDrawParamBySize(pickable.model));        // DrawParamID
+                assetRow["pickUpActionButtonParamId"].Value.SetValue(actionRow.ID);
+                assetRow["pickUpItemLotParamId"].Value.SetValue(nextMapItemLotId);
+
+                AddRow(assetParam, assetRow);
+
+                nextMapItemLotId += 10;
             }
         }
 
@@ -421,7 +610,6 @@ namespace JortPob
             {
                 this.name = name;
                 this.match = match;
-                for (int i = 0; i < match.Count(); i++) { match[i] = match[i].Trim().ToLower(); }
                 this.MapInfoParamId = MapInfoParamId;
                 this.MapRegionParamId = MapRegionParamId;
                 this.rem = rem;
@@ -429,15 +617,29 @@ namespace JortPob
         }
 
         // @TODO: maybe move weatherdata to layout or its own class since its used by multiple toher thingsthingso
+        public static WeatherData GetWeatherData(string region)
+        {
+            string regionLower = region.ToLower().Trim();
+            foreach (WeatherData wd in EXTERIOR_WEATHER_DATA_LIST)
+            {
+                foreach(string m in wd.match)
+                {
+                    if (m.ToLower().Trim() == regionLower) { return wd; }
+                }
+            }
+            return null;
+        }
 
         public static List<WeatherData> EXTERIOR_WEATHER_DATA_LIST = new()
-        {
-            new WeatherData("Limgrave", new(){ "West Gash Region", "Ascadian Isles Region", "Grazelands Region" }, 60423600, 99999901, EnvManager.Rem.Forest), // 0
+        {       // default region is the result when an area has literally no region value set. just a big fat null
+            new WeatherData("Limgrave", new(){ "Default Region", "West Gash Region", "Ascadian Isles Region", "Grazelands Region" }, 60423600, 99999901, EnvManager.Rem.Forest), // 0
             new WeatherData("Liurnia", new(){ "Bitter Coast Region", "Sheogorad", "Azura's Coast Region" }, 60374200, 60365000, EnvManager.Rem.Forest), // 10
             new WeatherData("Altus", new(){ }, 60395000, 60395000, EnvManager.Rem.Forest), // 20
             new WeatherData("Gelmir", new(){ "Ashlands Region", "Molag Mar Region" }, 60355200, 60355200, EnvManager.Rem.Mountain), // 21
             new WeatherData("Caelid", new(){ }, 60473700, 60473700, EnvManager.Rem.Mountain), // 30
             new WeatherData("Caelid Desert", new(){ "Red Mountain Region" }, 60533800, 60533800, EnvManager.Rem.Mountain), // 31
+            new WeatherData("Mountaintop of Giants", new() { "Brodir Grove Region", "Felsaad Coast Region", "Hirstaang Forest Region", "Isinfier Plains Region", "Thirsk Region" }, 60505700, 60505700, EnvManager.Rem.Snowfield),
+            new WeatherData("Consecrated Snowfield", new() { "Moesring Mountains Region" }, 60495500, 60495500, EnvManager.Rem.Snowfield)
         };
 
         public static List<WeatherData> INTERIOR_WEATHER_DATA_LIST = new()
@@ -458,14 +660,7 @@ namespace JortPob
                 if (tile.IsEmpty()) { continue; } // skip empty tiles
 
                 string region = tile.GetRegion();
-                WeatherData weatherData = null;
-                foreach (WeatherData w in EXTERIOR_WEATHER_DATA_LIST)
-                {
-                    if (w.match.Contains(region))
-                    {
-                        weatherData = w; break;
-                    }
-                }
+                WeatherData weatherData = GetWeatherData(region);
 
                 int id = int.Parse($"60{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00");
 
@@ -497,8 +692,8 @@ namespace JortPob
             }
         }
 
-        public void GenerateTalkParam(TextManager textManager, List<NpcManager.TopicData> topicData)
-        {            
+        public void GenerateTalkParam(List<NpcManager.TopicData> topicData)
+        { 
             /*
              * Since FsParam[ID] is actually a linear search for a matching row, we build a Dictionary up-front
              * to speed up checks. Because of this, however, we need to keep it up-to-date in the loop below.
@@ -547,35 +742,160 @@ namespace JortPob
             }
         }
 
-        public void GenerateNpcParam(TextManager textManager, int id, NpcContent npc)
+        public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
+            // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
+            int rowToCopy;
+            if (npc.dead) { rowToCopy = 523150020; } // lanya dead on the ground in the peter griffin pose
+            else { rowToCopy = 523010000; }          // white mask varre
+
             FsParam npcParam = param[ParamType.NpcParam];
-            FsParam.Row row = CloneRow(npcParam[523010000], npc.name, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id); // 523010000 is white mask varre
+
+            int itemLotRow;
+            List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(npc);
+            if (!npc.dead && inventory.Count() > 0) {
+                itemLotRow = GenerateInventoryItemLot(script, npc, inventory);
+            }
+            else { itemLotRow = -1; }
 
             int textId = textManager.AddNpcName(npc.name);
             row.Cells[5].SetValue(textId); // nameId
             row.Cells[105].SetValue((byte)(npc.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row["itemLotId_enemy"].Value.SetValue(itemLotRow);
+
+             AddRow(npcParam, row);
+        }
+
+        public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        {
+            // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
+            int rowToCopy = remap.npc.row;
+
+            FsParam npcParam = param[ParamType.NpcParam];
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], creature.id, id);
+
+            int itemLotRow;
+            List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(creature);
+            if (inventory.Count() > 0) { itemLotRow = GenerateInventoryItemLot(script, creature, inventory); }    // @TODO: rework item lot generation for creatures to be non-fixed
+            else { itemLotRow = -1; }
+
+            int textId = textManager.AddNpcName(creature.name);
+            row.Cells[5].SetValue(textId); // nameId
+            row.Cells[105].SetValue((byte)(creature.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row["itemLotId_enemy"].Value.SetValue(itemLotRow);
+
+            // @TODO: apply data from json remap to param!
 
             AddRow(npcParam, row);
         }
 
-        public void GenerateActionButtonParam(TextManager textManager, int id, string text)
+        public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
+            FsParam thinkParam = param[ParamType.NpcThinkParam];
+            FsParam.Row row = CloneRow(thinkParam[523010000], npc.id, id); // 523010000 is white mask varre
+
+            // STUB:: do stuff to this param lol
+
+            AddRow(thinkParam, row);
+        }
+
+        public void GenerateThinkParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        {
+            FsParam thinkParam = param[ParamType.NpcThinkParam];
+            FsParam.Row row = CloneRow(thinkParam[remap.think.row], creature.id, id);
+
+            // STUB:: do stuff to this param lol
+
+            AddRow(thinkParam, row);
+        }
+
+        public int GenerateActionButtonItemParam(string text)
+        {
+            if (itemActionButtons.ContainsKey(text)) { return itemActionButtons[text]; } // already exists, return row to it
+
+            int rowId = nextActionButtonId++;
+
             FsParam actionParam = param[ParamType.ActionButtonParam];
-            FsParam.Row row = CloneRow(actionParam[1000], text, id); // 1000 is the prompt to pickup runes
+            FsParam.Row row = CloneRow(actionParam[4000], text, rowId); // 4000 is default pickup item prompt
 
             int textId = textManager.AddActionButton(text);
 
-            row.Cells[5].SetValue(2f);   // radius
-            row.Cells[9].SetValue(1.5f); // hegiht high
-            row.Cells[10].SetValue(-1.5f); // height low
-            row.Cells[23].SetValue(textId);
+            row["radius"].Value.SetValue(1f); // radius
+            row["angle"].Value.SetValue(180); // angle from dmy
+            row["depth"].Value.SetValue(0f);
+            row["width"].Value.SetValue(0f);
+            row["height"].Value.SetValue(1.75f);
+            row["baseHeightOffset"].Value.SetValue(-1.25f);
+            row["angleCheckType"].Value.SetValue((byte)0);
+            row["allowAngle"].Value.SetValue(180);  // player look angle
+            row["textId"].Value.SetValue(textId);
+            row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+            row["execInvalidTime"].Value.SetValue(0f); // cooldown
 
             AddRow(actionParam, row);
+            itemActionButtons.Add(text, rowId);
+
+            return rowId;
+        }
+
+        public int GenerateActionButtonInteractParam(string text)
+        {
+            if (interactActionButtons.ContainsKey(text)) { return interactActionButtons[text]; } // already exists, return row to it
+
+            int rowId = nextActionButtonId++;
+
+            FsParam actionParam = param[ParamType.ActionButtonParam];
+            FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+
+            int textId = textManager.AddActionButton(text);
+            row["textId"].Value.SetValue(textId);
+            row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+            row["execInvalidTime"].Value.SetValue(3f); // cooldown
+
+            AddRow(actionParam, row);
+            interactActionButtons.Add(text, rowId);
+
+            return rowId;
+        }
+
+        public int GenerateActionButtonDoorParam(ModelInfo modelInfo, string text)
+        {
+            int rowId = nextActionButtonId++;
+
+            FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{modelInfo.path}"); // load flver of this door so we can look at its bounding box
+            float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
+            float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
+            float width = x > z ? x : z;
+            float top = Math.Max(0, flver.Nodes[0].BoundingBoxMax.Y);
+            float bottom = Math.Abs(flver.Nodes[0].BoundingBoxMin.Y);
+
+            FsParam actionParam = param[ParamType.ActionButtonParam];
+            FsParam.Row row = CloneRow(actionParam[1000], text, rowId); // 1000 is pick up runes prompt
+
+            int textId = textManager.AddActionButton(text);
+
+            row["regionType"].Value.SetValue((byte)0); // cylinder
+            row["dummyPoly1"].Value.SetValue(-1); // these seem to be broken in ER so setting -1
+            row["dummyPoly2"].Value.SetValue(-1);
+            row["radius"].Value.SetValue(width); // radius
+            row["angle"].Value.SetValue(180); // angle from dmy
+            row["depth"].Value.SetValue(0f);
+            row["width"].Value.SetValue(0f);
+            row["height"].Value.SetValue(top + bottom);
+            row["baseHeightOffset"].Value.SetValue(-bottom - 0.25f);
+            row["angleCheckType"].Value.SetValue((byte)0);
+            row["allowAngle"].Value.SetValue(90);  // player look angle
+            row["textId"].Value.SetValue(textId);
+            row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+            row["execInvalidTime"].Value.SetValue(3f); // cooldown
+
+            AddRow(actionParam, row);
+            return rowId;
         }
 
         /* Set all map placenames to "Morrowind" for now. Later we can edit the map mask and setup the regions properly */
-        public void SetAllMapLocation(TextManager textManager)
+        public void SetAllMapLocation()
         {
             int textId = textManager.AddLocation("Morrowind");
 
@@ -590,25 +910,39 @@ namespace JortPob
         }
 
         /* Generate or get an already generated worldmappoint to be used as a placename. Not for actual map icons! */
-        public int GenerateWorldMapPoint(TextManager textManager, BaseTile tile, Cell cell, Vector3 relative, int id)
+        public int GenerateWorldMapPoint(BaseTile tile, Layout.MapPoint point, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{point.name} placename", id); // 1 is our template
 
-            int textId = textManager.AddLocation(cell.name);
+            int textId = textManager.AddLocation(point.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(point.discovered.id);
+            row["iconId"].Value.SetValue((ushort)point.icon);
+            row["altIconId"].Value.SetValue((ushort)point.icon);
+            row["dispMask00"].Value.SetValue((byte)1);
+            row["dispMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
+            row["selectMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
 
             row["areaNo"].Value.SetValue((byte)tile.map);
             row["gridXNo"].Value.SetValue((byte)tile.coordinate.x);
             row["gridZNo"].Value.SetValue((byte)tile.coordinate.y);
 
-            row["posX"].Value.SetValue(relative.X);
-            row["posY"].Value.SetValue(relative.Y);
-            row["posZ"].Value.SetValue(relative.Z);
+            row["posX"].Value.SetValue(point.relative.X);
+            row["posY"].Value.SetValue(point.relative.Y);
+            row["posZ"].Value.SetValue(point.relative.Z);
 
             row["textId1"].Value.SetValue(textId);
+
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)(point.important?0:2));  // 0 shows a area title when you walk into it, 2 does not
 
             AddRow(worldMapPointParam, row);
 
@@ -616,15 +950,19 @@ namespace JortPob
         }
 
         /* Same as above but for interiors */
-        public int GenerateWorldMapPoint(TextManager textManager, InteriorGroup group, Cell cell, Vector3 relative, int id)
+        public int GenerateWorldMapPoint(InteriorGroup group, Cell cell, Vector3 relative, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{cell.name} placename", id); // 1 is our template
 
             int textId = textManager.AddLocation(cell.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(6001u);  // always on event flag
+            row["iconId"].Value.SetValue((ushort)0);
+            row["altIconId"].Value.SetValue((ushort)0);
+            row["dispMask00"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask01"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask02"].Value.SetValue((byte)0);   // never show on map
 
             row["areaNo"].Value.SetValue((byte)group.map);
             row["gridXNo"].Value.SetValue((byte)group.area);
@@ -636,26 +974,73 @@ namespace JortPob
 
             row["textId1"].Value.SetValue(textId);
 
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)0);
+
             AddRow(worldMapPointParam, row);
 
             return id;
         }
 
+        public int GenerateMessage(string title, string text)
+        {
+            FsParam messageParam = param[ParamType.TutorialParam];
+            FsParam.Row row = CloneRow(messageParam[1010], text[..Math.Min(32, text.Length)], nextMessageParam); // 1010 is the tutorial row for using items
+            int textId = textManager.AddTutorial(title, text);
+
+            row["menuType"].Value.SetValue((byte)100);
+            row["triggerType"].Value.SetValue((byte)0);
+            row["repeatType"].Value.SetValue((byte)1);
+            row["imageId"].Value.SetValue((ushort)0);
+            row["unlockEventFlagId"].Value.SetValue((uint)0);
+            row["textId"].Value.SetValue(textId);
+
+            AddRow(messageParam, row);
+
+            nextMessageParam += 10;
+            return row.ID;
+        }
+
+        public int GenerateNotification(string text)
+        {
+            FsParam messageParam = param[ParamType.TutorialParam];
+            FsParam.Row row = CloneRow(messageParam[1010], text[..Math.Min(32, text.Length)], nextMessageParam); // 1010 is the tutorial row for using items
+            int textId = textManager.AddTutorial(string.Empty, text);
+
+            row["menuType"].Value.SetValue((byte)0);
+            row["triggerType"].Value.SetValue((byte)0);
+            row["repeatType"].Value.SetValue((byte)1);
+            row["imageId"].Value.SetValue((ushort)0);
+            row["unlockEventFlagId"].Value.SetValue((uint)0);
+            row["textId"].Value.SetValue(textId);
+
+            AddRow(messageParam, row);
+
+            nextMessageParam += 10;
+            return row.ID;
+        }
+
         /* Setup both the class and race params. These are refered to as BaseChrParam (origin) FaceParam (base template) */
         /* also edits CharMakeMenuListItemParam and CharMakeMenuTopParam for text on the char creation screen */
-        public void GenerateCustomCharacterCreation(TextManager textManager)
+        public void GenerateCustomCharacterCreation()
         {
             // Race stuff
+            List<Override.PlayerRace> playerRaces = Override.GetCharacterCreationRaces();
             int[] charMakeMenuListItemParam_Races = new int[] { 240, 241, 242, 243, 244, 245, 246, 247, 248, 249 };
             int charMakeMenuListItemParam_Race_Gender_Offset = 20; // add this to above value to get the female version
-
-            JsonNode jsonRaces = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_race.json")));
 
             FsParam charMakeMenuListItemParam = param[ParamType.CharMakeMenuListItemParam];
             FsParam faceParam = param[ParamType.FaceParam];
             for (int i = 0; i < charMakeMenuListItemParam_Races.Count(); i++)
             {
-                JsonNode jsonRace = jsonRaces.AsArray()[i];
+                Override.PlayerRace playerRace = playerRaces[i];
 
                 // Texy menu entry rows
                 int raceRowIdMale = charMakeMenuListItemParam_Races[i];
@@ -664,10 +1049,10 @@ namespace JortPob
                 FsParam.Row charMakemMenuListMaleRow = charMakeMenuListItemParam[raceRowIdMale];
                 FsParam.Row charMakemMenuListFemaleRow = charMakeMenuListItemParam[raceRowIdFemale];
 
-                int charMakemMenuListRowText = textManager.AddMenuText(jsonRace["race"].ToString(), jsonRace["description"].ToString());
+                int charMakemMenuListRowText = textManager.AddMenuText(playerRace.name, playerRace.description);
 
-                charMakemMenuListMaleRow.Name = $"Male {jsonRace["race"].GetValue<string>()}";   // row names for helpful debugging
-                charMakemMenuListFemaleRow.Name = $"Female {jsonRace["race"].GetValue<string>()}";
+                charMakemMenuListMaleRow.Name = $"Male {playerRace.name}";   // row names for helpful debugging
+                charMakemMenuListFemaleRow.Name = $"Female {playerRace.name}";
 
                 charMakemMenuListMaleRow["captionId"].Value.SetValue(charMakemMenuListRowText);
                 charMakemMenuListFemaleRow["captionId"].Value.SetValue(charMakemMenuListRowText);
@@ -676,17 +1061,15 @@ namespace JortPob
                 FsParam.Row faceMaleRow = faceParam[(int)(charMakemMenuListMaleRow["value"].Value.Value)];
                 FsParam.Row faceFemaleRow = faceParam[(int)(charMakemMenuListFemaleRow["value"].Value.Value)];
 
-                byte raceId = byte.Parse(jsonRace["id"].ToString());  // these values match the enums in the NpcContent class
+                faceMaleRow.Name = $"Male {playerRace.name}";   // row names for helpful debugging
+                faceFemaleRow.Name = $"Female {playerRace.name}";
 
-                faceMaleRow.Name = $"Male {jsonRace["race"].GetValue<string>()}";   // row names for helpful debugging
-                faceFemaleRow.Name = $"Female {jsonRace["race"].GetValue<string>()}";
-
-                faceMaleRow["burn_scar"].Value.SetValue(raceId);  // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
-                faceFemaleRow["burn_scar"].Value.SetValue(raceId);
+                faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);  // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
+                faceFemaleRow["burn_scar"].Value.SetValue(playerRace.id);
             }
 
             // Class stuff
-            JsonNode jsonClasses = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json")));
+            List<Override.PlayerClass> playerClasses = Override.GetCharacterCreationClasses();
             FsParam baseChrSelectMenuParam = param[ParamType.BaseChrSelectMenuParam];
             FsParam charInitParam = param[ParamType.CharaInitParam];
 
@@ -694,25 +1077,25 @@ namespace JortPob
             int[] charMakeMenuListItemParam_Classes = new int[] { 100200, 100201, 100202, 100203, 100204, 100205, 100206, 100207, 100208, 100209 };
             for (int i = 0; i < baseChrSelectMenuParam_Classes.Count(); i++)
             {
-                JsonNode jsonClass = jsonClasses.AsArray()[i];
+                Override.PlayerClass playerClass = playerClasses[i];
                 FsParam.Row baseClassRow = baseChrSelectMenuParam[baseChrSelectMenuParam_Classes[i]];
 
                 // Base class rows
-                int classTextId = textManager.AddMenuText(jsonClass["class"].GetValue<string>(), jsonClass["description"].GetValue<string>());
-                baseClassRow.Name = jsonClass["class"].GetValue<string>();   // row names for helpful debugging
+                int classTextId = textManager.AddMenuText(playerClass.name, playerClass.description);
+                baseClassRow.Name = playerClass.name;   // row names for helpful debugging
                 baseClassRow["textId"].Value.SetValue(classTextId);
 
                 // Texty menu entry rows
                 FsParam.Row charMakeMenuListClassRow = charMakeMenuListItemParam[charMakeMenuListItemParam_Classes[i]];
-                charMakeMenuListClassRow.Name = jsonClass["class"].GetValue<string>();   // row names for helpful debugging
+                charMakeMenuListClassRow.Name = playerClass.name;   // row names for helpful debugging
                 charMakeMenuListClassRow["captionId"].Value.SetValue(classTextId);
 
                 // Char init rows
                 FsParam.Row classRow = charInitParam[(int)(uint)baseClassRow["chrInitParam"].Value.Value];
                 FsParam.Row originRow = charInitParam[(int)(uint)baseClassRow["originChrInitParam"].Value.Value];
 
-                classRow.Name = jsonClass["class"].GetValue<string>();   // row names for helpful debugging
-                originRow.Name = jsonClass["class"].GetValue<string>();
+                classRow.Name = playerClass.name;   // row names for helpful debugging
+                originRow.Name = playerClass.name;
             }
 
             // Minor text tweaks
@@ -728,28 +1111,130 @@ namespace JortPob
             }
         }
 
-        /* Die */ // @TODO: maybe move all row removal into the constructor since it can just *happen*
-        public void KillMapHeightParams()
+        /* Generates an itemlot with a single item and no flag */
+        public int GenerateAddItemLot(ItemManager.ItemInfo itemInfo, int quantity)
         {
-            /* Delete most of these */
-            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
-            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
+            FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
+            FsParam.Row row = CloneRow(itemLotParam[0], $"single, repeatable, scripted, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
+
+            row["getItemFlagId"].Value.SetValue((uint)0);
+            row["lotItemCategory01"].Value.SetValue(itemInfo.ItemLotCategory());
+            row["lotItemId01"].Value.SetValue(itemInfo.row);
+            row["lotItemNum01"].Value.SetValue((byte)quantity);
+            row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
+
+            AddRow(itemLotParam, row);
+            nextMapItemLotId += 10;
+            return row.ID;
+        }
+
+        /* Generates an itemlot with a single item with a flag. For item objects placed in the overworld that you can pick up as treasure. */
+        public int GenerateContentItemLot(Script script, ItemContent itemContent, ItemManager.ItemInfo itemInfo)
+        {
+            FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
+            FsParam.Row row = CloneRow(itemLotParam[0], $"single, not repeatable, map treasure, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
+            Script.Flag itemLotFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Item, $"TreasureItem::{itemInfo.type}:{itemInfo.row}");
+            itemContent.treasure = itemLotFlag;
+
+            row["getItemFlagId"].Value.SetValue(itemLotFlag.id);
+            row["lotItemCategory01"].Value.SetValue(itemInfo.ItemLotCategory());
+            row["lotItemId01"].Value.SetValue(itemInfo.row);
+            row["lotItemNum01"].Value.SetValue((byte)1);
+            row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
+
+            script.RegisterItemAsset(itemContent);
+            script.RegisterItemDisable(itemContent, itemLotFlag);
+
+            AddRow(itemLotParam, row);
+            nextMapItemLotId += 10;
+            return row.ID;
+        }
+
+        /* Generates a map item lot from the inventory of an npccontent with a flag. This is for dead npcs that are just bodies that you loot NOT LIVING ONES! */
+        public int GenerateDeadBodyItemLot(Script script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        {
+            FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
+            if (inventory.Count() <= 0) { return -1; } // skip empty inv
+            if (inventory.Count() > 10) { throw new Exception($" Inventory itemlot exceeded max entries!"); }
+
+            int i = 0;
+            int baseRow = nextMapItemLotId;
+            foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
             {
-                FsParam.Row row = mapGridHeightParam.Rows[i];
-                if (row.ID >= 99999901) { continue; } // keep some base params
-                mapGridHeightParam.RemoveRow(row);
-                i--;
+                Script.Flag itemLotFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Item, $"DeadBody::{npc.id}:{0}");
+                if (i == 0) { npc.treasure = itemLotFlag; }
+                FsParam.Row row = CloneRow(itemLotParam[0], $"deadbody, not repeatable, {npc.id}:{entry.item.id}:{i}", baseRow+i); // 0 is a default template we created in the constructor
+
+                row["getItemFlagId"].Value.SetValue(itemLotFlag.id);
+                row[$"lotItemCategory01"].Value.SetValue(entry.item.ItemLotCategory());
+                row[$"lotItemId01"].Value.SetValue(entry.item.row);
+                row[$"lotItemNum01"].Value.SetValue((byte)entry.quantity);
+                row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
+
+                i++;
+                AddRow(itemLotParam, row);
             }
 
-            /* Delete most of these */
-            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
-            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
+            nextMapItemLotId += 10;
+            return baseRow;
+        }
+
+        /* Generates a map item lot from the inventory of a container with a flag. Barrels, chests, boxes, etc... */
+        public int GenerateContainerItemLot(Script script, ContainerContent container, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        {
+            FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
+            if (inventory.Count() <= 0) { return -1; } // skip empty inv
+            if (inventory.Count() > 10) { throw new Exception($" Inventory itemlot exceeded max entries!"); }
+
+            int i = 0;
+            int baseRow = nextMapItemLotId;
+            foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
             {
-                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
-                if (row.ID <= 2) { continue; } // keep some base params
-                mapGridHeightDetailParam.RemoveRow(row);
-                i--;
+                Script.Flag itemLotFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Item, $"Container::{container.id}:{0}");
+                if(i==0) { container.treasure = itemLotFlag; } 
+                FsParam.Row row = CloneRow(itemLotParam[0], $"container, not repeatable, {container.id}:{i}:{entry.item.id}", baseRow + i); // 0 is a default template we created in the constructor
+
+                row["getItemFlagId"].Value.SetValue(itemLotFlag.id);
+                row[$"lotItemCategory01"].Value.SetValue(entry.item.ItemLotCategory());
+                row[$"lotItemId01"].Value.SetValue(entry.item.row);
+                row[$"lotItemNum01"].Value.SetValue((byte)entry.quantity);
+                row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
+
+                i++;
+                AddRow(itemLotParam, row);
             }
+
+            script.RegisterContainerAsset(container);
+
+            nextMapItemLotId += 10;
+            return baseRow;
+        }
+
+        /* Generates an enemy item lot from the inventory of an npccontent with no flag. This is for LIVING npcs when the player kills them */
+        public int GenerateInventoryItemLot(Script script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        {
+            FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_enemy];
+            if (inventory.Count() <= 0) { return -1; } // skip empty inv
+            if (inventory.Count() > 10) { throw new Exception($" Inventory itemlot exceeded max entries!"); }
+
+            int i = 0;
+            int baseRow = nextEnemyItemLotId;
+            foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
+            {
+                FsParam.Row row = CloneRow(itemLotParam[584000500], $"npc inventory, repeatable, {content.id}:{i}:{entry.item.id}", baseRow + i); // 584000500 is a blankish one i found that looked good as a base
+                
+                row["getItemFlagId"].Value.SetValue((uint)0);
+                row[$"lotItemCategory01"].Value.SetValue(entry.item.ItemLotCategory());
+                row[$"lotItemId01"].Value.SetValue(entry.item.row);
+                row[$"lotItemNum01"].Value.SetValue((byte)entry.quantity);
+                row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
+
+                i++;
+                AddRow(itemLotParam, row);
+            }
+
+            nextEnemyItemLotId += 10;
+            return baseRow;
         }
     }
 }

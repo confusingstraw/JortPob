@@ -10,7 +10,7 @@ namespace JortPob
     {
         public enum Rem
         {
-            Forest, Mountain, Cave, Tomb, Home
+            Forest, Mountain, Cave, Tomb, Home, Snowfield
         }
 
         // returns a list of texture names and bytes for them
@@ -47,14 +47,7 @@ namespace JortPob
         public static void CreateEnvMaps(HugeTile tile, int envId)
         {
             string region = tile.GetRegion();
-            WeatherData weatherData = null;
-            foreach (WeatherData w in EXTERIOR_WEATHER_DATA_LIST)
-            {
-                if (w.match.Contains(region))
-                {
-                    weatherData = w; break;
-                }
-            }
+            WeatherData weatherData = GetWeatherData(region);
 
             string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}"; // msb full name
 

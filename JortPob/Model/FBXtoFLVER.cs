@@ -246,10 +246,80 @@ namespace JortPob.Model
                 flver.Meshes.Add(flverMesh);
             }
 
+            /* Calculate bounding boxes */
+            BoundingBoxSolver.FLVER(flver);
+
             /* Add Dummy Polys */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
-            nodes.Insert(0, new("root", Vector3.Zero));    // always add a dummy at root for potential use by fxr later
-            foreach(Tuple<string, Vector3> tuple in nodes)
+            // first add a center dummy poly with the  ids 90 and 100. These are default used for item treasure points and interaction points so every model should just have them
+            // and also a bottom and top dmy poly at 101 and 102
+            Vector3 center = Vector3.Lerp(flver.Nodes[0].BoundingBoxMin, flver.Nodes[0].BoundingBoxMax, .5f);
+            Vector3 bottom = new Vector3(center.X, flver.Nodes[0].BoundingBoxMin.Y, center.Z);
+            Vector3 top = new Vector3(center.X, flver.Nodes[0].BoundingBoxMax.Y, center.Z);
+            {
+                FLVER.Dummy dmy = new();
+                dmy.Position = center;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = 90;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = 0;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+            }
+            {
+                FLVER.Dummy dmy = new();
+                dmy.Position = center;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = 100;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = 0;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+            }
+            {
+                FLVER.Dummy dmy = new();
+                dmy.Position = bottom;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = 101;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = 0;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+            }
+            {
+                FLVER.Dummy dmy = new();
+                dmy.Position = top;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = 102;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = 0;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+            }
+            // next add a root node dummy. this is sometimes used by fxr
+            {
+                FLVER.Dummy dmy = new();
+                dmy.Position = Vector3.Zero;
+                dmy.Forward = new(0, 0, 1);
+                dmy.Upward = new(0, 1, 0);
+                dmy.Color = System.Drawing.Color.White;
+                dmy.ReferenceID = 90;
+                dmy.ParentBoneIndex = 0;
+                dmy.AttachBoneIndex = 0;
+                dmy.UseUpwardVector = true;
+                flver.Dummies.Add(dmy);
+                modelInfo.dummies.Add("root", nextRef++);
+            }
+            // lastly handle dummies from nif
+            foreach (Tuple<string, Vector3> tuple in nodes)
             {
                 string name = tuple.Item1;
                 Vector3 position = tuple.Item2;
@@ -270,14 +340,11 @@ namespace JortPob.Model
                 dmy.Color = System.Drawing.Color.White;
                 dmy.ReferenceID = refid;
                 dmy.ParentBoneIndex = 0;
-                dmy.AttachBoneIndex = -1;
+                dmy.AttachBoneIndex = 0;
                 dmy.UseUpwardVector = true;
                 flver.Dummies.Add(dmy);
                 if (!modelInfo.dummies.ContainsKey(name)) { modelInfo.dummies.Add(name, refid); }
             }
-
-            /* Calculate bounding boxes */
-            BoundingBoxSolver.FLVER(flver);
 
             /* Optimize flver */
             flver = FLVERUtil.Optimize(flver);
@@ -289,20 +356,8 @@ namespace JortPob.Model
             /* Write flver */
             flver.Write(outputFilename);
 
-            
-            /* Load overrides list for collision */
-            JsonNode json = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\static_collision.json")));
-            bool CheckOverride(string name)
-            {
-                foreach(JsonNode node in json.AsArray())
-                {
-                    if (node.ToString().ToLower() == name.ToLower()) { return true; }
-                }
-                return false;
-            }
-
             /* Generate collision obj if the model contains a collision mesh */
-            if ((fbxCollisions.Count > 0 || forceCollision) && !CheckOverride(modelInfo.name))
+            if ((fbxCollisions.Count > 0 || forceCollision) && !Override.CheckStaticCollision(modelInfo.name))
             {
                 /* Best guess for collision material */
                 Obj.CollisionMaterial matguess = Obj.CollisionMaterial.None;
