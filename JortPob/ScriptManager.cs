@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -86,7 +87,26 @@ namespace JortPob
         /* Also some other globalish vars we need for scripts like Reputation and CrimeLevel */
         public void SetupSpecialFlags(ESM esm)
         {
-            List<JsonNode> raceJson = [.. esm.GetAllRecordsByType(ESM.Type.Race)];
+            // Create a one time event that sets some default flags at game startup
+            Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
+            Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
+            EMEVD.Event gameInitEvent = new();
+            gameInitEvent.ID = gameInitEventFlag.id;
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"IfEventFlag(1, ON, TargetEventFlagType.EventFlag, {gameInitFlag.id});"));  // if init has been done
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.End);"));                                       // end event
+            List<int> setFlagsOn = new()
+            {
+                62010, 62011, 62012, 62020, 62021, 62022, 62030, 62031, 62032, 62040, 62041, 62050, 62051, 62052,  // Known world map pieces to unlock all major areas of map
+                62053, 62004, 62005, 62006, 62007, 62008, 62009,                                                  // Unknown world map pieces unlocks a bunch of small areas on the sides of the map
+                62000                                                                                            // Unlocks the map itself
+            };
+            foreach(int flagId in setFlagsOn)
+            {
+                gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flagId}, ON);"));           // Add code to turn on flags
+            }
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {gameInitFlag.id}, ON);"));      // set initgame flag on so it's donezo
+            common.emevd.Events.Add(gameInitEvent);
+            common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {gameInitEventFlag.id})"));  // initialize in common
 
             // A short for reputation, maybe could fit in a byte but lets just be safe here
             common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.Reputation, "Reputation");
@@ -117,11 +137,23 @@ namespace JortPob
             Script.Flag playerFaith = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Faith");
             Script.Flag playerArcane = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Arcane");
 
+            // Temp flags that if written to will modify player stats
+            Script.Flag setVigorFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetVigor");
+            Script.Flag setMindFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetMind");
+            Script.Flag setEnduranceFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetEndurance");
+            Script.Flag setStrengthFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetStrength");
+            Script.Flag setDexterityFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetDexterity");
+            Script.Flag setIntelligenceFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetIntelligence");
+            Script.Flag setFaithFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetFaith");
+            Script.Flag setArcaneFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetArcane");
+
+
             // Temp flag that is set true when a player is sneaking
             Script.Flag playerIsSneakingFlag = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
 
             // One flag for each race. Single bit. Name of the flag to identify it by is the same as the enum name from CharacterContent.Race
             // Reason for doing 10 bits instead of a single byte is because I don't want to set an eventvalueflag from HKS becasue lua is a cursed language
+            List<JsonNode> raceJson = [.. esm.GetAllRecordsByType(ESM.Type.Race)];
             List<Script.Flag> raceFlags = new();
             foreach(JsonNode json in raceJson)
             {
@@ -186,13 +218,15 @@ namespace JortPob
 
                                             -- writing the players max hp to a 16bit flag so esd/emevd can look at it
                                             -- and also writing players stats to 8bit flags so emevd can read them
-                                                if env(IsCOMPlayer) == FALSE then
+                                            if env(IsCOMPlayer) == FALSE then
                                                 -- vars
                                                 local SetEventFlag = 10003
                                                 local TraversePointerChain = 10000
+                                                local WritePointerChain = 10000
                                                 local CHR_INS_BASE = 1
                                                 local SIGNED_INT = 5
                                                 local PLAYER_GAME_DATA = 0x580
+                                                local LEVEL = 0x68
                                                 local VIGOR = 0x288
                                                 local MIND = 0x28C
                                                 local ENDURANCE = 0x290
@@ -209,6 +243,7 @@ namespace JortPob
                                                         act(SetEventFlag, flagBit, value_of_bit(maxHp, i))
                                                     end
 
+                                                local level = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, LEVEL)
                                                 local vig = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, VIGOR)
                                                 local mnd = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, MIND)
                                                 local edu = env(TraversePointerChain, CHR_INS_BASE, SIGNED_INT, PLAYER_GAME_DATA, ENDURANCE)
@@ -220,50 +255,164 @@ namespace JortPob
 
                                                 -- vig
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerVigor.id.ToString()[..7]}".. string.format("%03d", i + {playerVigor.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(vig, i))
-                                                    end
+                                                    local flagBit = tostring("{playerVigor.id.ToString()[..7]}".. string.format("%03d", i + {playerVigor.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(vig, i))
+                                                end
                                                 -- mnd
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerMind.id.ToString()[..7]}".. string.format("%03d", i + {playerMind.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(mnd, i))
-                                                    end
+                                                    local flagBit = tostring("{playerMind.id.ToString()[..7]}".. string.format("%03d", i + {playerMind.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(mnd, i))
+                                                end
                                                 -- edu
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerEndurance.id.ToString()[..7]}".. string.format("%03d", i + {playerEndurance.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(edu, i))
-                                                    end
+                                                    local flagBit = tostring("{playerEndurance.id.ToString()[..7]}".. string.format("%03d", i + {playerEndurance.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(edu, i))
+                                                end
                                                 -- str
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerStrength.id.ToString()[..7]}".. string.format("%03d", i + {playerStrength.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(str, i))
-                                                    end
+                                                    local flagBit = tostring("{playerStrength.id.ToString()[..7]}".. string.format("%03d", i + {playerStrength.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(str, i))
+                                                end
                                                 -- dex
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerDexterity.id.ToString()[..7]}".. string.format("%03d", i + {playerDexterity.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(dex, i))
-                                                    end
+                                                    local flagBit = tostring("{playerDexterity.id.ToString()[..7]}".. string.format("%03d", i + {playerDexterity.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(dex, i))
+                                                end
                                                 -- int
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerIntelligence.id.ToString()[..7]}".. string.format("%03d", i + {playerIntelligence.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(int, i))
-                                                    end
+                                                    local flagBit = tostring("{playerIntelligence.id.ToString()[..7]}".. string.format("%03d", i + {playerIntelligence.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(int, i))
+                                                end
                                                 -- fth
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerFaith.id.ToString()[..7]}".. string.format("%03d", i + {playerFaith.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(fth, i))
-                                                    end
+                                                    local flagBit = tostring("{playerFaith.id.ToString()[..7]}".. string.format("%03d", i + {playerFaith.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(fth, i))
+                                                end
                                                 -- arc
                                                 for i = 0, 7 do
-                                                        local flagBit = tostring("{playerArcane.id.ToString()[..7]}".. string.format("%03d", i + {playerArcane.id.ToString()[7..]}))
-                                                        act(SetEventFlag, flagBit, value_of_bit(arc, i))
-                                                    end
+                                                    local flagBit = tostring("{playerArcane.id.ToString()[..7]}".. string.format("%03d", i + {playerArcane.id.ToString()[7..]}))
+                                                    act(SetEventFlag, flagBit, value_of_bit(arc, i))
+                                                end
+
+                                                -- modstat functions. setter trigger thing
+                                                local SET_LEVEL = 0x68
+                                                local SET_VIG = 0x3C + (0 * 4)
+                                                local SET_MND = 0x3C + (1 * 4)
+                                                local SET_END = 0x3C + (2 * 4)
+                                                local SET_STR = 0x3C + (3 * 4)
+                                                local SET_DEX = 0x3C + (4 * 4)
+                                                local SET_INT = 0x3C + (5 * 4)
+                                                local SET_FTH = 0x3C + (6 * 4)
+                                                local SET_ARC = 0x3C + (7 * 4)
+
+                                                local setVig = get_event_value("{setVigorFlag.id}", {setVigorFlag.Bits()})
+                                                if setVig > 0 then
+                                                  local newVig = math.max(1, math.min(99, vig + (setVig - 100)))
+                                                  local change = newVig - vig
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newVig, PLAYER_GAME_DATA, SET_VIG)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setVigorFlag.id}", {setVigorFlag.Bits()}, 0)
+                                                end
+
+                                                local setMnd = get_event_value("{setMindFlag.id}", {setMindFlag.Bits()})
+                                                if setMnd > 0 then
+                                                  local newMnd = math.max(1, math.min(99, mnd + (setMnd - 100)))
+                                                  local change = newMnd - mnd
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newMnd, PLAYER_GAME_DATA, SET_MND)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setMindFlag.id}", {setMindFlag.Bits()}, 0)
+                                                end
+
+                                                local setEnd = get_event_value("{setEnduranceFlag.id}", {setEnduranceFlag.Bits()})
+                                                if setEnd > 0 then
+                                                  local newEnd = math.max(1, math.min(99, edu + (setEnd - 100)))
+                                                  local change = newEnd - edu
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newEnd, PLAYER_GAME_DATA, SET_END)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setEnduranceFlag.id}", {setEnduranceFlag.Bits()}, 0)
+                                                end
+
+                                                local setStr = get_event_value("{setStrengthFlag.id}", {setStrengthFlag.Bits()})
+                                                if setStr > 0 then
+                                                  local newStr = math.max(1, math.min(99, str + (setStr - 100)))
+                                                  local change = newStr - str
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newStr, PLAYER_GAME_DATA, SET_STR)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setStrengthFlag.id}", {setStrengthFlag.Bits()}, 0)
+                                                end
+
+                                                local setDex = get_event_value("{setDexterityFlag.id}", {setDexterityFlag.Bits()})
+                                                if setDex > 0 then
+                                                  local newDex = math.max(1, math.min(99, dex + (setDex - 100)))
+                                                  local change = newDex - dex
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newDex, PLAYER_GAME_DATA, SET_DEX)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setDexterityFlag.id}", {setDexterityFlag.Bits()}, 0)
+                                                end
+
+                                                local setInt = get_event_value("{setIntelligenceFlag.id}", {setIntelligenceFlag.Bits()})
+                                                if setInt > 0 then
+                                                  local newInt = math.max(1, math.min(99, int + (setInt - 100)))
+                                                  local change = newInt - int
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newInt, PLAYER_GAME_DATA, SET_INT)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setIntelligenceFlag.id}", {setIntelligenceFlag.Bits()}, 0)
+                                                end
+
+                                                local setFth = get_event_value("{setFaithFlag.id}", {setFaithFlag.Bits()})
+                                                if setFth > 0 then
+                                                  local newFth = math.max(1, math.min(99, fth + (setFth - 100)))
+                                                  local change = newFth - fth
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newFth, PLAYER_GAME_DATA, SET_FTH)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setFaithFlag.id}", {setFaithFlag.Bits()}, 0)
+                                                end
+
+                                                local setArc = get_event_value("{setArcaneFlag.id}", {setArcaneFlag.Bits()})
+                                                if setArc > 0 then
+                                                  local newArc = math.max(1, math.min(99, arc + (setArc - 100)))
+                                                  local change = newArc - arc
+                                                  local newLevel = math.max(1, level + change)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newArc, PLAYER_GAME_DATA, SET_ARC)
+                                                  act(WritePointerChain, CHR_INS_BASE, SIGNED_INT, newLevel, PLAYER_GAME_DATA, SET_LEVEL)
+                                                  set_event_value("{setArcaneFlag.id}", {setArcaneFlag.Bits()}, 0)
+                                                end
+
                                             end
 
 
                                           """";
 
             string hksBitwiseShitCode =    $""""
+
+                                            -- get event value at flag, of length
+                                            local function get_event_value(flag, length)
+                                              local GetEventFlag = 10003
+                                              local val = 0;
+                                              local base = string.sub(flag, 1, 6)
+                                              for i=0,length-1 do
+                                                local id = tonumber(string.sub(flag, 7) + i)
+                                                val = val + (env(GetEventFlag, base .. id) * 2^i)
+                                              end
+                                              return val
+                                            end
+
+                                            -- set event value at flag, of length, to value
+                                            local function set_event_value(flag, length, value)
+                                              local SetEventFlag = 10003
+                                              local base = string.sub(flag, 1, 6)
+                                              for i=0,length-1 do
+                                                local id = tonumber(string.sub(flag, 7) + i)
+                                                act(SetEventFlag, base .. id, value_of_bit(value, i))
+                                              end
+                                            end
 
                                             -- gets bit n of a number. bitwise ops dont' exist in this version of lua. code yoinked from google
                                             function value_of_bit(num, n)
@@ -309,7 +458,7 @@ namespace JortPob
                 allFlags.AddRange(script.flags);
             }
 
-            Script.Flag eventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "GlobalAbsolveCrimeEvent");
+            Script.Flag eventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "Global:AbsolveCrimeEvent");
             EMEVD.Event absolveEvent = new();
             absolveEvent.ID = eventFlag.id;
 

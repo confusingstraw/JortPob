@@ -86,7 +86,7 @@ namespace JortPob
                         if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }
                         break;
                     case ESM.Type.Light:
-                        if (!string.IsNullOrEmpty(mesh)) { lights.Add(new LightContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { lights.Add(new LightContent(this, reference, record)); }
                         else { emitters.Add(new EmitterContent(this, reference, record)); }
                         break;
                     case ESM.Type.Npc:

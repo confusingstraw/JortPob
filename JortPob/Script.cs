@@ -483,7 +483,9 @@ namespace JortPob
                 Message,    // Flag to trigger a popmessage or notification
                 PlaySE,     // Flat to trigger playing a sound effect
                 TravelWarp, // Flag to trigger warping the player from travel npcs
-                RemoveItem  // Flag to trigger removing an item from the player
+                RemoveItem,  // Flag to trigger removing an item from the player
+                DiscoverLocation,  // marks location on your map when set
+                Hardcode     // Used by any jank hardcoding I end up doing
             }
 
             public readonly Category category;

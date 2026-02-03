@@ -178,7 +178,7 @@ namespace JortPob.Common
                 _ => L0_SIZE
             };
 
-            switch (zoomLevel)
+            /*switch (zoomLevel)
             {
                 case ZoomLevel.L0 when sourceImage.Width == L0_SIZE && sourceImage.Height == L0_SIZE:
                     return new Bitmap(sourceImage);
@@ -186,7 +186,7 @@ namespace JortPob.Common
                     return new Bitmap(scaledL1Image);
                 case ZoomLevel.L2:
                     return new Bitmap(scaledL2Image);
-            }
+            }*/
 
             Bitmap workingImage = new Bitmap(sourceImage);
 

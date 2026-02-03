@@ -30,6 +30,9 @@ namespace JortPob
         // Returns the row id of the sound you add
         public int AddSound(string record, Sound.Type type, bool loop, bool spatialize, float volume, float pitch, string file)
         {
+            /* Check if sound exists, if it doeesn't then just return some random number */
+            if (!File.Exists(file)) { return 5; }  // yes, morrowind has scripts that just point to sound files that don't exist. that's why this is here.
+
             /* Setup some paths */
             string wav = Path.Combine(Const.CACHE_PATH, "sound", $"{record}\\{record}.wav");
             string wem = Path.Combine(Const.CACHE_PATH, "sound", $"{record}\\{record}.wem");

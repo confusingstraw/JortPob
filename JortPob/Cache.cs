@@ -285,7 +285,7 @@ namespace JortPob
                         {
                             foreach (Content content in contents)
                             {
-                                if(content.mesh == null) { continue; }  // skip content with no mesh
+                                if(String.IsNullOrEmpty(content.mesh)) { continue; }  // skip content with no mesh
                                 if (addCutouts) { LiquidManager.AddCutout(content); } // check if this is a lava or swamp mesh and add it to cutouts if it is
                                 var model = GetMesh(content);
                                 if (model == null)

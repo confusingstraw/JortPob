@@ -404,39 +404,31 @@ namespace JortPob
                 /* Handle area names */
                 if (isTileType)
                 {
-                    foreach (Cell cell in tile.cells)
+                    foreach (Layout.MapPoint point in tile.points)
                     {
-                        if (cell.name != null)
-                        {
-                            float x = (tile.coordinate.x * Const.TILE_SIZE);
-                            float y = (tile.coordinate.y * Const.TILE_SIZE);
-                            Vector3 relative = (cell.center + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
 
-                            int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
+                        MSBE.Region.MapPoint mpr = new();
+                        mpr.Name = $"{point.name} placename";
+                        mpr.Shape = new MSB.Shape.Sphere(point.radius);
+                        mpr.Position = point.relative + Const.MSB_OFFSET;
+                        mpr.Rotation = Vector3.Zero;
+                        mpr.RegionID = nextMPR++;
+                        mpr.MapStudioLayer = 4294967295;
+                        mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
 
+                        mpr.MapID = -1;
+                        mpr.UnkE08 = 255;
+                        mpr.UnkS04 = 0;
+                        mpr.UnkS0C = -1;
+                        mpr.UnkT04 = -1;
+                        mpr.UnkT08 = -1;
+                        mpr.UnkT0C = -1;
+                        mpr.UnkT10 = -1;
+                        mpr.UnkT14 = -1;
+                        mpr.UnkT18 = -1;
 
-                            MSBE.Region.MapPoint mpr = new();
-                            mpr.Name = $"{cell.name} placename";
-                            mpr.Shape = new MSB.Shape.Box(Const.CELL_SIZE, Const.CELL_SIZE, Const.CELL_SIZE * 8);
-                            mpr.Position = relative;
-                            mpr.Rotation = Vector3.Zero;
-                            mpr.RegionID = nextMPR++;
-                            mpr.MapStudioLayer = 4294967295;
-                            mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, cell, relative, paramId);
-
-                            mpr.MapID = -1;
-                            mpr.UnkE08 = 255;
-                            mpr.UnkS04 = 0;
-                            mpr.UnkS0C = -1;
-                            mpr.UnkT04 = -1;
-                            mpr.UnkT08 = -1;
-                            mpr.UnkT0C = -1;
-                            mpr.UnkT10 = -1;
-                            mpr.UnkT14 = -1;
-                            mpr.UnkT18 = -1;
-
-                            msb.Regions.MapPoints.Add(mpr);
-                        }
+                        msb.Regions.MapPoints.Add(mpr);
                     }
                 }
 
@@ -457,6 +449,8 @@ namespace JortPob
 
                 // Skip empty groups.
                 if (group.IsEmpty()) { continue; }
+
+                Lort.Log($"@{group.map}_{group.area} we have ItemLots[{param.param[Paramanager.ParamType.ItemLotParam_map].Rows.Count}] and TalkParams[{param.param[Paramanager.ParamType.TalkParam].Rows.Count}]", Lort.Type.Debug);
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
@@ -846,7 +840,6 @@ namespace JortPob
             param.GenerateMapInfoParam(layout);
             param.SetAllMapLocation();
             param.GenerateCustomCharacterCreation();
-            param.KillMapHeightParams();    // murder kill
             param.Write();
 
             /* Write FMGs */

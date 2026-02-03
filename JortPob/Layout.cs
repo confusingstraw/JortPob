@@ -620,6 +620,91 @@ namespace JortPob
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { HandleAbles(scriptManager.GetScript(group), chunk.GetAllContent()); }
             }
+
+            /* Generate map point placements */
+            Dictionary<string, List<Vector3>> mapPoints = new();
+
+            // collect em all
+            foreach (Cell cell in esm.exterior)
+            {
+                if(!string.IsNullOrEmpty(cell.name))
+                {
+                    Landscape landscape = esm.GetLandscape(cell.coordinate);
+                    Vector3 center;
+                    if (landscape == null) { center = new(); }
+                    else { center = cell.center + new Vector3(0f, landscape.GetHeightAverage(), 0f); }
+
+                    if (mapPoints.ContainsKey(cell.name)) { mapPoints[cell.name].Add(center); }
+                    else { mapPoints.Add(cell.name, new() { center }); }
+                }
+            }
+
+            // merge similar
+            List<string> pointNames = new();
+            List<MapPoint> importants = new();
+            foreach(var kvp in mapPoints)
+            {
+                string name = kvp.Key;                // name
+                Vector3 center = new();               // average of all points with same name
+                float radius = Const.CELL_SIZE / 2;   // minimum size for radius of map point is 1 cell
+
+                Vector3 first = kvp.Value.First();
+                foreach(Vector3 pos in kvp.Value)
+                {
+                    radius = Math.Max(radius, Vector3.Distance(first, pos));
+                    center += pos;
+                }
+
+                center = center * (1f / kvp.Value.Count());
+
+                MapPoint.Icon icon = Override.GetMapIcon(name);
+                if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name);
+                Layout.MapPoint mapPoint = new(name, center, radius, true, discoverFlag, icon);
+                Tile tile = GetTile(center);
+                tile.AddMapPoint(mapPoint);
+                importants.Add(mapPoint);
+                pointNames.Add(name.ToLower().Trim());
+            }
+
+            // Search for interior doors to add markers for
+            bool IsInsideImportant(Vector3 position)  // checks if a position is inside of one of the important map points we created above. returns true if it is
+            {
+                foreach(MapPoint important in importants)
+                {
+                    if (Vector3.Distance(position, important.position) <= important.radius) { return true; }
+                }
+                return false;
+            }
+
+            bool AlreadyExists(string name)  // see if map point has already been made. some areas have multiple entrances or exits
+            {
+                if(pointNames.Contains(name.ToLower().Trim())) { return true; }
+                pointNames.Add(name.ToLower().Trim());
+                return false;
+            }
+
+            foreach(Tile tile in tiles)
+            {
+                foreach(DoorContent door in tile.doors)
+                {
+                    if(door.warp != null)
+                    {
+                        string name = door.warp.cell;
+                        if (name.Contains(",")) { name = name.Split(",")[0].Trim(); } // Split area sub names so we just have the main area name. Changes things like "Shipwreck, Upper Level" to just "Shipwreck"
+                        MapPoint.Icon icon = Override.GetMapIcon(name);
+
+                        if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                        if (IsInsideImportant(door.position)) { continue; } // skip these too!
+                        if (AlreadyExists(name)) { continue; }    // skip this one as well!
+
+                        Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
+                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE / 3f, false, discoverFlag, icon);
+                        tile.AddMapPoint(mapPoint);
+                    }
+                }
+            }
+
         }
 
         public HugeTile GetHugeTile(Vector3 position)
@@ -809,6 +894,78 @@ namespace JortPob
             }
 
             return null; // not found anywhere!
+        }
+
+        public class MapPoint
+        {
+            public enum Icon
+            {
+                None = 0,                 // discards map point completely!
+                Auto = 1,                 // Take a wild guess
+                StoneBuilding = 3,        // Gnisis, Suran, Maar Gan
+                LargeStoneCity = 51,      // Balmora & Ald-ruhn
+                Tomb = 4,
+                RuinPillars = 5,
+                WoodShack = 6,
+                WoodTownA = 7,            // Caldera
+                RuinTower = 8,
+                Circle = 9,               // Default if not specified
+                LargeStoneGate = 10,
+                LargeBridge = 11,
+                CaveEntrance = 13,
+                MineEntrance = 14,
+                TombSpeical = 16,
+                MageTower = 17,
+                Fort = 18,
+                Farm = 19,
+                RuinStoneLarge = 20,
+                Encampment = 22,
+                StoneTown = 35,         // Pelagiad, Ald Velothi
+                WoodTownB = 37,         // Dagon Fel
+                WoodTownC = 38,         // Seyda Neen, Gnaar Mok
+                WoodTownD = 39,         // Khuul
+                WoodTownE = 40,         // Hla Oad
+                TombOrnate = 47,
+                Canton = 15,            // All vivec cantons
+                TreeTown = 55,          // Sadrith Mora and other mushroom towns
+                VolcanoTown = 58,       // Molag Mar
+                SwampFort = 27,
+                Tree = 30,
+                TowerTemple = 65,          // Vivec palace
+                TreeFort = 26,             // Vos
+                SeasideCastle = 28,        // Ebonheart
+                DwarvenRuin = 25,          // Ye
+                DaedricRuin = 59           // Ye
+            }
+
+            public readonly string name;
+            public readonly Vector3 position;
+            public Vector3 relative;
+            public readonly float radius;
+            public readonly bool important; // if true then displays text on screen when you enter the area, otherwise just marks it on your map. EX: cities are important, cave entrances are not.
+            public Script.Flag discovered;  // 1 bit flag that is flipped when you discover an area. marks it on your map. preston garvey would be proud
+            public MapPoint.Icon icon;
+
+            public MapPoint(string name, Vector3 position, float radius, bool important, Script.Flag discovered, MapPoint.Icon icon)
+            {
+                this.name = name;
+                this.position = position;
+                this.radius = radius;
+                this.important = important;
+                this.discovered = discovered;
+                if(icon == MapPoint.Icon.Auto)
+                {
+                    string n = name.ToLower().Trim();
+                    if (n.Contains("cave") || n.Contains("groto")) { this.icon = MapPoint.Icon.CaveEntrance; }
+                    else if (n.Contains("farm") || n.Contains("plantation")) { this.icon = MapPoint.Icon.Farm; }
+                    else if (n.Contains("shack") || n.Contains("house")) { this.icon = MapPoint.Icon.WoodShack; }
+                    else { this.icon = MapPoint.Icon.Circle; }  // default result
+                }
+                else
+                {
+                    this.icon = icon;
+                }
+            }
         }
 
         public class WarpDestination

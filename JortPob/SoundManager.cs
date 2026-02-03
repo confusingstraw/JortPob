@@ -118,6 +118,8 @@ namespace JortPob
         /* Writes all soundbanks to given dir */
         public void Write()
         {
+            if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
+
             SamWorker.Go(samQueue); // actually generate and convert wems
 
             Lort.Log($"Writing {banks.Count()+1} BNKs...", Lort.Type.Main);

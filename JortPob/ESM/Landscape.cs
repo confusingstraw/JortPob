@@ -535,6 +535,17 @@ namespace JortPob
             return texturesByIndex[DEFAULT_TEXTURE_INDEX];
         }
 
+        /* Returns average height value of all vertices. Used for estimating location of regions in this cell */
+        public float GetHeightAverage()
+        {
+            float add = 0f;
+            foreach(Vertex v in vertices)
+            {
+                add += v.position.Y;
+            }
+            return add / vertices.Count();
+        }
+
         public class Mesh
         {
             public readonly List<Texture> textures;

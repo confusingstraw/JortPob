@@ -59,7 +59,8 @@ namespace JortPob.Worker
                 );
 
                 Lort.Log("Writing map files... ", Lort.Type.Main);
-                File.Copy(maskPath, Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.mtmskbnd.dcx"));
+                Directory.CreateDirectory(Path.Combine(Const.OUTPUT_PATH, "menu"));
+                File.Copy(maskPath, Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.mtmskbnd.dcx"), true);
                 File.WriteAllBytes(Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.tpfbhd"), result.bhdBytes);
                 File.WriteAllBytes(Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.tpfbdt"), result.bdtBytes);
             } catch (Exception ex) 

@@ -21,6 +21,8 @@ namespace JortPob
 
         public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
+            if (Const.DEBUG_SKIP_ESD) { return new(); }
+
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
             List<MSBE.Region> generatedRegions = new();  // return these back to the MSB generation in Main so it can add them.
 
@@ -508,6 +510,11 @@ namespace JortPob
                             {
                                 disabledFlag = script.GetOrRegisterCharacterDisable(cc);
                             }
+                            else if(target is LightContent lc)
+                            {
+                                // Unsupported!
+                                break;
+                            }
                             else { throw new Exception("Invalid content type for enable/disable call"); }  // unreachable?
 
                             /* Add code */
@@ -764,7 +771,33 @@ namespace JortPob
                             /* For player, modify stats via HKS nonsense */
                             else
                             {
-                                // @TODO: modify player stats from EMEVD through HKS hackz
+                                string statFlagName;
+                                switch (call.type)
+                                {
+                                    case Call.Type.ModHealth:
+                                        statFlagName = "SetVigor"; break;
+                                    case Call.Type.ModWillpower:
+                                    case Call.Type.ModMagicka:
+                                        statFlagName = "SetMind"; break;
+                                    case Call.Type.ModEndurance:
+                                    case Call.Type.ModFatigue:
+                                        statFlagName = "SetEndurance"; break;
+                                    case Call.Type.ModStrength:
+                                        statFlagName = "SetStrength"; break;
+                                    case Call.Type.ModSpeed:
+                                    case Call.Type.ModAgility:
+                                        statFlagName = "SetDexterity"; break;
+                                    case Call.Type.ModIntelligence:
+                                        statFlagName = "SetIntelligence"; break;
+                                    case Call.Type.ModLuck:
+                                    case Call.Type.ModPersonality:
+                                    case Call.Type.ModMercantile:
+                                        statFlagName = "SetArcane"; break;
+                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                }
+                                Script.Flag statFlag = scriptManager.GetFlag(Script.Flag.Designation.Hardcode, statFlagName);
+                                int amount = int.Parse(call.parameters[0]);
+                                lines.Add($"EventValueOperation({statFlag.id}, {statFlag.Bits()}, {100 + amount}, 0, 1, 5);");  // the SetStat hks hack offsets value by 100 to allow lowering stats EX: 100 + (-5)
                             }
 
                             break;
@@ -779,7 +812,10 @@ namespace JortPob
                                 target = layout.FindScriptReference(content, call.target);
                             }
 
+                            if (target == null) { break; } // during partial builds the reference may not resolve
+
                             Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                            if (rvar == null) { break; } // @TODO: This needs to be fixed. I'm currently considering options so leaving it for now.
                             lines.Add(ResetConditionGroups());
                             lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to dispoition
                             lines.Add($"IfEventValue(OR_01, {rvar.id}, {rvar.Bits()}, 4, 100);");                                   // if disposition is greater or equal to 100
@@ -805,6 +841,16 @@ namespace JortPob
                             break;
                         }
 
+                    case Call.Type.ShowMap:
+                        {
+                            Script.Flag discoverFlag = scriptManager.GetFlag(Script.Flag.Designation.DiscoverLocation, call.parameters[0]);
+                            if(discoverFlag != null)
+                            {
+                                lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {discoverFlag.id}, ON);");
+                            }
+                            break;
+                        }
+
                     case Call.Type.Say:
                         {
                             string id = call.parameters[0].ToLower().Replace("\\", "_").Replace("/", "_").Replace(".mp3", "");
@@ -822,6 +868,7 @@ namespace JortPob
                             lines.Add($"PlaySE({entityId}, 7, {playId * 10});");  // 7 is "Voice"
                             break;
                         }
+
 
                     case Papyrus.Call.Type.PlaySound:
                     case Papyrus.Call.Type.PlaySoundVP:

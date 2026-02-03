@@ -262,7 +262,7 @@ namespace JortPob
         {
             foreach(Speff speff in speffs)
             {
-                if(speff.id == id && speff.type == type)
+                if(speff.id == id.Trim().ToLower() && speff.type == type)
                 {
                     return speff;
                 }
@@ -274,7 +274,7 @@ namespace JortPob
         {
             foreach (Speff speff in speffs)
             {
-                if (speff.id == id)
+                if (speff.id == id.Trim().ToLower())
                 {
                     return speff;
                 }
@@ -383,49 +383,49 @@ namespace JortPob
                 case StatMod.Vigor:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addLifeForceStatus"].Value.SetValue(amount);
+                        row["addLifeForceStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Mind:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addWillpowerStatus"].Value.SetValue(amount);
+                        row["addWillpowerStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Endurance:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addEndureStatus"].Value.SetValue(amount);
+                        row["addEndureStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Strength:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addStrengthStatus"].Value.SetValue(amount);
+                        row["addStrengthStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Dexterity:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addDexterityStatus"].Value.SetValue(amount);
+                        row["addDexterityStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Intelligence:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addMagicStatus"].Value.SetValue(amount);
+                        row["addMagicStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Faith:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addFaithStatus"].Value.SetValue(amount);
+                        row["addFaithStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 case StatMod.Arcane:
                     {
                         row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
-                        row["addLuckStatus"].Value.SetValue(amount);
+                        row["addLuckStatus"].Value.SetValue((sbyte)amount);
                         break;
                     }
                 default: throw new Exception("Invalid one shot scripted effect type."); // unreachable

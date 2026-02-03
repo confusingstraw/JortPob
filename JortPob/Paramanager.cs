@@ -192,6 +192,39 @@ namespace JortPob
             itemLotParamMap.ClearRows();
             foreach (FsParam.Row row in keepMapLots) { itemLotParamMap.AddRow(row); }
 
+            /* Clear out mapheight params, these are 1000% not needed for the morrowind map. Just trust me */
+            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
+            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightParam.Rows[i];
+                if (row.ID >= 99999901) { continue; } // keep some base params
+                mapGridHeightParam.RemoveRow(row);
+                i--;
+            }
+
+            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
+            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
+                if (row.ID <= 2) { continue; } // keep some base params
+                mapGridHeightDetailParam.RemoveRow(row);
+                i--;
+            }
+
+            /* Clear out WorldMapPointParam. We don't need any of these from the base game. */
+            FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
+            FsParam.Row worldMapPointParamTemplate = GetRow(worldMapPointParam, 61413800);   // grab stormhill shack as our template
+            worldMapPointParamTemplate.ID = 1;
+            worldMapPointParamTemplate["eventFlagId"].Value.SetValue(6000u); // always off
+            worldMapPointParam.ClearRows();
+            AddRow(worldMapPointParam, worldMapPointParamTemplate);
+
+            /* Clear out WorldMapPlaceNaemParam. We don't need any of these from the base game. */
+            FsParam worldMapPlaecNameParam = param[ParamType.WorldMapPlaceNameParam];
+            FsParam.Row worldMapPlaecNameParamTemplate = GetRow(worldMapPlaecNameParam, 1);   // grab the blank one as a template
+            worldMapPlaecNameParam.ClearRows();
+            AddRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
+
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
@@ -851,25 +884,39 @@ namespace JortPob
         }
 
         /* Generate or get an already generated worldmappoint to be used as a placename. Not for actual map icons! */
-        public int GenerateWorldMapPoint(BaseTile tile, Cell cell, Vector3 relative, int id)
+        public int GenerateWorldMapPoint(BaseTile tile, Layout.MapPoint point, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{point.name} placename", id); // 1 is our template
 
-            int textId = textManager.AddLocation(cell.name);
+            int textId = textManager.AddLocation(point.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(point.discovered.id);
+            row["iconId"].Value.SetValue((ushort)point.icon);
+            row["altIconId"].Value.SetValue((ushort)point.icon);
+            row["dispMask00"].Value.SetValue((byte)1);
+            row["dispMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
+            row["selectMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
 
             row["areaNo"].Value.SetValue((byte)tile.map);
             row["gridXNo"].Value.SetValue((byte)tile.coordinate.x);
             row["gridZNo"].Value.SetValue((byte)tile.coordinate.y);
 
-            row["posX"].Value.SetValue(relative.X);
-            row["posY"].Value.SetValue(relative.Y);
-            row["posZ"].Value.SetValue(relative.Z);
+            row["posX"].Value.SetValue(point.relative.X);
+            row["posY"].Value.SetValue(point.relative.Y);
+            row["posZ"].Value.SetValue(point.relative.Z);
 
             row["textId1"].Value.SetValue(textId);
+
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)(point.important?0:2));  // 0 shows a area title when you walk into it, 2 does not
 
             AddRow(worldMapPointParam, row);
 
@@ -880,12 +927,16 @@ namespace JortPob
         public int GenerateWorldMapPoint(InteriorGroup group, Cell cell, Vector3 relative, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{cell.name} placename", id); // 1 is our template
 
             int textId = textManager.AddLocation(cell.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(6001u);  // always on event flag
+            row["iconId"].Value.SetValue((ushort)0);
+            row["altIconId"].Value.SetValue((ushort)0);
+            row["dispMask00"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask01"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask02"].Value.SetValue((byte)0);   // never show on map
 
             row["areaNo"].Value.SetValue((byte)group.map);
             row["gridXNo"].Value.SetValue((byte)group.area);
@@ -896,6 +947,16 @@ namespace JortPob
             row["posZ"].Value.SetValue(relative.Z);
 
             row["textId1"].Value.SetValue(textId);
+
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)0);
 
             AddRow(worldMapPointParam, row);
 
@@ -1148,30 +1209,6 @@ namespace JortPob
 
             nextEnemyItemLotId += 10;
             return baseRow;
-        }
-
-        /* Die */ // @TODO: maybe move all row removal into the constructor since it can just *happen*
-        public void KillMapHeightParams()
-        {
-            /* Delete most of these */
-            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
-            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
-            {
-                FsParam.Row row = mapGridHeightParam.Rows[i];
-                if (row.ID >= 99999901) { continue; } // keep some base params
-                mapGridHeightParam.RemoveRow(row);
-                i--;
-            }
-
-            /* Delete most of these */
-            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
-            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
-            {
-                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
-                if (row.ID <= 2) { continue; } // keep some base params
-                mapGridHeightDetailParam.RemoveRow(row);
-                i--;
-            }
         }
     }
 }
