@@ -342,7 +342,14 @@ namespace JortPob
                                 string p = call.parameters[i];
                                 if (Utility.StringIsOperator(p))
                                 {
-                                    operations.Add(new(lastOp, new Call(string.Join(" ", tempParameters))));
+                                    string rejoin = string.Join(" ", tempParameters);
+                                    if(rejoin.Contains(" "))
+                                    {
+                                        if(rejoin.Contains(".")) { rejoin = $"\"{rejoin.Replace(".", "\".")}"; }  // fix for variables with spaces in their names
+                                        else { rejoin = $"\"{rejoin}\""; }
+                                    }
+
+                                    operations.Add(new(lastOp, new Call(rejoin)));
                                     tempParameters.Clear();
                                     lastOp = p;
                                 }
@@ -862,7 +869,9 @@ namespace JortPob
                             else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
-                                entityId = layout.FindScriptReference(content, call.target).entity;
+                                Content speaker = layout.FindScriptReference(content, call.target);
+                                if (speaker == null) { break; } // failed to find speaker for this line, should only happen in a partial build
+                                entityId = speaker.entity;
                             }
 
                             lines.Add($"PlaySE({entityId}, 7, {playId * 10});");  // 7 is "Voice"

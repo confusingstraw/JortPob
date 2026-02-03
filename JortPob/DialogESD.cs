@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text;
+using System.Xml.Linq;
 using static JortPob.Dialog;
 using static JortPob.FactionInfo;
 using static JortPob.NpcManager.TopicData;
@@ -31,6 +32,7 @@ namespace JortPob
 
         private readonly List<string> defs;
         private readonly List<string> generatedStates;
+        private readonly Dictionary<NpcManager.TopicData.TalkData, int> choiceMap; // this is a fix for recursive choices. if we generate a choice and another dialog refs it we return the id of the alraedy gen'd one
         private int nxtGenStateId;
 
         public DialogESD(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
@@ -47,6 +49,8 @@ namespace JortPob
             this.npcContent = npcContent;
 
             defs = new();
+
+            Lort.Log($"Starting dialog ESD generation for: {npcContent.id}", Lort.Type.Debug);
 
             // Create flags for this character's disposition and first greeting
             Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
@@ -72,6 +76,7 @@ namespace JortPob
             NpcManager.TopicData bribeSuccess = GetTalk(topicData, DialogRecord.Type.BribeSuccess).FirstOrDefault() ?? new();
             NpcManager.TopicData bribeFail = GetTalk(topicData, DialogRecord.Type.BribeFail).FirstOrDefault() ?? new();
 
+            choiceMap = new();
             generatedStates = new();
             nxtGenStateId = Common.Const.ESD_STATE_HARDCODE_CHOICE;
 
@@ -538,9 +543,7 @@ namespace JortPob
                     }
                     if (talkData.dialogInfo.script.choice != null)
                     {
-                        int genChoiceStateId = nxtGenStateId++;
-                        string genState = GeneratedState_Choice(id, genChoiceStateId, talkData, greeting);
-                        generatedStates.Add(genState);
+                        int genChoiceStateId = GeneratedState_Choice(id, talkData, greeting);
                         greetLine += $"        call = t{id_s}_x{genChoiceStateId}()\r\n";
                         greetLine += $"        if call.Get() == 0:\r\n";
                         greetLine += $"            return 0\r\n";
@@ -956,9 +959,7 @@ namespace JortPob
                         }
                         if(talk.dialogInfo.script.choice != null)
                         {
-                            int genChoiceStateId = nxtGenStateId++;
-                            string genState = GeneratedState_Choice(id, genChoiceStateId, talk, topic);
-                            generatedStates.Add(genState);
+                            int genChoiceStateId = GeneratedState_Choice(id, talk, topic);
                             s.Append($"                assert t{id_s}_x{genChoiceStateId}()\r\n");
                         }
                     }
@@ -1504,9 +1505,14 @@ namespace JortPob
             return s;
         }
 
-        private string GeneratedState_Choice(uint id, int x, NpcManager.TopicData.TalkData talk, NpcManager.TopicData topic)
+        // If choice hasn't been generated already it creates it and returns the state # to call it.
+        private int GeneratedState_Choice(uint id, NpcManager.TopicData.TalkData talk, NpcManager.TopicData topic)
         {
+            if(choiceMap.ContainsKey(talk)) { return choiceMap[talk]; } // prevents recursive loops breaking everything
+
             string id_s = id.ToString("D9");
+            int x = nxtGenStateId++;
+            choiceMap.Add(talk, x);
             DialogPapyrus.PapyrusChoice choice = talk.dialogInfo.script.choice;
 
             string s = "";
@@ -1561,9 +1567,7 @@ namespace JortPob
                         }
                         if (talkData.dialogInfo.script.choice != null) // rare situation where a choice option goes into another choice option
                         {
-                            int genChoiceStateId = nxtGenStateId++;
-                            string genState = GeneratedState_Choice(id, genChoiceStateId, talkData, topic); 
-                            generatedStates.Add(genState);
+                            int genChoiceStateId = GeneratedState_Choice(id, talkData, topic);
                             executeList += $"            assert t{id_s}_x{genChoiceStateId}()\r\n";
                         }
                     }
@@ -1578,7 +1582,8 @@ namespace JortPob
             // In this stupid case we just return a blank-ish def that just returns 0.
             if(createList == "")
             {
-                return $"def t{id_s}_x{x}():\r\n    \"\"\"State 0\"\"\"\r\n    return 0\r\n\r\n";
+                generatedStates.Add($"def t{id_s}_x{x}():\r\n    \"\"\"State 0\"\"\"\r\n    return 0\r\n\r\n");
+                return x;
             }
 
             s += createList;
@@ -1587,7 +1592,8 @@ namespace JortPob
             s += "        else:\r\n            return 0\r\n";
             s += $"        \"\"\"State 10,11\"\"\"\r\n        return 1\r\n\r\n";
 
-            return s;
+            generatedStates.Add(s);
+            return x;
         }
     }
 }
