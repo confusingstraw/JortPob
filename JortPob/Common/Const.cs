@@ -159,7 +159,7 @@ namespace JortPob.Common
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
-            string[] MATCHES = null;
+            string[] MATCHES = new string[] {"Seyda Neen"};
 
             if (MATCHES == null) { return true; }
 
