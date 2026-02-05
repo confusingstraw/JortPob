@@ -115,7 +115,7 @@ namespace JortPob
                 if (flag.category == Script.Flag.Category.Temporary) { continue; } // not even saved anyways so skip
                 if (flag.designation == Script.Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
                 if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
-
+                if (flag.designation == Script.Flag.Designation.Hardcode && flag.name == "GameInit") { continue; } // another event we should not reset
 
                 //debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
                 debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {(int)flag.type}, {flag.value}, 0, 1, CalculationType.Assign);"));
