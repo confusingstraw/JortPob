@@ -5,7 +5,6 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using static IronPython.Modules._ast;
 using static JortPob.InteriorGroup;
 using static JortPob.NpcContent;
 
@@ -610,7 +609,6 @@ namespace JortPob
                         debugCount++;
                         StaticContent staticContent = content as StaticContent;
                         staticContent.entity = areaScript.CreateEntity(Script.EntityType.Asset, staticContent.id);
-                        //staticContent.disabled = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, staticContent.entity.ToString());
                     }
                 }
             }
@@ -803,7 +801,8 @@ namespace JortPob
         {
             foreach(Tile tile in tiles)
             {
-                foreach(Content content in tile.GetAllContent())
+                List<Content> contents = tile.GetAllContent();
+                foreach (Content content in contents)
                 {
                     if(content == source)
                     {
@@ -820,7 +819,8 @@ namespace JortPob
             {
                 foreach(InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    foreach(Content content in chunk.GetAllContent())
+                    List<Content> contents = chunk.GetAllContent();
+                    foreach (Content content in contents)
                     {
                         if(content == source)
                         {

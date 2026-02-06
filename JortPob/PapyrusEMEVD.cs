@@ -173,7 +173,7 @@ namespace JortPob
 
                             if (call.right.type == Call.Type.Literal)
                             {
-                                // find our target for this distance check, only works when one side of this is check is the player
+                                // find our target for this distance check, only works if one side of this check is a static object. cant compare 2 moving objects
                                 string a = call.left.target;
                                 string b = call.left.parameters[0].ToLower();
                                 Content targetA, targetB;
@@ -181,8 +181,8 @@ namespace JortPob
                                 if (a == null && b == "player") { targetA = content; targetB = null; }                                      // EX: (GetDistance Player < 50)
                                 else if (a != null && b == "player") { targetA = layout.FindScriptReference(content, a); targetB = null; }  // EX: (fargoth->GetDistance Player < 50)
                                 else if (a?.ToLower() == "player") { targetA = layout.FindScriptReference(content, b); targetB = null; }    // EX: (Player->GetDistance fargoth < 50)
-                                // remaining possible results
-                                else                                                            // EX: (fargoth->GetDistance fargoths_ring < 50)
+                                // remaining possible results for non-player distance checks
+                                else                                                                                                        // EX: (fargoth->GetDistance fargoths_ring < 50)
                                 {
                                     if (a == null) { targetA = content; }
                                     else { targetA = layout.FindScriptReference(content, a); }
