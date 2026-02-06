@@ -458,12 +458,12 @@ namespace JortPob
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
                 comment = json["comment"]?.GetValue<string>();
-                type = (ItemManager.Type)System.Enum.Parse(typeof(ItemManager.Type), json["type"].GetValue<string>());
+                type = Enum.Parse<ItemManager.Type>(json["type"].GetValue<string>());
                 row = json["row"].GetValue<int>();
 
                 if (json["infusion"] != null)
                 {
-                    infusion = (ItemManager.Infusion)System.Enum.Parse(typeof(ItemManager.Infusion), json["infusion"].GetValue<string>());
+                    infusion = Enum.Parse<ItemManager.Infusion>(json["infusion"].GetValue<string>());
                 }
                 else
                 {

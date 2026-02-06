@@ -538,12 +538,7 @@ namespace JortPob
         /* Returns average height value of all vertices. Used for estimating location of regions in this cell */
         public float GetHeightAverage()
         {
-            float add = 0f;
-            foreach(Vertex v in vertices)
-            {
-                add += v.position.Y;
-            }
-            return add / vertices.Count();
+            return vertices.Average(v => v.position.Y);
         }
 
         public class Mesh

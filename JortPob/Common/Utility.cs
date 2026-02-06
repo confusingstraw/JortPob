@@ -1,15 +1,16 @@
 ﻿using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Linq;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using WitchyFormats;
 using Xbrz;
 using static Community.CsharpSqlite.Sqlite3;
-using System.Runtime.InteropServices;
 
 namespace JortPob.Common
 {
@@ -439,6 +440,43 @@ namespace JortPob.Common
                 pow >>= 1;
             }
             return ret;
+        }
+
+        public static void ExecuteProcess(ProcessStartInfo startInfo)
+        {
+            using Process process = Process.Start(startInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException($"Failed to start process: {startInfo.FileName}");
+            }
+
+            bool exited = process.WaitForExit(TimeSpan.FromMilliseconds(5000));
+
+            if (!exited)
+            {
+                try
+                {
+                    // Forceful termination if timeout occurs
+                    process.Kill();
+                    process.WaitForExit(); // Wait for OS cleanup
+                    throw new TimeoutException($"Process timed out and was killed: {startInfo.FileName}");
+                }
+                catch (InvalidOperationException)
+                {
+                    // Process may have just exited before Kill() was called.
+                    // We'll proceed to check the exit code below.
+                }
+            }
+
+            // VITAL: Check the process exit code after successful exit or timeout kill
+            if (process.ExitCode != 0)
+            {
+                // Optional: Read StandardError for better debugging info
+                string error = startInfo.RedirectStandardError ? process.StandardError.ReadToEnd() : "N/A (Error stream not redirected)";
+
+                // Throw a specific exception indicating execution failure
+                throw new ApplicationException($"Process failed with exit code {process.ExitCode}. Error: {error}");
+            }
         }
     }
 

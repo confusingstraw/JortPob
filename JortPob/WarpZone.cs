@@ -107,7 +107,7 @@ namespace JortPob
             EMEVD.Event debugResetEvent = new(debugResetFlag.id);
             debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionButtonId2}, {debugResetAsset.EntityID});"));
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so we sometimes wait a frame
             foreach (Script.Flag flag in allFlags)
             {
 
@@ -117,7 +117,6 @@ namespace JortPob
                 if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
                 if (flag.designation == Script.Flag.Designation.Hardcode && flag.name == "GameInit") { continue; } // another event we should not reset
 
-                //debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
                 debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {(int)flag.type}, {flag.value}, 0, 1, CalculationType.Assign);"));
                 if (delayCounter++ > 512)
                 {

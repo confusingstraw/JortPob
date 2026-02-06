@@ -600,7 +600,7 @@ namespace JortPob
                 if (call.target != null && !ableIds.Contains(call.target)) { ableIds.Add(call.target); }
             }
 
-            void HandleAbles(Script areaScript, List<Content> contents)
+            void HandleAbles(Script areaScript, IEnumerable<Content> contents)
             {
                 foreach(Content content in contents)
                 {
@@ -801,8 +801,7 @@ namespace JortPob
         {
             foreach(Tile tile in tiles)
             {
-                List<Content> contents = tile.GetAllContent();
-                foreach (Content content in contents)
+                foreach (Content content in tile.GetAllContent())
                 {
                     if(content == source)
                     {
@@ -819,8 +818,7 @@ namespace JortPob
             {
                 foreach(InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    List<Content> contents = chunk.GetAllContent();
-                    foreach (Content content in contents)
+                    foreach (Content content in chunk.GetAllContent())
                     {
                         if(content == source)
                         {
@@ -844,7 +842,7 @@ namespace JortPob
         {
             if (source != null)
             {
-                List<Content> local;
+                IEnumerable<Content> local;
                 Tile tile = FindTile(source);
                 if (tile != null)
                 {
@@ -868,8 +866,7 @@ namespace JortPob
             // not found in local area, search whole world now
             foreach(Tile t in tiles)
             {
-                List<Content> all = t.GetAllContent();
-                foreach(Content c in all)
+                foreach(Content c in t.GetAllContent())
                 {
                     if(c.id.ToLower() == reference.ToLower())
                     {
@@ -882,8 +879,7 @@ namespace JortPob
             {
                 foreach(InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    List<Content> all = chunk.GetAllContent();
-                    foreach(Content c in all)
+                    foreach(Content c in chunk.GetAllContent())
                     {
                         if(c.id.ToLower() == reference.ToLower())
                         {
@@ -956,7 +952,7 @@ namespace JortPob
                 if(icon == MapPoint.Icon.Auto)
                 {
                     string n = name.ToLower().Trim();
-                    if (n.Contains("cave") || n.Contains("groto")) { this.icon = MapPoint.Icon.CaveEntrance; }
+                    if (n.Contains("cave") || n.Contains("grotto")) { this.icon = MapPoint.Icon.CaveEntrance; }
                     else if (n.Contains("farm") || n.Contains("plantation")) { this.icon = MapPoint.Icon.Farm; }
                     else if (n.Contains("shack") || n.Contains("house")) { this.icon = MapPoint.Icon.WoodShack; }
                     else { this.icon = MapPoint.Icon.Circle; }  // default result

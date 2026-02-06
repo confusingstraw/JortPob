@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.Pkcs;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ namespace JortPob
         public int AddSound(string record, Sound.Type type, bool loop, bool spatialize, float volume, float pitch, string file)
         {
             /* Check if sound exists, if it doeesn't then just return some random number */
-            if (!File.Exists(file)) { return 5; }  // yes, morrowind has scripts that just point to sound files that don't exist. that's why this is here.
+            if (!File.Exists(file)) { return 5; }  // yes, morrowind has scripts that just point to sound files that don't exist. returning a play id number that will likely do nothing
 
             /* Setup some paths */
             string wav = Path.Combine(Const.CACHE_PATH, "sound", $"{record}\\{record}.wav");
@@ -42,7 +43,7 @@ namespace JortPob
             if (!File.Exists(wem))
             {
                 /* Some files are mp3 and some are wav. Convert if needed, otherwise just copy paste to cache to get ready for wem conversion */
-                if (file.ToLower().Trim().EndsWith(".mp3")) { MP3toWAV(file, wav); }
+                if (Path.GetExtension(file).ToLower() == ".mp3") { MP3toWAV(file, wav); }
                 else { File.Copy(file, wav); }
 
                 /* Convert wav to wem */
@@ -87,9 +88,9 @@ namespace JortPob
 
         private void WAVtoWEM(string fileWav)
         {
-            string wemPath = $"{fileWav[..^4]}.wem";
+            string wemPath = Path.ChangeExtension(fileWav, ".wem");
             string dir = Path.GetDirectoryName(wemPath);
-            string file = Path.GetFileName(wemPath)[..^4];
+            string file = Path.GetFileNameWithoutExtension(wemPath);
 
             for (int retry = 0; retry < Const.SAM_MAX_RETRY; retry++)
             {
@@ -129,7 +130,7 @@ namespace JortPob
                             CreateNoWindow = true
                         };
                         createProjectInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        ExecuteProcess(createProjectInfo);
+                        Utility.ExecuteProcess(createProjectInfo);
                     }
 
                     // Convert wav to wem
@@ -144,7 +145,7 @@ namespace JortPob
 
                     string xmlRelative = Path.Combine("..", "sound", file, xmlName);
                     convertInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{dir}\""]);
-                    ExecuteProcess(convertInfo);
+                    Utility.ExecuteProcess(convertInfo);
 
                     // If we reach here, both processes completed successfully (ExitCode 0)
                     if (File.Exists(wemPath))
@@ -170,43 +171,6 @@ namespace JortPob
             }
         }
 
-        private static void ExecuteProcess(ProcessStartInfo startInfo)
-        {
-            using Process process = Process.Start(startInfo);
-            if (process == null)
-            {
-                throw new InvalidOperationException($"Failed to start process: {startInfo.FileName}");
-            }
-
-            bool exited = process.WaitForExit(5000);
-
-            if (!exited)
-            {
-                try
-                {
-                    // Forceful termination if timeout occurs
-                    process.Kill();
-                    process.WaitForExit(); // Wait for OS cleanup
-                    throw new TimeoutException($"Process timed out and was killed: {startInfo.FileName}");
-                }
-                catch (InvalidOperationException)
-                {
-                    // Process may have just exited before Kill() was called.
-                    // We'll proceed to check the exit code below.
-                }
-            }
-
-            // VITAL: Check the process exit code after successful exit or timeout kill
-            if (process.ExitCode != 0)
-            {
-                // Optional: Read StandardError for better debugging info
-                string error = startInfo.RedirectStandardError ? process.StandardError.ReadToEnd() : "N/A (Error stream not redirected)";
-
-                // Throw a specific exception indicating execution failure
-                throw new ApplicationException($"Process failed with exit code {process.ExitCode}. Error: {error}");
-            }
-        }
-
         public void Write()
         {
             /* Setup some paths */
@@ -214,7 +178,7 @@ namespace JortPob
             string bnkPath = Path.Combine(dir, "cs_main.bnk");
             string bnkDir = Path.Combine(dir, "cs_main");
             string sourcePath = Path.Combine(Const.ELDEN_PATH, "game", "sd", "enus", "cs_main.bnk");
-            string bnkJsonPath = Path.Combine(dir, "cs_main", $"soundbank.json");
+            string bnkJsonPath = Path.Combine(dir, "cs_main", "soundbank.json");
             string bnkRebuiltPath = Path.Combine(dir, "cs_main.created.bnk");
 
             /* Copy base game cs_main.bnk and then decompile it */
@@ -223,16 +187,13 @@ namespace JortPob
             Directory.CreateDirectory(Path.GetDirectoryName(bnkPath));
             File.Copy(sourcePath, bnkPath, true);
 
+            ProcessStartInfo decompBnkProcess = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkPath}\"")
             {
-                ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkPath}\"")
-                {
-                    WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using Process process = Process.Start(startInfo);
-                process.WaitForExit();
-            }
+                WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Utility.ExecuteProcess(decompBnkProcess);
 
             /* Open the generated json of the cs_main bank and append our new sounds to it */
             /* I've decided to make this stuf embeded because I can't fucking make it work as streaming and I don't care anymore reeeeeee */
@@ -256,7 +217,7 @@ namespace JortPob
             JsonNode mixer = null;
             foreach(JsonNode obj in objects)
             {
-                if (obj["id"]["Hash"] != null && (uint)obj["id"]["Hash"] == 61849273) { mixer = obj; break; }
+                if (obj["id"]["Hash"] != null && obj["id"]["Hash"].GetValue<uint>() == 61849273) { mixer = obj; break; }
             }
             if(mixer == null) { throw new Exception("Could not find mixer object in cs_main sound bank!"); } // this better be unreachable
 
@@ -277,24 +238,24 @@ namespace JortPob
                 uint sourceId = sound.source;
                 soundData["id"]["Hash"] = globals.NextBnkId();
                 soundData["body"]["Sound"]["bank_source_data"]["media_information"]["source_id"] = sourceId;
-                soundData["body"]["Sound"]["node_base_params"]["direct_parent_id"] = (uint)container["id"]["Hash"];
+                soundData["body"]["Sound"]["node_base_params"]["direct_parent_id"] = container["id"]["Hash"].GetValue<uint>();
 
-                container["body"]["RandomSequenceContainer"]["children"]["items"].AsArray()[0] = (uint)soundData["id"]["Hash"];
-                container["body"]["RandomSequenceContainer"]["playlist"]["items"].AsArray()[0]["play_id"] = (uint)soundData["id"]["Hash"];
-                container["body"]["RandomSequenceContainer"]["node_base_params"]["direct_parent_id"] = (uint)mixer["id"]["Hash"];
+                container["body"]["RandomSequenceContainer"]["children"]["items"].AsArray()[0] = soundData["id"]["Hash"].GetValue<uint>();
+                container["body"]["RandomSequenceContainer"]["playlist"]["items"].AsArray()[0]["play_id"] = soundData["id"]["Hash"].GetValue<uint>();
+                container["body"]["RandomSequenceContainer"]["node_base_params"]["direct_parent_id"] = mixer["id"]["Hash"].GetValue<uint>();
 
-                mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Add((uint)container["id"]["Hash"]);
+                mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Add(container["id"]["Hash"].GetValue<uint>());
 
                 soundPlayCall["id"]["Hash"] = globals.NextBnkId();
-                soundPlayCall["body"]["Action"]["external_id"] = (uint)container["id"]["Hash"];
-                soundPlayCall["body"]["Action"]["params"]["Play"]["bank_id"] = (uint)BKHD["bank_id"];
+                soundPlayCall["body"]["Action"]["external_id"] = container["id"]["Hash"].GetValue<uint>();
+                soundPlayCall["body"]["Action"]["params"]["Play"]["bank_id"] = BKHD["bank_id"].GetValue<uint>();
                 soundStopCall["id"]["Hash"] = globals.NextBnkId();
-                soundStopCall["body"]["Action"]["external_id"] = (uint)container["id"]["Hash"];
+                soundStopCall["body"]["Action"]["external_id"] = container["id"]["Hash"].GetValue<uint>();
 
                 soundPlayEvent["id"]["String"] = $"Play_{sound.GetPrefix()}{sound.id:D8}0";
-                soundPlayEvent["body"]["Event"]["actions"][0] = (uint)soundPlayCall["id"]["Hash"];
+                soundPlayEvent["body"]["Event"]["actions"][0] = soundPlayCall["id"]["Hash"].GetValue<uint>();
                 soundStopEvent["id"]["String"] = $"Stop_{sound.GetPrefix()}{sound.id:D8}0";
-                soundStopEvent["body"]["Event"]["actions"][0] = (uint)soundStopCall["id"]["Hash"];
+                soundStopEvent["body"]["Event"]["actions"][0] = soundStopCall["id"]["Hash"].GetValue<uint>();
 
                 sources.Add(soundData);
                 containers.Add(container);
@@ -331,53 +292,37 @@ namespace JortPob
             Directory.CreateDirectory(Path.GetDirectoryName(bnkJsonPath));
             File.WriteAllText(bnkJsonPath, json.ToJsonString());
 
+            ProcessStartInfo recompBnkProcess = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{Path.GetDirectoryName(bnkJsonPath)}\"")
             {
-                ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{Path.GetDirectoryName(bnkJsonPath)}\"")
-                {
-                    WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using Process process = Process.Start(startInfo);
-                process.WaitForExit();
-            }
+                WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Utility.ExecuteProcess(recompBnkProcess);
 
             if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
             File.Move(bnkRebuiltPath, bnkPath);
         }
 
-        public class Sound
+        public record Sound(
+            string record,             // id of the source sound. this is the sound record id for "playsound" and the filename for "say" papyrus calls
+            Sound.Type type,
+            bool loop,                  // play constantly until explicitly stopped
+            bool spatialize,            // if true = 3d sound, false = direct speaker play
+            float volume,               // these appear to be unused by morrowind but i'm including them
+            float pitch,                // these appear to be unused by morrowind but i'm including them
+            uint id,                    // id used for script calls to playback this sound
+            uint play,
+            uint stop,
+            string file,                // wem file
+            uint source                 // source is wem id
+        )
         {
             public enum Type { Voice, SFX }
 
-            public readonly string record;             // id of the source sound. this is the sound record id for "playsound" and the filename for "say" papyrus calls
-
-            public readonly Type type;
-            public readonly bool loop;                // play constantly until explicitly stopped
-            public readonly bool spatialize;          // if true = 3d sound, false = direct speaker play
-            public readonly float volume, pitch;      // these appear to be unused by morrowind but i'm including them
-
-            public readonly uint id;                   // id used for script calls to playback this sound
-            public readonly uint play, stop, source;   // source is wem id
-            public readonly string file;               // wem file
-            public Sound(string record, Type type, bool loop, bool spatialize, float volume, float pitch, uint id, uint play, uint stop, string file, uint source)
-            {
-                this.record = record;
-                this.type = type;
-                this.loop = loop;
-                this.spatialize = spatialize;
-                this.volume = volume;
-                this.pitch = pitch;
-                this.id = id;
-                this.play = play;
-                this.stop = stop;
-                this.file = file;
-                this.source = source;
-            }
-
             public string GetPrefix()
             {
-                switch(type)
+                switch (type)
                 {
                     case Type.Voice: return "v";
                     case Type.SFX: return "s";
