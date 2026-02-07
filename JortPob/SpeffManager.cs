@@ -18,6 +18,12 @@ namespace JortPob
 {
     public class SpeffManager
     {
+        // Special SPEFFs that are used for script functionality
+        public enum Functional
+        {
+            Alarming = 1000000      // 1 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+        }
+
         public enum Type
         {
             Custom,        // Freeform gen from a json file
@@ -32,9 +38,9 @@ namespace JortPob
         private IconManager iconManager;
         private TextManager textManager;
 
-        private int nextSpeffId = 1000000;
+        private int nextSpeffId = 1000100;
 
-        public SpeffManager(ESM esm, Paramanager paramanager, IconManager iconManager, TextManager textManager)
+        public SpeffManager(ESM esm, Paramanager paramanager, ScriptManager scriptManager, IconManager iconManager, TextManager textManager)
         {
             this.paramanager = paramanager;
             this.iconManager = iconManager;
@@ -111,47 +117,80 @@ namespace JortPob
                     GenerateSpeff(speff);
                 }
             }
+
+            /* Create script functions for applying and maintaining "permament" spell effects ( SpellTypes -> Ability, Curse, Disease, Blight, Corprus ) */
+            /* We use scripts to handle these because it is very easy to lose a SPEFF even if it has infinite duration. Death generally wipes all SPEFFs for example. */
+            /* So instead of applying these SPEFFS directly we instaed set a on/off flag for them and we have a script keep them applied or removedb ased on that */
+            foreach(Speff speff in speffs)
+            {
+                if(speff.type == SpeffManager.Type.Spell)
+                {
+                    SpeffSpell speffSpell = (SpeffSpell)speff;
+                    if(speffSpell.spellType == SpeffSpell.SpellType.Ability || speffSpell.spellType == SpeffSpell.SpellType.Curse || speffSpell.spellType == SpeffSpell.SpellType.Disease || speffSpell.spellType == SpeffSpell.SpellType.Blight || speffSpell.spellType == SpeffSpell.SpellType.Corprus)
+                    {
+                        speffSpell.flag = scriptManager.common.CreatePermanentSpeff(speffSpell);
+                    }
+                }
+            }
+
+            /* Generate functional speffs */
+            FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
+            FsParam.Row funcSpeffAlarming = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: Alarming", (int)Functional.Alarming);
+            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)60f);
+            paramanager.AddRow(speffParam, funcSpeffAlarming);
         }
 
-        private void GenerateSpeff(Speff speff)
+        // Temp buffs use 1642100 as a base which is the basic Heal incantation effect
+        // Permanent buffs use 310000 as a base which is effect of the crimson amber medallion
+        // @TODO: on hit effects do not work rn and need work
+        private enum TemplateType { PermanentSelf = 310000, TemporarySelf = 1642100, TemporaryOnHit = 6600 }
+        private FsParam.Row CreateTemplateSpeff(TemplateType templateType, string name, int id)
         {
-            /* Decide on a source row to copy as a template based on the type of magical effect */
-            int sourceRow;
-            if (speff.type == SpeffManager.Type.Alchemy) { sourceRow = 1642100; }  // Temporary buff speff
-            else if (speff.type == SpeffManager.Type.Spell && ((SpeffSpell)speff).spellType == SpeffSpell.SpellType.Spell) { sourceRow = 1642100; } // Temporary buff speff
-            else if (speff.type == SpeffManager.Type.Spell) { sourceRow = 310000; } // Permanent buff speff
-            else if (speff.type == SpeffManager.Type.Enchanting && ((SpeffEnchant)speff).enchantType != EnchantType.CastOnStrike) { sourceRow = 310000; } // Permanent buff speff
-            else if (speff.type == SpeffManager.Type.Enchanting) { sourceRow = 6600; } // On hit speff
-            else { throw new Exception("Something weird happened!"); }
-
-            // Temp buffs use 1642100 as a base which is the basic Heal incantation effect
-            // Permanent buffs use 310000 as a base which is effect of the crimson amber medallion
-            // On hit effects use 1642100 as well for now. I think this will work but i'm not super sure so uhhhh w/e guh
-
             /* Clone our row */
             FsParam param = paramanager.param[Paramanager.ParamType.SpEffectParam];
-            FsParam.Row row = paramanager.CloneRow(param[sourceRow], $"{speff.type} :: {speff.id}", speff.row);
+            FsParam.Row row;
 
             /* Nullify some values from our templates to make our speff as neutral as possible */
-            switch (sourceRow)
+            switch (templateType)
             {
-                case 1642100: // Heal
+                case TemplateType.TemporarySelf: // Heal
+                    row = paramanager.CloneRow(param[(int)templateType], name, id);
                     row["motionInterval"].Value.SetValue(1f);              // for effects like regen this sets the interval between stat changes. morrowind uses 1 second intervals so we will as well!
                     row["spCategory"].Value.SetValue((ushort)0);           // behaviour when stacking or whatever (default is NONE)
                     row["stateInfo"].Value.SetValue((ushort)0);            // visual effect of spefff (i think??)
                     row["changeHpPoint"].Value.SetValue(0);
                     row["bAdjustFaithAblity"].Value.SetValue((byte)0);
                     row["vfxId"].Value.SetValue(-1);                     // also visual effect idk guh??
-                    row["effectEndurance"].Value.SetValue((float)speff.Duration());
+                    row["effectEndurance"].Value.SetValue((float)1f);
                     row["iconId"].Value.SetValue(-1);
                     break;
-                case 310000: // Crimson Amber Mediallion
+                case TemplateType.PermanentSelf: // Crimson Amber Mediallion
+                    row = paramanager.CloneRow(param[(int)templateType], name, id);
                     row["motionInterval"].Value.SetValue(1f);            // for effects like regen this sets the interval between stat changes. morrowind uses 1 second intervals so we will as well!
                     row["iconId"].Value.SetValue(-1);                    // buff icon
                     row["maxHpRate"].Value.SetValue(1f);
                     row["iconId"].Value.SetValue(-1);
                     break;
+                case TemplateType.TemporaryOnHit:
+                    row = paramanager.CloneRow(param[(int)templateType], name, id);
+                    break;
+                default: throw new Exception("Bad!");
             }
+
+            return row;
+        }
+
+        private void GenerateSpeff(Speff speff)
+        {
+            /* Decide on a source row to copy as a template based on the type of magical effect */
+            FsParam param = paramanager.param[Paramanager.ParamType.SpEffectParam];
+            FsParam.Row row;
+            if (speff.type == SpeffManager.Type.Alchemy) { row = CreateTemplateSpeff(TemplateType.TemporarySelf, $"{speff.type} :: {speff.id}", speff.row); }
+            else if (speff.type == SpeffManager.Type.Spell && ((SpeffSpell)speff).spellType == SpeffSpell.SpellType.Spell) { row = CreateTemplateSpeff(TemplateType.TemporarySelf, $"{speff.type} :: {speff.id}", speff.row); }
+            else if (speff.type == SpeffManager.Type.Spell) { row = CreateTemplateSpeff(TemplateType.PermanentSelf, $"{speff.type} :: {speff.id}", speff.row); }
+            else if (speff.type == SpeffManager.Type.Enchanting && ((SpeffEnchant)speff).enchantType != EnchantType.CastOnStrike) { row = CreateTemplateSpeff(TemplateType.PermanentSelf, $"{speff.type} :: {speff.id}", speff.row); }
+            else if (speff.type == SpeffManager.Type.Enchanting) { row = CreateTemplateSpeff(TemplateType.TemporaryOnHit, $"{speff.type} :: {speff.id}", speff.row); }
+            else { throw new Exception("Something weird happened!"); }
 
             /* Find and apply icon for buff */
             if (speff.effects.Count() > 0)
@@ -223,7 +262,7 @@ namespace JortPob
         {
             foreach(Speff speff in speffs)
             {
-                if(speff.id == id && speff.type == type)
+                if(speff.id == id.Trim().ToLower() && speff.type == type)
                 {
                     return speff;
                 }
@@ -235,7 +274,7 @@ namespace JortPob
         {
             foreach (Speff speff in speffs)
             {
-                if (speff.id == id)
+                if (speff.id == id.Trim().ToLower())
                 {
                     return speff;
                 }
@@ -246,6 +285,115 @@ namespace JortPob
         public SpeffAlchemy GetAlchemySpeff(string id) { return GetSpeff(id, SpeffManager.Type.Alchemy) as SpeffAlchemy; }
         public SpeffEnchant GetEnchantingSpeff(string id) { return GetSpeff(id, SpeffManager.Type.Enchanting) as SpeffEnchant; }
         public SpeffSpell GetSpellSpeff(string id) { return GetSpeff(id, SpeffManager.Type.Spell) as SpeffSpell; }
+
+        public List<SpeffSpell> GetSpeffBySpellType(SpeffSpell.SpellType spellType)
+        {
+            List<SpeffSpell> matches = new();
+            foreach (Speff speff in speffs)
+            {
+                if (speff.type == SpeffManager.Type.Spell)
+                {
+                    SpeffSpell speffSpell = (SpeffSpell)speff;
+                    if (speffSpell.spellType == spellType)
+                    {
+                        matches.Add(speffSpell);
+                    }
+                }
+            }
+            return matches;
+        }
+
+        public List<SpeffSpell> GetDiseases() { return GetSpeffBySpellType(SpeffSpell.SpellType.Disease); }
+        public List<SpeffSpell> GetBlights() { return GetSpeffBySpellType(SpeffSpell.SpellType.Blight); }
+        public SpeffSpell GetCorprus() { return GetSpeffBySpellType(SpeffSpell.SpellType.Corprus)[0]; }
+        public SpeffSpell GetVampirism() { return GetSpeff("vampire attributes", SpeffManager.Type.Spell) as SpeffSpell; }
+
+        /* Called by Papyrus compiling to create one off effects for certain Papyrus calls */
+        /* For the most part it is simple things like ModStrength where we give an NPC +5 strength or something like that */
+        /* In most cases this is used on NPCs as we can't directly modify NPC stats */
+        /* But in some cases like ModFatigue or ModMagicka we will use it on player to change their current stamina/mana values */
+        /* Input is what we are changing and how much */
+        /* Returns row id of created speff */
+        public enum StatMod { CurrentHP, CurrentMP, CurrentSP, Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane }
+        public int CreateScriptedEffect(StatMod stat, int amount, string name)
+        {
+            FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
+            FsParam.Row row;
+
+            switch (stat)
+            {
+                case StatMod.CurrentHP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeHpPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.CurrentMP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeMpPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.CurrentSP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["changeStaminaPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.Vigor:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addLifeForceStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Mind:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addWillpowerStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Endurance:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addEndureStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Strength:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addStrengthStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Dexterity:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addDexterityStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Intelligence:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addMagicStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Faith:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addFaithStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                case StatMod.Arcane:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["addLuckStatus"].Value.SetValue((sbyte)amount);
+                        break;
+                    }
+                default: throw new Exception("Invalid one shot scripted effect type."); // unreachable
+            }
+
+            speffParam.AddRow(row);
+            return row.ID;
+        }
 
         /* Stores info on an item */
         [DebuggerDisplay("Speff :: {type} :: {id} :: {row}")]
@@ -399,7 +547,7 @@ namespace JortPob
             public SpeffEnchant(int row, JsonNode json, EquipmentType equipmentType) : base(row, json)
             {
                 this.equipmentType = equipmentType;
-                enchantType = (EnchantType)System.Enum.Parse(typeof(EnchantType), json["data"]["enchant_type"].GetValue<string>());
+                enchantType = Enum.Parse<EnchantType>(json["data"]["enchant_type"].GetValue<string>());
             }
         }
 
@@ -407,15 +555,19 @@ namespace JortPob
         {
             public enum SpellType
             {
-                Spell, Ability, Power, Blight, Disease
+                Spell, Ability, Power, Blight, Disease, Corprus, Curse
             }
 
             public readonly SpellType spellType;
             public readonly int cost;
 
+            public Script.Flag flag; // null for SpellType.Spell and SpellType.Power. Set this flag on/off for the other spell types and they will be added/removed via a script
+
             public SpeffSpell(int row, JsonNode json) : base(row, json)
             {
-                spellType = (SpellType)System.Enum.Parse(typeof(SpellType), json["data"]["spell_type"].GetValue<string>());
+                if (id == "corprus") { spellType = SpellType.Corprus; }
+                else { spellType = Enum.Parse<SpellType>(json["data"]["spell_type"].GetValue<string>()); }
+
                 cost = json["data"]["cost"].GetValue<int>();
             }
         }

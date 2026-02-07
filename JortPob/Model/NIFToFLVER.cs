@@ -162,6 +162,12 @@ namespace JortPob.Model
                 flver.Dummies.Add(dmy);
             }
 
+            // @TODO: Broken, blocked until Greatness7 updates TES3 nif bindings
+            /*for(int nodeIndex = 0; nodeIndex < nif.Emitters.Count; nodeIndex++)
+            {
+                TES3.Emitter emitter = nif.Emitters[nodeIndex];
+            }*/
+
             /* Add Dummy Polys */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
             List<Tuple<string, Vector3>> nodes = [

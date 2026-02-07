@@ -98,6 +98,7 @@ namespace JortPob
             public readonly List<CreatureContent> creatures;
             public readonly List<NpcContent> npcs;
             public readonly List<ContainerContent> containers;
+            public readonly List<PickableContent> pickables;
             public readonly List<ItemContent> items;
 
             public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
@@ -118,6 +119,7 @@ namespace JortPob
                 creatures = new();
                 npcs = new();
                 containers = new();
+                pickables = new();
                 items = new();
 
                 warps = new();
@@ -128,6 +130,29 @@ namespace JortPob
                     content.relative = content.position + root - offset;
 
                     AddContent(content);
+                }
+            }
+
+            public IEnumerable<Content> GetAllContent()
+            {
+                IEnumerable<IEnumerable<Content>> all = [
+                    assets,
+                    doors,
+                    emitters,
+                    lights,
+                    creatures,
+                    npcs,
+                    containers,
+                    pickables,
+                    items,
+                ];
+
+                foreach (IEnumerable<Content> enumerable in all)
+                {
+                    foreach (Content content in enumerable)
+                    {
+                        yield return content;
+                    }
                 }
             }
 
@@ -153,12 +178,14 @@ namespace JortPob
                         containers.Add(o); break;
                     case ItemContent i:
                         items.Add(i); break;
+                    case PickableContent p:
+                        pickables.Add(p); break;
                     case NpcContent n:
                         npcs.Add(n); break;
                     case CreatureContent c:
                         creatures.Add(c); break;
                     default:
-                        Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
+                        Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
                 }
             }
         }

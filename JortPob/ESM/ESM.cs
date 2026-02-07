@@ -10,9 +10,12 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using static HKLib.hk2018.hkbStateMachine;
+using static IronPython.Modules._ast;
 using static JortPob.Dialog;
 using static JortPob.NpcManager;
 using static JortPob.NpcManager.TopicData;
+using static JortPob.Papyrus;
 using static JortPob.Script;
 
 namespace JortPob
@@ -35,6 +38,7 @@ namespace JortPob
         public List<JobInfo> jobs;  // classes, but we cant really use that word so 'job'
         public List<FactionInfo> factions;
         public List<LeveledCreature> leveled; // leveled creature lists
+        public List<SoundInfo> sounds;
         public List<Cell> exterior, interior;
         public List<Papyrus> scripts;
 
@@ -70,8 +74,7 @@ namespace JortPob
                             UseShellExecute = false,
                             CreateNoWindow = true
                         };
-                        using var mergeProcess = Process.Start(mergeStartInfo);
-                        mergeProcess.WaitForExit();
+                        Utility.ExecuteProcess(mergeStartInfo);
                     }
                 }
 
@@ -84,8 +87,7 @@ namespace JortPob
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
-                using var convProcess = Process.Start(convStartInfo);
-                convProcess.WaitForExit();
+                Utility.ExecuteProcess(convStartInfo);
             }
             /* Process json */
             Lort.Log($"Loading 'cache\\morrowind.json' ...", Lort.Type.Main);
@@ -229,8 +231,7 @@ namespace JortPob
 
             /* Process papyrus scripts */
             scripts = new();
-            List<JsonNode> scriptJsons = [.. GetAllRecordsByType(ESM.Type.Script)];
-            foreach(JsonNode jsonNode in scriptJsons)
+            foreach(JsonNode jsonNode in GetAllRecordsByType(ESM.Type.Script))
             {
                 try
                 {
@@ -245,11 +246,18 @@ namespace JortPob
 
             /* Load faction info from esm */
             factions = new();
-            List<JsonNode> factionJson = [.. GetAllRecordsByType(ESM.Type.Faction)];
-            foreach (JsonNode jsonNode in factionJson)
+            foreach (JsonNode jsonNode in GetAllRecordsByType(ESM.Type.Faction))
             {
                 FactionInfo faction = new(jsonNode);
                 factions.Add(faction);
+            }
+
+            /* Load sound records from esm */
+            sounds = new();
+            foreach (JsonNode jsonNode in GetAllRecordsByType(ESM.Type.Sound))
+            {
+                SoundInfo sound = new(jsonNode);
+                sounds.Add(sound);
             }
         }
 
@@ -350,6 +358,8 @@ namespace JortPob
 
         public FactionInfo? GetFaction(string id) => factions.FirstOrDefault(faction => faction.id == id.ToLower());
 
+        public SoundInfo? GetSound(string id) => sounds.FirstOrDefault(sound => sound.id == id.ToLower());
+
         public Papyrus? GetPapyrus(string id) => scripts.FirstOrDefault(script => script.id == id.ToLower());
 
         public LeveledCreature? GetLeveledCreature(string id) => leveled.FirstOrDefault(lc => lc.id == id.ToLower());
@@ -389,8 +399,10 @@ namespace JortPob
         public Record ResolveLeveledCreature(string id)
         {
             LeveledCreature leveledCreatureList = GetLeveledCreature(id) ?? throw new Exception($"Failed to resolve leveled creature list: {id}");
-            string creature = leveledCreatureList.Get();
-            return FindRecordById(creature);
+            string resolvedId = leveledCreatureList.Get();
+            Record resolvedRecord = FindRecordById(resolvedId);
+            if (resolvedRecord.type == ESM.Type.LeveledCreature) { resolvedRecord = ResolveLeveledCreature(resolvedId); }  // leveld lists can be recursive. jfk todd, why?
+            return resolvedRecord;
         }
 
         /* Checks if a creature has any dialog associated to it and returns true/false. */
@@ -535,16 +547,16 @@ namespace JortPob
     {
         public readonly string id, name;
         public readonly List<Rank> ranks;
+        private readonly List<(string id, int value)> reactions;
 
         public FactionInfo(JsonNode json)
         {
             id = json["id"].GetValue<string>().ToLower();
             name = json["name"].GetValue<string>();
-            ranks = new();
 
+            ranks = new();
             JsonArray rankNames = json["rank_names"].AsArray();
             JsonArray rankRequirements = json["data"]["requirements"].AsArray();
-
             for (int i=0;i< rankNames.Count();i++)
             {
                 string rankName = rankNames[i].GetValue<string>();
@@ -553,6 +565,32 @@ namespace JortPob
                 Rank rank = new(rankName, i+1, reputation);
                 ranks.Add(rank);
             }
+
+            reactions = new();
+            JsonArray reacts = json["reactions"].AsArray();
+            for(int i=0;i< reacts.Count();i++)
+            {
+                JsonNode entry = reacts[i];
+                reactions.Add((entry["faction"].GetValue<string>().ToLower(), entry["reaction"].GetValue<int>()));
+            }
+        }
+
+        public List<(string id, int value)> GetHighReactions()
+        {
+            // Copy and sort array then return.
+            List<(string id, int reaction)> highs = new();
+            highs.AddRange(reactions);
+            highs.Sort((x, y) => y.reaction.CompareTo(x.reaction));
+            return highs;
+        }
+
+        public List<(string id, int value)> GetLowReactions()
+        {
+            // Copy and sort array then return.
+            List<(string id, int reaction)> lows = new();
+            lows.AddRange(reactions);
+            lows.Sort((x, y) => x.reaction.CompareTo(y.reaction));
+            return lows;
         }
 
         public class Rank
@@ -597,6 +635,21 @@ namespace JortPob
         {
             int rand = Utility.RandomRange(0, creatures.Count());
             return creatures[rand].id;
+        }
+    }
+
+    public class SoundInfo
+    {
+        public readonly string id, path;
+        public readonly int volume, min, max;
+        
+        public SoundInfo(JsonNode json)
+        {
+            id = json["id"].GetValue<string>().ToLower();
+            path = json["sound_path"].GetValue<string>();
+            volume = json["data"]["volume"].GetValue<int>();
+            min = json["data"]["range"].AsArray()[0].GetValue<int>();
+            max = json["data"]["range"].AsArray()[1].GetValue<int>();
         }
     }
 

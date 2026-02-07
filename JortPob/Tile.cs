@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using static SoulsFormats.MSBE.Region;
 
 namespace JortPob
 {
@@ -70,6 +71,29 @@ namespace JortPob
             return most;
         }
 
+        public IEnumerable<Content> GetAllContent()
+        {
+            IEnumerable<IEnumerable<Content>> all = [
+                assets,
+                doors,
+                emitters,
+                lights,
+                creatures,
+                npcs,
+                containers,
+                pickables,
+                items,
+            ];
+
+            foreach (IEnumerable<Content> enumerable in all)
+            {
+                foreach (Content content in enumerable)
+                {
+                    yield return content;
+                }
+            }
+        }
+
         public override void AddCell(Cell cell)
         {
             cells.Add(cell);
@@ -100,6 +124,15 @@ namespace JortPob
             Layout.WarpDestination dest = new((warp.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y), warp.rotation, warp.entity);
             warps.Add(dest);
         }
+
+        public void AddMapPoint(Layout.MapPoint point)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+
+            point.relative = (point.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            points.Add(point);
+        }
     }
 
 
@@ -124,6 +157,7 @@ namespace JortPob
         public readonly List<ItemContent> items;
 
         public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
+        public readonly List<Layout.MapPoint> points;
 
         public BaseTile(int m, int x, int y, int b)
         {
@@ -145,6 +179,7 @@ namespace JortPob
             pickables = new();
             items = new();
 
+            points = new();
             warps = new();
         }
 
@@ -184,7 +219,7 @@ namespace JortPob
                 case CreatureContent c:
                     creatures.Add(c); break;
                 default:
-                    Lort.Log(" ## WARNING ## Unhandled Content class fell through AddContent()", Lort.Type.Debug); break;
+                    Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
             }
         }
     }

@@ -34,6 +34,7 @@ namespace JortPob
         private static List<SkillInfo> SKILL_INFOS;
         private static List<AlchemyInfo> ALCHEMY_INFOS;
         private static List<EnemyRemap> ENEMY_REMAPS;
+        private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -112,6 +113,13 @@ namespace JortPob
                 if (remap.id == id.ToLower().Trim()) { return remap; }
             }
             return new();
+        }
+
+        public static Layout.MapPoint.Icon GetMapIcon(string name)
+        {
+            string n = name.ToLower().ToString();
+            if(MAP_ICONS.ContainsKey(n)) { return MAP_ICONS[n]; }
+            else { return Layout.MapPoint.Icon.Auto; }
         }
 
         /* load all the override jsons into this class */
@@ -216,6 +224,15 @@ namespace JortPob
                 JsonNode jsonNode = property.Value;
                 EnemyRemap enemyRemap = new(property.Key, jsonNode);
                 ENEMY_REMAPS.Add(enemyRemap);
+            }
+
+            /* Load map icon overrides */
+            MAP_ICONS = new();
+            JsonNode jsonMapIcons = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\map_icons.json")));
+            foreach (var property in jsonMapIcons.AsObject())
+            {
+                string iconName = property.Value.GetValue<string>();
+                MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
             }
         }
 
@@ -425,6 +442,10 @@ namespace JortPob
             public readonly ItemManager.Type type;
             public readonly int row;                   // row we copy as our base
 
+            // these 3 fields are only used for the CustomWeapon type
+            public readonly ItemManager.Infusion infusion;
+            public readonly int skill, upgrade;
+
             public readonly bool useIcon; // use morrowind item icon if true, otherwise use whatever is set in the param
 
             public readonly ItemText text;
@@ -437,8 +458,20 @@ namespace JortPob
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
                 comment = json["comment"]?.GetValue<string>();
-                type = (ItemManager.Type)System.Enum.Parse(typeof(ItemManager.Type), json["type"].GetValue<string>());
+                type = Enum.Parse<ItemManager.Type>(json["type"].GetValue<string>());
                 row = json["row"].GetValue<int>();
+
+                if (json["infusion"] != null)
+                {
+                    infusion = Enum.Parse<ItemManager.Infusion>(json["infusion"].GetValue<string>());
+                }
+                else
+                {
+                    infusion = ItemManager.Infusion.None;
+                }
+
+                skill = json["skill"] != null ? json["skill"].GetValue<int>() : -1;
+                upgrade = json["upgrade"] != null ? json["upgrade"].GetValue<int>() : 0;
 
                 useIcon = json["useIcon"] != null ? json["useIcon"].GetValue<bool>() : false;
 

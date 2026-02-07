@@ -261,6 +261,27 @@ namespace JortPob
             return ret;
         }
 
+        public List<Call> GetCalls()
+        {
+            List<Call> ret = new();
+            void RecursiveCheck(Scope scope)
+            {
+                foreach (Call call in scope.calls)
+                {
+                    if (call is Conditional conditional)
+                    {
+                        ret.Add(conditional.left);
+                        ret.Add(conditional.right);
+                        RecursiveCheck(conditional.pass);
+                        RecursiveCheck(conditional.fail);
+                    }
+                    else { ret.Add(call); }
+                }
+            }
+            RecursiveCheck(scope);
+            return ret;
+        }
+
         public class Scope
         {
             public readonly List<Call> calls;
@@ -336,7 +357,7 @@ namespace JortPob
                 EnableStatsMenu, EnableMapMenu, EnableRaceMenu, EnableMagicMenu, EnableStatReviewMenu, EnableBirthMenu, EnableClassMenu, EnableInventoryMenu, EnableNameMenu,
                 EnableVanityMode, EnableRest, EnablePlayerJumping, EnablePlayerFighting, EnablePlayerControls, EnablePlayerMagic, EnableTeleporting, EnablePlayerViewSwitch,
                 DisablePlayerViewSwitch, DisableTeleporting, DisablePlayerFighting, DisablePlayerJumping, DisablePlayerControls, DisableVanityMode, DisablePlayerMagic,
-                PlaySound3D, PlaySound3DVP, StopSound, PlayLoopSound3d, PlayLoopSound3DVP, PlaySound, PlayLoopSoundD3DVP, PlaySoundVP,
+                PlaySound3D, PlaySound3DVP, StopSound, PlayLoopSound3D, PlayLoopSound3DVP, PlaySound, PlayLoopSoundD3DVP, PlaySoundVP,
 
                 /* Papyrus calls we (probably) cannot implement and will discard */
                 Rotate, SetAngle, GetAngle,
@@ -462,7 +483,7 @@ namespace JortPob
                         .ToList();
 
                     type = (Type)Enum.Parse(typeof(Type), ps[0], true);
-                    target = split[0].Replace("\"", "");
+                    target = split[0].Replace("\"", "").ToLower().Trim();
                     ps.RemoveAt(0);
                     parameters = ps.ToArray();
                 }
@@ -519,6 +540,7 @@ namespace JortPob
                 foreach(string p in parameters)
                 {
                     if(p == "==" || p == "!=" || p == ">" || p == "<" || p == ">=" || p == "<=" || p == "=") { op = p; }
+                    else if (op == null && p.Contains(" ") && p.Contains("->")) { l += $"\"{p.Replace("->", "\"->")} "; }
                     else if(op == null && p.Contains(" ")) { l += $"\"{p}\" "; }
                     else if(op == null) { l += $"{p} "; }
                     else if(p.Contains(" ")) { r += $"\"{p}\" "; }
