@@ -442,7 +442,13 @@ namespace JortPob.Common
             return ret;
         }
 
-        public static void ExecuteProcess(ProcessStartInfo startInfo)
+        public static void ExecuteProcess(ProcessStartInfo startInfo, bool allowTimeout)
+        {
+            if (allowTimeout) { ExecuteProcess(startInfo); }
+            else { ExecuteProcess(startInfo, -1); }
+        }
+
+        public static void ExecuteProcess(ProcessStartInfo startInfo, int timeOutMillis = 0)
         {
             using Process process = Process.Start(startInfo);
             if (process == null)
@@ -450,7 +456,10 @@ namespace JortPob.Common
                 throw new InvalidOperationException($"Failed to start process: {startInfo.FileName}");
             }
 
-            bool exited = process.WaitForExit(TimeSpan.FromMilliseconds(5000));
+            bool exited;
+            if(timeOutMillis == 0) { exited = process.WaitForExit(TimeSpan.FromMilliseconds(Const.DEFAULT_PROCESS_TIMEOUT)); }
+            else if (timeOutMillis < 0) { process.WaitForExit(); exited = true; }
+            else { exited = process.WaitForExit(TimeSpan.FromMilliseconds(timeOutMillis)); }
 
             if (!exited)
             {

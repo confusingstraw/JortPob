@@ -75,8 +75,7 @@ namespace JortPob.Common
                             CreateNoWindow = true
                         };
                         startInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        using Process process = Process.Start(startInfo);
-                        process.WaitForExit();
+                        Utility.ExecuteProcess(startInfo);
                     }
 
                     // Call wwise console to convert wav to wem
@@ -89,8 +88,7 @@ namespace JortPob.Common
                             CreateNoWindow = true
                         };
                         startInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{lineDir}\""]);
-                        using Process process = Process.Start(startInfo);
-                        process.WaitForExit();
+                        Utility.ExecuteProcess(startInfo);
                     }
                 }
                 catch

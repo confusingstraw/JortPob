@@ -21,6 +21,7 @@ namespace JortPob.Common
 
         #region Optimization
         public static int THREAD_COUNT { get; } = int.Parse(Settable.Get("THREAD_COUNT"));
+        public static readonly int DEFAULT_PROCESS_TIMEOUT = 15000;  // when running a subprocess this is the default timeout time in millis.
         #endregion
 
         #region General

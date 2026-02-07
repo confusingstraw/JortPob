@@ -193,7 +193,7 @@ namespace JortPob
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            Utility.ExecuteProcess(decompBnkProcess);
+            Utility.ExecuteProcess(decompBnkProcess, false);
 
             /* Open the generated json of the cs_main bank and append our new sounds to it */
             /* I've decided to make this stuf embeded because I can't fucking make it work as streaming and I don't care anymore reeeeeee */
@@ -279,12 +279,11 @@ namespace JortPob
             foreach (JsonNode node in sources) { objects.Insert(0, node); } // must be added at top
             objects.AddRange(events);  // added at bottom
 
-            JsonArray temp = mixer["body"]["ActorMixer"]["children"]["items"].AsArray(); // feel free to add a PR comment about how this can be done in 1 line. i could not make it work lmao
-            List<uint> sorted = new();
-            foreach(uint i in temp) { sorted.Add(i); }
+            var temp = mixer["body"]["ActorMixer"]["children"]["items"].AsArray();
+            var sorted = temp.Select(x => x.GetValue<uint>()).ToList();
             sorted.Sort();
             temp.Clear();
-            foreach (uint i in sorted) { temp.Add(i); }
+            sorted.ForEach(temp.Add);
 
             HIRC["object_count"] = objects.Count;
             mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
@@ -298,7 +297,7 @@ namespace JortPob
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            Utility.ExecuteProcess(recompBnkProcess);
+            Utility.ExecuteProcess(recompBnkProcess, false);
 
             if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
             File.Move(bnkRebuiltPath, bnkPath);

@@ -696,8 +696,9 @@ namespace JortPob
                         if (IsInsideImportant(door.position)) { continue; } // skip these too!
                         if (AlreadyExists(name)) { continue; }    // skip this one as well!
 
+                        const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
                         Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
-                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE / 3f, false, discoverFlag, icon);
+                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE * UNIMPORTANT_SIZE_MODIFIER, false, discoverFlag, icon);
                         tile.AddMapPoint(mapPoint);
                     }
                 }
