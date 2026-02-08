@@ -825,10 +825,10 @@ namespace FSParam
             }
             bw.WriteInt16(Unk06);
             bw.WriteInt16(ParamdefDataVersion);
-            bw.WriteUInt16((ushort)Rows.Count);
+            bw.WriteInt32(Rows.Count);
             if (Format2D.HasFlag(FormatFlags1.OffsetParamType))
             {
-                bw.WriteInt32(0);
+                bw.WriteInt16(0);
                 bw.ReserveInt64("ParamTypeOffset");
                 bw.WritePattern(0x14, 0x00);
             }
@@ -877,19 +877,19 @@ namespace FSParam
                 bw.WritePattern(0x20, 0x00);
 
             if (Format2D.HasFlag(FormatFlags1.Flag01) && Format2D.HasFlag(FormatFlags1.IntDataOffset))
-                bw.FillUInt32("DataStart", (uint)bw.Position);
+                bw.FillUInt32("DataStart", (uint)bw.Position - 0x10);
             else if (Format2D.HasFlag(FormatFlags1.LongDataOffset))
-                bw.FillInt64("DataStart", bw.Position);
+                bw.FillInt64("DataStart", bw.Position  - 0x10);
             else
-                bw.FillUInt16("DataStart", (ushort)bw.Position);
+                bw.FillUInt16("DataStart", (ushort)(bw.Position  - 0x10));
             
             // Write row data
             for (int i = 0; i < Rows.Count; i++)
             {
                 if (Format2D.HasFlag(FormatFlags1.LongDataOffset))
-                    bw.FillInt64($"RowOffset{i}", bw.Position);
+                    bw.FillInt64($"RowOffset{i}", bw.Position - 0x10);
                 else
-                    bw.FillUInt32($"RowOffset{i}", (uint)bw.Position);
+                    bw.FillUInt32($"RowOffset{i}", (uint)bw.Position - 0x10);
                 
                 var data = _paramData.DataForElement(Rows[i].DataIndex);
                 bw.WriteBytes(data.ToArray());
