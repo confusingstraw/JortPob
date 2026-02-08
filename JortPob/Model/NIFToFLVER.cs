@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using TES3;
 
 #nullable enable
@@ -162,29 +163,55 @@ namespace JortPob.Model
                 flver.Dummies.Add(dmy);
             }
 
-            // @TODO: Broken, blocked until Greatness7 updates TES3 nif bindings
-            /*for(int nodeIndex = 0; nodeIndex < nif.Emitters.Count; nodeIndex++)
-            {
-                TES3.Emitter emitter = nif.Emitters[nodeIndex];
-            }*/
-
             /* Add Dummy Polys */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
-            List<Tuple<string, Vector3>> nodes = [
-                new("root", Vector3.Zero), // always add a dummy at root for potential use by fxr later
+            List<(string name, Vector3 position)> nodes = [
+                new("root", Vector3.Zero) // always add a dummy at root for potential use by fxr later
             ];
-            foreach (Tuple<string, Vector3> tuple in nodes)
+
+            Vector3 CollapseTransform(Transform transform)
             {
-                string name = tuple.Item1;
-                Vector3 position = tuple.Item2;
+                /* Correct position of emitter dmy based on the vertex orientation code above */
+                Matrix4x4 mt = Matrix4x4.CreateTranslation(transform.Translation.ToVector3());
+                Matrix4x4 mr = Matrix4x4.CreateFromQuaternion(transform.Rotation.ToQuaternion());
+                Matrix4x4 ms = Matrix4x4.CreateScale(transform.Scale);
+
+                Vector3 position = new();
+                position = Vector3.Transform(position, ms * mr * mt);
+                position *= Const.GLOBAL_SCALE;
+                position.X *= -1f;
+                position = Vector3.Transform(position, desiredRotation);
+                return position;
+            }
+
+            for(int i=0;i<nif.Nodes.Count;i++)
+            {
+                TES3.Node node = nif.Nodes[i];
+
+                string name = node.Name.String.ToLower();
+                Vector3 position = CollapseTransform(node.Transform);
+
+                if (!(name.Contains("attach") && name.Contains("light"))) { continue; }  // skip any nodes that are not light attachment points
+
+                nodes.Add((name, position));
+            }
+
+            for (int i = 0; i < nif.Emitters.Count; i++)
+            {
+                TES3.Emitter emitter = nif.Emitters[i];
+
+                string name = emitter.Name.String.ToLower();
+                Vector3 position = CollapseTransform(emitter.Transform);
+
+                nodes.Add((name, position));
+            }
+
+            foreach ((string name, Vector3 position) node in nodes)
+            {
+                string name = node.name;
+                Vector3 position = node.position;
 
                 short refid = modelInfo.dummies.ContainsKey(name) ? modelInfo.dummies[name] : nextRef++;
-
-                // correct position using same math as we use for vertices above
-                //position = position * Const.GLOBAL_SCALE;
-                position.X *= -1f;
-                Matrix4x4 rotateY180Matrix = Matrix4x4.CreateRotationY((float)Math.PI);
-                position = Vector3.Transform(position, rotateY180Matrix);
 
                 FLVER.Dummy dmy = new();
                 dmy.Position = position;

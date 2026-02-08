@@ -18,7 +18,7 @@ namespace JortPob
         // campfire from church of elleh = 7000
         // single candle from round table, no dynamic light = 800401
 
-        public static List<FXR> FXRS = new List<FXR>()
+        public static List<FXR> FXRS = new List<FXR>() // @TODO: this could probably be a json file
         {
             new FXR(Const.FXR_START_ID, "candleflame emitter"),
             new FXR(Const.FXR_START_ID+1, "fire emitter"),
