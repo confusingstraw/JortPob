@@ -75,8 +75,7 @@ namespace JortPob.Common
                             CreateNoWindow = true
                         };
                         startInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        using Process process = Process.Start(startInfo);
-                        process.WaitForExit();
+                        Utility.ExecuteProcess(startInfo);
                     }
 
                     // Call wwise console to convert wav to wem
@@ -89,8 +88,7 @@ namespace JortPob.Common
                             CreateNoWindow = true
                         };
                         startInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{lineDir}\""]);
-                        using Process process = Process.Start(startInfo);
-                        process.WaitForExit();
+                        Utility.ExecuteProcess(startInfo);
                     }
                 }
                 catch
@@ -163,7 +161,7 @@ namespace JortPob.Common
                     };
 
                     // The helper method handles the execution, timeout, kill, and exit code check
-                    ExecuteProcess(fliteStartInfo);
+                    Utility.ExecuteProcess(fliteStartInfo);
 
                     // --- 3. Convert WAV to WEM (Wwise Console) ---
                     
@@ -193,7 +191,7 @@ namespace JortPob.Common
                             CreateNoWindow = true
                         };
                         createProjectInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        ExecuteProcess(createProjectInfo);
+                        Utility.ExecuteProcess(createProjectInfo);
                     }
 
                     // Convert wav to wem
@@ -211,7 +209,7 @@ namespace JortPob.Common
                     else if (isCreature) { xmlRelative = Path.Combine("..", "dialog", CharacterContent.Race.Creature.ToString(), npc.id, dialog.id.ToString(), hashName, xmlName); }
                     else { xmlRelative = Path.Combine("..", "dialog", npc.race.ToString(), npc.sex.ToString(), dialog.id.ToString(), hashName, xmlName); }
                     convertInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{lineDir}\""]);
-                    ExecuteProcess(convertInfo);
+                    Utility.ExecuteProcess(convertInfo);
 
                     // If we reach here, both processes completed successfully (ExitCode 0)
                     if (File.Exists(wemPath))
@@ -238,43 +236,6 @@ namespace JortPob.Common
 
             // Should be unreachable if the File.Exists check above is correct, but included for completeness.
             return wemPath;
-        }
-
-        private static void ExecuteProcess(ProcessStartInfo startInfo)
-        {
-            using Process process = Process.Start(startInfo);
-            if (process == null)
-            {
-                throw new InvalidOperationException($"Failed to start process: {startInfo.FileName}");
-            }
-
-            bool exited = process.WaitForExit(5000);
-
-            if (!exited)
-            {
-                try
-                {
-                    // Forceful termination if timeout occurs
-                    process.Kill();
-                    process.WaitForExit(); // Wait for OS cleanup
-                    throw new TimeoutException($"Process timed out and was killed: {startInfo.FileName}");
-                }
-                catch (InvalidOperationException)
-                {
-                    // Process may have just exited before Kill() was called.
-                    // We'll proceed to check the exit code below.
-                }
-            }
-
-            // VITAL: Check the process exit code after successful exit or timeout kill
-            if (process.ExitCode != 0)
-            {
-                // Optional: Read StandardError for better debugging info
-                string error = startInfo.RedirectStandardError ? process.StandardError.ReadToEnd() : "N/A (Error stream not redirected)";
-                
-                // Throw a specific exception indicating execution failure
-                throw new ApplicationException($"Process failed with exit code {process.ExitCode}. Error: {error}");
-            }
         }
 
         private static readonly Regex AnsiRegex =

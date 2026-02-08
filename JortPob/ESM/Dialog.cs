@@ -52,37 +52,19 @@ namespace JortPob
             /* Return all calls of a given type inside this dialog record */
             public List<Papyrus.Call> GetCalls(Papyrus.Call.Type type)
             {
-                List<Papyrus.Call> calls = new();
-                foreach(DialogInfoRecord info in infos)
-                {
-                    if (info.script != null)
-                    {
-                        foreach (Papyrus.Call call in info.script.calls)
-                        {
-                            if (call.type == type)
-                            {
-                                calls.Add(call);
-                            }
-                        }
-                    }
-                }
-                return calls;
+                return infos
+                    .Where(info => info.script != null)
+                    .SelectMany(info => info.script.calls)
+                    .Where(call => call.type == type)
+                    .ToList();
             }
 
             public List<Papyrus.Call> GetCalls()
             {
-                List<Papyrus.Call> calls = new();
-                foreach (DialogInfoRecord info in infos)
-                {
-                    if (info.script != null)
-                    {
-                        foreach (Papyrus.Call call in info.script.calls)
-                        {
-                            calls.Add(call);
-                        }
-                    }
-                }
-                return calls;
+                return infos
+                    .Where(info => info.script != null)
+                    .SelectMany(info => info.script.calls)
+                    .ToList();
             }
         }
 
@@ -867,6 +849,7 @@ namespace JortPob
                             {
                                 Script.Flag msgFlag = scriptManager.common.GetOrRegisterMessage(paramanager, "Message", call.parameters[0]);
                                 string code = $"SetEventFlag({msgFlag.id}, FlagState.On)";
+                                lines.Add(code);
                                 break;
                             }
                         case Papyrus.Call.Type.RemoveItem:

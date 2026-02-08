@@ -442,6 +442,10 @@ namespace JortPob
             public readonly ItemManager.Type type;
             public readonly int row;                   // row we copy as our base
 
+            // these 3 fields are only used for the CustomWeapon type
+            public readonly ItemManager.Infusion infusion;
+            public readonly int skill, upgrade;
+
             public readonly bool useIcon; // use morrowind item icon if true, otherwise use whatever is set in the param
 
             public readonly ItemText text;
@@ -454,8 +458,20 @@ namespace JortPob
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
                 comment = json["comment"]?.GetValue<string>();
-                type = (ItemManager.Type)System.Enum.Parse(typeof(ItemManager.Type), json["type"].GetValue<string>());
+                type = Enum.Parse<ItemManager.Type>(json["type"].GetValue<string>());
                 row = json["row"].GetValue<int>();
+
+                if (json["infusion"] != null)
+                {
+                    infusion = Enum.Parse<ItemManager.Infusion>(json["infusion"].GetValue<string>());
+                }
+                else
+                {
+                    infusion = ItemManager.Infusion.None;
+                }
+
+                skill = json["skill"] != null ? json["skill"].GetValue<int>() : -1;
+                upgrade = json["upgrade"] != null ? json["upgrade"].GetValue<int>() : 0;
 
                 useIcon = json["useIcon"] != null ? json["useIcon"].GetValue<bool>() : false;
 

@@ -286,74 +286,34 @@ namespace JortPob
         public SpeffEnchant GetEnchantingSpeff(string id) { return GetSpeff(id, SpeffManager.Type.Enchanting) as SpeffEnchant; }
         public SpeffSpell GetSpellSpeff(string id) { return GetSpeff(id, SpeffManager.Type.Spell) as SpeffSpell; }
 
-        public List<SpeffSpell> GetDiseases()
+        public List<SpeffSpell> GetSpeffBySpellType(SpeffSpell.SpellType spellType)
         {
-            List<SpeffSpell> diseases = new();
-            foreach(Speff speff in speffs)
-            {
-                if(speff.type == SpeffManager.Type.Spell)
-                {
-                    SpeffSpell speffSpell = (SpeffSpell)speff;
-                    if(speffSpell.spellType == SpeffSpell.SpellType.Disease)
-                    {
-                        diseases.Add(speffSpell);
-                    }
-                }
-            }
-            return diseases;
-        }
-
-        public List<SpeffSpell> GetBlights()
-        {
-            List<SpeffSpell> blights = new();
+            List<SpeffSpell> matches = new();
             foreach (Speff speff in speffs)
             {
                 if (speff.type == SpeffManager.Type.Spell)
                 {
                     SpeffSpell speffSpell = (SpeffSpell)speff;
-                    if (speffSpell.spellType == SpeffSpell.SpellType.Blight)
+                    if (speffSpell.spellType == spellType)
                     {
-                        blights.Add(speffSpell);
+                        matches.Add(speffSpell);
                     }
                 }
             }
-            return blights;
+            return matches;
         }
 
-        public SpeffSpell GetCorprus()
-        {
-            foreach (Speff speff in speffs)
-            {
-                if (speff.type == SpeffManager.Type.Spell)
-                {
-                    SpeffSpell speffSpell = (SpeffSpell)speff;
-                    if (speffSpell.spellType == SpeffSpell.SpellType.Corprus)
-                    {
-                        return speffSpell;
-                    }
-                }
-            }
-            return null;
-        }
-
-        public SpeffSpell GetVampirism()
-        {
-            foreach (Speff speff in speffs)
-            {
-                if (speff.id == "vampire attributes")
-                {
-                    return (SpeffSpell)speff;
-                }
-            }
-            return null;
-        }
+        public List<SpeffSpell> GetDiseases() { return GetSpeffBySpellType(SpeffSpell.SpellType.Disease); }
+        public List<SpeffSpell> GetBlights() { return GetSpeffBySpellType(SpeffSpell.SpellType.Blight); }
+        public SpeffSpell GetCorprus() { return GetSpeffBySpellType(SpeffSpell.SpellType.Corprus)[0]; }
+        public SpeffSpell GetVampirism() { return GetSpeff("vampire attributes", SpeffManager.Type.Spell) as SpeffSpell; }
 
         /* Called by Papyrus compiling to create one off effects for certain Papyrus calls */
         /* For the most part it is simple things like ModStrength where we give an NPC +5 strength or something like that */
         /* In most cases this is used on NPCs as we can't directly modify NPC stats */
         /* But in some cases like ModFatigue or ModMagicka we will use it on player to change their current stamina/mana values */
         /* Input is what we are changing and how much */
-        /* Returns row id of creates speff */
+        /* Returns row id of created speff */
         public enum StatMod { CurrentHP, CurrentMP, CurrentSP, Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane }
         public int CreateScriptedEffect(StatMod stat, int amount, string name)
         {

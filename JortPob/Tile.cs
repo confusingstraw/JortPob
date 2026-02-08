@@ -71,19 +71,27 @@ namespace JortPob
             return most;
         }
 
-        public List<Content> GetAllContent()
+        public IEnumerable<Content> GetAllContent()
         {
-            List<Content> all = new();
-            all.AddRange(assets);
-            all.AddRange(doors);
-            all.AddRange(emitters);
-            all.AddRange(lights);
-            all.AddRange(creatures);
-            all.AddRange(npcs);
-            all.AddRange(containers);
-            all.AddRange(pickables);
-            all.AddRange(items);
-            return all;
+            IEnumerable<IEnumerable<Content>> all = [
+                assets,
+                doors,
+                emitters,
+                lights,
+                creatures,
+                npcs,
+                containers,
+                pickables,
+                items,
+            ];
+
+            foreach (IEnumerable<Content> enumerable in all)
+            {
+                foreach (Content content in enumerable)
+                {
+                    yield return content;
+                }
+            }
         }
 
         public override void AddCell(Cell cell)

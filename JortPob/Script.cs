@@ -6,6 +6,7 @@ using SoulsIds;
 using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata.Ecma335;
+using System.Text;
 using static IronPython.Modules.PythonIterTools;
 using static JortPob.Script.Flag;
 using static SoulsFormats.MSB1.Event;
@@ -36,9 +37,14 @@ namespace JortPob
             emevd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
             emevd.Format = SoulsFormats.EMEVD.Game.Sekiro;
 
-            // Bytes here are raw string data that points to the filenames of common_func and common_macro
-            emevd.StringData = new byte[] { 78, 0, 58, 0, 92, 0, 71, 0, 82, 0, 92, 0, 100, 0, 97, 0, 116, 0, 97, 0, 92, 0, 80, 0, 97, 0, 114, 0, 97, 0, 109, 0, 92, 0, 101, 0, 118, 0, 101, 0, 110, 0, 116, 0, 92, 0, 99, 0, 111, 0, 109, 0, 109, 0, 111, 0, 110, 0, 95, 0, 102, 0, 117, 0, 110, 0, 99, 0, 46, 0, 101, 0, 109, 0, 101, 0, 118, 0, 100, 0, 0, 0, 78, 0, 58, 0, 92, 0, 71, 0, 82, 0, 92, 0, 100, 0, 97, 0, 116, 0, 97, 0, 92, 0, 80, 0, 97, 0, 114, 0, 97, 0, 109, 0, 92, 0, 101, 0, 118, 0, 101, 0, 110, 0, 116, 0, 92, 0, 99, 0, 111, 0, 109, 0, 109, 0, 111, 0, 110, 0, 95, 0, 109, 0, 97, 0, 99, 0, 114, 0, 111, 0, 46, 0, 101, 0, 109, 0, 101, 0, 118, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            emevd.LinkedFileOffsets = new() { 0, 82 };
+            // Linked file offsets are stored as bytes of a UTF16 string pointing to the commonfunc and macro emevd files
+            byte[] file1 = System.Text.Encoding.Unicode.GetBytes(@"N:\GR\data\Param\event\common_func.emevd" + "\0");
+            byte[] file2 = System.Text.Encoding.Unicode.GetBytes(@"N:\GR\data\Param\event\common_macro.emevd" + "\0");
+            List<byte> combined = new();
+            combined.AddRange(file1);
+            combined.AddRange(file2);
+            emevd.StringData = combined.ToArray();
+            emevd.LinkedFileOffsets = new() { 0, file1.Length };
 
             init = new EMEVD.Event(0);
             emevd.Events.Add(init);
@@ -211,7 +217,7 @@ namespace JortPob
 
         public void RegisterNpc(Paramanager paramanager, NpcContent npc, Flag count)
         {
-            /* Dead/disable spawn event */
+            /* Dead spawn event */
             Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc.entity.ToString());
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
             if(npc.essential)
@@ -221,6 +227,7 @@ namespace JortPob
             }
         }
 
+        // @TODO: Refactor disable flag creation to match NPC and make it more streamlined during refactor
         public void RegisterCreature(CreatureContent creature, Flag count)
         {
             /* Dead/disable spawn event */

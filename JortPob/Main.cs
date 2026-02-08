@@ -52,8 +52,8 @@ namespace JortPob
             for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
 
             /* Compile Papyrus main global script and it's subscripts */
-            Papyrus papyrusMain = esm.GetPapyrus("main");
-            PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null);
+            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile. only works with the compatibility patch
+            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
 
             /* Write custom map */
             if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }

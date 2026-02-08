@@ -87,13 +87,15 @@ namespace JortPob
         /* Also some other globalish vars we need for scripts like Reputation and CrimeLevel */
         public void SetupSpecialFlags(ESM esm)
         {
-            // Create a one time event that sets some default flags at game startup
+            // Create a one time event that sets some default flags at game startup + also moves player to debug area if they aren't there
             Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
             Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
             EMEVD.Event gameInitEvent = new();
             gameInitEvent.ID = gameInitEventFlag.id;
-            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"IfEventFlag(1, ON, TargetEventFlagType.EventFlag, {gameInitFlag.id});"));  // if init has been done
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {gameInitFlag.id});"));  // if init has been done
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.End);"));                                       // end event
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6000, OFF);")); // Always off flag
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6001, ON);")); // Always on flag
             List<int> setFlagsOn = new()
             {
                 62010, 62011, 62012, 62020, 62021, 62022, 62030, 62031, 62032, 62040, 62041, 62050, 62051, 62052,  // Known world map pieces to unlock all major areas of map
@@ -104,6 +106,9 @@ namespace JortPob
             {
                 gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flagId}, ON);"));           // Add code to turn on flags
             }
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"IfPlayerInoutMap(OR_01, true, 18, 0, 0, 0);"));
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SkipIfConditionGroupStateUncompiled(1, PASS, OR_01);")); // if player is not in the stranded graveyard
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"WarpPlayer(18, 0, 0, 0, 18000981, -1);"));               // warp them there
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {gameInitFlag.id}, ON);"));      // set initgame flag on so it's donezo
             common.emevd.Events.Add(gameInitEvent);
             common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {gameInitEventFlag.id})"));  // initialize in common

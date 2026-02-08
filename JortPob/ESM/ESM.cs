@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using static HKLib.hk2018.hkbStateMachine;
 using static IronPython.Modules._ast;
 using static JortPob.Dialog;
 using static JortPob.NpcManager;
@@ -73,8 +74,7 @@ namespace JortPob
                             UseShellExecute = false,
                             CreateNoWindow = true
                         };
-                        using var mergeProcess = Process.Start(mergeStartInfo);
-                        mergeProcess.WaitForExit();
+                        Utility.ExecuteProcess(mergeStartInfo);
                     }
                 }
 
@@ -87,8 +87,7 @@ namespace JortPob
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
-                using var convProcess = Process.Start(convStartInfo);
-                convProcess.WaitForExit();
+                Utility.ExecuteProcess(convStartInfo);
             }
             /* Process json */
             Lort.Log($"Loading 'cache\\morrowind.json' ...", Lort.Type.Main);
