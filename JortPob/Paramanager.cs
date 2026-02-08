@@ -850,7 +850,7 @@ namespace JortPob
             int textId = textManager.AddActionButton(text);
 
             row["regionType"].Value.SetValue((byte)0); // cylinder
-            row["dummyPoly1"].Value.SetValue(-1); // these seem to be broken in ER so setting -1
+            row["dummyPoly1"].Value.SetValue(Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
             row["dummyPoly2"].Value.SetValue(-1);
             row["radius"].Value.SetValue(width); // radius
             row["angle"].Value.SetValue(180); // angle from dmy
