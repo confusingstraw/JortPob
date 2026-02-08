@@ -173,10 +173,10 @@ namespace JortPob.Model
             Vector3 bottom = new Vector3(center.X, flver.Nodes[0].BoundingBoxMin.Y, center.Z);
             Vector3 top = new Vector3(center.X, flver.Nodes[0].BoundingBoxMax.Y, center.Z);
 
-            AddDmy(root, 90);
-            AddDmy(center, 100);
-            AddDmy(bottom, 101);
-            AddDmy(top, 102);
+            AddDmy(root, Const.FLVER_DMY_ROOT);
+            AddDmy(center, Const.FLVER_DMY_CENTER);
+            AddDmy(bottom, Const.FLVER_DMY_BOTTOM);
+            AddDmy(top, Const.FLVER_DMY_TOP);
 
             /* Now add dmys from the emitters and nodes in the model */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
@@ -202,9 +202,8 @@ namespace JortPob.Model
                 TES3.Node node = nif.Nodes[i];
 
                 string name = node.Name.String.ToLower();
-                Vector3 position = CollapseTransform(node.Transform);
-
                 if (!(name.Contains("attach") && name.Contains("light"))) { continue; }  // skip any nodes that are not light attachment points
+                Vector3 position = CollapseTransform(node.Transform);
 
                 nodes.Add((name, position));
             }
