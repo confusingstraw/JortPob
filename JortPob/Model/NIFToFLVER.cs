@@ -149,25 +149,38 @@ namespace JortPob.Model
                 flver.Meshes.Add(flverMesh);
             }
 
-            Vector3 center = Vector3.Lerp(flver.Nodes[0].BoundingBoxMin, flver.Nodes[0].BoundingBoxMax, .5f);
+            /* Calculate bounding boxes */
+            BoundingBoxSolver.FLVER(flver);
+
+            /* Add Dummy Polys */
+            void AddDmy(Vector3 position, short id)
             {
                 FLVER.Dummy dmy = new();
-                dmy.Position = center;
+                dmy.Position = position;
                 dmy.Forward = new(0, 0, 1);
                 dmy.Upward = new(0, 1, 0);
                 dmy.Color = System.Drawing.Color.White;
-                dmy.ReferenceID = 90;
+                dmy.ReferenceID = id;
                 dmy.ParentBoneIndex = 0;
                 dmy.AttachBoneIndex = 0;
                 dmy.UseUpwardVector = true;
                 flver.Dummies.Add(dmy);
             }
 
-            /* Add Dummy Polys */
+            /* Add some generic dmys based on orientations */
+            Vector3 root = Vector3.Zero;
+            Vector3 center = Vector3.Lerp(flver.Nodes[0].BoundingBoxMin, flver.Nodes[0].BoundingBoxMax, .5f);
+            Vector3 bottom = new Vector3(center.X, flver.Nodes[0].BoundingBoxMin.Y, center.Z);
+            Vector3 top = new Vector3(center.X, flver.Nodes[0].BoundingBoxMax.Y, center.Z);
+
+            AddDmy(root, 90);
+            AddDmy(center, 100);
+            AddDmy(bottom, 101);
+            AddDmy(top, 102);
+
+            /* Now add dmys from the emitters and nodes in the model */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
-            List<(string name, Vector3 position)> nodes = [
-                new("root", Vector3.Zero) // always add a dummy at root for potential use by fxr later
-            ];
+            List<(string name, Vector3 position)> nodes = new();
 
             Vector3 CollapseTransform(Transform transform)
             {
@@ -225,9 +238,6 @@ namespace JortPob.Model
                 flver.Dummies.Add(dmy);
                 if (!modelInfo.dummies.ContainsKey(name)) { modelInfo.dummies.Add(name, refid); }
             }
-
-            /* Calculate bounding boxes */
-            BoundingBoxSolver.FLVER(flver);
 
             /* Optimize flver */
             flver = FLVERUtil.Optimize(flver);
