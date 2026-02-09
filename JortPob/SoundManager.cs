@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using static JortPob.Dialog;
 using static SoulsFormats.DRB.Shape;
 
@@ -128,11 +129,12 @@ namespace JortPob
             main.Write();
             Lort.TaskIterate();           // @TODO: We really need some multithreading here. Also a flag to skip rebuilding main as it not super important anyways!
 
-            foreach (SoundBankInfo bankInfo in banks)
+            Parallel.ForEach(banks, bank =>
             {
+                SoundBankInfo bankInfo = bank;
                 bankInfo.bank.Write(bankInfo.id);
                 Lort.TaskIterate();
-            }
+            });
         }
 
         public class SoundBankGlobals
