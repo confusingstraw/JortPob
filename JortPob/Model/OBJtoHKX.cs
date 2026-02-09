@@ -42,7 +42,7 @@ namespace JortPob.Model
             string srcDir = Path.GetDirectoryName(objPath);
             File.Copy(Utility.ResourcePath("misc\\havok.mtl"), @$"{tempDir}\{fName}.mtl", true);
 
-            ProcessStartInfo startInfo = new(@$"{tempDir}\obj2fsnp.exe", $"\"{tempDir}\\{fName}.obj\"")
+            ProcessStartInfo startInfo = new(@$"{toolsDir}\obj2fsnp.exe", $"\"{tempDir}\\{fName}.obj\"")
             {
                 WorkingDirectory = @$"{tempDir}\",
                 UseShellExecute = false,
@@ -51,7 +51,7 @@ namespace JortPob.Model
             };
             Utility.ExecuteProcess(startInfo);
 
-            startInfo = new(@$"{tempDir}\AssetCc2_fixed.exe", $"--strip \"{tempDir}\\{fName}.obj.o2f\" \"{tempDir}\\{fName}.1\"")
+            startInfo = new(@$"{toolsDir}\AssetCc2_fixed.exe", $"--strip \"{tempDir}\\{fName}.obj.o2f\" \"{tempDir}\\{fName}.1\"")
             {
                 WorkingDirectory = @$"{tempDir}\",
                 UseShellExecute = false,
@@ -60,7 +60,7 @@ namespace JortPob.Model
             };
             Utility.ExecuteProcess(startInfo);
 
-            startInfo = new(@$"{tempDir}\hknp2fsnp.exe", $"\"{tempDir}\\{fName}.1\"")
+            startInfo = new(@$"{toolsDir}\hknp2fsnp.exe", $"\"{tempDir}\\{fName}.1\"")
             {
                 WorkingDirectory = @$"{tempDir}\",
                 UseShellExecute = false,
