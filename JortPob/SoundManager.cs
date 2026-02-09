@@ -1,12 +1,15 @@
 ﻿using JortPob.Common;
 using JortPob.Worker;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static IronPython.Modules._ast;
 using static JortPob.Dialog;
 using static SoulsFormats.DRB.Shape;
 
@@ -117,24 +120,80 @@ namespace JortPob
         }
 
         /* Writes all soundbanks to given dir */
+        /* This has been broken up into multiple stages to try and improve performance */
+        /* 1 - Generate all JSON for bnks in multiple threads */
+        /* 2 - Write all WEM files to their proper locations in a single thread */
+        /* 3 - Run BNK2JSON on all JSON files to compile bnks in multiple threads */
         public void Write()
         {
             if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
 
             SamWorker.Go(samQueue); // actually generate and convert wems
 
-            Lort.Log($"Writing {banks.Count()+1} BNKs...", Lort.Type.Main);
-            Lort.NewTask("Writing BNKs", banks.Count);
+            Lort.Log($"Preprocessing {banks.Count()} BNKs...", Lort.Type.Main);
+            Lort.NewTask("Preprocessing BNKs", banks.Count());
 
-            main.Write();
-            Lort.TaskIterate();           // @TODO: We really need some multithreading here. Also a flag to skip rebuilding main as it not super important anyways!
+            ConcurrentBag<Dictionary<uint, string>> wemsToWrite = new();
 
-            Parallel.ForEach(banks, bank =>
+            Parallel.ForEach(banks, bankInfo =>
             {
-                SoundBankInfo bankInfo = bank;
-                bankInfo.bank.Write(bankInfo.id);
+                Dictionary<uint, string> wems = bankInfo.bank.WriteSources(bankInfo.id);
+                wemsToWrite.Add(wems);
                 Lort.TaskIterate();
             });
+
+            var allWemsToWrite = wemsToWrite
+                    .SelectMany(dict => dict) // Flatten the list of dictionaries into a single sequence of KeyValuePair
+                    .GroupBy(kvp => kvp.Key)  // Group the KeyValuePairs by their key
+                    .ToDictionary(
+                        group => group.Key,         // The key for the new dictionary is the group's key
+                        group => group.First().Value // The value is the value of the first item in the group (e.g., from the first dictionary it appeared in)
+                    );
+
+            Lort.Log($"Writing {allWemsToWrite.Count()} WEMs...", Lort.Type.Main);
+            Lort.NewTask("Writing WEMs", allWemsToWrite.Count());
+
+            foreach (var kvp in allWemsToWrite)
+            {
+                string wemSrcPath = kvp.Value;
+                string wemTgtPath = Path.Combine(Const.OUTPUT_PATH, "sd", "enus", "wem", @$"{kvp.Key.ToString("D9").Substring(0, 2)}\{kvp.Key:D9}.wem");
+                Directory.CreateDirectory(Path.GetDirectoryName(wemTgtPath));
+                if (File.Exists(wemTgtPath)) { File.Delete(wemTgtPath); }
+                File.Copy(wemSrcPath, wemTgtPath);
+                Lort.TaskIterate();
+            }
+
+            Lort.Log($"Writing {banks.Count() + 1} BNKs...", Lort.Type.Main);
+            Lort.NewTask("Writing BNKs", banks.Count() + 1);
+
+            Task mainSoundBank = Task.Run(() =>
+            {
+                main.Write();
+                Lort.TaskIterate();
+            });
+
+            Task otherSoundBanks = Task.Run(() =>
+            {
+                Parallel.ForEach(banks, bankInfo =>
+                {
+                    string bnkDir = @$"{Const.OUTPUT_PATH}sd\enus\vc{bankInfo.id:D3}";
+                    string bnkPath = $@"{bnkDir}.bnk";
+                    string bnkRebuiltPath = $@"{bnkDir}.created.bnk";
+                    ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkDir}\"")
+                    {
+                        WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    Utility.ExecuteProcess(startInfo, false);
+
+                    if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
+                    File.Move(bnkRebuiltPath, bnkPath);
+                    Lort.TaskIterate();
+                });
+            });
+
+            Task.WhenAll(mainSoundBank, otherSoundBanks).Wait();
         }
 
         public class SoundBankGlobals
