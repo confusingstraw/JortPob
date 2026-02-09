@@ -117,7 +117,14 @@ namespace JortPob
                 if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
                 if (flag.designation == Script.Flag.Designation.Hardcode && flag.name == "GameInit") { continue; } // another event we should not reset
 
-                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {(int)flag.type}, {flag.value}, 0, 1, CalculationType.Assign);"));
+                if (flag.type == Script.Flag.Type.Bit)
+                {
+                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {(flag.value == 1 ? "ON" : "OFF")});"));
+                }
+                else
+                {
+                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {flag.Bits()}, {flag.value}, 0, 1, CalculationType.Assign);"));
+                }
                 if (delayCounter++ > 512)
                 {
                     debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
@@ -127,7 +134,7 @@ namespace JortPob
             Script.Flag mainRunOnceFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "runonce");
             if (mainRunOnceFlag != null)  // runonce flag is actually a custom thing i wrote in to the main script in an esp so make this optional to prevent crash
             {
-                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({mainRunOnceFlag.id}, {(int)mainRunOnceFlag.type}, {mainRunOnceFlag.value}, 0, 1, CalculationType.Assign);")); // after all other flags, reset main runonce so main can rerun initializer scripts
+                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {mainRunOnceFlag.id}, OFF);")); // after all other flags, reset main runonce so main can rerun initializer scripts
             }
             debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"DisplayBanner(31);")); // display a banner when save data reset is done. it takes a secondish
 
