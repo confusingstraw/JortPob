@@ -31,6 +31,15 @@ namespace JortPob
         // Returns the row id of the sound you add
         public int AddSound(string record, Sound.Type type, bool loop, bool spatialize, float volume, float pitch, string file)
         {
+            /* See if this sound has already been added to the bank with the same (or similar enough) settings */
+            foreach(Sound s in sounds)
+            {
+                if(s.IsSame(record, type, loop, spatialize, volume, pitch))
+                {
+                    return (int)s.id;
+                }
+            }
+
             /* Check if sound exists, if it doeesn't then just return some random number */
             if (!File.Exists(file)) { return 5; }  // yes, morrowind has scripts that just point to sound files that don't exist. returning a play id number that will likely do nothing
 
@@ -56,7 +65,7 @@ namespace JortPob
             Sound sound = new(record, type, loop, spatialize, volume, pitch, ids[0], ids[1], ids[2], wem, globals.NextSourceId());
             sounds.Add(sound);
 
-            return (int)ids[0]; // Return play id so script can trigger this sound effect
+            return (int)sound.id; // Return play id so script can trigger this sound effect
         }
 
         /* Copy paste from example code */
@@ -303,6 +312,7 @@ namespace JortPob
             File.Move(bnkRebuiltPath, bnkPath);
         }
 
+        [DebuggerDisplay("SND [{record}] [{type}] [{file}]")]
         public record Sound(
             string record,             // id of the source sound. this is the sound record id for "playsound" and the filename for "say" papyrus calls
             Sound.Type type,
@@ -327,6 +337,17 @@ namespace JortPob
                     case Type.SFX: return "s";
                     default: throw new Exception("Invalid sound type"); // How did you even get here?
                 }
+            }
+
+            public bool IsSame(string r, Sound.Type t, bool l, bool s, float v, float p)
+            {
+                return
+                    record.ToLower().Trim() == r.ToLower().Trim() &&
+                    type == t &&
+                    loop == l &&
+                    spatialize == s &&
+                    (volume - v) <= 0.01f &&
+                    (pitch - p) <= 0.01f;
             }
         }
     }

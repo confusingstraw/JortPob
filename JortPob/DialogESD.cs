@@ -13,6 +13,7 @@ using System.Xml.Linq;
 using static JortPob.Dialog;
 using static JortPob.FactionInfo;
 using static JortPob.NpcManager.TopicData;
+using static SoulsFormats.MSBS.Event;
 
 namespace JortPob
 {
@@ -1278,6 +1279,13 @@ namespace JortPob
         {
             string s = $"def t{id:D9}_x{x:D2}():\r\n    ## pick a thief line and talk it\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
+            if(topic.talks.Count() == 1) // special case. does happen.
+            {
+                s += $"    assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK:D2}(combatText={topic.talks[0].primaryTalkRow})\r\n";
+                s += $"    return 0\r\n";
+                return s;
+            }
+
             string ifop = "if";
             for (int i = 0; i < topic.talks.Count(); i++)
             {
@@ -1303,6 +1311,8 @@ namespace JortPob
             for (int i = 0; i < idle.talks.Count(); i++)
             {
                 NpcManager.TopicData.TalkData talk = idle.talks[i];
+
+                if(idle.talks.Count() == 1) { idleCode = $"            assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK:D2}(combatText={talk.primaryTalkRow})"; break; } // special case. does happen.
 
                 string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < idle.talks.Count() - 1)) { filters = ""; ifop = "else"; i = idle.talks.Count(); }
@@ -1452,6 +1462,19 @@ namespace JortPob
             FactionInfo npcFaction = esm.GetFaction(npcContent.faction);
             Script.Flag returnLow = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionLow, npcContent.entity.ToString());
             Script.Flag returnHigh = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionHigh, npcContent.entity.ToString());
+
+            // Special case where a faction has no reaction table (Talos Cult moment)
+            if(!npcFaction.HasReactions())
+            {
+                s += $""""
+                          SetEventFlagValue({returnLow.id}, {returnLow.Bits()}, 0)
+                          SetEventFlagValue({returnHigh.id}, {returnHigh.Bits()}, 0)
+                          return 0
+
+
+                      """";
+                return s;
+            }
 
             string ifop = "if";
             List<(string id, int value)> lowReactions = npcFaction.GetLowReactions();

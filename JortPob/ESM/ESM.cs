@@ -593,6 +593,11 @@ namespace JortPob
             return lows;
         }
 
+        public bool HasReactions()
+        {
+            return reactions.Count > 0;
+        }
+
         public class Rank
         {
             public readonly string name;

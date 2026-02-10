@@ -554,7 +554,7 @@ namespace JortPob
                     case Papyrus.Call.Type.FadeIn:
                         {
                             float time = float.Parse(call.parameters[0]);
-                            string code = $"FadeToColor(0, {time}, false, 0);";
+                            string code = $"FadeToBlack(0, {time}, false, 0);";
                             lines.Add(code);
                             break;
                         }

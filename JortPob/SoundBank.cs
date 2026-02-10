@@ -52,9 +52,11 @@ namespace JortPob
             return (int)snd.row;
         }
 
-        /* Generates and writes JSON, then calls bnk2json to build the bnk */
-        public void Write(int id)
+        /* Generates and writes JSON, and copys wems to relevant directorys */
+        public Dictionary<uint, string> WriteSources(int id)
         {
+            Dictionary<uint, string> wemsToWrite = new();
+
             string dir = @$"{Const.OUTPUT_PATH}sd\enus\";
 
             JsonNode json = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\bnk_template.json")));
@@ -125,16 +127,17 @@ namespace JortPob
 
                 string wemSrcPath = sound.file;
                 string wemTgtPath = Path.Combine(dir, @$"wem\{sourceId.ToString("D9").Substring(0, 2)}\{sourceId:D9}.wem");
-                Directory.CreateDirectory(Path.GetDirectoryName(wemTgtPath));
-                if (File.Exists(wemTgtPath)) { File.Delete(wemTgtPath); }
-                File.Copy(wemSrcPath, wemTgtPath);
+                //Directory.CreateDirectory(Path.GetDirectoryName(wemTgtPath));
+                //if (File.Exists(wemTgtPath)) { File.Delete(wemTgtPath); }
+                //File.Copy(wemSrcPath, wemTgtPath);
+                if(!wemsToWrite.ContainsKey(sourceId)) { wemsToWrite.Add(sourceId, wemSrcPath); }
             }
 
             objects.AddRange(sources);  // ordering of nodes matters a lot for this json
             objects.AddRange(mixers);
             objects.AddRange(events);
 
-            HIRC["object_count"] = objects.Count;                                                                                   // unsure if these fields matter or not
+            HIRC["object_count"] = objects.Count;                  // unsure if these fields matter or not
             master["body"]["ActorMixer"]["children"]["count"] = master["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
             mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
 
@@ -144,16 +147,7 @@ namespace JortPob
             Directory.CreateDirectory(Path.GetDirectoryName(bnkJsonPath));
             File.WriteAllText(bnkJsonPath, json.ToJsonString());
 
-            ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{Path.GetDirectoryName(bnkJsonPath)}\"")
-            {
-                WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            Utility.ExecuteProcess(startInfo, false);
-
-            if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
-            File.Move(bnkRebuiltPath, bnkPath);
+            return wemsToWrite;
         }
 
         public class Sound

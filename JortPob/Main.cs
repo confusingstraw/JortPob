@@ -880,6 +880,20 @@ namespace JortPob
             GC.Collect();
             MsbWorker.Go(msbs);
 
+            /* Copy DLLs */
+            string[] dlls = Directory.GetFiles(Utility.ResourcePath("dlls"));
+            Lort.Log($"Copying {dlls.Length} DLLs", Lort.Type.Main);
+            Lort.NewTask("Copying DLLs", dlls.Length);
+            foreach (string file in dlls)
+            {
+                string fileName = Path.Combine(Const.OUTPUT_PATH, Path.GetFileName(file));
+                if (!File.Exists(fileName))
+                {
+                    File.Copy(file, fileName);
+                }
+                Lort.TaskIterate();
+            }
+            
             /* Donezo */
             Lort.Log("Done!", Lort.Type.Main);
             Lort.NewTask("Done!", 1);

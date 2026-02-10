@@ -108,8 +108,9 @@ namespace JortPob
             }
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"IfPlayerInoutMap(OR_01, true, 18, 0, 0, 0);"));
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SkipIfConditionGroupStateUncompiled(1, PASS, OR_01);")); // if player is not in the stranded graveyard
-            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"WarpPlayer(18, 0, 0, 0, 18000981, -1);"));               // warp them there
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetPlayerRespawnPoint(18002020);"));                     // set players respawn to the debug warp room
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {gameInitFlag.id}, ON);"));      // set initgame flag on so it's donezo
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"WarpPlayer(18, 0, 0, 0, 18000981, -1);"));               // and to wrap thuings up warp them to debug room
             common.emevd.Events.Add(gameInitEvent);
             common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {gameInitEventFlag.id})"));  // initialize in common
 
