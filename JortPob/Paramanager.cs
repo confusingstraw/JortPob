@@ -298,10 +298,10 @@ namespace JortPob
 
                 Lort.TaskIterate();
             }
-            SFUtil.EncryptERRegulation($"{Const.OUTPUT_PATH}regulation.bin", bnd);
+            SFUtil.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
 
             /* Write LiveParam extended talk rows */
-            extendedTalkParam.Write($"{Const.OUTPUT_PATH}\\ExtendedTalkParam.param");
+            extendedTalkParam.Write(Path.Combine(Const.OUTPUT_PATH, "ExtendedTalkParam.param"));
         }
 
         /* picks the partdrawparam for an asset based on its size. smaller assets have shorter render distance etc */

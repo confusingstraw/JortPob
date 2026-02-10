@@ -176,7 +176,7 @@ namespace JortPob
             {
                 Parallel.ForEach(banks, bankInfo =>
                 {
-                    string bnkDir = @$"{Const.OUTPUT_PATH}sd\enus\vc{bankInfo.id:D3}";
+                    string bnkDir = Path.Combine(Const.OUTPUT_PATH, "sd", "enus", $"vc{bankInfo.id:D3}");
                     string bnkPath = $@"{bnkDir}.bnk";
                     string bnkRebuiltPath = $@"{bnkDir}.created.bnk";
                     ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkDir}\"")

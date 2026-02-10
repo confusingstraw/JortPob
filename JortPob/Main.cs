@@ -881,12 +881,12 @@ namespace JortPob
             MsbWorker.Go(msbs);
 
             /* Copy DLLs */
-            Lort.Log("Copying DLLs!", Lort.Type.Main);
-            string[] dlls = Directory.GetFiles(@"Resources\DLLs");
-            Lort.NewTask("Done!", dlls.Length);
+            string[] dlls = Directory.GetFiles(Utility.ResourcePath("dlls"));
+            Lort.Log($"Copying {dlls.Length} DLLs", Lort.Type.Main);
+            Lort.NewTask("Copying DLLs", dlls.Length);
             foreach (string file in dlls)
             {
-                string fileName = $"{Const.OUTPUT_PATH}\\{Path.GetFileName(file)}";
+                string fileName = Path.Combine(Const.OUTPUT_PATH, Path.GetFileName(file));
                 if (!File.Exists(fileName))
                 {
                     File.Copy(file, fileName);
