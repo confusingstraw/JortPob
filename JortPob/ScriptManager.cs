@@ -477,10 +477,11 @@ namespace JortPob
             int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
             foreach (Script.Flag flag in allFlags)
             {
-                if (flag.designation != Script.Flag.Designation.Hostile) { continue; }
+                if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
+                if (flag.value != 0) { continue; }                                      // don't reset hostility flags for npcs that are naturally hostile
                 absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, OFF);"));
 
-                if(delayCounter++ > 100)
+                if(delayCounter++ > 512)
                 {
                     absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;

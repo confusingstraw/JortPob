@@ -51,12 +51,11 @@ namespace JortPob
             /* Create some needed text data that is ref'd later */
             for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
 
-            /* Compile Papyrus main global script and it's subscripts */
-            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile. only works with the compatibility patch
-            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
-
             /* Write custom map */
             if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+
+            /* Collect content that needs script compiling for post MSB generation */
+            List<PleaseCompile> contentToCompile = new();
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
@@ -158,13 +157,6 @@ namespace JortPob
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                    if (content.papyrus != null)
-                    {
-                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                    }
-
                     /* Asset tileload config */
                     if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
                     {
@@ -173,14 +165,21 @@ namespace JortPob
                         asset.TileLoad.CullingHeightBehavior = -1;
                     }
 
-                    asset.EntityID = content.entity;
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0) {
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
+                    }
 
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
 
                 /* Add doors */
                 foreach (DoorContent content in tile.doors)
                 {
+                    if (content.warp == null && Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
+
                     /* Grab ModelInfo */
                     ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
@@ -189,11 +188,16 @@ namespace JortPob
                     asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
-                    asset.EntityID = content.entity;
 
-                    if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it
-                    else if (Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0)
+                    {
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
+                        if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
+                    }
 
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
 
@@ -224,6 +228,14 @@ namespace JortPob
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(content.scale * 0.01f);
 
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0)
+                    {
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
+                    }
+
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
 
@@ -258,24 +270,46 @@ namespace JortPob
                         msb.Events.Treasures.Add(treasure);
                     }
 
-                    // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
-                    if (npc.papyrus != null)
-                    {
-                        Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                        //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
-                    }
-
                     (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
-                    enemy.TalkID = character.GetESD(tile, npc); // creates and returns a character esd
                     enemy.NPCParamID = paramRows.npc;
                     enemy.ThinkParamID = paramRows.think;
-                    enemy.EntityID = npc.entity;
 
+                    /* Objects with script references added to PleaseCompile list */
+                    if (npc.entity > 0)
+                    {
+                        enemy.EntityID = npc.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, npc, enemy));
+                    }
+
+                    /* Add to msb */
                     msb.Parts.Enemies.Add(enemy);
                 }
 
-                /* Add items */ // must happen after npcs since items can be owned by npcs so we need all npcs registerd before we do items
+                /* Creatures */
+                foreach (CreatureContent creature in tile.creatures)
+                {
+                    Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
+
+                    MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
+                    enemy.Position = creature.relative + Const.MSB_OFFSET;
+                    enemy.Rotation = creature.rotation;
+
+                    (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                    enemy.NPCParamID = paramRows.npc;
+                    enemy.ThinkParamID = paramRows.think;
+
+                    /* Objects with script references added to PleaseCompile list */
+                    if (creature.entity > 0)
+                    {
+                        enemy.EntityID = creature.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, creature, enemy));
+                    }
+
+                    /* Add to msb */
+                    msb.Parts.Enemies.Add(enemy);
+                }
+
+                /* Add items */
                 foreach (ItemContent content in tile.items)
                 {
                     if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
@@ -292,6 +326,7 @@ namespace JortPob
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
+                    /* Setup item treasure if it exists */
                     if (itemInfo != null)
                     {
                         MSBE.Event.Treasure treasure = MakePart.Treasure();
@@ -304,15 +339,14 @@ namespace JortPob
                         msb.Events.Treasures.Add(treasure);
                     }
 
-                    if (content.papyrus != null)
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0)
                     {
-                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
                     }
 
-                    asset.EntityID = content.entity;
-
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
 
@@ -330,8 +364,14 @@ namespace JortPob
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(content.scale * 0.01f);
 
-                    asset.EntityID = content.entity;
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0)
+                    {
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
+                    }
 
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
 
@@ -352,6 +392,7 @@ namespace JortPob
                     asset.Rotation = content.rotation;
                     asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
+                    /* Setup container treasure if it exists */
                     if (inventory.Count() > 0)
                     {
                         MSBE.Event.Treasure treasure = MakePart.Treasure();
@@ -364,41 +405,15 @@ namespace JortPob
                         msb.Events.Treasures.Add(treasure);
                     }
 
-                    if (content.papyrus != null)
+                    /* Objects with script references added to PleaseCompile list */
+                    if (content.entity > 0)
                     {
-                        if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                        Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                        if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                        asset.EntityID = content.entity;
+                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
                     }
 
-                    asset.EntityID = content.entity;
-
+                    /* Add to msb */
                     msb.Parts.Assets.Add(asset);
-                }
-
-                /* Creatures */
-                foreach (CreatureContent creature in tile.creatures)
-                {
-                    Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
-
-                    MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
-                    enemy.Position = creature.relative + Const.MSB_OFFSET;
-                    enemy.Rotation = creature.rotation;
-
-                    // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
-                    if (creature.papyrus != null)
-                    {
-                        Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
-                        if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                    }
-
-                    (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
-                    enemy.TalkID = character.GetESD(tile, creature); // creates and returns a character esd
-                    enemy.NPCParamID = paramRows.npc;
-                    enemy.ThinkParamID = paramRows.think;
-                    enemy.EntityID = creature.entity;
-
-                    msb.Parts.Enemies.Add(enemy);
                 }
 
                 /* Handle area names */
@@ -509,26 +524,27 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (content.papyrus != null)
-                        {
-                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                        }
-
-                        asset.EntityID = content.entity;
-
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
                         asset.UnkPartNames[3] = rootCollision.Name;
                         asset.UnkPartNames[5] = rootCollision.Name;
 
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
+                        {
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
+                        }
+
+                        /* Add to msb */
                         msb.Parts.Assets.Add(asset);
                     }
 
                     /* Add doors */
                     foreach (DoorContent content in chunk.doors)
                     {
+                        if (content.warp == null && Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
+
                         /* Grab ModelInfo */
                         ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
 
@@ -537,16 +553,21 @@ namespace JortPob
                         asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
-                        asset.EntityID = content.entity;
 
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
                         asset.UnkPartNames[3] = rootCollision.Name;
                         asset.UnkPartNames[5] = rootCollision.Name;
 
-                        if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to register scripts for it
-                        else if (Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
+                        {
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
+                            if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
+                        }
 
+                        /* Add to msb */
                         msb.Parts.Assets.Add(asset);
                     }
 
@@ -582,6 +603,14 @@ namespace JortPob
                         asset.UnkPartNames[3] = rootCollision.Name;
                         asset.UnkPartNames[5] = rootCollision.Name;
 
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
+                        {
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
+                        }
+
+                        /* Add to msb */
                         msb.Parts.Assets.Add(asset);
                     }
 
@@ -597,6 +626,9 @@ namespace JortPob
                         MSBE.Part.Enemy enemy = MakePart.Npc();
                         enemy.Position = npc.relative + Const.MSB_OFFSET;
                         enemy.Rotation = npc.rotation;
+
+                        enemy.Unk1.DisplayGroups[0] = 0;
+                        enemy.CollisionPartName = rootCollision.Name;
 
                         // If the npc is a deadbody we create a treasure on their body
                         List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(npc);
@@ -616,27 +648,49 @@ namespace JortPob
                             msb.Events.Treasures.Add(treasure);
                         }
 
-                        // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
-                        if (npc.papyrus != null)
-                        {
-                            Papyrus papyrusScript = esm.GetPapyrus(npc.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, npc); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                                                                                                                                         //PapyrusESD esdScript = new PapyrusESD(esm, scriptManager, param, text, script, npc, papyrusScript, 99999);
-                        }
-
                         (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
-                        enemy.TalkID = character.GetESD(group, npc); // creates and returns a character esd
                         enemy.NPCParamID = paramRows.npc;
                         enemy.ThinkParamID = paramRows.think;
-                        enemy.EntityID = npc.entity;
+
+                        /* Objects with script references added to PleaseCompile list */
+                        if (npc.entity > 0)
+                        {
+                            enemy.EntityID = npc.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, npc, enemy));
+                        }
+
+                        /* Add to msb */
+                        msb.Parts.Enemies.Add(enemy);
+                    }
+
+                    /* Creatures */
+                    foreach (CreatureContent creature in chunk.creatures)
+                    {
+                        Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
+
+                        MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
+                        enemy.Position = creature.relative + Const.MSB_OFFSET;
+                        enemy.Rotation = creature.rotation;
 
                         enemy.Unk1.DisplayGroups[0] = 0;
                         enemy.CollisionPartName = rootCollision.Name;
 
+                        (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                        enemy.NPCParamID = paramRows.npc;
+                        enemy.ThinkParamID = paramRows.think;
+
+                        /* Objects with script references added to PleaseCompile list */
+                        if (creature.entity > 0)
+                        {
+                            enemy.EntityID = creature.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, creature, enemy));
+                        }
+
+                        /* Add to msb */
                         msb.Parts.Enemies.Add(enemy);
                     }
 
-                    /* Add items */ // must happen after npcs since items can be owned by npcs so we need all npcs registerd before we do items
+                    /* Add items */
                     foreach (ItemContent content in chunk.items)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
@@ -653,6 +707,12 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        /* Setup item treasure if it exists */
                         if (itemInfo != null)
                         {
                             MSBE.Event.Treasure treasure = MakePart.Treasure();
@@ -665,20 +725,44 @@ namespace JortPob
                             msb.Events.Treasures.Add(treasure);
                         }
 
-                        if (content.papyrus != null)
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
                         {
-                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
                         }
 
-                        asset.EntityID = content.entity;
+                        /* Add to msb */
+                        msb.Parts.Assets.Add(asset);
+                    }
+
+                    /* Add pickables */
+                    foreach (PickableContent content in chunk.pickables)
+                    {
+                        if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
+
+                        /* Grab ModelInfo */
+                        PickableInfo pickableInfo = cache.GetPickableModel(content);
+
+                        /* Make part */
+                        MSBE.Part.Asset asset = MakePart.Asset(pickableInfo);
+                        asset.Position = content.relative + Const.MSB_OFFSET;
+                        asset.Rotation = content.rotation;
+                        asset.Scale = new Vector3(content.scale * 0.01f);
 
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
                         asset.UnkPartNames[3] = rootCollision.Name;
                         asset.UnkPartNames[5] = rootCollision.Name;
 
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
+                        {
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
+                        }
+
+                        /* Add to msb */
                         msb.Parts.Assets.Add(asset);
                     }
 
@@ -699,6 +783,12 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
+                        asset.Unk1.DisplayGroups[0] = 0;
+                        asset.UnkPartNames[1] = rootCollision.Name;
+                        asset.UnkPartNames[3] = rootCollision.Name;
+                        asset.UnkPartNames[5] = rootCollision.Name;
+
+                        /* Setup container treasure if it exists */
                         if (inventory.Count() > 0)
                         {
                             MSBE.Event.Treasure treasure = MakePart.Treasure();
@@ -711,49 +801,15 @@ namespace JortPob
                             msb.Events.Treasures.Add(treasure);
                         }
 
-                        if (content.papyrus != null)
+                        /* Objects with script references added to PleaseCompile list */
+                        if (content.entity > 0)
                         {
-                            if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
-                            Papyrus papyrusScript = esm.GetPapyrus(content.papyrus);
-                            if (papyrusScript != null) { msb.AddRegions(PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, content)); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
+                            asset.EntityID = content.entity;
+                            contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
                         }
 
-                        asset.EntityID = content.entity;
-
-                        asset.Unk1.DisplayGroups[0] = 0;
-                        asset.UnkPartNames[1] = rootCollision.Name;
-                        asset.UnkPartNames[3] = rootCollision.Name;
-                        asset.UnkPartNames[5] = rootCollision.Name;
-
+                        /* Add to msb */
                         msb.Parts.Assets.Add(asset);
-                    }
-
-                    /* Creatures */
-                    foreach (CreatureContent creature in chunk.creatures)
-                    {
-                        Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
-
-                        MSBE.Part.Enemy enemy = MakePart.Creature(remap.character);
-                        enemy.Position = creature.relative + Const.MSB_OFFSET;
-                        enemy.Rotation = creature.rotation;
-
-                        enemy.Unk1.DisplayGroups[0] = 0;
-                        enemy.CollisionPartName = rootCollision.Name;
-
-                        // Doing this BEFORE talkesd so that all nesscary local vars are created beforehand!
-                        if (creature.papyrus != null)
-                        {
-                            Papyrus papyrusScript = esm.GetPapyrus(creature.papyrus);
-                            if (papyrusScript != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, script, papyrusScript, creature); } // this != null check only exists because bugs. @TODO: remove when we get 100% papyrus support
-                        }
-
-                        (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
-                        enemy.TalkID = character.GetESD(group, creature); // creates and returns a character esd
-                        enemy.NPCParamID = paramRows.npc;
-                        enemy.ThinkParamID = paramRows.think;
-                        enemy.EntityID = creature.entity;
-
-                        msb.Parts.Enemies.Add(enemy);
                     }
 
                     /* Handle area name */
@@ -806,8 +862,6 @@ namespace JortPob
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
-
-
                 /* Auto resource */
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
 
@@ -816,9 +870,27 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
-            WarpZone.Generate(layout, scriptManager, param);
+            /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
+            /* Compile Papyrus main global script and it's subscripts */
+            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
+            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
 
-            if (param.param[Paramanager.ParamType.TalkParam].Rows.Count() >= ushort.MaxValue) { throw new Exception("Ran out of talk param rows! Will fail to compile params!"); }
+            foreach (PleaseCompile compile in contentToCompile)
+            {
+                Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
+                if(papyrus != null) { PapyrusEMEVD.Compile(esm, layout, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
+
+                if(compile.content is CharacterContent)
+                {
+                    MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
+                    CharacterContent characterContent = compile.content as CharacterContent;
+                    if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, characterContent); }
+                    else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, characterContent); }
+                }
+            }
+
+            /* Geneate debug area in Stranded Graveyard */
+            WarpZone.Generate(layout, scriptManager, param);
 
             /* Write sound BNKs */
             sound.Write();
@@ -893,11 +965,15 @@ namespace JortPob
                 }
                 Lort.TaskIterate();
             }
-            
+
             /* Donezo */
             Lort.Log("Done!", Lort.Type.Main);
             Lort.NewTask("Done!", 1);
             Lort.TaskIterate();
         }
+
+        public abstract record PleaseCompile(MSBE msb, Script script, Content content, MSBE.Part part) { }
+        public record PleaseCompileTile(Tile tile, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
+        public record PleaseCompileGroup(InteriorGroup group, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
     }
 }

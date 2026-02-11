@@ -500,29 +500,8 @@ namespace JortPob
                             else { target = layout.FindScriptReference(content, call.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                            // find area script for that target content
-                            Script script = scriptManager.FindScriptFor(layout, target);
-
                             /* Get flag and/or register script */
-                            Script.Flag disabledFlag;
-                            if (target is StaticContent sc)
-                            {
-                                disabledFlag = script.GetOrRegisterStaticDisable(sc);
-                            }
-                            else if (target is ItemContent ic)
-                            {
-                                disabledFlag = script.PreRegisterItemDisable(ic);
-                            }
-                            else if (target is CharacterContent cc)
-                            {
-                                disabledFlag = script.GetOrRegisterCharacterDisable(cc);
-                            }
-                            else if(target is LightContent lc)
-                            {
-                                // Unsupported!
-                                break;
-                            }
-                            else { throw new Exception("Invalid content type for enable/disable call"); }  // unreachable?
+                            Script.Flag disabledFlag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, target.entity.ToString());
 
                             /* Add code */
                             string toggle = call.type == Papyrus.Call.Type.Disable ? "ON" : "OFF";

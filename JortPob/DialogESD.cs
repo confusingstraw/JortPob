@@ -53,12 +53,6 @@ namespace JortPob
 
             Lort.Log($"Starting dialog ESD generation for: {npcContent.id}", Lort.Type.Debug);
 
-            // Create flags for this character's disposition and first greeting
-            Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
-            Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, npcContent.entity.ToString(), (uint)npcContent.disposition);
-            Script.Flag pickpocketedFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Pickpocketed, npcContent.entity.ToString());
-            Script.Flag thiefFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.ThiefCrime, npcContent.entity.ToString());
-
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
             NpcManager.TopicData hit = GetTalk(topicData, DialogRecord.Type.Hit).FirstOrDefault() ?? new();

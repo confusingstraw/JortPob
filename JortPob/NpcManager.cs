@@ -196,9 +196,6 @@ namespace JortPob
 
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
-            areaScript.RegisterNpcHostility(content);  // setup hostility flag/event
-            areaScript.RegisterNpcHello(content);      // setup hello flags and turntoplayer script
-
             DialogESD dialogEsd = new(esm, layout, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
             string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
             string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";

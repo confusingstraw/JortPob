@@ -60,10 +60,10 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
-        public new void AddContent(Cache cache, Cell cell, Content content)
+        public new void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
             // Special case: if content has a papyrus script it needs to be put in the small tile. large tiles dont have attached EMEVD scripts so they cant live there
-            if(content.papyrus != null) { GetTile(cell.center).AddContent(cache, cell, content); return; }
+            if(content.papyrus != null || forceFallThrough) { GetTile(cell.center).AddContent(cache, cell, content); return; }
 
             switch (content)
             {

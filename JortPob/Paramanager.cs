@@ -761,10 +761,10 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(npc.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)(npc.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row.Cells[105].SetValue((byte)26); // team type (hostile=27, friendly=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
-             AddRow(npcParam, row);
+            AddRow(npcParam, row);
         }
 
         public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
@@ -1143,7 +1143,6 @@ namespace JortPob
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
             script.RegisterItemAsset(itemContent);
-            script.RegisterItemDisable(itemContent, itemLotFlag);
 
             AddRow(itemLotParam, row);
             nextMapItemLotId += 10;

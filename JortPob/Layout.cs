@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Drawing.Drawing2D;
@@ -6,7 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using static JortPob.InteriorGroup;
+using static JortPob.ItemManager;
 using static JortPob.NpcContent;
+using static JortPob.Script;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -154,6 +158,84 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
+            /* Part 1 of papyrus pre-process */
+            /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
+            List<Papyrus.Call> allCalls = new();
+            foreach (Papyrus papyrus in esm.scripts)
+            {
+                allCalls.AddRange(papyrus.GetCalls());
+            }
+
+            foreach (Dialog.DialogRecord dialog in esm.dialog)
+            {
+                allCalls.AddRange(dialog.GetCalls());
+            }
+
+            List<string> allReferences = new(), ableReferences = new();  // able refs is objects targeted by Enable, Disable, and GetDisabled
+            foreach (Papyrus.Call call in allCalls)
+            {
+                // Grab record reference from target if exists
+                string target = call.target?.ToLower().Trim();
+                if (target != null && target != "player")
+                {
+                    if(!allReferences.Contains(target)) { allReferences.Add(target); }
+
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.Enable:
+                        case Papyrus.Call.Type.Disable:
+                        case Papyrus.Call.Type.GetDisabled:
+                            if (!ableReferences.Contains(target)) { ableReferences.Add(target); }
+                            break;
+                        default: break;
+                    }
+                }
+
+                // Grab record reference from arguments if they exist
+                switch (call.type)
+                {
+                    case Papyrus.Call.Type.Cast:
+                        {
+                            string reference = call.parameters[1].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    case Papyrus.Call.Type.GetDistance:
+                        {
+                            string reference = call.parameters[0].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    default: break;
+                }
+            }
+
+            void PreProcessSelfDisableCalls(Cell cell)
+            {
+                foreach(Content content in cell.contents)
+                {
+                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                    if(
+                        papyrus != null &&
+                        (
+                            papyrus.HasCall(Papyrus.Call.Type.Disable) ||
+                            papyrus.HasCall(Papyrus.Call.Type.Enable) ||
+                            papyrus.HasCall(Papyrus.Call.Type.GetDisabled)
+                        )
+                    )
+                    {
+                        string contentId = content.id.ToLower().Trim();
+                        if (!ableReferences.Contains(contentId)) { ableReferences.Add(contentId); }
+                    }
+                }
+            }
+
+            foreach(Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
+            foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
+
+            /* Subdivide all cell content into tiles */
             Content EmitterConversionCheck(Content content)
             {
                 if(content.GetType() != typeof(AssetContent)) { return content; }
@@ -171,7 +253,6 @@ namespace JortPob
                 return emitterContent;
             }
 
-            /* Subdivide all cell content into tiles */
             foreach (Cell cell in esm.exterior)
             {
                 HugeTile huge = GetHugeTile(cell.center);
@@ -190,7 +271,7 @@ namespace JortPob
                     {
                         Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
 
-                        huge.AddContent(cache, cell, c);
+                        huge.AddContent(cache, cell, c, allReferences.Contains(content.id));
                     }
                 }
                 else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
@@ -516,107 +597,103 @@ namespace JortPob
                 }
             }
 
-            /* Handling npc/creature death and respawn flags */
-
-            // Dead by type list.
-            // So morrowind uses a weird system where it keeps a count of each "type" of npc/creature is killed
-            // For most npcs this count will only ever be 0 or 1 since there is only one of that npc in the world
-            // But for like rats and shit it keeps count so it knows you've killed 10 rats or whatever
-            // So to emulate this system we will have a seperate counter flag for each record type of creature or npc
-            Dictionary<string, Script.Flag> typeFlags = new();
-            Script.Flag GetTypeCountFlag(string id)
-            {
-                if (typeFlags.ContainsKey(id))
-                {
-                    return typeFlags[id];
-                }
-
-                Script.Flag typeFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, id);
-                typeFlags.Add(id, typeFlag);
-                return typeFlag;
-            }
-
-            // Create entity ids and dead/disable flags for npcs
-            void HandleNpcFlags(Script script, List<NpcContent> npcs)
-            {
-                foreach (NpcContent npc in npcs)
-                {
-                    Script.Flag countFlag = GetTypeCountFlag(npc.id);
-                    npc.entity = script.CreateEntity(Script.EntityType.Enemy, $"NPC::{npc.id}");
-                    if (npc.dead) { script.RegisterDeadNpc(npc); }
-                    else { script.RegisterNpc(param, npc, countFlag); }
-                }
-            }
-
-            // Create entity ids and dead/disable flags for creatures
-            void HandleCreatureFlags(Script script, List<CreatureContent> creatures)
-            {
-                foreach (CreatureContent creature in creatures)
-                {
-                    Script.Flag countFlag = GetTypeCountFlag(creature.id);
-                    creature.entity = script.CreateEntity(Script.EntityType.Enemy, $"Creature::{creature.id}");
-                    script.RegisterCreature(creature, countFlag);
-                }
-            }
-
-            // Generate scripts
-            foreach (Tile tile in tiles)
-            {
-                if (tile.IsEmpty()) { continue; } // don't generate scripts for empty msbs
-                Script script = scriptManager.GetScript(tile);
-                HandleNpcFlags(script, tile.npcs);
-                HandleCreatureFlags(script, tile.creatures);
-            }
-
-            foreach (InteriorGroup group in interiors)
-            {
-                if (group.IsEmpty()) { continue; } // don't generate scripts for empty msbs
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
-                {
-                    Script script = scriptManager.GetScript(group);
-                    HandleNpcFlags(script, chunk.npcs);
-                    HandleCreatureFlags(script, chunk.creatures);
-                }
-            }
-
-            /* Preprocess run of scripts to identify StaticContent that has a script reference pointing to its record */
-            /* This is needed because I do not want to have script data for every single static in the entire game world. */
-            /* So instead the play here is to preprocess and see what statics get referenced by script calls and create script data only for those specific statics */
-            List<Papyrus.Call> ableCalls = new();
-            foreach(Papyrus papyrus in esm.scripts)
-            {
-                ableCalls.AddRange(papyrus.GetCalls());
-            }
-
-            foreach(Dialog.DialogRecord dialog in esm.dialog)
-            {
-                ableCalls.AddRange(dialog.GetCalls());
-            }
-
+            /* Pat 2 of Papyrus preprocess */
+            /* This assigns entity ids to objects that have scripts referencing them */
+            /* It also in some cases creates flags and events for objects that require them. */
+            /* Also notably we setup disable/enable flags here as well */
             int debugCount = 0;
-            List<string> ableIds = new();
-            foreach(Papyrus.Call call in ableCalls)
-            {
-                if (call.target != null && !ableIds.Contains(call.target)) { ableIds.Add(call.target); }
-            }
-
-            void HandleAbles(Script areaScript, IEnumerable<Content> contents)
+            void PreprocessContent(Script areaScript, IEnumerable<Content> contents)
             {
                 foreach(Content content in contents)
                 {
-                    if(content.GetType().IsSubclassOf(typeof(StaticContent)) && ableIds.Contains(content.id))
+                    string contentId = content.id.ToLower().Trim();
+                    if (allReferences.Contains(contentId) || content is CharacterContent || content is ItemContent || content is DoorContent || content.papyrus != null)
                     {
+                        // Create an entity ID for this object so that it can be interacted with via scripts
+                        Script.EntityType entityType;
+                        switch (content)
+                        {
+                            case ItemContent ic: entityType = Script.EntityType.Asset; break;
+                            case CharacterContent cc: entityType = Script.EntityType.Enemy; break;
+                            case StaticContent sc: entityType = Script.EntityType.Asset; break;
+                            default: throw new Exception("Invalid content type for script preprocess");
+                        }
+                        content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");
+
+                        if(ableReferences.Contains(contentId))
+                        {
+                            // Object disabled flag
+                            Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString());
+                        }
+
                         debugCount++;
-                        StaticContent staticContent = content as StaticContent;
-                        staticContent.entity = areaScript.CreateEntity(Script.EntityType.Asset, staticContent.id);
+                    }
+
+                    switch (content)
+                    {
+                        case LightContent lc:
+                            {
+                                // BTL lights likely can't have scripts (havent checked) so just continue
+                                break;
+                            }
+                        case ItemContent item:
+                            {
+                                // Item scripts are registered during MSB generation. This is due to the fact that they are tied in closely with params that are generated at that point.
+                                break;
+                            }
+                        case StaticContent statik:
+                            {
+                                areaScript.RegisterStaticDisable(statik);
+                                break;
+                            }
+                        case CharacterContent character:
+                            {
+                                // Dead by type list.
+                                // So morrowind uses a weird system where it keeps a count of each "type" of npc/creature is killed
+                                // For most npcs this count will only ever be 0 or 1 since there is only one of that npc in the world
+                                // But for like rats and shit it keeps count so it knows you've killed 10 rats or whatever
+                                // So to emulate this system we will have a seperate counter flag for each record type of creature or npc
+                                Script.Flag countFlag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, character.id);
+
+                                // Humanoid NPCs or creatures that can talk
+                                if (character is NpcContent || (character is CreatureContent && !character.dead && esm.HasDialog((CreatureContent)character)))
+                                {
+                                    // Pre-Dead npcs get a special script to have their body just lay there. They do not get any flags or ESD stuff built
+                                    if (character is NpcContent && character.dead) { areaScript.RegisterDeadNpc((NpcContent)character); }
+                                    // Create a bunch of stuff needed for NPCs to work
+                                    else
+                                    {
+                                        /* Create various flags requried for NPCs */
+                                        Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, character.entity.ToString());
+                                        Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, character.entity.ToString(), (uint)character.disposition);
+                                        Script.Flag pickpocketedFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Pickpocketed, character.entity.ToString());
+                                        Script.Flag thiefFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.ThiefCrime, character.entity.ToString());
+
+                                        /* Register some scripts for NPCs */
+                                        areaScript.RegisterCharacter(param, character, countFlag);
+                                        areaScript.RegisterNpcHostility(character);  // setup hostility flag/event
+                                        areaScript.RegisterNpcHello(character);      // setup hello flags and turntoplayer script
+                                    }
+                                }
+                                // Regular creatures
+                                else
+                                {
+                                    // Dead creatures not supported rn
+                                    CreatureContent creature = content as CreatureContent;
+                                    if (creature.dead) { throw new Exception("Pre-Dead creatures not supported yet!"); }
+                                    else { areaScript.RegisterCharacter(param, creature, countFlag); }
+                                }
+                                break;
+                            }
+                        default: throw new Exception("Invalid content type for script preprocess");
                     }
                 }
             }
 
-            foreach (Tile tile in tiles) { HandleAbles(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (Tile tile in tiles) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
             foreach (InteriorGroup group in interiors)
             {
-                foreach (InteriorGroup.Chunk chunk in group.chunks) { HandleAbles(scriptManager.GetScript(group), chunk.GetAllContent()); }
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
             }
 
             /* Generate map point placements */

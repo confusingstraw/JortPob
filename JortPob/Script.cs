@@ -1,16 +1,8 @@
-﻿using HKLib.hk2018.hk;
-using HKX2;
-using JortPob.Common;
+﻿using JortPob.Common;
 using SoulsFormats;
 using SoulsIds;
-using System;
 using System.Collections.Generic;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using static IronPython.Modules.PythonIterTools;
 using static JortPob.Script.Flag;
-using static SoulsFormats.MSB1.Event;
-using static SoulsFormats.MSBAC4.Event;
 
 /* Individual script for an msb. */
 /* managed by ScriptManager 
@@ -129,10 +121,13 @@ namespace JortPob
             if(item.ownerNpc != null) { owner = GetAreaNpcById(item.ownerNpc); }
             else { owner = null; }
 
+            Script.Flag disableFlag = GetFlag(Script.Flag.Designation.Disabled, item.id);
+            uint disableFlagId = disableFlag != null ? disableFlag.id : 6000; // if no disable flag, just use the 'always off' flag 6000
+
             // Unowned item free for the taking
             if (owner == null)
             {
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.ItemAsset]}, {item.treasure.id}, {item.entity});"));
+                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.ItemAsset]}, {disableFlagId}, {item.entity}, {item.treasure.id}, {item.entity});"));
             }
             // Item owned by an npc that counts as stealing if you take it
             else
@@ -144,6 +139,8 @@ namespace JortPob
 
                 List<string> parameters = new()
                 {
+                    disableFlagId.ToString(),
+                    item.entity.ToString(),
                     item.treasure.id.ToString(),
                     item.entity.ToString(),
                     item.treasure.id.ToString(),
@@ -194,7 +191,7 @@ namespace JortPob
         public void RegisterNpcHostility(CharacterContent npc)
         {
             CreateFlag(Flag.Category.Temporary, Flag.Type.Nibble, Flag.Designation.FriendHitCounter, npc.entity.ToString()); // setup friendly hit counter
-            Flag hostileFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc.entity.ToString());
+            Flag hostileFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc.entity.ToString(), npc.hostile ? 1u : 0u);
             Flag crimeFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeEvent, npc.entity.ToString());
             Flag hostileQuipFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.HostileQuip, npc.entity.ToString());
             Flag hasBeenAttackedFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.HasBeenAttacked, npc.entity.ToString());
@@ -215,68 +212,35 @@ namespace JortPob
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.DeadBody]}, {npc.entity}, {npc.entity}, {npc.entity});"));
         }
 
-        public void RegisterNpc(Paramanager paramanager, NpcContent npc, Flag count)
+        public void RegisterCharacter(Paramanager paramanager, CharacterContent npc, Flag count)
         {
-            /* Dead spawn event */
             Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc.entity.ToString());
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-            if(npc.essential)
+            Flag disableFlag = GetFlag(Script.Flag.Designation.Dead, npc.entity.ToString());
+
+            // NPC spawn handler for NPCS that can't be disabled
+            if (disableFlag == null)
+            {
+                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
+            }
+            // NPC spawn handler for NPCS that can be disabled
+            else
+            {
+                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {npc.entity}, {disableFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
+            }
+
+            if (npc.essential)
             {
                 int tutorialPopupId = paramanager.GenerateMessage("", "With this character's death, the thread of prophecy is severed. You are doomed.");
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.Essential]}, {deadFlag.id}, {deadFlag.id}, {tutorialPopupId});"));
             }
         }
 
-        // @TODO: Refactor disable flag creation to match NPC and make it more streamlined during refactor
-        public void RegisterCreature(CreatureContent creature, Flag count)
+        public Flag RegisterStaticDisable(StaticContent content)
         {
-            /* Dead/disable spawn event */
-            Flag deadFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, creature.entity.ToString());
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {creature.entity}, {creature.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-        }
-
-        public Flag GetOrRegisterStaticDisable(StaticContent content)
-        {
-            Flag disableFlag = GetFlag(Designation.Disabled, content.entity.ToString());  // check if already registered
-            if (disableFlag == null)
-            {
-                disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString());
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.StaticDisable]}, {disableFlag.id}, {content.entity}, {disableFlag.id}, {content.entity});"));
-            }
+            Script.Flag disableFlag = GetFlag(Script.Flag.Designation.Disabled, content.id);
+            if(disableFlag == null) { return null; } // disable flags only get created for objects that have disable calls referencing them.
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.StaticDisable]}, {disableFlag.id}, {content.entity});"));
             return disableFlag;
-        }
-
-        public Flag GetOrRegisterCharacterDisable(CharacterContent content)
-        {
-            Flag deadFlag = GetFlag(Designation.Dead, content.entity.ToString());  // grab dead flag
-            Flag disableFlag = GetFlag(Designation.Disabled, content.entity.ToString());  // check if already registered
-            if (disableFlag == null)
-            {
-                uint deadFlagId = deadFlag != null ? deadFlag.id : 0; // if we are disabling a dead body the deadFlag won't exist so we just check flagid 0 to get a false
-                disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString());
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.CharacterDisable]}, {disableFlag.id}, {content.entity}, {disableFlag.id}, {deadFlagId}, {content.entity});"));
-            }
-            return disableFlag;
-        }
-
-
-        /* This one is a little awkward so it has 2 code paths basically */
-        /* If it is called before the item is actually created and placed in the world it simply generates a disabledFlag and returns it */
-        /* If it is called after the item is created then we actually register the event for enable/disable */
-        public Flag PreRegisterItemDisable(ItemContent content)
-        {
-            Flag disableFlag = GetFlag(Designation.Disabled, content.entity.ToString());
-            if (disableFlag == null) { disableFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString()); }
-            return disableFlag;
-        }
-
-        public void RegisterItemDisable(ItemContent content, Flag pickedUpFlag)
-        {
-            Flag disableFlag = GetFlag(Designation.Disabled, content.entity.ToString());  // check if disable flag was pre-registred
-            if (disableFlag == null) { return; } // return null if no
-
-            // register disable event if yes
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {common.events[ScriptCommon.Event.ItemDisable]}, {disableFlag.id}, {content.entity}, {disableFlag.id}, {pickedUpFlag.id}, {content.entity});"));
         }
 
         /* Can't call PlaySE from ESD so we are using an EMEVD event triggered by a flag to do it. Returned flag is the trigger for playing a sound. */
@@ -411,6 +375,13 @@ namespace JortPob
             flags.Add(flag);
             flagsByLookupKey.TryAdd(GetLookupKeyForFlag(flag), flag);
             return flag;
+        }
+
+        public Flag GetOrCreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        {
+            Flag flag = GetFlag(designation, name);
+            if (flag != null) { return flag; }
+            return CreateFlag(category, type, designation, name, value);
         }
 
         /* Create a unique entity id for this MSB */
