@@ -22,6 +22,7 @@ namespace JortPob
     {
         private readonly ESM esm;
         private readonly Layout layout;
+        private readonly SoulsFormats.MSBE msb;
         private readonly MainSoundBank sound;
         private readonly ScriptManager scriptManager;
         private readonly Paramanager paramanager;
@@ -36,10 +37,11 @@ namespace JortPob
         private readonly Dictionary<NpcManager.TopicData.TalkData, int> choiceMap; // this is a fix for recursive choices. if we generate a choice and another dialog refs it we return the id of the alraedy gen'd one
         private int nxtGenStateId;
 
-        public DialogESD(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
+        public DialogESD(ESM esm, Layout layout, SoulsFormats.MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
         {
             this.esm = esm;
             this.layout = layout;
+            this.msb = msb;
             this.sound = sound;
             this.itemManager = itemManager;
             this.speffManager = speffManager;
@@ -534,7 +536,7 @@ namespace JortPob
                 {
                     if (talkData.dialogInfo.script.calls.Count() > 0)
                     {
-                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 8);
+                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, msb, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 8);
                     }
                     if (talkData.dialogInfo.script.choice != null)
                     {
@@ -950,7 +952,7 @@ namespace JortPob
                     {
                         if (talk.dialogInfo.script.calls.Count() > 0)
                         {
-                            s.Append(talk.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 16));
+                            s.Append(talk.dialogInfo.script.GenerateEsdSnippet(esm, layout, msb, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 16));
                         }
                         if(talk.dialogInfo.script.choice != null)
                         {
@@ -1580,7 +1582,7 @@ namespace JortPob
                     {
                         if (talkData.dialogInfo.script.calls.Count() > 0)
                         {
-                            executeList += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 12);
+                            executeList += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, msb, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 12);
                         }
                         if (talkData.dialogInfo.script.choice != null) // rare situation where a choice option goes into another choice option
                         {

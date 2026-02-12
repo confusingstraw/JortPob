@@ -34,12 +34,12 @@ namespace JortPob
 
             interiors = new();
 
+            Lort.Log("Generating layout...", Lort.Type.Main);
+            Lort.NewTask("Generating Layout", 14);
+
             /* Generate tiles based off base game msb info... */
             string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
             string[] msblist = msbdata.Split(";");
-
-            Lort.Log("Generating layout...", Lort.Type.Main);
-            Lort.NewTask("Generating Layout", msblist.Length+esm.exterior.Count+esm.interior.Count);
 
             foreach (string msb in msblist)
             {
@@ -55,9 +55,8 @@ namespace JortPob
                     tiles.Add(tile);
                     all.Add(tile);
                 }
-
-                Lort.TaskIterate(); // Progress bar update
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Generate BigTiles... */
             foreach (string msb in msblist)
@@ -87,9 +86,8 @@ namespace JortPob
                     bigs.Add(big);
                     all.Add(big);
                 }
-
-                Lort.TaskIterate(); // Progress bar update
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Generate HugeTiles... */
             foreach (string msb in msblist)
@@ -131,9 +129,8 @@ namespace JortPob
                     huges.Add(huge);
                     all.Add(huge);
                 }
-
-                Lort.TaskIterate(); // Progress bar update
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Generate Interior Groups */
             foreach (string msb in msblist)
@@ -154,9 +151,8 @@ namespace JortPob
                     InteriorGroup group = new InteriorGroup(m, a, u, b);
                     interiors.Add(group);
                 }
-
-                Lort.TaskIterate(); // Progress bar update
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Part 1 of papyrus pre-process */
             /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
@@ -175,17 +171,16 @@ namespace JortPob
             foreach (Papyrus.Call call in allCalls)
             {
                 // Grab record reference from target if exists
-                string target = call.target?.ToLower().Trim();
-                if (target != null && target != "player")
+                if (call.target != null && call.target != "player")
                 {
-                    if(!allReferences.Contains(target)) { allReferences.Add(target); }
+                    if(!allReferences.Contains(call.target)) { allReferences.Add(call.target); }
 
                     switch (call.type)
                     {
                         case Papyrus.Call.Type.Enable:
                         case Papyrus.Call.Type.Disable:
                         case Papyrus.Call.Type.GetDisabled:
-                            if (!ableReferences.Contains(target)) { ableReferences.Add(target); }
+                            if (!ableReferences.Contains(call.target)) { ableReferences.Add(call.target); }
                             break;
                         default: break;
                     }
@@ -234,6 +229,7 @@ namespace JortPob
 
             foreach(Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
             foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Subdivide all cell content into tiles */
             Content EmitterConversionCheck(Content content)
@@ -271,12 +267,12 @@ namespace JortPob
                     {
                         Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
 
-                        huge.AddContent(cache, cell, c, allReferences.Contains(content.id));
+                        huge.AddContent(cache, cell, c, allReferences.Contains(content.id.ToLower().Trim()));
                     }
                 }
                 else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
-                Lort.TaskIterate(); // Progress bar update
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Render an ASCII image of the tiles for verification! */
             Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
@@ -294,6 +290,7 @@ namespace JortPob
                 }
                 Lort.Log(line, Lort.Type.Debug);
             }
+            Lort.TaskIterate(); // Progress bar update
 
 
             /* Subdivide all interior cells into groups */
@@ -305,13 +302,12 @@ namespace JortPob
                 {
                     Cell cell = esm.interior[i];
                     group.AddCell(cell);
-
-                    Lort.TaskIterate(); // Progress bar update
                 }
 
                 start += partition;
                 end += partition;
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
             InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
@@ -461,13 +457,15 @@ namespace JortPob
                     HandleTravel(npc, tile);
                 }
             }
+            Lort.TaskIterate(); // Progress bar update
 
-            // default location name value for interiors
-            foreach(InteriorGroup group in interiors)
+            /* default location name value for interiors */
+            foreach (InteriorGroup group in interiors)
             {
                 int textId = int.Parse($"{group.map:D2}{group.area:D2}0");
                 text.SetLocation(textId, "Interior");
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Handle npc hasWitness flag */ // this check is very similar to and patially entwined with Script.GenerateCrimeEvents() and the ESD state HANDLECRIME
             /* We can't determine witnesses at runtime so we just do some test now and determine if an npc has witneses to report crimes to */
@@ -491,6 +489,7 @@ namespace JortPob
             foreach (InteriorGroup group in interiors) {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.npcs); }
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Statically resolve shop inventories for npcs (also creatures too) */
             void ResolveShop(CharacterContent npc)
@@ -596,6 +595,7 @@ namespace JortPob
                     foreach (CreatureContent creature in chunk.creatures) { ResolveShop(creature); }
                 }
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Pat 2 of Papyrus preprocess */
             /* This assigns entity ids to objects that have scripts referencing them */
@@ -620,7 +620,8 @@ namespace JortPob
                         }
                         content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");
 
-                        if(ableReferences.Contains(contentId))
+                        // talkable characters always get disable flags for simplicity. statically resolving dialog triggered self-disable calls is slow as hell
+                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || ableReferences.Contains(contentId))
                         {
                             // Object disabled flag
                             Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString());
@@ -695,6 +696,7 @@ namespace JortPob
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
             }
+            Lort.TaskIterate(); // Progress bar update
 
             /* Generate map point placements */
             Dictionary<string, List<Vector3>> mapPoints = new();
@@ -780,7 +782,7 @@ namespace JortPob
                     }
                 }
             }
-
+            Lort.TaskIterate(); // Progress bar update
         }
 
         public HugeTile GetHugeTile(Vector3 position)

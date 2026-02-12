@@ -19,12 +19,11 @@ namespace JortPob
     {
         public static List<Call.Type> UNSUPPORTED_CALL_LIST = new(), UNSUPPORTED_CONDITIONAL_LIST = new(), UNSUPPORTED_SET_LIST = new();
 
-        public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
+        public static void Compile(ESM esm, Layout layout, MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
-            if (Const.DEBUG_SKIP_ESD) { return new(); }
+            if (Const.DEBUG_SKIP_ESD) { return; }
 
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
-            List<MSBE.Region> generatedRegions = new();  // return these back to the MSB generation in Main so it can add them.
 
             /* Returns a special EMEVD command that resets all condition groups by making a do-nothing call that checks MAIN */
             string ResetConditionGroups()
@@ -92,18 +91,15 @@ namespace JortPob
                         break;
 
                     case Call.Type.GetJournalIndex:
+                        Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]);
                         if (call.right.type == Call.Type.Literal)
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.left.parameters[0]); // find journal flag, create it if doesn't exist yet
-                            if(jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]); }
                             lines.Add(ResetConditionGroups());
                             lines.Add($"IfEventValue(OR_01, {jflag.id}, {jflag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
                             lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
                         }
                         else if (call.right.type == Call.Type.Variable)
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.left.parameters[0]); // find journal flag, create it if doesn't exist yet
-                            if (jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]); }
                             Script.Flag lflag = GetFlagByVariable(call.right.parameters[0]);
                             lines.Add(ResetConditionGroups());
                             lines.Add($"IfCompareEventValues(OR_01, {jflag.id}, {jflag.Bits()}, {call.OperatorIndex()}, {lflag.id}, {lflag.Bits()});");
@@ -202,7 +198,7 @@ namespace JortPob
                                 distanceRegion.Shape = new MSB.Shape.Sphere(float.Parse(call.right.parameters[0]) * Const.GLOBAL_SCALE);
                                 distanceRegion.Position = targetA.relative + Const.MSB_OFFSET;
                                 distanceRegion.EntityID = areaScript.CreateEntity(Script.EntityType.Region, $"{papyrus.id}->{call.RAW.Trim()}");
-                                generatedRegions.Add(distanceRegion);
+                                msb.Regions.Add(distanceRegion);
 
                                 string inOut = call.op == ">" || call.op == ">=" ? "Inside" : "Outside";
                                 lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{inOut}, {(targetB == null ? 10000 : targetB.entity)}, {distanceRegion.EntityID}, 1);");
@@ -276,7 +272,7 @@ namespace JortPob
                                 {
                                     if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                     else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
+                                    PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
                                 }
 
                                 // Finally we just add some code here to start/stop the subscript
@@ -320,14 +316,12 @@ namespace JortPob
                             if (script is ScriptCommon)
                             {
                                 string flagId = call.parameters[0];
-                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Global, flagId); // Look for the flag, create it if it doesn't exist
-                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, flagId); }
+                                Script.Flag lflag = script.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, flagId);
                             }
                             else
                             {
                                 string flagId = $"{content.id}.{call.parameters[0]}";
-                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Local, flagId); // Look for the flag, create it if it doesn't exist
-                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId); }
+                                Script.Flag lflag = script.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId);
                             }
                             break;
                         }
@@ -387,8 +381,7 @@ namespace JortPob
                                         lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {l2flag.id}, {l2flag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetJournalIndex:
-                                        Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, operation.call.parameters[0]); // find journal flag or create it if it does not exist
-                                        if(jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, operation.call.parameters[0]); }
+                                        Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, operation.call.parameters[0]);
                                         lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {jflag.id}, {jflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetButtonPressed:
@@ -405,8 +398,7 @@ namespace JortPob
 
                     case Call.Type.Journal:
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.parameters[0]); // look for flag, if not found make one
-                            if (jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.parameters[0]); }
+                            Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.parameters[0]);
                             Script.Flag mflag = scriptManager.common.GetOrRegisterNotification(paramanager, "Your journal has been updated!");
                             lines.Add($"EventValueOperation({jflag.id}, {jflag.Bits()}, {int.Parse(call.parameters[1])}, 0, 1, 5);");  // 5 is the 'Assign' operation
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {mflag.id}, ON);");
@@ -486,8 +478,7 @@ namespace JortPob
                                 case ScriptCommon.WeatherPapyrus.Blizzard: erw = ScriptCommon.WeatherEMEVD.SnowyHeavyFog; break;
                                 default: throw new Exception("Invalid weather enum"); // unreachable
                             }
-                            string code = $"ChangeWeather({(int)erw}, 1000, true);";
-                            lines.Add(code);
+                            lines.Add($"ChangeWeather({(int)erw}, 1000, true);");
                             break;
                         }
 
@@ -506,6 +497,31 @@ namespace JortPob
                             /* Add code */
                             string toggle = call.type == Papyrus.Call.Type.Disable ? "ON" : "OFF";
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {disabledFlag.id}, {toggle});");
+
+                            /* For enable/disable we also need to manually set the enable state but contextually based on the objects currrent status */
+                            string able = call.type == Papyrus.Call.Type.Disable ? "Disabled" : "Enabled";
+                            switch (target)
+                            {
+                                case CharacterContent c:
+                                    {
+                                        Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {deadFlag.id});"); // if character is dead skip enable/disable
+                                        lines.Add($"ChangeCharacterEnableState({target.entity}, {able});");
+                                        break;
+                                    }
+                                case ItemContent i:
+                                    {
+                                        Script.Flag itemFlag = i.treasure;
+                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {itemFlag.id});"); // if item already picked up then skip enable/disable
+                                        lines.Add($"ChangeAssetEnableState({target.entity}, {able});");
+                                        break;
+                                    }
+                                default:
+                                    {
+                                        lines.Add($"ChangeAssetEnableState({target.entity}, {able});"); // just send it, no issues
+                                        break;
+                                    }
+                            }
                             break;
                         }
 
@@ -514,7 +530,7 @@ namespace JortPob
                             // only supporting items/gold added to player rn. will eventually support other stuff
                             if (call.target == "player")
                             {
-                                // Gold specifically handled as souls so its diffo from other item checks
+                                // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
                                     // @TODO: need to generate a speff for this to work
@@ -530,28 +546,12 @@ namespace JortPob
                             break;
                         }
 
-                    case Papyrus.Call.Type.FadeIn:
-                        {
-                            float time = float.Parse(call.parameters[0]);
-                            string code = $"FadeToBlack(0, {time}, false, 0);";
-                            lines.Add(code);
-                            break;
-                        }
-
-                    case Papyrus.Call.Type.FadeOut:
-                        {
-                            float time = float.Parse(call.parameters[0]);
-                            string code = $"FadeToBlack(1, {time}, true, 0);";
-                            lines.Add(code);
-                            break;
-                        }
-
                     case Papyrus.Call.Type.RemoveItem:
                         {
                             // only supporting items/gold added to player rn. will eventually support other stuff
                             if (call.target == "player")
                             {
-                                // Gold specifically handled as souls so its diffo from other item checks
+                                // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
                                     // @TODO: need to generate a speff for this to work
@@ -561,9 +561,23 @@ namespace JortPob
                                 {
                                     ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
                                     if (itemInfo == null) { throw new Exception(); }
-                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, 1);");
+                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, {call.parameters[1]});");
                                 }
                             }
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeIn:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            lines.Add($"FadeToBlack(0, {time}, false, 0);");
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeOut:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            lines.Add($"FadeToBlack(1, {time}, true, 0);");
                             break;
                         }
 
@@ -682,7 +696,7 @@ namespace JortPob
                         {
                             uint entityId;
                             if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 entityId = layout.FindScriptReference(content, call.target).entity;
@@ -721,7 +735,7 @@ namespace JortPob
                         {
                             uint entityId;
                             if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 entityId = layout.FindScriptReference(content, call.target).entity;
@@ -801,9 +815,8 @@ namespace JortPob
                             if (target == null) { break; } // during partial builds the reference may not resolve
 
                             Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
-                            if (rvar == null) { break; } // @TODO: This needs to be fixed. I'm currently considering options so leaving it for now.
                             lines.Add(ResetConditionGroups());
-                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to dispoition
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to disposition
                             lines.Add($"IfEventValue(OR_01, {rvar.id}, {rvar.Bits()}, 4, 100);");                                   // if disposition is greater or equal to 100
                             lines.Add($"SkipIfConditionGroupStateUncompiled(1, FAIL, OR_01);");
                             lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, 100, 0, 1, 0);");                           // set disposition to 100
@@ -813,8 +826,7 @@ namespace JortPob
                     case Call.Type.ModReputation:
                         {
                             Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
-                            string code = $"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
-                            lines.Add(code);
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);"); // 0 is Add
                             break;
                         }
 
@@ -822,8 +834,7 @@ namespace JortPob
                         {
                             int rep = int.Parse(call.parameters[0]);
                             Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, call.parameters[1]);
-                            string code = $"EventValueOperation({fvar.id}, {fvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
-                            lines.Add(code);
+                            lines.Add($"EventValueOperation({fvar.id}, {fvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);"); // 0 is Add
                             break;
                         }
 
@@ -845,7 +856,7 @@ namespace JortPob
 
                             uint entityId;
                             if(call.target == null) { entityId = content.entity; }                       // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 Content speaker = layout.FindScriptReference(content, call.target);
@@ -856,7 +867,6 @@ namespace JortPob
                             lines.Add($"PlaySE({entityId}, 7, {playId * 10});");  // 7 is "Voice"
                             break;
                         }
-
 
                     case Papyrus.Call.Type.PlaySound:
                     case Papyrus.Call.Type.PlaySoundVP:
@@ -927,7 +937,7 @@ namespace JortPob
                             {
                                 if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                 else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
+                                PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
                             }
 
                             // Finally we just add some code here to start/stop the subscript
@@ -1038,14 +1048,14 @@ namespace JortPob
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
             if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id}); "); }  // if this is a subscript, only runs when run flag is set true
-            if (lines.Count() <= 0) { return new(); } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
+            if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart
             foreach (string line in lines) { evt.Instructions.Add(script.AUTO.ParseAdd(line)); }
             script.emevd.Events.Add(evt);
             script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {evtFlag.id}, 0);"));
 
-            return generatedRegions;
+            return;
         }
     }
 }

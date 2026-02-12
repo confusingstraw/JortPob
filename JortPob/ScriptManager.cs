@@ -25,7 +25,7 @@ namespace JortPob
         public List<Script> scripts; // map scripts
         public ScriptManager()
         {
-            common = new();
+            common = new(this);
             scripts = new();
 
             // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
@@ -50,7 +50,7 @@ namespace JortPob
                 }
             }
 
-            Script s = new(common, map, x, y, block);
+            Script s = new(this, map, x, y, block);
             scripts.Add(s);
             return s;
         }
