@@ -16,6 +16,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static HKLib.hk2018.hkSerialize.CompatTypeParentInfo;
 using static IronPython.Modules._ast;
+using static JortPob.Papyrus;
 using static JortPob.Script;
 using static SoulsFormats.MQB;
 using static SoulsFormats.MSBAC4.Event;
@@ -194,7 +195,7 @@ namespace JortPob
                             {
                                 case DialogFilter.Function.VariableCompare:
                                     {
-                                        string localId = $"{npc.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                        string localId = $"{npc.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
                                         Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
                                         if (lvar != null) { return true; } // local vars are preprocessed so we can just check if the local var exists or not
                                         break;
@@ -209,7 +210,7 @@ namespace JortPob
                             {
                                 case DialogFilter.Function.VariableCompare:
                                     {
-                                        string localId = $"{npc.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                        string localId = $"{npc.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
                                         Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
                                         if (lvar == null) { return true; } // local vars are preprocessed so we can just check if the local var exists or not
                                         break;
@@ -573,7 +574,7 @@ namespace JortPob
                                 {
                                     case DialogFilter.Function.VariableCompare:
                                         {
-                                            string localId = $"{npcContent.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                            string localId = $"{npcContent.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
                                             Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
                                             if(lvar == null) { return "True"; } // if we don't find the flag for a local var it doesn't exist
                                             return $"False";
@@ -648,7 +649,7 @@ namespace JortPob
                                     case DialogFilter.Function.VariableCompare:
                                     case DialogFilter.Function.Global:  // This appears to be a bug where Locals that are floats get marked as FunctionType 'Global'
                                         {
-                                            string localId = $"{npcContent.id}.{filter.id}"; // local vars use the characters id + the var id. many characters can have their own copy of a local
+                                            string localId = $"{npcContent.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
                                             Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag, if not found it dosent exist so return false
                                             if (lvar == null) { return "False"; }
                                             return $"GetEventFlagValue({lvar.id}, {lvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
@@ -761,16 +762,27 @@ namespace JortPob
                 Script.Flag GetFlagByVariable(string varName)
                 {
                     Script.Flag retFlag = null;
-                    if (!varName.Contains("."))  // probably a local var of this object
+
+                    // probably a local var of this object. ex: powerLevel or angryness
+                    if (!varName.Contains(".")) 
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.id}.{varName}");
+                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varName}");
                     }
-                    else         // looks like it's actually a local var of a different object
+                    // looks like it's actually a local var of a different object EX: fargoth.sexy or "dagoth ur".dreamy
+                    else
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, varName); // look for it, if we dont find it we create it
-                        if (retFlag == null) { retFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, varName); }
+                        // Find refernce to object that matches the record id of this local var 
+                        string recordId = varName.Split(".")[0].Replace("\"", "").Trim();
+                        Content target = layout.FindScriptReference(npcContent, recordId);
+                        if (target != null)
+                        {
+                            retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varName}");
+                        }
                     }
-                    if (retFlag == null) { retFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, varName); } // maybe its a global var!
+                    // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
+                    if (retFlag == null) { retFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, varName); }
+
+                    // return whatever we found, even if null
                     return retFlag;
                 }
 
@@ -991,20 +1003,38 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.ModDisposition:
                             {
-                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                                // Find our target content
+                                Content target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // Add call to mod disposition func
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
                                 lines.Add($"assert t{esdId:D9}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dvar.id}, value={call.parameters[0]})");
                                 break;
                             }
                         case Papyrus.Call.Type.SetDisposition:
                             {
-                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                                // Find our target content
+                                Content target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // Set disp value
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
                                 lines.Add($"SetEventFlagValue({dvar.id}, {dvar.Bits()}, {call.parameters[0]})");
                                 break;
                             }
                         case Papyrus.Call.Type.ModReputation:
                             {
-                                Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
-                                lines.Add($"SetEventFlagValue({rvar.id}, {rvar.Bits()}, ( GetEventFlagValue({rvar.id}, {rvar.Bits()}) + {call.parameters[0]} ))");
+                                if (call.target == "player")  // only for player
+                                {
+                                    Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
+                                    lines.Add($"SetEventFlagValue({rvar.id}, {rvar.Bits()}, ( GetEventFlagValue({rvar.id}, {rvar.Bits()}) + {call.parameters[0]} ))");
+                                }
+                                // stub reputation is a static value for NPCs so we can't really do anything with that
                                 break;
                             }
                         case Papyrus.Call.Type.SetPcCrimeLevel:
@@ -1031,11 +1061,17 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.StartCombat:
                             {
+                                // Find our target content
+                                CharacterContent target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = (CharacterContent)layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
                                 if (call.parameters[0].Trim() == "player")
                                 {
                                     Flag hvar; // if a guard starts combat with a player its a crime, if its anyone else it's just them being angy at you
-                                    if (npcContent.IsGuard()) { hvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, npcContent.entity.ToString()); }
-                                    else { hvar = scriptManager.GetFlag(Flag.Designation.Hostile, npcContent.entity.ToString()); }
+                                    if (target.IsGuard()) { hvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, target.entity.ToString()); }
+                                    else { hvar = scriptManager.GetFlag(Flag.Designation.Hostile, target.entity.ToString()); }
                                     lines.Add($"SetEventFlag({hvar.id}, FlagState.On)");
                                     break;
                                 }
@@ -1106,20 +1142,24 @@ namespace JortPob
                                 Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
                                 if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
 
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = npcContent; }
+                                else { target = layout.FindScriptReference(npcContent, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
                                 // find area script for this npc
-                                Script script = scriptManager.FindScriptFor(layout, npcContent);
+                                BaseScript targetScript = scriptManager.FindScriptFor(layout, target);
 
                                 // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
-                                Script.Flag subscriptRunFlag;
-                                if (script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
-                                else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{npcContent.id}->{subscript.id}->{npcContent.entity}"); }
+                                Script.Flag subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{npcContent.entity}->{subscript.id}"); 
 
                                 // If the subscript does not exist yet, we create it
                                 if (subscriptRunFlag == null)
                                 {
-                                    if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
-                                    else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{npcContent.id}->{subscript.id}->{npcContent.entity}"); }
-                                    PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, npcContent, subscriptRunFlag);
+                                    subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{npcContent.entity}->{subscript.id}");
+                                    PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, targetScript, subscript, npcContent); // @TODO: intialize subscript vars during the Main.cs local initializer phase? this might be an issue here?
+                                    PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, targetScript, subscript, npcContent, subscriptRunFlag);
                                 }
 
                                 // Finally we just add some code here to start/stop the subscript

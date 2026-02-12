@@ -114,7 +114,7 @@ namespace JortPob
                 if (flag.category == Script.Flag.Category.Event) { continue; } // not values, used for event ids
                 if (flag.category == Script.Flag.Category.Temporary) { continue; } // not even saved anyways so skip
                 if (flag.designation == Script.Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
-                if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
+                if (flag.designation == Script.Flag.Designation.Local && flag.name == "main.runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
                 if (flag.designation == Script.Flag.Designation.Hardcode && flag.name == "GameInit") { continue; } // another event we should not reset
 
                 if (flag.type == Script.Flag.Type.Bit)
@@ -131,7 +131,7 @@ namespace JortPob
                     delayCounter = 0;
                 }
             }
-            Script.Flag mainRunOnceFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "runonce");
+            Script.Flag mainRunOnceFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, "main.runonce");
             if (mainRunOnceFlag != null)  // runonce flag is actually a custom thing i wrote in to the main script in an esp so make this optional to prevent crash
             {
                 debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({mainRunOnceFlag.id}, {mainRunOnceFlag.Bits()}, {mainRunOnceFlag.value}, 0, 1, CalculationType.Assign);")); // after all other flags, reset main runonce so main can rerun initializer scripts

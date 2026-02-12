@@ -872,9 +872,18 @@ namespace JortPob
 
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */
-            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
-            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
 
+            /* Initialize local variables first */
+            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
+            if (papyrusMain != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, scriptManager.common, papyrusMain, null); }
+            foreach (PleaseCompile compile in contentToCompile)
+            {
+                Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
+                if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
+            }
+
+            /* Then compile papyrus and dialog */
+            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
             foreach (PleaseCompile compile in contentToCompile)
             {
                 Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
