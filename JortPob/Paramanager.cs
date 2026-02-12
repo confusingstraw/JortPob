@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using FSParam;
+using JortPob.Common;
 using JortPob.Worker;
 using Microsoft.Scripting.Hosting;
 using SoulsFormats;
@@ -87,6 +88,7 @@ namespace JortPob
         public readonly TextManager textManager;
 
         public readonly Dictionary<ParamType, FsParam> param;
+        public readonly LiveParam extendedTalkParam;
 
         public Dictionary<string, int> interactActionButtons, itemActionButtons; // string is the text of the button prompt, int is the row id
 
@@ -116,10 +118,10 @@ namespace JortPob
                 Lort.TaskIterate();
                 try
                 {
-                    ParamDefType ty = (ParamDefType)System.Enum.Parse(typeof(ParamDefType), p.ParamType);
+                    ParamDefType ty = Enum.Parse<ParamDefType>(p.ParamType);
                     paramdefs.Add(ty, p);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Lort.Log($"Skipped unknown paramdef: {p.ParamType}", Lort.Type.Debug);
                     continue;
@@ -141,6 +143,23 @@ namespace JortPob
             talkParam.ClearRows();
             foreach (FsParam.Row row in openingcustcenestuff) {
                 talkParam.AddRow(row);
+            }
+
+            /* Load extenedTalkParam and do the same thing as above */
+            foreach(BinderFile bf in paramBnd.Files) { if (Utility.PathToFileName(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
+            extendedTalkParam.ApplyParamdef(SoulsFormats.PARAMDEF.XmlDeserialize(Utility.ResourcePath(@"misc\paramdefs\TalkParam.xml")));
+
+            List<LiveParam.Row> openingcustcenestuff2 = new();
+            foreach (LiveParam.Row row in extendedTalkParam.Rows)
+            {
+                if (row.ID > 1500080)
+                    break;
+                openingcustcenestuff2.Add(row);
+            }
+            extendedTalkParam.ClearRows();
+            foreach (LiveParam.Row row in openingcustcenestuff2)
+            {
+                extendedTalkParam.AddRow(row);
             }
 
             /* Clear out recipe and recipe material params */
@@ -192,6 +211,39 @@ namespace JortPob
             itemLotParamMap.ClearRows();
             foreach (FsParam.Row row in keepMapLots) { itemLotParamMap.AddRow(row); }
 
+            /* Clear out mapheight params, these are 1000% not needed for the morrowind map. Just trust me */
+            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
+            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightParam.Rows[i];
+                if (row.ID >= 99999901) { continue; } // keep some base params
+                mapGridHeightParam.RemoveRow(row);
+                i--;
+            }
+
+            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
+            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
+            {
+                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
+                if (row.ID <= 2) { continue; } // keep some base params
+                mapGridHeightDetailParam.RemoveRow(row);
+                i--;
+            }
+
+            /* Clear out WorldMapPointParam. We don't need any of these from the base game. */
+            FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
+            FsParam.Row worldMapPointParamTemplate = GetRow(worldMapPointParam, 61413800);   // grab stormhill shack as our template
+            worldMapPointParamTemplate.ID = 1;
+            worldMapPointParamTemplate["eventFlagId"].Value.SetValue(6000u); // always off
+            worldMapPointParam.ClearRows();
+            AddRow(worldMapPointParam, worldMapPointParamTemplate);
+
+            /* Clear out WorldMapPlaceNaemParam. We don't need any of these from the base game. */
+            FsParam worldMapPlaecNameParam = param[ParamType.WorldMapPlaceNameParam];
+            FsParam.Row worldMapPlaecNameParamTemplate = GetRow(worldMapPlaecNameParam, 1);   // grab the blank one as a template
+            worldMapPlaecNameParam.ClearRows();
+            AddRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
+
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
@@ -207,7 +259,7 @@ namespace JortPob
 
         public FsParam.Row CloneRow(FsParam.Row row, string name, int newId)
         {
-            var clone = new FsParam.Row(row);
+            FsParam.Row clone = new FsParam.Row(row);
             clone.ID = newId;
             clone.Name = name;
             return clone;
@@ -223,7 +275,8 @@ namespace JortPob
             Lort.Log($"Binding {param.Count()} PARAMs...", Lort.Type.Main);
             Lort.NewTask($"Binding PARAMs", param.Count());
             Lort.Log($"Total TalkParam rows: {param[Paramanager.ParamType.TalkParam].Rows.Count()} out of a max of {ushort.MaxValue}", Lort.Type.Debug);
-
+            
+            /* Write params */
             BND4 bnd = new();
             bnd.Compression = SoulsFormats.DCX.Type.DCX_ZSTD;
             bnd.Version = "11601000";
@@ -245,7 +298,10 @@ namespace JortPob
 
                 Lort.TaskIterate();
             }
-            SFUtil.EncryptERRegulation($"{Const.OUTPUT_PATH}regulation.bin", bnd);
+            SFUtil.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
+
+            /* Write LiveParam extended talk rows */
+            extendedTalkParam.Write(Path.Combine(Const.OUTPUT_PATH, "ExtendedTalkParam.param"));
         }
 
         /* picks the partdrawparam for an asset based on its size. smaller assets have shorter render distance etc */
@@ -637,22 +693,20 @@ namespace JortPob
         }
 
         public void GenerateTalkParam(List<NpcManager.TopicData> topicData)
-        {
-            FsParam talkParam = param[ParamType.TalkParam];
-            
+        { 
             /*
              * Since FsParam[ID] is actually a linear search for a matching row, we build a Dictionary up-front
              * to speed up checks. Because of this, however, we need to keep it up-to-date in the loop below.
              */
-            Dictionary<int, FsParam.Row> rowsById = talkParam.Rows.ToDictionary(r => r.ID);
+            Dictionary<int, LiveParam.Row> rowsById = extendedTalkParam.Rows.ToDictionary(r => r.ID);
 
-            FsParam.Row templateTalkRow = rowsById[1400000]; // 1400000 is a line from opening cutscene
+            LiveParam.Row templateTalkRow = rowsById[1400000]; // 1400000 is a line from opening cutscene
 
-            FsParam.Column msgId = talkParam["msgId"];
-            FsParam.Column voiceId = talkParam["voiceId"];
+            LiveParam.Column msgId = extendedTalkParam["msgId"];
+            LiveParam.Column voiceId = extendedTalkParam["voiceId"];
 
-            FsParam.Column msgId_female = talkParam["msgId_female"];
-            FsParam.Column voiceId_female = talkParam["voiceId_female"];
+            LiveParam.Column msgId_female = extendedTalkParam["msgId_female"];
+            LiveParam.Column voiceId_female = extendedTalkParam["voiceId_female"];
 
             foreach (NpcManager.TopicData topic in topicData)
             {
@@ -667,7 +721,9 @@ namespace JortPob
                         if (rowsById.ContainsKey(id)) { continue; }
 
                         // truncating the text in the row name because it can cause issues if it is too long
-                        FsParam.Row row = CloneRow(templateTalkRow, text.Substring(0, Math.Min(32, text.Length)), id); // 1400000 is a line from opening cutscene
+                        LiveParam.Row row = new LiveParam.Row(templateTalkRow);
+                        row.ID = id;
+                        row.Name = text.Substring(0, Math.Min(32, text.Length));
 
                         msgId.SetValue(row, id * 10); // message id (male)
                         voiceId.SetValue(row, id * 10); // message id (male)
@@ -676,7 +732,10 @@ namespace JortPob
                         voiceId_female.SetValue(row, id * 10); // message id (female)
 
                         textManager.AddTalk(id * 10, text);
-                        AddRow(talkParam, row);
+                        LiveParam.Row oldrow = extendedTalkParam[row.ID];
+                        if (oldrow != null)
+                            extendedTalkParam.RemoveRow(oldrow);
+                        extendedTalkParam.AddRow(row);
                         rowsById[id] = row; // this is where we keep the lookup up-to-date
                     }
                 }
@@ -691,7 +750,7 @@ namespace JortPob
             else { rowToCopy = 523010000; }          // white mask varre
 
             FsParam npcParam = param[ParamType.NpcParam];
-            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.name, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id); // 523010000 is white mask varre
 
             int itemLotRow;
             List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(npc);
@@ -706,6 +765,49 @@ namespace JortPob
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
              AddRow(npcParam, row);
+        }
+
+        public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        {
+            // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
+            int rowToCopy = remap.npc.row;
+
+            FsParam npcParam = param[ParamType.NpcParam];
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], creature.id, id);
+
+            int itemLotRow;
+            List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(creature);
+            if (inventory.Count() > 0) { itemLotRow = GenerateInventoryItemLot(script, creature, inventory); }    // @TODO: rework item lot generation for creatures to be non-fixed
+            else { itemLotRow = -1; }
+
+            int textId = textManager.AddNpcName(creature.name);
+            row.Cells[5].SetValue(textId); // nameId
+            row.Cells[105].SetValue((byte)(creature.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row["itemLotId_enemy"].Value.SetValue(itemLotRow);
+
+            // @TODO: apply data from json remap to param!
+
+            AddRow(npcParam, row);
+        }
+
+        public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
+        {
+            FsParam thinkParam = param[ParamType.NpcThinkParam];
+            FsParam.Row row = CloneRow(thinkParam[523010000], npc.id, id); // 523010000 is white mask varre
+
+            // STUB:: do stuff to this param lol
+
+            AddRow(thinkParam, row);
+        }
+
+        public void GenerateThinkParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        {
+            FsParam thinkParam = param[ParamType.NpcThinkParam];
+            FsParam.Row row = CloneRow(thinkParam[remap.think.row], creature.id, id);
+
+            // STUB:: do stuff to this param lol
+
+            AddRow(thinkParam, row);
         }
 
         public int GenerateActionButtonItemParam(string text)
@@ -774,7 +876,7 @@ namespace JortPob
             int textId = textManager.AddActionButton(text);
 
             row["regionType"].Value.SetValue((byte)0); // cylinder
-            row["dummyPoly1"].Value.SetValue(-1); // these seem to be broken in ER so setting -1
+            row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
             row["dummyPoly2"].Value.SetValue(-1);
             row["radius"].Value.SetValue(width); // radius
             row["angle"].Value.SetValue(180); // angle from dmy
@@ -808,25 +910,39 @@ namespace JortPob
         }
 
         /* Generate or get an already generated worldmappoint to be used as a placename. Not for actual map icons! */
-        public int GenerateWorldMapPoint(BaseTile tile, Cell cell, Vector3 relative, int id)
+        public int GenerateWorldMapPoint(BaseTile tile, Layout.MapPoint point, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{point.name} placename", id); // 1 is our template
 
-            int textId = textManager.AddLocation(cell.name);
+            int textId = textManager.AddLocation(point.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(point.discovered.id);
+            row["iconId"].Value.SetValue((ushort)point.icon);
+            row["altIconId"].Value.SetValue((ushort)point.icon);
+            row["dispMask00"].Value.SetValue((byte)1);
+            row["dispMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
+            row["selectMinZoomStep"].Value.SetValue((byte)(point.important ? 0 : 1));
 
             row["areaNo"].Value.SetValue((byte)tile.map);
             row["gridXNo"].Value.SetValue((byte)tile.coordinate.x);
             row["gridZNo"].Value.SetValue((byte)tile.coordinate.y);
 
-            row["posX"].Value.SetValue(relative.X);
-            row["posY"].Value.SetValue(relative.Y);
-            row["posZ"].Value.SetValue(relative.Z);
+            row["posX"].Value.SetValue(point.relative.X);
+            row["posY"].Value.SetValue(point.relative.Y);
+            row["posZ"].Value.SetValue(point.relative.Z);
 
             row["textId1"].Value.SetValue(textId);
+
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)(point.important?0:2));  // 0 shows a area title when you walk into it, 2 does not
 
             AddRow(worldMapPointParam, row);
 
@@ -837,12 +953,16 @@ namespace JortPob
         public int GenerateWorldMapPoint(InteriorGroup group, Cell cell, Vector3 relative, int id)
         {
             FsParam worldMapPointParam = param[ParamType.WorldMapPointParam];
-            FsParam.Row row = CloneRow(worldMapPointParam[61423600], $"{cell.name} placename", id); // 61423600 is limgrave church of elleh placename
+            FsParam.Row row = CloneRow(worldMapPointParam[1], $"{cell.name} placename", id); // 1 is our template
 
             int textId = textManager.AddLocation(cell.name);
 
-            row["eventFlagId"].Value.SetValue(60000u);  // idk if we need to genrate ids, this seems to just work
-            row["dispMask00"].Value.SetValue((byte)0);
+            row["eventFlagId"].Value.SetValue(6001u);  // always on event flag
+            row["iconId"].Value.SetValue((ushort)0);
+            row["altIconId"].Value.SetValue((ushort)0);
+            row["dispMask00"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask01"].Value.SetValue((byte)0);   // never show on map
+            row["dispMask02"].Value.SetValue((byte)0);   // never show on map
 
             row["areaNo"].Value.SetValue((byte)group.map);
             row["gridXNo"].Value.SetValue((byte)group.area);
@@ -853,6 +973,16 @@ namespace JortPob
             row["posZ"].Value.SetValue(relative.Z);
 
             row["textId1"].Value.SetValue(textId);
+
+            row["textEnableFlag2Id3"].Value.SetValue(0);
+            row["textDisableFlag2Id3"].Value.SetValue(0);
+
+            row["textId3"].Value.SetValue(-1);
+            row["textEnableFlagId3"].Value.SetValue((uint)0);
+            row["textDisableFlagId3"].Value.SetValue((uint)0);
+            row["textType3"].Value.SetValue((byte)0);
+
+            row["entryFEType"].Value.SetValue((byte)0);
 
             AddRow(worldMapPointParam, row);
 
@@ -982,7 +1112,7 @@ namespace JortPob
         }
 
         /* Generates an itemlot with a single item and no flag */
-        public int GenerateAddItemLot(ItemManager.ItemInfo itemInfo)
+        public int GenerateAddItemLot(ItemManager.ItemInfo itemInfo, int quantity)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             FsParam.Row row = CloneRow(itemLotParam[0], $"single, repeatable, scripted, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
@@ -990,7 +1120,7 @@ namespace JortPob
             row["getItemFlagId"].Value.SetValue((uint)0);
             row["lotItemCategory01"].Value.SetValue(itemInfo.ItemLotCategory());
             row["lotItemId01"].Value.SetValue(itemInfo.row);
-            row["lotItemNum01"].Value.SetValue((byte)1);
+            row["lotItemNum01"].Value.SetValue((byte)quantity);
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
             AddRow(itemLotParam, row);
@@ -1013,6 +1143,7 @@ namespace JortPob
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
             script.RegisterItemAsset(itemContent);
+            script.RegisterItemDisable(itemContent, itemLotFlag);
 
             AddRow(itemLotParam, row);
             nextMapItemLotId += 10;
@@ -1080,7 +1211,7 @@ namespace JortPob
         }
 
         /* Generates an enemy item lot from the inventory of an npccontent with no flag. This is for LIVING npcs when the player kills them */
-        public int GenerateInventoryItemLot(Script script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateInventoryItemLot(Script script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_enemy];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv
@@ -1090,7 +1221,7 @@ namespace JortPob
             int baseRow = nextEnemyItemLotId;
             foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
             {
-                FsParam.Row row = CloneRow(itemLotParam[584000500], $"npc inventory, repeatable, {npc.id}:{i}:{entry.item.id}", baseRow + i); // 584000500 is a blankish one i found that looked good as a base
+                FsParam.Row row = CloneRow(itemLotParam[584000500], $"npc inventory, repeatable, {content.id}:{i}:{entry.item.id}", baseRow + i); // 584000500 is a blankish one i found that looked good as a base
                 
                 row["getItemFlagId"].Value.SetValue((uint)0);
                 row[$"lotItemCategory01"].Value.SetValue(entry.item.ItemLotCategory());
@@ -1104,30 +1235,6 @@ namespace JortPob
 
             nextEnemyItemLotId += 10;
             return baseRow;
-        }
-
-        /* Die */ // @TODO: maybe move all row removal into the constructor since it can just *happen*
-        public void KillMapHeightParams()
-        {
-            /* Delete most of these */
-            FsParam mapGridHeightParam = param[ParamType.MapGridCreateHeightLimitInfoParam];
-            for (int i = 0; i < mapGridHeightParam.Rows.Count(); i++)
-            {
-                FsParam.Row row = mapGridHeightParam.Rows[i];
-                if (row.ID >= 99999901) { continue; } // keep some base params
-                mapGridHeightParam.RemoveRow(row);
-                i--;
-            }
-
-            /* Delete most of these */
-            FsParam mapGridHeightDetailParam = param[ParamType.MapGridCreateHeightDetailLimitInfo];
-            for (int i = 0; i < mapGridHeightDetailParam.Rows.Count(); i++)
-            {
-                FsParam.Row row = mapGridHeightDetailParam.Rows[i];
-                if (row.ID <= 2) { continue; } // keep some base params
-                mapGridHeightDetailParam.RemoveRow(row);
-                i--;
-            }
         }
     }
 }

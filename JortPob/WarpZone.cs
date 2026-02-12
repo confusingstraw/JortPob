@@ -4,6 +4,7 @@ using PortJob;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -84,8 +85,7 @@ namespace JortPob
             }
 
             /* Create a mass flag reset button next to the warps */
-            List<Script.Flag> allFlags = new();
-            allFlags.AddRange(scriptManager.common.flags);
+            List<Script.Flag> allFlags = [.. scriptManager.common.flags];
             foreach (Script script in scriptManager.scripts)
             {
                 allFlags.AddRange(script.flags);
@@ -107,24 +107,34 @@ namespace JortPob
             EMEVD.Event debugResetEvent = new(debugResetFlag.id);
             debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionButtonId2}, {debugResetAsset.EntityID});"));
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so we sometimes wait a frame
             foreach (Script.Flag flag in allFlags)
             {
 
                 if (flag.category == Script.Flag.Category.Event) { continue; } // not values, used for event ids
                 if (flag.category == Script.Flag.Category.Temporary) { continue; } // not even saved anyways so skip
                 if (flag.designation == Script.Flag.Designation.PlayerRace) { continue; } // do not reset these as they are only set at character creation
+                if (flag.designation == Script.Flag.Designation.Global && flag.name == "runonce") { continue; } // don't reset the papyrus main runonce flag until the very end (so the main startup script doesn't get started until we are done resetting all flag memory)
+                if (flag.designation == Script.Flag.Designation.Hardcode && flag.name == "GameInit") { continue; } // another event we should not reset
 
-                for (int i = 0; i < (int)flag.type; i++)
+                if (flag.type == Script.Flag.Type.Bit)
                 {
-                    bool bit = (flag.value & (1 << i)) != 0;
-                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id + i}, {(bit ? "ON" : "OFF")});"));
+                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {(flag.value == 1 ? "ON" : "OFF")});"));
+                }
+                else
+                {
+                    debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"EventValueOperation({flag.id}, {flag.Bits()}, {flag.value}, 0, 1, CalculationType.Assign);"));
                 }
                 if (delayCounter++ > 512)
                 {
                     debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;
                 }
+            }
+            Script.Flag mainRunOnceFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "runonce");
+            if (mainRunOnceFlag != null)  // runonce flag is actually a custom thing i wrote in to the main script in an esp so make this optional to prevent crash
+            {
+                debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {mainRunOnceFlag.id}, OFF);")); // after all other flags, reset main runonce so main can rerun initializer scripts
             }
             debugResetEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"DisplayBanner(31);")); // display a banner when save data reset is done. it takes a secondish
 
@@ -133,7 +143,7 @@ namespace JortPob
 
             debugScript.Write();
             AutoResource.Generate(18, 0, 0, 0, debugMSB);
-            debugMSB.Write($"{Const.OUTPUT_PATH}\\map\\mapstudio\\m18_00_00_00.msb.dcx");
+            debugMSB.Write(Path.Combine(Const.OUTPUT_PATH, @"map\mapstudio\m18_00_00_00.msb.dcx"));
             Lort.Log($"Created {debugCounty} debug warps...", Lort.Type.Main);
         }
     }

@@ -1,70 +1,43 @@
 ﻿using JortPob.Common;
 using JortPob.Model;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace JortPob.Worker
 {
-    public class HkxWorker : Worker
+    public class HkxWorker
     {
-        private List<CollisionInfo> collisions;
-
-        private int start;
-        private int end;
-
-        public HkxWorker(List<CollisionInfo> collisions, int start, int end)
-        {
-            this.collisions = collisions;
-
-            this.start = start;
-            this.end = end;
-
-            _thread = new Thread(Run);
-            _thread.Start();
-        }
-
-        private void Run()
-        {
-            ExitCode = 1;
-
-            for (int i = start; i < Math.Min(collisions.Count, end); i++)
-            {
-                CollisionInfo collisionInfo = collisions[i];
-                ModelConverter.OBJtoHKX($"{Const.CACHE_PATH}{collisionInfo.obj}", $"{Const.CACHE_PATH}{collisionInfo.hkx}");
-
-                Lort.TaskIterate(); // Progress bar update
-            }
-
-            IsDone = true;
-            ExitCode = 0;
-        }
-
         public static void Go(List<CollisionInfo> collisions)
         {
-            Lort.Log($"Converting {collisions.Count} collision...", Lort.Type.Main);                 // Egregiously slow, multithreaded to make less terrible
-            int partition = (int)Math.Ceiling(collisions.Count / (float)Const.THREAD_COUNT);
-            Lort.NewTask("Converting HKX", collisions.Count);
-            List<HkxWorker> workers = new();
-            for (int i = 0; i < Const.THREAD_COUNT; i++)
-            {
-                int start = i * partition;
-                int end = start + partition;
-                HkxWorker worker = new(collisions, start, end);
-                workers.Add(worker);
-            }
+            List<(string, string)> uniqueCollisions = collisions
+                .Select(c => (c.obj, c.hkx))
+                .ToHashSet()
+                .ToList();
 
-            /* Wait for threads to finish */
-            while (true)
-            {
-                bool done = true;
-                foreach (HkxWorker worker in workers)
-                {
-                    done &= worker.IsDone;
-                }
+            Lort.Log($"Converting {collisions.Count} ({uniqueCollisions.Count} unique) collisions...", Lort.Type.Main);                 // Egregiously slow, multithreaded to make less terrible
+            Lort.NewTask("Converting HKX", uniqueCollisions.Count);
 
-                if (done)
-                    break;
+            var options = new ParallelOptions { MaxDegreeOfParallelism = Const.THREAD_COUNT };
+
+            Parallel.ForEach(Partitioner.Create(0, uniqueCollisions.Count), options, range =>
+            {
+                ProcessCollisions(uniqueCollisions, range.Item1, range.Item2);
+            });
+        }
+
+        protected static void ProcessCollisions(List<(string, string)> collisions, int start, int end)
+        {
+            int limit = Math.Min(collisions.Count, end);
+            for (int i = start; i < limit; i++)
+            {
+                var obj = collisions[i].Item1;
+                var hkx = collisions[i].Item2;
+
+                ModelConverter.OBJtoHKX($"{Const.CACHE_PATH}{obj}", $"{Const.CACHE_PATH}{hkx}");
+                Lort.TaskIterate(); // Progress bar update
             }
         }
     }

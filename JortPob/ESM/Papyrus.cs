@@ -22,7 +22,7 @@ namespace JortPob
 
         public Papyrus(JsonNode json)
         {
-            id = json["id"].GetValue<string>();
+            id = json["id"].GetValue<string>().ToLower();
 
             Stack<Call> stack = new();
             string raw = json["text"].GetValue<string>();
@@ -261,6 +261,27 @@ namespace JortPob
             return ret;
         }
 
+        public List<Call> GetCalls()
+        {
+            List<Call> ret = new();
+            void RecursiveCheck(Scope scope)
+            {
+                foreach (Call call in scope.calls)
+                {
+                    if (call is Conditional conditional)
+                    {
+                        ret.Add(conditional.left);
+                        ret.Add(conditional.right);
+                        RecursiveCheck(conditional.pass);
+                        RecursiveCheck(conditional.fail);
+                    }
+                    else { ret.Add(call); }
+                }
+            }
+            RecursiveCheck(scope);
+            return ret;
+        }
+
         public class Scope
         {
             public readonly List<Call> calls;
@@ -311,7 +332,7 @@ namespace JortPob
                 GetPcRank, SetPos, GetAttacked, GetCommonDisease, GetEffect, SetFight, ShowMap, AddSpell, RemoveSpell, RaiseRank, StopCombat,
                 ModFactionReaction, ModFlee, SetAlarm, PlaceAtPc, ClearInfoActor, Cast, ForceGreeting, SetHello, GetJournalIndex, PayFineThief,
                 AiWander, AiFollow, AiFollowCell, AiEscort, GetAiPackageDone, GetCurrentAiPackage, AiTravel, AiFollowCellPlayer, PositionCell, ModFight,
-                GetPcCell, MenuMode, OnPcSoulGemUse, GetLOS, GetLineOfSight, GetDeadCount, CellChanged, OnPcHitMe, OnPcEquip, OnPcAdd, GetStandingPc,
+                GetPcCell, MenuMode, OnPcSoulGemUse, GetLOS, GetLineOfSight, GetDeadCount, CellChanged, HitOnMe, OnPcHitMe, OnPcEquip, OnPcAdd, GetStandingPc,
                 GetPcCrimeLevel, GetCollidingPC, GetWaterLevel, GetPcInJail, GetPcTraveling, GetButtonPressed,
                 OnKnockout, GetSpellEffects, GetSoundPlaying, ScriptRunning, GetCurrentWeather, OnMurder, GetPcSleep, PcVampire, PcExpelled, GetLocked,
                 PlaceItem, SetScale, ModResistParalysis, ModResistPoison, ModResistMagicka, ModResistFire, ModResistFrost, SetDelete, ExplodeSpell, TurnMoonRed, TurnMoonWhite, BecomeWerewolf,
@@ -336,7 +357,7 @@ namespace JortPob
                 EnableStatsMenu, EnableMapMenu, EnableRaceMenu, EnableMagicMenu, EnableStatReviewMenu, EnableBirthMenu, EnableClassMenu, EnableInventoryMenu, EnableNameMenu,
                 EnableVanityMode, EnableRest, EnablePlayerJumping, EnablePlayerFighting, EnablePlayerControls, EnablePlayerMagic, EnableTeleporting, EnablePlayerViewSwitch,
                 DisablePlayerViewSwitch, DisableTeleporting, DisablePlayerFighting, DisablePlayerJumping, DisablePlayerControls, DisableVanityMode, DisablePlayerMagic,
-                PlaySound3D, PlaySound3DVP, StopSound, PlayLoopSound3d, PlayLoopSound3DVP, PlaySound, PlayLoopSoundD3DVP, PlaySoundVP,
+                PlaySound3D, PlaySound3DVP, StopSound, PlayLoopSound3D, PlayLoopSound3DVP, PlaySound, PlayLoopSoundD3DVP, PlaySoundVP,
 
                 /* Papyrus calls we (probably) cannot implement and will discard */
                 Rotate, SetAngle, GetAngle,
@@ -462,7 +483,7 @@ namespace JortPob
                         .ToList();
 
                     type = (Type)Enum.Parse(typeof(Type), ps[0], true);
-                    target = split[0].Replace("\"", "");
+                    target = split[0].Replace("\"", "").ToLower().Trim();
                     ps.RemoveAt(0);
                     parameters = ps.ToArray();
                 }
@@ -519,6 +540,7 @@ namespace JortPob
                 foreach(string p in parameters)
                 {
                     if(p == "==" || p == "!=" || p == ">" || p == "<" || p == ">=" || p == "<=" || p == "=") { op = p; }
+                    else if (op == null && p.Contains(" ") && p.Contains("->")) { l += $"\"{p.Replace("->", "\"->")} "; }
                     else if(op == null && p.Contains(" ")) { l += $"\"{p}\" "; }
                     else if(op == null) { l += $"{p} "; }
                     else if(p.Contains(" ")) { r += $"\"{p}\" "; }

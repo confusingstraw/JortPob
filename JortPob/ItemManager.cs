@@ -159,6 +159,7 @@ namespace JortPob
 
                         switch (def.type)
                         {
+                            case Type.CustomWeapon:
                             case Type.Weapon:
                                 /* First check if this weapon has infusion rows, and if we need to copy them */
                                 FsParam.Row sourceRow = paramanager.GetRow(paramanager.param[Paramanager.ParamType.EquipParamWeapon], def.row);
@@ -201,9 +202,9 @@ namespace JortPob
                                 /* Copy rows and apply modifications */
                                 foreach ((Infusion infusion, int row) in rowsToCopy)
                                 {
-                                    ItemInfo weapon = new(def.id, Type.Weapon, nextWeaponId + (int)infusion, value, scriptItem);
-                                    SillyJsonUtils.CopyRowAndModify(paramanager, speffManager, Paramanager.ParamType.EquipParamWeapon, def.id, row, weapon.row, def.data);
-                                    textManager.AddWeapon(weapon.row, def.text.name, def.text.description, infusion);
+                                    int rowId = nextWeaponId + (int)infusion;
+                                    SillyJsonUtils.CopyRowAndModify(paramanager, speffManager, Paramanager.ParamType.EquipParamWeapon, def.id, row, rowId, def.data);
+                                    textManager.AddWeapon(rowId, def.text.name, def.text.description, infusion);
                                     if (def.text.enchant != null)
                                     {
                                         FsParam.Row infusedSourceRow = paramanager.GetRow(paramanager.param[Paramanager.ParamType.EquipParamWeapon], row);
@@ -217,13 +218,33 @@ namespace JortPob
 
                                             string enchant = def.text.enchant[j++];
                                             int txtId = textManager.AddWeaponEffect(enchant);
-                                            SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.EquipParamWeapon, weapon.row, fieldName, txtId);
+                                            SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.EquipParamWeapon, rowId, fieldName, txtId);
                                         }
                                     }
-                                    if (def.useIcon) { SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.EquipParamWeapon, weapon.row, "iconId", iconManager.GetIconByRecord(id).id); }
-                                    items.Add(weapon);
+                                    if (def.useIcon) { SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.EquipParamWeapon, rowId, "iconId", iconManager.GetIconByRecord(id).id); }
                                 }
-                                nextWeaponId += 10000;
+
+                                /* Add iteminfo for weapon, or generate customweapon rows if needed */
+                                if(def.type == Type.Weapon)
+                                {
+                                    ItemInfo weapon = new(def.id, Type.Weapon, nextWeaponId, value, scriptItem);
+                                    items.Add(weapon);
+                                    nextWeaponId += 10000;
+                                }
+                                else if (def.type == Type.CustomWeapon)
+                                {
+                                    FsParam customWeaponParam = paramanager.param[Paramanager.ParamType.EquipParamCustomWeapon];
+                                    FsParam.Row row = paramanager.CloneRow(customWeaponParam[10], def.id, nextCustomWeaponId);
+                                    row["baseWepId"].Value.SetValue(nextWeaponId + ((int)def.infusion));
+                                    row["gemId"].Value.SetValue(def.skill);
+                                    row["reinforceLv"].Value.SetValue((byte)def.upgrade);
+                                    paramanager.AddRow(customWeaponParam, row);
+
+                                    ItemInfo custom = new(def.id, Type.CustomWeapon, nextCustomWeaponId, value, scriptItem);
+                                    items.Add(custom);
+                                    nextCustomWeaponId += 10000;
+                                }
+
                                 break;
                             case Type.Armor:
                                 ItemInfo armor = new(def.id, Type.Armor, nextArmorId, value, scriptItem);
@@ -863,6 +884,11 @@ namespace JortPob
             return ResolveInventory(npc.inventory);
         }
 
+        public List<(ItemInfo item, int quantity)> ResolveInventory(CreatureContent creature)
+        {
+            return ResolveInventory(creature.inventory);
+        }
+
         public List<(ItemInfo item, int quantity)> ResolveInventory(ContainerContent container)
         {
             return ResolveInventory(container.inventory);
@@ -1052,18 +1078,18 @@ namespace JortPob
         }
 
         /* Creates params for an enchant shop, parameter determines the max quality of enchantments provided */
-        public int CreateShop(NpcContent.Stats.Tier tier)
+        public int CreateShop(CharacterContent.Stats.Tier tier)
         {
             /* Randomly select skills to provide based on tier */
             List<Override.SkillInfo> skillPool = Override.GetSkills(tier); // this method creates a new list so we can modify it without issue
             int numItems;
             switch(tier)
             {
-                case NpcContent.Stats.Tier.Novice: numItems = Utility.RandomRange(1, 2); break;
-                case NpcContent.Stats.Tier.Apprentice: numItems = Utility.RandomRange(3, 4); break;
-                case NpcContent.Stats.Tier.Journeyman: numItems = Utility.RandomRange(5, 7); break;
-                case NpcContent.Stats.Tier.Expert: numItems = Utility.RandomRange(8, 11); break;
-                case NpcContent.Stats.Tier.Master: numItems = Utility.RandomRange(13, 18); break;
+                case CharacterContent.Stats.Tier.Novice: numItems = Utility.RandomRange(1, 2); break;
+                case CharacterContent.Stats.Tier.Apprentice: numItems = Utility.RandomRange(3, 4); break;
+                case CharacterContent.Stats.Tier.Journeyman: numItems = Utility.RandomRange(5, 7); break;
+                case CharacterContent.Stats.Tier.Expert: numItems = Utility.RandomRange(8, 11); break;
+                case CharacterContent.Stats.Tier.Master: numItems = Utility.RandomRange(13, 18); break;
                 default: throw new Exception($"Invalid skill tier: {tier}"); // can't happen
             }
 

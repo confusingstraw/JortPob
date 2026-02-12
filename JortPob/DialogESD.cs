@@ -1,5 +1,6 @@
 ﻿using JortPob.Common;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Drawing;
@@ -8,10 +9,11 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text;
+using System.Xml.Linq;
 using static JortPob.Dialog;
 using static JortPob.FactionInfo;
-using static JortPob.NpcContent;
 using static JortPob.NpcManager.TopicData;
+using static SoulsFormats.MSBS.Event;
 
 namespace JortPob
 {
@@ -19,21 +21,28 @@ namespace JortPob
     public class DialogESD
     {
         private readonly ESM esm;
+        private readonly Layout layout;
+        private readonly MainSoundBank sound;
         private readonly ScriptManager scriptManager;
         private readonly Paramanager paramanager;
         private readonly TextManager textManager;
         private readonly ItemManager itemManager;
+        private readonly SpeffManager speffManager;
         private readonly Script areaScript;
-        private readonly NpcContent npcContent;
+        private readonly CharacterContent npcContent;
 
         private readonly List<string> defs;
         private readonly List<string> generatedStates;
+        private readonly Dictionary<NpcManager.TopicData.TalkData, int> choiceMap; // this is a fix for recursive choices. if we generate a choice and another dialog refs it we return the id of the alraedy gen'd one
         private int nxtGenStateId;
 
-        public DialogESD(ESM esm, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, Script areaScript, uint id, NpcContent npcContent, List<NpcManager.TopicData> topicData)
+        public DialogESD(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
         {
             this.esm = esm;
+            this.layout = layout;
+            this.sound = sound;
             this.itemManager = itemManager;
+            this.speffManager = speffManager;
             this.scriptManager = scriptManager;
             this.paramanager = paramanager;
             this.textManager = textManager;
@@ -41,6 +50,8 @@ namespace JortPob
             this.npcContent = npcContent;
 
             defs = new();
+
+            Lort.Log($"Starting dialog ESD generation for: {npcContent.id}", Lort.Type.Debug);
 
             // Create flags for this character's disposition and first greeting
             Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
@@ -50,22 +61,23 @@ namespace JortPob
 
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
-            NpcManager.TopicData hit = GetTalk(topicData, DialogRecord.Type.Hit)[0];
-            NpcManager.TopicData attack = GetTalk(topicData, DialogRecord.Type.Attack)[0];
-            NpcManager.TopicData thief = GetTalk(topicData, DialogRecord.Type.Thief)[0];
-            NpcManager.TopicData idle = GetTalk(topicData, DialogRecord.Type.Idle)[0];
-            NpcManager.TopicData hello = GetTalk(topicData, DialogRecord.Type.Hello)[0];
+            NpcManager.TopicData hit = GetTalk(topicData, DialogRecord.Type.Hit).FirstOrDefault() ?? new();
+            NpcManager.TopicData attack = GetTalk(topicData, DialogRecord.Type.Attack).FirstOrDefault() ?? new();
+            NpcManager.TopicData thief = GetTalk(topicData, DialogRecord.Type.Thief).FirstOrDefault() ?? new();
+            NpcManager.TopicData idle = GetTalk(topicData, DialogRecord.Type.Idle).FirstOrDefault() ?? new(); ;
+            NpcManager.TopicData hello = GetTalk(topicData, DialogRecord.Type.Hello).FirstOrDefault() ?? new();
             List<NpcManager.TopicData> talk = GetTalk(topicData, DialogRecord.Type.Topic);
 
-            NpcManager.TopicData admireSuccess = GetTalk(topicData, DialogRecord.Type.AdmireSuccess)[0];
-            NpcManager.TopicData admireFail = GetTalk(topicData, DialogRecord.Type.AdmireFail)[0];
-            NpcManager.TopicData intimidateSuccess = GetTalk(topicData, DialogRecord.Type.IntimidateSuccess)[0];
-            NpcManager.TopicData intimidateFail = GetTalk(topicData, DialogRecord.Type.IntimidateFail)[0];
-            NpcManager.TopicData tauntSuccess = GetTalk(topicData, DialogRecord.Type.TauntSuccess)[0];
-            NpcManager.TopicData tauntFail = GetTalk(topicData, DialogRecord.Type.TauntFail)[0];
-            NpcManager.TopicData bribeSuccess = GetTalk(topicData, DialogRecord.Type.BribeSuccess)[0];
-            NpcManager.TopicData bribeFail = GetTalk(topicData, DialogRecord.Type.BribeFail)[0];
+            NpcManager.TopicData admireSuccess = GetTalk(topicData, DialogRecord.Type.AdmireSuccess).FirstOrDefault() ?? new();
+            NpcManager.TopicData admireFail = GetTalk(topicData, DialogRecord.Type.AdmireFail).FirstOrDefault() ?? new();
+            NpcManager.TopicData intimidateSuccess = GetTalk(topicData, DialogRecord.Type.IntimidateSuccess).FirstOrDefault() ?? new();
+            NpcManager.TopicData intimidateFail = GetTalk(topicData, DialogRecord.Type.IntimidateFail).FirstOrDefault() ?? new();
+            NpcManager.TopicData tauntSuccess = GetTalk(topicData, DialogRecord.Type.TauntSuccess).FirstOrDefault() ?? new();
+            NpcManager.TopicData tauntFail = GetTalk(topicData, DialogRecord.Type.TauntFail).FirstOrDefault() ?? new();
+            NpcManager.TopicData bribeSuccess = GetTalk(topicData, DialogRecord.Type.BribeSuccess).FirstOrDefault() ?? new();
+            NpcManager.TopicData bribeFail = GetTalk(topicData, DialogRecord.Type.BribeFail).FirstOrDefault() ?? new();
 
+            choiceMap = new();
             generatedStates = new();
             nxtGenStateId = Common.Const.ESD_STATE_HARDCODE_CHOICE;
 
@@ -87,10 +99,11 @@ namespace JortPob
             if (npcContent.faction != null)
             {
                 generatedStates.Add(GeneratedState_RankReq(id, Common.Const.ESD_STATE_HARDCODE_RANKREQUIREMENT));
+                generatedStates.Add(GeneratedState_ReactionCalc(id, Common.Const.ESD_STATE_HARDCODE_REACTIONCALC));
             }
 
             generatedStates.Add(GeneratedState_HandleCrime(id, Common.Const.ESD_STATE_HARDCODE_HANDLECRIME));
-            generatedStates.Add(GeneratedState_CombatDialogSelection(id, Common.Const.ESD_STATE_HARDCODE_COMBATDIALOGSELECT, attack));
+            generatedStates.Add(GeneratedState_CombatDialogSelection(id, Common.Const.ESD_STATE_HARDCODE_COMBATDIALOGSELECT));
             generatedStates.Add(GeneratedState_CombatTalk(id, Common.Const.ESD_STATE_HARDCODE_COMBATTALK));
             generatedStates.Add(GeneratedState_DoAttackTalk(id, Common.Const.ESD_STATE_HARDCODE_DOATTACKTALK, attack));
             generatedStates.Add(GeneratedState_DoHitTalk(id, Common.Const.ESD_STATE_HARDCODE_DOHITTALK, hit));
@@ -152,10 +165,10 @@ namespace JortPob
             defs.Add(State_x35(id));
             defs.Add(State_x36(id));
             defs.Add(State_x37(id));
-            defs.Add(State_x38(id, attack));
-            defs.Add(State_x39(id, hit));
+            defs.Add(State_x38(id));
+            defs.Add(State_x39(id));
 
-            defs.Add(State_x40(id, attack));
+            defs.Add(State_x40(id));
             defs.Add(State_x41(id, hit));
             defs.Add(State_x42(id, talkActionButtonId));
             defs.Add(State_x44(id, talk));
@@ -497,8 +510,9 @@ namespace JortPob
 
             if (npcContent.faction != null)
             {
-                s += $"    # rankreq call: \"{npcContent.faction}\"\r\n";
+                s += $"    # rankreq and reactioncalc call: \"{npcContent.faction}\"\r\n";
                 s += $"    assert t{id_s}_x{Common.Const.ESD_STATE_HARDCODE_RANKREQUIREMENT}()\r\n";
+                s += $"    assert t{id_s}_x{Common.Const.ESD_STATE_HARDCODE_REACTIONCALC}()\r\n";
             }
 
             // Build an if-else tree for each possible greeting and its conditions
@@ -508,7 +522,7 @@ namespace JortPob
                 NpcManager.TopicData.TalkData talkData = greeting.talks[i];
                 if (talkData.IsChoice()) { continue; }
 
-                string filters = $" {talkData.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                string filters = $" {talkData.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 string greetLine = "";
                 if (filters == " " || !(i < greeting.talks.Count() - 1)) { ifop = "else"; filters = ""; }
                 if (greeting.talks.Count() == 1) { ifop = "if"; filters = " True"; }
@@ -526,13 +540,11 @@ namespace JortPob
                 {
                     if (talkData.dialogInfo.script.calls.Count() > 0)
                     {
-                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(paramanager, itemManager, scriptManager, npcContent, id, 8);
+                        greetLine += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 8);
                     }
                     if (talkData.dialogInfo.script.choice != null)
                     {
-                        int genChoiceStateId = nxtGenStateId++;
-                        string genState = GeneratedState_Choice(id, genChoiceStateId, talkData, greeting);
-                        generatedStates.Add(genState);
+                        int genChoiceStateId = GeneratedState_Choice(id, talkData, greeting);
                         greetLine += $"        call = t{id_s}_x{genChoiceStateId}()\r\n";
                         greetLine += $"        if call.Get() == 0:\r\n";
                         greetLine += $"            return 0\r\n";
@@ -628,13 +640,13 @@ namespace JortPob
         }
 
         /* On killing the player */
-        private string State_x38(uint id, NpcManager.TopicData topic)
+        private string State_x38(uint id)
         {
             return $"def t{id:D9}_x38():\r\n    ## on player kill talk\r\n    assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_DOATTACKTALK:D2}()\r\n    return 0\r\n";
         }
 
         // Character gets hurt by player
-        private string State_x39(uint id, NpcManager.TopicData hurts)
+        private string State_x39(uint id)
         {
             string id_s = id.ToString("D9");
 
@@ -660,6 +672,11 @@ namespace JortPob
             s += $"    else:\r\n";
             s += $"        pass\r\n\r\n";
 
+            /* set hasbeenattacked flag */
+            Script.Flag hasBeenAttacked = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent.entity.ToString());
+            s += $"    # set HasBeenAttacked flag\r\n";
+            s += $"    SetEventFlag({hasBeenAttacked.id}, FlagState.On)\r\n";
+
             /* pick voice line to play */
             s += $"    # play a voice line in response to being hit\r\n";
             s += $"    assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_DOHITTALK:D2}()\r\n\r\n";
@@ -670,7 +687,7 @@ namespace JortPob
         }
 
         /* Hostile quip */
-        private string State_x40(uint id, NpcManager.TopicData topic)
+        private string State_x40(uint id)
         {
             Script.Flag theifFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent.entity.ToString());
             string s = $"def t{id:D9}_x40(flag4=_):\r\n    ## single angry quip triggered when a character becomes hostile\r\n";
@@ -697,7 +714,7 @@ namespace JortPob
             {
                 NpcManager.TopicData.TalkData talk = topic.talks[i];
 
-                string filters = talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent);
+                string filters = talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent);
                 if (filters == "") { filters = "True"; }
 
                 s += $"    {ifop} {filters}:\r\n";
@@ -814,7 +831,7 @@ namespace JortPob
                 List<string> filters = new();
                 foreach(NpcManager.TopicData.TalkData talk in topic.talks)
                 {
-                    string filter = talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent);
+                    string filter = talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent);
                     if(filter == "") { filters.Clear(); break; }
                     filters.Add(filter);
                 }
@@ -874,7 +891,7 @@ namespace JortPob
             // enchanting options
             if (npcContent.OffersEnchanting())
             {
-                int enchantShopId = itemManager.CreateShop(npcContent.stats.GetTier(Stats.Skill.Enchant));
+                int enchantShopId = itemManager.CreateShop(npcContent.stats.GetTier(CharacterContent.Stats.Skill.Enchant));
                 s.Append($"        {ifopA} GetTalkListEntryResult() == {listCount++}:\r\n            OpenRegularShop({enchantShopId}, {enchantShopId + 99})\r\n            assert not (CheckSpecificPersonMenuIsOpen(5, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n");
                 s.Append($"        {ifopA} GetTalkListEntryResult() == {listCount++}:\r\n            OpenEquipmentChangeOfPurposeShop()\r\n            assert not (CheckSpecificPersonMenuIsOpen(7, 0) and not CheckSpecificPersonGenericDialogIsOpen(0))\r\n");
                 ifopA = "elif";
@@ -885,7 +902,7 @@ namespace JortPob
             {
                 s.Append($"        {ifopA} GetTalkListEntryResult() == {listCount++}:\r\n");
 
-                foreach (NpcContent.Stats.Tier tier in Enum.GetValues(typeof(NpcContent.Stats.Tier)))
+                foreach (CharacterContent.Stats.Tier tier in Enum.GetValues(typeof(CharacterContent.Stats.Tier)))
                 {
                     RecipeManager.RecipeBookInfo book = itemManager.recipeManager.GetBook(tier);
                     s.Append($"            if ComparePlayerStat(PlayerStat.Intelligence, CompareType.Greater, {(int)(((int)tier) * Const.ALCHEMY_TIER_REQUIREMENT_SCALE)}):\r\n");
@@ -923,7 +940,7 @@ namespace JortPob
                 {
                     if (talk.IsChoice()) { continue; } // choice dialogs are unreachable from this context, discard
 
-                    string filters = talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent);
+                    string filters = talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent);
                     if (filters == "") { filters = "True"; }
 
                     s.Append($"            {ifopB} {filters}:\r\n");
@@ -939,13 +956,11 @@ namespace JortPob
                     {
                         if (talk.dialogInfo.script.calls.Count() > 0)
                         {
-                            s.Append(talk.dialogInfo.script.GenerateEsdSnippet(paramanager, itemManager, scriptManager, npcContent, id, 16));
+                            s.Append(talk.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 16));
                         }
                         if(talk.dialogInfo.script.choice != null)
                         {
-                            int genChoiceStateId = nxtGenStateId++;
-                            string genState = GeneratedState_Choice(id, genChoiceStateId, talk, topic);
-                            generatedStates.Add(genState);
+                            int genChoiceStateId = GeneratedState_Choice(id, talk, topic);
                             s.Append($"                assert t{id_s}_x{genChoiceStateId}()\r\n");
                         }
                     }
@@ -985,7 +1000,7 @@ namespace JortPob
                 {
                     NpcManager.TopicData.TalkData talk = topic.talks[i];
 
-                    string filters = talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent);
+                    string filters = talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent);
                     if (filters == "") { filters = "True"; }
 
                     sb.Append($"                {ifop} {filters}:\r\n");
@@ -997,8 +1012,7 @@ namespace JortPob
                 return sb.ToString();
             }
 
-            // Genearte Disposition ## set if it doesn't exist yet (should probably move this somewhere eventually idk) @TODO:
-            int dispText0 = textManager.GetTopic("Disposition: 0");
+            int dispText0 = textManager.GetTopic("Disposition: 0");  // all 100 dispoition texts are sequential so we grab the first one
 
             Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
             Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
@@ -1094,7 +1108,7 @@ namespace JortPob
             s.Append(a);
 
             int i = 1;
-            foreach (NpcContent.Travel travel in npcContent.travel)
+            foreach (CharacterContent.Travel travel in npcContent.travel)
             {
                 string b = $""""
                                     # action:##:"{travel.name}"
@@ -1119,7 +1133,7 @@ namespace JortPob
 
             i = 1;
             string ifop = "if";
-            foreach (NpcContent.Travel travel in npcContent.travel)
+            foreach (CharacterContent.Travel travel in npcContent.travel)
             {
                 Script.Flag warpFlag = scriptManager.common.GetOrRegisterTravelWarp(travel);
 
@@ -1167,7 +1181,7 @@ namespace JortPob
         }
 
         /* State that randomly has npc use talk lines in combat */
-        private string GeneratedState_CombatDialogSelection(uint id, int x, NpcManager.TopicData topic)
+        private string GeneratedState_CombatDialogSelection(uint id, int x)
         {
             Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
             string s = $""""
@@ -1226,7 +1240,7 @@ namespace JortPob
             {
                 NpcManager.TopicData.TalkData talk = topic.talks[i];
 
-                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < topic.talks.Count() - 1)) { filters = ""; ifop = "else"; i = topic.talks.Count(); }
                 if (topic.talks.Count() == 1) { ifop = "if"; filters = " True"; } // special stupid case. does actually happen (rolls eyes)
 
@@ -1248,7 +1262,7 @@ namespace JortPob
             {
                 NpcManager.TopicData.TalkData talk = topic.talks[i];
 
-                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < topic.talks.Count() - 1)) { filters = ""; ifop = "else"; i = topic.talks.Count(); }
                 if(topic.talks.Count() == 1) { ifop = "if"; filters = " True"; } // special stupid case. does actually happen (rolls eyes)
 
@@ -1265,12 +1279,19 @@ namespace JortPob
         {
             string s = $"def t{id:D9}_x{x:D2}():\r\n    ## pick a thief line and talk it\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
+            if(topic.talks.Count() == 1) // special case. does happen.
+            {
+                s += $"    assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK:D2}(combatText={topic.talks[0].primaryTalkRow})\r\n";
+                s += $"    return 0\r\n";
+                return s;
+            }
+
             string ifop = "if";
             for (int i = 0; i < topic.talks.Count(); i++)
             {
                 NpcManager.TopicData.TalkData talk = topic.talks[i];
 
-                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < topic.talks.Count() - 1)) { filters = ""; ifop = "else"; i = topic.talks.Count(); }
 
 
@@ -1291,7 +1312,9 @@ namespace JortPob
             {
                 NpcManager.TopicData.TalkData talk = idle.talks[i];
 
-                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                if(idle.talks.Count() == 1) { idleCode = $"            assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK:D2}(combatText={talk.primaryTalkRow})"; break; } // special case. does happen.
+
+                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < idle.talks.Count() - 1)) { filters = ""; ifop = "else"; i = idle.talks.Count(); }
 
                 idleCode += $"            {ifop}{filters}:\r\n";
@@ -1307,7 +1330,7 @@ namespace JortPob
             {
                 NpcManager.TopicData.TalkData talk = hello.talks[i];
 
-                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent)}";
+                string filters = $" {talk.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent)}";
                 if (filters == " " || !(i < hello.talks.Count() - 1)) { filters = ""; ifop = "else"; i = hello.talks.Count(); }
                 if (hello.talks.Count() == 1) { ifop = "if"; filters = " True"; } // special stupid case. does actually happen (rolls eyes)
 
@@ -1428,9 +1451,91 @@ namespace JortPob
             return s;
         }
 
-        private string GeneratedState_Choice(uint id, int x, NpcManager.TopicData.TalkData talk, NpcManager.TopicData topic)
+        // calculates values for reactionhigh and reactionlow and saves them in temp flags for filtercond to read from
+        private string GeneratedState_ReactionCalc(uint id, int x)
         {
             string id_s = id.ToString("D9");
+            string s = "";
+            s += $"def t{id_s}_x{x}():\r\n";
+            s += $"    #reactioncalc state: \"{npcContent.faction}\"\r\n";
+
+            FactionInfo npcFaction = esm.GetFaction(npcContent.faction);
+            Script.Flag returnLow = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionLow, npcContent.entity.ToString());
+            Script.Flag returnHigh = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionHigh, npcContent.entity.ToString());
+
+            // Special case where a faction has no reaction table (Talos Cult moment)
+            if(!npcFaction.HasReactions())
+            {
+                s += $""""
+                          SetEventFlagValue({returnLow.id}, {returnLow.Bits()}, 0)
+                          SetEventFlagValue({returnHigh.id}, {returnHigh.Bits()}, 0)
+                          return 0
+
+
+                      """";
+                return s;
+            }
+
+            string ifop = "if";
+            List<(string id, int value)> lowReactions = npcFaction.GetLowReactions();
+            foreach ((string id, int value) reaction in lowReactions)
+            {
+                Script.Flag playerInFactionFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, reaction.id);
+
+                s += $""""
+                          {ifop} GetEventFlag({playerInFactionFlag.id}) == True:
+                              # faction: {reaction.id} :: low reaction {reaction.value}
+                              SetEventFlagValue({returnLow.id}, {returnLow.Bits()}, {Math.Min(7, Math.Max(0, -reaction.value))})
+
+                      """";
+
+                ifop = "elif";
+            }
+
+            s += $""""
+                      else:
+                          # no reaction result
+                          SetEventFlagValue({returnLow.id}, {returnLow.Bits()}, 0)
+
+
+                  """";
+
+            ifop = "if";
+            List<(string id, int value)> highReactions = npcFaction.GetHighReactions();
+            foreach ((string id, int value) reaction in highReactions)
+            {
+                Script.Flag playerInFactionFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, reaction.id);
+
+                s += $""""
+                          {ifop} GetEventFlag({playerInFactionFlag.id}) == True:
+                              # faction: {reaction.id} :: high reaction {reaction.value}
+                              SetEventFlagValue({returnHigh.id}, {returnHigh.Bits()}, {Math.Min(7, Math.Max(0, reaction.value))})
+
+                      """";
+
+                ifop = "elif";
+            }
+
+            s += $""""
+                      else:
+                          # no reaction result
+                          SetEventFlagValue({returnHigh.id}, {returnHigh.Bits()}, 0)
+
+
+                  """";
+
+            s += $"    return 0\r\n\r\n";
+            return s;
+        }
+
+        // If choice hasn't been generated already it creates it and returns the state # to call it.
+        private int GeneratedState_Choice(uint id, NpcManager.TopicData.TalkData talk, NpcManager.TopicData topic)
+        {
+            if(choiceMap.ContainsKey(talk)) { return choiceMap[talk]; } // prevents recursive loops breaking everything
+
+            string id_s = id.ToString("D9");
+            int x = nxtGenStateId++;
+            choiceMap.Add(talk, x);
             DialogPapyrus.PapyrusChoice choice = talk.dialogInfo.script.choice;
 
             string s = "";
@@ -1468,7 +1573,7 @@ namespace JortPob
                         createList += $"        # action:{choiceTextId}:\"{choiceText}\"\r\n        AddTalkListData({choiceId}, {choiceTextId}, -1)\r\n";
                     }
 
-                    string optFilters = talkData.dialogInfo.GenerateCondition(itemManager, scriptManager, npcContent);
+                    string optFilters = talkData.dialogInfo.GenerateCondition(itemManager, speffManager, scriptManager, npcContent);
                     if(optFilters != "") { optFilters = $" and ({optFilters})"; }
                     executeList += $"        {ifop} GetTalkListEntryResult() == {choiceId}{optFilters}:\r\n            # choice: \"{Common.Utility.SanitizeTextForComment(talkData.dialogInfo.text)}\"\r\n            assert t{id_s}_x33(text2={talkData.primaryTalkRow}, mode4=1)\r\n";
 
@@ -1481,13 +1586,11 @@ namespace JortPob
                     {
                         if (talkData.dialogInfo.script.calls.Count() > 0)
                         {
-                            executeList += talkData.dialogInfo.script.GenerateEsdSnippet(paramanager, itemManager, scriptManager, npcContent, id, 12);
+                            executeList += talkData.dialogInfo.script.GenerateEsdSnippet(esm, layout, sound, paramanager, itemManager, speffManager, scriptManager, npcContent, id, 12);
                         }
                         if (talkData.dialogInfo.script.choice != null) // rare situation where a choice option goes into another choice option
                         {
-                            int genChoiceStateId = nxtGenStateId++;
-                            string genState = GeneratedState_Choice(id, genChoiceStateId, talkData, topic); 
-                            generatedStates.Add(genState);
+                            int genChoiceStateId = GeneratedState_Choice(id, talkData, topic);
                             executeList += $"            assert t{id_s}_x{genChoiceStateId}()\r\n";
                         }
                     }
@@ -1502,7 +1605,8 @@ namespace JortPob
             // In this stupid case we just return a blank-ish def that just returns 0.
             if(createList == "")
             {
-                return $"def t{id_s}_x{x}():\r\n    \"\"\"State 0\"\"\"\r\n    return 0\r\n\r\n";
+                generatedStates.Add($"def t{id_s}_x{x}():\r\n    \"\"\"State 0\"\"\"\r\n    return 0\r\n\r\n");
+                return x;
             }
 
             s += createList;
@@ -1511,7 +1615,8 @@ namespace JortPob
             s += "        else:\r\n            return 0\r\n";
             s += $"        \"\"\"State 10,11\"\"\"\r\n        return 1\r\n\r\n";
 
-            return s;
+            generatedStates.Add(s);
+            return x;
         }
     }
 }

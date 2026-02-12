@@ -1,37 +1,52 @@
 ﻿using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using WitchyFormats;
 using Xbrz;
+using static Community.CsharpSqlite.Sqlite3;
 
 namespace JortPob.Common
 {
     public static class Utility
     {
-        private static readonly char[] _dirSep = { '\\', '/' };
+        private static byte[] LinSRGBLUT = new byte[256];
+
+        public static void InitSRGBCache()
+        {
+            float ConvertValue(float colorValue)
+            {
+                if (colorValue <= 0.0031308f)
+                {
+                    return colorValue * 12.92f;
+                }
+                else
+                {
+                    return 1.055f * ((float)Math.Pow(colorValue, 1.0f / 2.4f)) - 0.055f;
+                }
+            }
+
+            for (var i = 0; i < LinSRGBLUT.Length; i++)
+            {
+                LinSRGBLUT[i] = (byte)(Math.Min(1f, ConvertValue(i / 255f)) * 255);
+            }
+        }
 
         /* Take a full file path and returns just a file name without directory or extensions */
         public static string PathToFileName(string fileName)
         {
-            if (fileName.EndsWith("\\") || fileName.EndsWith("/"))
-                fileName = fileName.TrimEnd(_dirSep);
-
-            if (fileName.Contains("\\") || fileName.Contains("/"))
-                fileName = fileName.Substring(fileName.LastIndexOfAny(_dirSep) + 1);
-
-            if (fileName.Contains("."))
-                fileName = fileName.Substring(0, fileName.LastIndexOf('.'));
-
-            return fileName;
+            return Path.GetFileNameWithoutExtension(fileName);
         }
 
         public static string ResourcePath(string path)
         {
-            return $"{AppDomain.CurrentDomain.BaseDirectory}Resources\\{path}";
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", path);
         }
 
         public static uint FNV1_32(byte[] data)
@@ -229,20 +244,20 @@ namespace JortPob.Common
             // Convert to ARGB int[] array
             int width = bitmap.Width, height = bitmap.Height;
             int[] srcPixels = new int[width * height];
-            var rect = new Rectangle(0, 0, width, height);
-            var data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            Rectangle rect = new(0, 0, width, height);
+            BitmapData data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, srcPixels, 0, srcPixels.Length);
             bitmap.UnlockBits(data);
 
             // Perform scaling
-            var scaler = new XbrzScaler(factor, withAlpha: true);
+            XbrzScaler scaler = new(factor, withAlpha: true);
             int[] scaledPixels = scaler.ScaleImage(srcPixels, null, width, height);
 
             // Convert back to Bitmap
             int scaledWidth = width * factor, scaledHeight = height * factor;
-            var scaledBitmap = new Bitmap(scaledWidth, scaledHeight, PixelFormat.Format32bppArgb);
-            var scaledRect = new Rectangle(0, 0, scaledWidth, scaledHeight);
-            var scaledData = scaledBitmap.LockBits(scaledRect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            Bitmap scaledBitmap = new(scaledWidth, scaledHeight, PixelFormat.Format32bppArgb);
+            Rectangle scaledRect = new(0, 0, scaledWidth, scaledHeight);
+            BitmapData scaledData = scaledBitmap.LockBits(scaledRect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
             System.Runtime.InteropServices.Marshal.Copy(scaledPixels, 0, scaledData.Scan0, scaledPixels.Length);
             scaledBitmap.UnlockBits(scaledData);
 
@@ -254,49 +269,128 @@ namespace JortPob.Common
         {
             Bitmap linearBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
 
-            float ConvertValue(float colorValue)
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData linearBitmapData = linearBitmap.LockBits(rect, ImageLockMode.ReadWrite, linearBitmap.PixelFormat);
+            BitmapData bitmapData = bitmap.LockBits(rect, ImageLockMode.ReadWrite, bitmap.PixelFormat);
+
+            IntPtr linearPtr = linearBitmapData.Scan0;
+            IntPtr bitmapPtr = bitmapData.Scan0;
+
+            int linearBytes = linearBitmapData.Stride * linearBitmapData.Height;
+            byte[] linearArgbVals = new byte[linearBytes];
+
+            int bitmapBytes = bitmapData.Stride * bitmapData.Height;
+            byte[] bitmapRgbVals = new byte[bitmapBytes];
+
+            Marshal.Copy(bitmapPtr, bitmapRgbVals, 0, bitmapBytes);
+
+            // The pixel strides between the og bitmap and the linear one may differ, we must homogenize to an index
+            int stride = BitmapUtilities.GetStride(bitmap.PixelFormat);
+            for (int i = 0; i < Math.Abs(bitmapBytes / stride); i++)
             {
-                if (colorValue <= 0.0031308f)
+                byte[] bitmapColors = BitmapUtilities.GetPixelValues(ref bitmapRgbVals, i * stride, bitmap.PixelFormat);
+                linearArgbVals[i * 4 + 3] = bitmapColors[0]; // alpha
+                linearArgbVals[i * 4 + 2] = LinSRGBLUT[bitmapColors[1]]; // r
+                linearArgbVals[i * 4 + 1] = LinSRGBLUT[bitmapColors[2]]; // g
+                linearArgbVals[i * 4] = LinSRGBLUT[bitmapColors[3]]; // b
+            }
+
+            Marshal.Copy(linearArgbVals, 0, linearPtr, linearBytes);
+
+            bitmap.UnlockBits(bitmapData);
+            linearBitmap.UnlockBits(linearBitmapData);
+
+            return linearBitmap;
+        }
+
+        public static unsafe Bitmap LinearToSRGBAlt(Bitmap bitmap)
+        {
+            Bitmap srgbBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
+
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+
+            // technically this can be done in place, but better safe than sorry
+            // due to bit manipulation shenanigens, bit locking is required
+            BitmapData bmpDataIn = bitmap.LockBits(rect, ImageLockMode.ReadOnly, bitmap.PixelFormat);
+            BitmapData bmpDataOut = srgbBitmap.LockBits(rect, ImageLockMode.WriteOnly, srgbBitmap.PixelFormat);
+
+            try
+            {
+                byte* ptrIn = (byte*)bmpDataIn.Scan0;
+                byte* ptrOut = (byte*)bmpDataOut.Scan0;
+
+                // LUT calculation
+                float[] sRGB_LUT = new float[256];
+                for (int i = 0; i < 256; i++)
                 {
-                    return colorValue * 12.92f;
+                    float linearValue = i / 255.0f;
+                    sRGB_LUT[i] = Value(linearValue);
+                }
+
+                int totalBytes = bmpDataIn.Stride * bitmap.Height;
+
+                for (int i = 0; i < totalBytes; i += 4)
+                {
+                    // since colors are big endian, they're reversed as b g r a
+                    byte linearB = ptrIn[i];
+                    byte linearG = ptrIn[i + 1];
+                    byte linearR = ptrIn[i + 2];
+                    byte alphaA = ptrIn[i + 3];
+
+                    // lut to the save
+                    float srgbR_float = sRGB_LUT[linearR];
+                    float srgbG_float = sRGB_LUT[linearG];
+                    float srgbB_float = sRGB_LUT[linearB];
+
+                    // squish the results back to range
+                    ptrOut[i] = (byte)Math.Round(srgbB_float * 255f);
+                    ptrOut[i + 1] = (byte)Math.Round(srgbG_float * 255f);
+                    ptrOut[i + 2] = (byte)Math.Round(srgbR_float * 255f);
+
+                    ptrOut[i + 3] = alphaA;
+                }
+            }
+            finally
+            {
+                // MUST unlock the bits after processing
+                bitmap.UnlockBits(bmpDataIn);
+                srgbBitmap.UnlockBits(bmpDataOut);
+            }
+
+            return srgbBitmap;
+
+            float Value(float linearValue)
+            {
+                linearValue = Math.Max(0f, Math.Min(1f, linearValue));
+
+                if (linearValue <= 0.0031308f)
+                {
+                    return linearValue * 12.92f;
                 }
                 else
                 {
-                    return 1.055f * ((float)Math.Pow(colorValue, 1.0f / 2.4f)) - 0.055f;
+                    return 1.055f * ((float)FastPow(linearValue, 1.0f / 2.4f)) - 0.055f;
                 }
             }
+        }
 
-            for (int y = 0; y < bitmap.Height; y++)
-            {
-                for (int x = 0; x < bitmap.Width; x++)
-                {
-                    Color srgbColor = bitmap.GetPixel(x, y);
-                    // Convert each channel from sRGB to linear
-                    float r = ConvertValue(srgbColor.R / 255f);
-                    float g = ConvertValue(srgbColor.G / 255f);
-                    float b = ConvertValue(srgbColor.B / 255f);
-                    float a = srgbColor.A / 255f; // Alpha remains the same
-                    Color linearColor = Color.FromArgb(
-                        (int)(a * 255),
-                        (int)(r * 255),
-                        (int)(g * 255),
-                        (int)(b * 255)
-                    );
-                    linearBitmap.SetPixel(x, y, linearColor);
-                }
-            }
-            return linearBitmap;
+        // source: trust me bro
+        public static double FastPow(double a, double b)
+        {
+            long tmp = BitConverter.DoubleToInt64Bits(a);
+            long tmp2 = (long)(b * (tmp - 4606921280493453312L)) + 4606921280493453312L;
+            return BitConverter.Int64BitsToDouble(tmp2);
         }
 
         /* Code borrowed from https://stackoverflow.com/questions/1922040/how-to-resize-an-image-c-sharp */
         public static Bitmap ResizeBitmap(Image image, int width, int height)
         {
-            var destRect = new Rectangle(0, 0, width, height);
-            var destImage = new Bitmap(width, height);
+            Rectangle destRect = new(0, 0, width, height);
+            Bitmap destImage = new(width, height);
 
             destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
 
-            using (var graphics = Graphics.FromImage(destImage))
+            using (Graphics graphics = Graphics.FromImage(destImage))
             {
                 graphics.CompositingMode = CompositingMode.SourceCopy;
                 graphics.CompositingQuality = CompositingQuality.HighQuality;
@@ -304,7 +398,7 @@ namespace JortPob.Common
                 graphics.SmoothingMode = SmoothingMode.HighQuality;
                 graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-                using (var wrapMode = new ImageAttributes())
+                using (ImageAttributes wrapMode = new())
                 {
                     wrapMode.SetWrapMode(WrapMode.TileFlipXY);
                     graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
@@ -347,6 +441,63 @@ namespace JortPob.Common
             }
             return ret;
         }
+
+        public static void ExecuteProcess(ProcessStartInfo startInfo, bool allowTimeout)
+        {
+            if (allowTimeout) { ExecuteProcess(startInfo); }
+            else { ExecuteProcess(startInfo, -1); }
+        }
+
+        public static void ExecuteProcess(ProcessStartInfo startInfo, int timeOutMillis = 0)
+        {
+            using Process process = Process.Start(startInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException($"Failed to start process: {startInfo.FileName}");
+            }
+
+            bool exited;
+            if(timeOutMillis == 0) { exited = process.WaitForExit(TimeSpan.FromMilliseconds(Const.DEFAULT_PROCESS_TIMEOUT)); }
+            else if (timeOutMillis < 0) { process.WaitForExit(); exited = true; }
+            else { exited = process.WaitForExit(TimeSpan.FromMilliseconds(timeOutMillis)); }
+
+            if (!exited)
+            {
+                try
+                {
+                    // Forceful termination if timeout occurs
+                    process.Kill();
+                    process.WaitForExit(); // Wait for OS cleanup
+                    throw new TimeoutException($"Process timed out and was killed: {startInfo.FileName}");
+                }
+                catch (InvalidOperationException)
+                {
+                    // Process may have just exited before Kill() was called.
+                    // We'll proceed to check the exit code below.
+                }
+            }
+
+            // VITAL: Check the process exit code after successful exit or timeout kill
+            if (process.ExitCode != 0)
+            {
+                // Optional: Read StandardError for better debugging info
+                string error = startInfo.RedirectStandardError ? process.StandardError.ReadToEnd() : "N/A (Error stream not redirected)";
+
+                // Throw a specific exception indicating execution failure
+                throw new ApplicationException($"Process failed with exit code {process.ExitCode}. Error: {error}");
+            }
+        }
+    }
+
+    public static class MSBExtension
+    {
+        public static void AddRegions(this SoulsFormats.MSBE msbe, List<MSBE.Region> regions)
+        {
+            foreach(MSBE.Region region in regions)
+            {
+                msbe.Regions.Add(region);
+            }
+        }
     }
 
 
@@ -367,6 +518,61 @@ namespace JortPob.Common
                 ts[i] = ts[r];
                 ts[r] = tmp;
             }
+        }
+    }
+
+    public static class BitmapUtilities
+    {
+        public static int GetStride(PixelFormat format) => format switch
+        {
+            PixelFormat.Format24bppRgb => 3,
+            PixelFormat.Format32bppArgb => 4,
+            PixelFormat.Format32bppRgb => 4,
+            PixelFormat.Format32bppPArgb => 4,
+            PixelFormat.Canonical => 4,
+            _ => throw new Exception($"PixelFormat {(int)format} is unsupported!")
+        };
+
+        // The bytes are ordered in little-endian, a bit counter-intuitive
+        public static byte[] GetPixelValues(ref byte[] bytes, int offset, PixelFormat format)
+        {
+            // Typically .NET is little-endian but weird shit happens
+            int alphaOffset = BitConverter.IsLittleEndian ? 3 : 0;
+            int redOffset = BitConverter.IsLittleEndian ? 2 : 1;
+            int greenOffset = BitConverter.IsLittleEndian ? 1 : 2;
+            int blueOffset = BitConverter.IsLittleEndian ? 0 : 3;
+            byte alpha = 255, red, green, blue;
+            if (format == PixelFormat.Format32bppArgb || format == PixelFormat.Format32bppPArgb || format == PixelFormat.Canonical)
+                alpha = bytes[offset+alphaOffset];
+
+            switch (format)
+            {
+                case PixelFormat.Format24bppRgb:
+                    red = bytes[offset + redOffset];
+                    green = bytes[offset + greenOffset];
+                    blue = bytes[offset + blueOffset];
+                    break;
+                case PixelFormat.Format32bppRgb:
+                    red = bytes[offset + alphaOffset];
+                    green = bytes[offset + redOffset];
+                    blue = bytes[offset + greenOffset];
+                    break;
+                case PixelFormat.Canonical:
+                case PixelFormat.Format32bppArgb:
+                    red = bytes[offset + redOffset];
+                    green = bytes[offset + greenOffset];
+                    blue = bytes[offset + blueOffset];
+                    break;
+                case PixelFormat.Format32bppPArgb:
+                    red = (byte)(Math.Min(bytes[offset + redOffset] / (float)alpha, 1f) * 255);
+                    green = (byte)(Math.Min(bytes[offset + greenOffset] / (float)alpha, 1f) * 255);
+                    blue = (byte)(Math.Min(bytes[offset + blueOffset] / (float)alpha, 1f) * 255);
+                    break;
+                default:
+                    throw new Exception($"PixelFormat {(int)format} is unsupported!");
+            }
+
+            return [ alpha, red, green, blue ];
         }
     }
 }

@@ -3,16 +3,17 @@ using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text.Json.Nodes;
+using System.Reflection.Metadata.Ecma335;
 using TES3;
+
+#nullable enable
 
 namespace JortPob.Model
 {
     public partial class ModelConverter
     {
-        public static ModelInfo NIFToFLVER(MaterialContext materialContext,
+        public static ModelInfo? NIFToFLVER(MaterialContext materialContext,
                     ModelInfo modelInfo,
                     bool forceCollision,
                     string modelPath,
@@ -26,7 +27,7 @@ namespace JortPob.Model
                 return null;
             }
 
-            var nif = loadResult.AsOk();
+            TES3.Scene nif = loadResult.AsOk();
 
             FLVER2 flver = new();
             flver.Header.Version = 131098; // Elden Ring FLVER Version Number
@@ -48,10 +49,10 @@ namespace JortPob.Model
 
             for (int meshIndex = 0; meshIndex < nif.VisualMeshes.Count; meshIndex++)
             {
-                var mesh = nif.VisualMeshes[meshIndex];
+                TES3.Mesh mesh = nif.VisualMeshes[meshIndex];
 
                 /* Setup Material */
-                var materialInfo = materialContext.GenerateMaterial(mesh.Texture.String, meshIndex);
+                MaterialContext.MaterialInfo materialInfo = materialContext.GenerateMaterial(mesh.Texture.String, meshIndex);
                 flver.Materials.Add(materialInfo.material);
                 flver.GXLists.Add(materialInfo.gx);
                 flver.BufferLayouts.Add(materialInfo.layout);
@@ -80,8 +81,8 @@ namespace JortPob.Model
 
                 for (int triangleIndex = 0; triangleIndex < mesh.Triangles.Count; triangleIndex++)
                 {
-                    var triangle = mesh.Triangles[triangleIndex];
-                    var indices = new int[] { triangle.v0, triangle.v1, triangle.v2 };
+                    Triangle triangle = mesh.Triangles[triangleIndex];
+                    int[] indices = new int[] { triangle.v0, triangle.v1, triangle.v2 };
                     foreach (int vertexIndex in indices)
                     {
                         FLVER.Vertex flverVertex = new();
@@ -118,7 +119,7 @@ namespace JortPob.Model
                         flverVertex.Normal = norm;
                         if (mesh.UvSet0.Count != 0)
                         {
-                            var uv = mesh.UvSet0[vertexIndex];
+                            TES3.Vec2 uv = mesh.UvSet0[vertexIndex];
                             flverVertex.UVs.Add(new Vector3(uv.x, uv.y, 0));
                         }
                         else
@@ -148,37 +149,81 @@ namespace JortPob.Model
                 flver.Meshes.Add(flverMesh);
             }
 
-            Vector3 center = Vector3.Lerp(flver.Nodes[0].BoundingBoxMin, flver.Nodes[0].BoundingBoxMax, .5f);
+            /* Calculate bounding boxes */
+            BoundingBoxSolver.FLVER(flver);
+
+            /* Add Dummy Polys */
+            void AddDmy(Vector3 position, short id)
             {
                 FLVER.Dummy dmy = new();
-                dmy.Position = center;
+                dmy.Position = position;
                 dmy.Forward = new(0, 0, 1);
                 dmy.Upward = new(0, 1, 0);
                 dmy.Color = System.Drawing.Color.White;
-                dmy.ReferenceID = 90;
+                dmy.ReferenceID = id;
                 dmy.ParentBoneIndex = 0;
                 dmy.AttachBoneIndex = 0;
                 dmy.UseUpwardVector = true;
                 flver.Dummies.Add(dmy);
             }
 
-            /* Add Dummy Polys */
+            /* Add some generic dmys based on orientations */
+            Vector3 root = Vector3.Zero;
+            Vector3 center = Vector3.Lerp(flver.Nodes[0].BoundingBoxMin, flver.Nodes[0].BoundingBoxMax, .5f);
+            Vector3 bottom = new Vector3(center.X, flver.Nodes[0].BoundingBoxMin.Y, center.Z);
+            Vector3 top = new Vector3(center.X, flver.Nodes[0].BoundingBoxMax.Y, center.Z);
+
+            AddDmy(root, Const.FLVER_DMY_ROOT);
+            AddDmy(center, Const.FLVER_DMY_CENTER);
+            AddDmy(bottom, Const.FLVER_DMY_BOTTOM);
+            AddDmy(top, Const.FLVER_DMY_TOP);
+
+            /* Now add dmys from the emitters and nodes in the model */
             short nextRef = 500; // idk why we start at 500, i'm copying old code from DS3 portjob here
-            List<Tuple<string, Vector3>> nodes = [
-                new("root", Vector3.Zero), // always add a dummy at root for potential use by fxr later
-            ];
-            foreach (Tuple<string, Vector3> tuple in nodes)
+            List<(string name, Vector3 position)> nodes = new();
+
+            Vector3 CollapseTransform(Transform transform)
             {
-                string name = tuple.Item1;
-                Vector3 position = tuple.Item2;
+                /* Correct position of emitter dmy based on the vertex orientation code above */
+                Matrix4x4 mt = Matrix4x4.CreateTranslation(transform.Translation.ToVector3());
+                Matrix4x4 mr = Matrix4x4.CreateFromQuaternion(transform.Rotation.ToQuaternion());
+                Matrix4x4 ms = Matrix4x4.CreateScale(transform.Scale);
+
+                Vector3 position = new();
+                position = Vector3.Transform(position, ms * mr * mt);
+                position *= Const.GLOBAL_SCALE;
+                position.X *= -1f;
+                position = Vector3.Transform(position, desiredRotation);
+                return position;
+            }
+
+            for(int i=0;i<nif.Nodes.Count;i++)
+            {
+                TES3.Node node = nif.Nodes[i];
+
+                string name = node.Name.String.ToLower();
+                if (!(name.Contains("attach") && name.Contains("light"))) { continue; }  // skip any nodes that are not light attachment points
+                Vector3 position = CollapseTransform(node.Transform);
+
+                nodes.Add((name, position));
+            }
+
+            for (int i = 0; i < nif.Emitters.Count; i++)
+            {
+                TES3.Emitter emitter = nif.Emitters[i];
+
+                string name = emitter.Name.String.ToLower();
+                Vector3 position = CollapseTransform(emitter.Transform);
+
+                nodes.Add((name, position));
+            }
+
+            foreach ((string name, Vector3 position) node in nodes)
+            {
+                string name = node.name;
+                Vector3 position = node.position;
 
                 short refid = modelInfo.dummies.ContainsKey(name) ? modelInfo.dummies[name] : nextRef++;
-
-                // correct position using same math as we use for vertices above
-                //position = position * Const.GLOBAL_SCALE;
-                position.X *= -1f;
-                Matrix4x4 rotateY180Matrix = Matrix4x4.CreateRotationY((float)Math.PI);
-                position = Vector3.Transform(position, rotateY180Matrix);
 
                 FLVER.Dummy dmy = new();
                 dmy.Position = position;
@@ -192,9 +237,6 @@ namespace JortPob.Model
                 flver.Dummies.Add(dmy);
                 if (!modelInfo.dummies.ContainsKey(name)) { modelInfo.dummies.Add(name, refid); }
             }
-
-            /* Calculate bounding boxes */
-            BoundingBoxSolver.FLVER(flver);
 
             /* Optimize flver */
             flver = FLVERUtil.Optimize(flver);
@@ -217,7 +259,7 @@ namespace JortPob.Model
 
                     for (int i = 0; i < nif.VisualMeshes.Count; i++)
                     {
-                        var tex = nif.VisualMeshes[i].Texture.String.ToLower();
+                        string tex = nif.VisualMeshes[i].Texture.String.ToLower();
                         foreach (string key in keys)
                         {
                             if (Utility.PathToFileName(modelInfo.name).ToLower().Contains(key)) { matguess = type; return; }
@@ -260,7 +302,7 @@ namespace JortPob.Model
     {
         public static Vec3 Multiply(this Vec3 vec, float value)
         {
-            var result = vec;
+            Vec3 result = vec;
             result.x = result.x * value;
             result.y = result.y * value;
             result.z = result.z * value;
@@ -311,7 +353,7 @@ namespace JortPob.Model
             min = obj.vs[0];
             max = obj.vs[0];
 
-            foreach (var v in obj.vs)
+            foreach (Vector3 v in obj.vs)
             {
                 if (v.X < min.X) min.X = v.X;
                 if (v.Y < min.Y) min.Y = v.Y;

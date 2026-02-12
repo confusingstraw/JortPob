@@ -44,7 +44,7 @@ namespace JortPob
             {
                 string trim = f.Trim().ToLower().Replace("_", "");
                 if(trim == "0x40") { trim = "unk40"; }
-                Flag flag = (Flag)Enum.Parse(typeof(Flag), trim, true);
+                Flag flag = Enum.Parse<Flag>(trim, true);
                 flags.Add(flag);
             }
 
@@ -74,28 +74,30 @@ namespace JortPob
 
                 if(record == null) { continue; }
 
-                string mesh = record.json["mesh"] != null ? record.json["mesh"].ToString() : null;
-                if (mesh != null && mesh.Trim() == "") { mesh = null; }                             // For some reason a null mesh can just be "" sometimes?
+                string mesh = record.json["mesh"]?.ToString(); // mesh can just be "" sometimes
 
                 switch(record.type)
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Activator:
-                        if (mesh != null) { assets.Add(new AssetContent(this, reference, record)); }
+                        if (!string.IsNullOrEmpty(mesh)) { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
-                        if (mesh != null) { doors.Add(new DoorContent(this, reference, record)); }
+                        if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }
                         break;
                     case ESM.Type.Light:
-                        if (mesh == null) { lights.Add(new LightContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { lights.Add(new LightContent(this, reference, record)); }
                         else { emitters.Add(new EmitterContent(this, reference, record)); }
                         break;
                     case ESM.Type.Npc:
                         npcs.Add(new NpcContent(esm, this, reference, record));
                         break;
                     case ESM.Type.Creature:
+                        creatures.Add(new CreatureContent(esm, this, reference, record));
+                        break;
                     case ESM.Type.LeveledCreature:
-                        creatures.Add(new CreatureContent(this, reference, record));
+                        Record resolvedRecord = esm.ResolveLeveledCreature(id);
+                        creatures.Add(new CreatureContent(esm, this, reference, resolvedRecord));
                         break;
                     case ESM.Type.Container:
                         if (id.ToLower().StartsWith("flora_") && id.ToLower() != "flora_treestump_unique") // this specific id is a weird outlier so just adding it as a condition here

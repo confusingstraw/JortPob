@@ -23,15 +23,18 @@ namespace JortPob
         private static HashSet<string> DO_NOT_PLACE;
         private static HashSet<string> STATIC_COLLISION;
         private static HashSet<string> ITEMS_TO_SKIP;
+        private static HashSet<string> CUSTOM_VOICES;
 
         private static List<PlayerClass> CHARACTER_CREATION_CLASS;
         private static List<PlayerRace> CHARACTER_CREATION_RACE;
-        private static List<ItemRemap> ITEM_REMAPS;
-        private static List<ItemDefinition> ITEM_DEFINITIONS;
-        private static List<SpeffDefinition> SPEFF_DEFINITIONS;
-        private static List<SpellRemap> SPELL_REMAPS;
+        private static Dictionary<string, ItemRemap> ITEM_REMAPS_BY_ID;
+        private static Dictionary<string, ItemDefinition> ITEM_DEFINITIONS_BY_ID;
+        private static Dictionary<string, SpeffDefinition> SPEFF_DEFINITIONS_BY_ID;
+        private static Dictionary<string, SpellRemap> SPELL_REMAPS_BY_ID;
         private static List<SkillInfo> SKILL_INFOS;
         private static List<AlchemyInfo> ALCHEMY_INFOS;
+        private static List<EnemyRemap> ENEMY_REMAPS;
+        private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -48,6 +51,11 @@ namespace JortPob
             return ITEMS_TO_SKIP.Contains(id.ToLower());
         }
 
+        public static bool CheckCustomVoice(string id)
+        {
+            return CUSTOM_VOICES.Contains(id.ToLower());
+        }
+
         public static List<PlayerClass> GetCharacterCreationClasses()
         {
             return CHARACTER_CREATION_CLASS;
@@ -60,43 +68,27 @@ namespace JortPob
 
         public static ItemRemap GetItemRemap(string id)
         {
-            foreach (ItemRemap remap in ITEM_REMAPS)
-            {
-                if (remap.id == id) { return remap; }
-            }
-            return null;
+            return ITEM_REMAPS_BY_ID.TryGetValue(id, out ItemRemap remapped) ? remapped : null;
         }
 
         public static ItemDefinition GetItemDefinition(string id)
         {
-            foreach (ItemDefinition def in ITEM_DEFINITIONS)
-            {
-                if (def.id == id) { return def; }
-            }
-            return null;
+            return ITEM_DEFINITIONS_BY_ID.TryGetValue(id, out ItemDefinition definition) ? definition : null;
         }
 
         public static SpeffDefinition GetSpeffDefinition(string id)
         {
-            foreach (SpeffDefinition def in SPEFF_DEFINITIONS)
-            {
-                if (def.id == id) { return def; }
-            }
-            return null;
+            return SPEFF_DEFINITIONS_BY_ID.TryGetValue(id, out SpeffDefinition definition) ? definition : null;
         }
 
         public static List<SpeffDefinition> GetSpeffDefinitions()
         {
-            return SPEFF_DEFINITIONS;
+            return SPEFF_DEFINITIONS_BY_ID.Values.ToList();
         }
 
         public static SpellRemap GetSpellRemap(string id)
         {
-            foreach (SpellRemap remap in SPELL_REMAPS)
-            {
-                if (remap.id == id) { return remap; }
-            }
-            return null;
+            return SPELL_REMAPS_BY_ID.TryGetValue(id, out SpellRemap remap) ? remap : null;
         }
 
         public static List<SkillInfo> GetSkills()
@@ -104,7 +96,7 @@ namespace JortPob
             return SKILL_INFOS;
         }
 
-        public static List<SkillInfo> GetSkills(NpcContent.Stats.Tier tier)
+        public static List<SkillInfo> GetSkills(CharacterContent.Stats.Tier tier)
         {
             return SKILL_INFOS.Where(skill => skill.tier <= tier).ToList();
         }
@@ -112,6 +104,22 @@ namespace JortPob
         public static List<AlchemyInfo> GetAlchemy()
         {
             return ALCHEMY_INFOS;
+        }
+
+        public static EnemyRemap GetEnemyRemap(string id)
+        {
+            foreach (EnemyRemap remap in ENEMY_REMAPS)
+            {
+                if (remap.id == id.ToLower().Trim()) { return remap; }
+            }
+            return new();
+        }
+
+        public static Layout.MapPoint.Icon GetMapIcon(string name)
+        {
+            string n = name.ToLower().ToString();
+            if(MAP_ICONS.ContainsKey(n)) { return MAP_ICONS[n]; }
+            else { return Layout.MapPoint.Icon.Auto; }
         }
 
         /* load all the override jsons into this class */
@@ -133,6 +141,12 @@ namespace JortPob
             JsonNode jsonItemsToSkip = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\items_to_skip.json")));
             ITEMS_TO_SKIP = jsonItemsToSkip != null
                 ? jsonItemsToSkip.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
+                : [];
+
+            /* Load items_to_skip overrides */
+            JsonNode jsonCustomVoiceList = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\custom_voice_list.json")));
+            CUSTOM_VOICES = jsonCustomVoiceList != null
+                ? jsonCustomVoiceList.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
                 : [];
 
             /* Load character creation class overrides */
@@ -161,17 +175,17 @@ namespace JortPob
             }
 
             /* Load spell remapping list */
-            SPELL_REMAPS = new();
+            SPELL_REMAPS_BY_ID = new();
             JsonNode jsonSpellRemap = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\spell_remap.json")));
             foreach (var property in jsonSpellRemap.AsObject())
             {
                 JsonNode jsonNode = property.Value;
                 SpellRemap sprmo = new(property.Key, jsonNode);
-                SPELL_REMAPS.Add(sprmo);
+                SPELL_REMAPS_BY_ID.Add(sprmo.id, sprmo);
             }
 
             /* Load item remapping list */
-            ITEM_REMAPS = new();
+            ITEM_REMAPS_BY_ID = new();
             string[] itemRemapFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\items\remap"));
             foreach (string itemRemapFile in itemRemapFiles)
             {
@@ -180,23 +194,45 @@ namespace JortPob
                 {
                     JsonNode jsonNode = property.Value;
                     ItemRemap itrmo = new(property.Key, jsonNode);
-                    ITEM_REMAPS.Add(itrmo);
+                    ITEM_REMAPS_BY_ID.Add(itrmo.id, itrmo);
                 }
             }
 
             /* Load all item definitinos from resources/override/items */
             string[] itemFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\items"));
-            ITEM_DEFINITIONS = new();
-            foreach (string itemFile in itemFiles) {
-                ITEM_DEFINITIONS.Add(new ItemDefinition(itemFile));
+            ITEM_DEFINITIONS_BY_ID = new();
+            foreach (string itemFile in itemFiles)
+            {
+                ItemDefinition definition = new(itemFile);
+                ITEM_DEFINITIONS_BY_ID.Add(definition.id, definition);
             }
 
             /* Load all speff definitinos from resources/override/speffs */
             string[] speffFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\speffs"));
-            SPEFF_DEFINITIONS = new();
+            SPEFF_DEFINITIONS_BY_ID = new();
             foreach (string speffFile in speffFiles)
             {
-                SPEFF_DEFINITIONS.Add(new SpeffDefinition(speffFile));
+                SpeffDefinition definition = new(speffFile);
+                SPEFF_DEFINITIONS_BY_ID.Add(definition.id, definition);
+            }
+
+            /* Load enemy remap list */
+            ENEMY_REMAPS = new();
+            JsonNode jsonEnemyRemaps = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\enemy_remap.json")));
+            foreach (var property in jsonEnemyRemaps.AsObject())
+            {
+                JsonNode jsonNode = property.Value;
+                EnemyRemap enemyRemap = new(property.Key, jsonNode);
+                ENEMY_REMAPS.Add(enemyRemap);
+            }
+
+            /* Load map icon overrides */
+            MAP_ICONS = new();
+            JsonNode jsonMapIcons = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\map_icons.json")));
+            foreach (var property in jsonMapIcons.AsObject())
+            {
+                string iconName = property.Value.GetValue<string>();
+                MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
             }
         }
 
@@ -211,7 +247,7 @@ namespace JortPob
         public class PlayerRace
         {
             public string name, description;
-            public byte id;  // this id matches the values of the NpcContent.Race enums
+            public byte id;  // this id matches the values of the CharacterContent.Race enums
 
             public PlayerRace() { }
         }
@@ -220,14 +256,14 @@ namespace JortPob
         {
             public readonly string comment;
             public readonly string id;
-            public readonly NpcContent.Stats.Tier tier;
+            public readonly CharacterContent.Stats.Tier tier;
             public readonly List<string> ingredients;
 
             public AlchemyInfo(string id, JsonNode json)
             {
                 this.id = id;
                 comment = json["comment"]?.GetValue<string>();
-                tier = (NpcContent.Stats.Tier)System.Enum.Parse(typeof(NpcContent.Stats.Tier), json["tier"].GetValue<string>());
+                tier = (CharacterContent.Stats.Tier)System.Enum.Parse(typeof(CharacterContent.Stats.Tier), json["tier"].GetValue<string>());
 
                 ingredients = new();
                 JsonArray jsonArray = json["ingredients"].AsArray();
@@ -242,7 +278,7 @@ namespace JortPob
         {
             public readonly string comment;
             public readonly int row;    // gemparam row
-            public readonly NpcContent.Stats.Tier tier;  // strength and rarity of skill
+            public readonly CharacterContent.Stats.Tier tier;  // strength and rarity of skill
             public readonly int value;  // value is how much merchants will sell it for
 
             public readonly ItemText text;
@@ -251,7 +287,7 @@ namespace JortPob
             {
                 comment = json["comment"]?.GetValue<string>();
                 row = json["row"].GetValue<int>();
-                tier = (NpcContent.Stats.Tier)System.Enum.Parse(typeof(NpcContent.Stats.Tier), json["tier"].GetValue<string>());
+                tier = (CharacterContent.Stats.Tier)System.Enum.Parse(typeof(CharacterContent.Stats.Tier), json["tier"].GetValue<string>());
                 value = json["value"].GetValue<int>();
 
                 if (json["text"] != null)
@@ -406,6 +442,10 @@ namespace JortPob
             public readonly ItemManager.Type type;
             public readonly int row;                   // row we copy as our base
 
+            // these 3 fields are only used for the CustomWeapon type
+            public readonly ItemManager.Infusion infusion;
+            public readonly int skill, upgrade;
+
             public readonly bool useIcon; // use morrowind item icon if true, otherwise use whatever is set in the param
 
             public readonly ItemText text;
@@ -418,8 +458,20 @@ namespace JortPob
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
                 comment = json["comment"]?.GetValue<string>();
-                type = (ItemManager.Type)System.Enum.Parse(typeof(ItemManager.Type), json["type"].GetValue<string>());
+                type = Enum.Parse<ItemManager.Type>(json["type"].GetValue<string>());
                 row = json["row"].GetValue<int>();
+
+                if (json["infusion"] != null)
+                {
+                    infusion = Enum.Parse<ItemManager.Infusion>(json["infusion"].GetValue<string>());
+                }
+                else
+                {
+                    infusion = ItemManager.Infusion.None;
+                }
+
+                skill = json["skill"] != null ? json["skill"].GetValue<int>() : -1;
+                upgrade = json["upgrade"] != null ? json["upgrade"].GetValue<int>() : 0;
 
                 useIcon = json["useIcon"] != null ? json["useIcon"].GetValue<bool>() : false;
 
@@ -434,6 +486,56 @@ namespace JortPob
                 foreach(var property in json["data"].AsObject())
                 {
                     data.Add(property.Key, property.Value.ToString());
+                }
+            }
+        }
+
+        public class EnemyRemap
+        {
+            public readonly string id, comment, character;
+            public readonly EnemyRemapData npc, think;
+
+            public EnemyRemap(string id, JsonNode json)
+            {
+                this.id = id.ToLower().Trim();
+                character = json["character"]?.GetValue<string>();
+                comment = json["comment"]?.GetValue<string>();
+
+                npc = new(json["npc"]);
+                think = new(json["think"]);
+            }
+
+            /* Default constructor, points to a Goat */
+            public EnemyRemap()
+            {
+                id = "DEFAULT";
+                character = "c6060";
+                comment = "Default constructor, used when no remap found. Creates a goat.";
+
+                npc = new(60600010);
+                think = new(60600000);
+            }
+
+            public class EnemyRemapData
+            {
+                public readonly int row;
+                public readonly Dictionary<string, string> data;
+
+                public EnemyRemapData(JsonNode json)
+                {
+                    row = json["row"].GetValue<int>();
+
+                    data = new();
+                    foreach (var property in json["data"].AsObject())
+                    {
+                        data.Add(property.Key, property.Value.ToString());
+                    }
+                }
+
+                public EnemyRemapData(int row)
+                {
+                    this.row = row;
+                    data = new();
                 }
             }
         }
