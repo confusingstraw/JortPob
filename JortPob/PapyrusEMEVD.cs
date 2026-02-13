@@ -1,4 +1,5 @@
-﻿using JortPob.Common;
+﻿using IronPython.Runtime.Operations;
+using JortPob.Common;
 using Microsoft.Scripting.Runtime;
 using SoulsFormats;
 using SoulsIds;
@@ -53,10 +54,11 @@ namespace JortPob
                 {
                     // Find refernce to object that matches the record id of this local var 
                     string recordId = varName.Split(".")[0].Replace("\"", "").Trim();
+                    string varId = varName.Split(".")[1].Replace("\"", "").Trim();
                     Content target = layout.FindScriptReference(content, recordId);
                     if (target != null)
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.entity}.{varName}");
+                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{target.entity}.{varId}");
                     }
                 }
                 // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
@@ -518,15 +520,18 @@ namespace JortPob
                             {
                                 case CharacterContent c:
                                     {
-                                        Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
-                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {deadFlag.id});"); // if character is dead skip enable/disable
+                                        if (!c.dead)  // dead bodies don't need this alive/dead check. they can be treated like staticcontent but using CharacterEnable instead of AssetEnable
+                                        {
+                                            Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+                                            lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {deadFlag.id});"); // if character is dead skip enable/disable
+                                        }
                                         lines.Add($"ChangeCharacterEnableState({target.entity}, {able});");
                                         break;
                                     }
                                 case ItemContent i:
                                     {
-                                        Script.Flag itemFlag = i.treasure;
-                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {itemFlag.id});"); // if item already picked up then skip enable/disable
+                                        if(i.treasure == null) { goto default; }  // items that dont have treasure are literally just statics so treat them as such
+                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {i.treasure.id});"); // if item already picked up then skip enable/disable
                                         lines.Add($"ChangeAssetEnableState({target.entity}, {able});");
                                         break;
                                     }

@@ -53,8 +53,6 @@ namespace JortPob
 
             defs = new();
 
-            Lort.Log($"Starting dialog ESD generation for: {npcContent.id}", Lort.Type.Debug);
-
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
             NpcManager.TopicData hit = GetTalk(topicData, DialogRecord.Type.Hit).FirstOrDefault() ?? new();

@@ -773,10 +773,11 @@ namespace JortPob
                     {
                         // Find refernce to object that matches the record id of this local var 
                         string recordId = varName.Split(".")[0].Replace("\"", "").Trim();
+                        string varId = varName.Split(".")[1].Replace("\"", "").Trim();
                         Content target = layout.FindScriptReference(npcContent, recordId);
                         if (target != null)
                         {
-                            retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varName}");
+                            retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varId}");
                         }
                     }
                     // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
@@ -964,6 +965,7 @@ namespace JortPob
                                 {
                                     case CharacterContent c:
                                         {
+                                            if(c.dead) { goto default; } // dead bodies can be treated basically like static objects
                                             Script.Flag deadFlag = scriptManager.GetFlag(Flag.Designation.Dead, target.entity.ToString());
                                             lines.Add($"if not GetEventFlag({deadFlag.id}):");               // if character is not dead then trigger enable/disable
                                             lines.Add($"    SetEventFlag({triggerFlag.id}, FlagState.On)");
@@ -971,8 +973,8 @@ namespace JortPob
                                         }
                                     case ItemContent i:
                                         {
-                                            Script.Flag itemFlag = i.treasure;
-                                            lines.Add($"if not GetEventFlag({itemFlag.id}):");               // if item has not been picked up then trigger enable/disable
+                                            if(i.treasure == null) { goto default; }  // items that dont have treasure are literally just statics so treat them as such
+                                            lines.Add($"if not GetEventFlag({i.treasure.id}):");               // if item has not been picked up then trigger enable/disable
                                             lines.Add($"    SetEventFlag({triggerFlag.id}, FlagState.On)");
                                             break;
                                         }

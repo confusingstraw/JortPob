@@ -616,6 +616,7 @@ namespace JortPob
                             case ItemContent ic: entityType = Script.EntityType.Asset; break;
                             case CharacterContent cc: entityType = Script.EntityType.Enemy; break;
                             case StaticContent sc: entityType = Script.EntityType.Asset; break;
+                            case LightContent lc: entityType = Script.EntityType.Region; break;         // BTL Light. Scripts on these don't actually work rn
                             default: throw new Exception("Invalid content type for script preprocess");
                         }
                         content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");

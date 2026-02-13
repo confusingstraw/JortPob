@@ -465,8 +465,6 @@ namespace JortPob
                 // Skip empty groups.
                 if (group.IsEmpty()) { continue; }
 
-                Lort.Log($"@{group.map}_{group.area} we have ItemLots[{param.param[Paramanager.ParamType.ItemLotParam_map].Rows.Count}] and TalkParams[{param.param[Paramanager.ParamType.TalkParam].Rows.Count}]", Lort.Type.Debug);
-
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
 
@@ -872,18 +870,24 @@ namespace JortPob
 
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */
+            Lort.Log($"Processing {contentToCompile.Count()+1} scripts...", Lort.Type.Main);
+            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*2);
 
             /* Initialize local variables first */
             Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
             if (papyrusMain != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, scriptManager.common, papyrusMain, null); }
+            Lort.TaskIterate();
             foreach (PleaseCompile compile in contentToCompile)
             {
                 Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                 if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
+
+                Lort.TaskIterate();
             }
 
             /* Then compile papyrus and dialog */
             if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
+            Lort.TaskIterate();
             foreach (PleaseCompile compile in contentToCompile)
             {
                 Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
@@ -896,9 +900,12 @@ namespace JortPob
                     if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
                     else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
                 }
+
+                Lort.TaskIterate();
             }
 
             /* Geneate debug area in Stranded Graveyard */
+            Lort.Log($"Generating debug warp zone...", Lort.Type.Main);
             WarpZone.Generate(layout, scriptManager, param);
 
             /* Write sound BNKs */

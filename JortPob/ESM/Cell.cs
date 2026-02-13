@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using Microsoft.Scripting.Runtime;
 using SharpAssimp.Configs;
 using System;
 using System.Collections.Generic;
@@ -76,7 +77,7 @@ namespace JortPob
 
                 string mesh = record.json["mesh"]?.ToString(); // mesh can just be "" sometimes
 
-                switch(record.type)
+                switch (record.type)
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Activator:
@@ -97,7 +98,9 @@ namespace JortPob
                         break;
                     case ESM.Type.LeveledCreature:
                         Record resolvedRecord = esm.ResolveLeveledCreature(id);
-                        creatures.Add(new CreatureContent(esm, this, reference, resolvedRecord));
+                        if (resolvedRecord.type == ESM.Type.Creature) { creatures.Add(new CreatureContent(esm, this, reference, resolvedRecord)); }
+                        else if (resolvedRecord.type == ESM.Type.Npc) { npcs.Add(new NpcContent(esm, this, reference, resolvedRecord)); }
+                        else { throw new Exception("Invalid leveled list result record type"); } // if this ever happens todd howard owes me a blood sacrifice
                         break;
                     case ESM.Type.Container:
                         if (id.ToLower().StartsWith("flora_") && id.ToLower() != "flora_treestump_unique") // this specific id is a weird outlier so just adding it as a condition here
