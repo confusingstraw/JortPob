@@ -1,18 +1,10 @@
-﻿using IronPython.Runtime.Operations;
-using JortPob.Common;
-using Microsoft.Scripting.Runtime;
+﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsIds;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
 using static JortPob.Papyrus;
-using static JortPob.SpeffManager;
 
 namespace JortPob
 {

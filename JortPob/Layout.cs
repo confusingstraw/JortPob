@@ -1,16 +1,10 @@
 ﻿using JortPob.Common;
-using NAudio.Wave;
 using System;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using static JortPob.InteriorGroup;
-using static JortPob.ItemManager;
-using static JortPob.NpcContent;
-using static JortPob.Script;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {

@@ -1,11 +1,8 @@
 ﻿using JortPob.Common;
-using Microsoft.Scripting.Runtime;
-using SharpAssimp.Configs;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Nodes;
-using static JortPob.NpcContent;
 
 namespace JortPob
 {
