@@ -22,7 +22,7 @@ namespace JortPob
         {
             LoadDoor, SpawnHandler, SpawnHandlerWithDisable, NpcHostilityHandler, Message, Hello, Essential, DeadBody, 
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
-            StaticDisable, PlaySE, TriggerEnable, TriggerDisable
+            StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight
         }
         public readonly Dictionary<Event, uint> events;
         public readonly Dictionary<int, Flag> messages;  // hash of message text as key, value is flag that when set to true triggers a message to display
@@ -175,6 +175,8 @@ namespace JortPob
 
             func.Events.Add(hostileEvent);
             events.Add(Event.NpcHostilityHandler, hostileEventFlag.id);
+
+
 
             /* Create an event for handling npc hello turntoplayer from esd */
             Flag helloEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Hello");
@@ -482,6 +484,54 @@ namespace JortPob
 
             func.Events.Add(permanentSpeffEvent);
             events.Add(Event.PermanentSpeff, permanentSpeffEventFlag.id);
+
+            /* Create an event for handling startcombat and stopcombat calls */
+            Flag npcInfightEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcInfight");
+            EMEVD.Event npcInfightEvent = new(npcInfightEventFlag.id);
+
+            pc = 0;
+
+            string[] npcInfightEventRaw = new string[]
+            {
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
+                $"SetCharacterTeamType({NextParameterName()}, 29);",   // hostile flag on, hostile   >:(     // 29: TeamType.Indiscriminate
+                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
+                $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
+            };
+
+            for (int i = 0; i < npcInfightEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(npcInfightEventRaw[i], i);
+                npcInfightEvent.Parameters.AddRange(newPs);
+                npcInfightEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(npcInfightEvent);
+            events.Add(Event.NpcInfight, npcInfightEventFlag.id);
+
+            /* Create an event for handling a permanent mod stat on an npcs */
+            Flag npcModStatEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcInFight");
+            EMEVD.Event npcModStatEvent = new(npcModStatEventFlag.id);
+
+            pc = 0;
+
+            string[] npcModStatEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});", // if flag is on...
+                $"SetSpEffect({NextParameterName()}, {NextParameterName()});",                    // apply speff to npc
+                $"EndUnconditionally(EventEndType.End);",                                        // and that's all!
+            };
+
+            for (int i = 0; i < npcModStatEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(npcModStatEventRaw[i], i);
+                npcModStatEvent.Parameters.AddRange(newPs);
+                npcModStatEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(npcModStatEvent);
+            events.Add(Event.NpcModStat, npcModStatEventFlag.id);
 
             /* Create an event for handling disable/enable of statics */
             Flag staticDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:StaticDisable");

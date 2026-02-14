@@ -295,6 +295,25 @@ namespace JortPob
             return playFlag;
         }
 
+        /* Register a modStat call here so that it is permanently applied to npc. Flag returned is the trigger for it to be on. */
+        public Flag RegisterModStat(uint entityId, int speffId)
+        {
+            Flag modStatFlag = CreateFlag(Category.Saved, Type.Bit, Designation.NpcModStat, $"{entityId}->{speffId}");
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcModStat]}, {modStatFlag.id}, {entityId}, {speffId});"));
+            return modStatFlag;
+        }
+
+        /* Register NpcInfight event for StartCombat and StopCombat calls */
+        public Flag GetOrRegisterInfight(CharacterContent content)
+        {
+            Script.Flag fightFlag = GetFlag(Designation.NpcInfight, content.entity.ToString());
+            if(fightFlag != null) { return fightFlag; } // already exists, return flag
+
+            fightFlag = CreateFlag(Category.Saved, Type.Bit, Designation.NpcInfight, content.entity.ToString());
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcInfight]}, {fightFlag.id}, {content.entity}, {fightFlag.id}, {content.entity});"));
+            return fightFlag;
+        }
+
         /* Crime events are charcters reactions to being attacked or stolen from */
         /* These events are generated before Write(). What this does is look for any npcs near an npc and if the player commits a crime against an npc we trigger all nearby npcs to get mad at the player */
         /* Additionally if this event is triggered we also set all guards hostile and mark guards to force greet the player */
@@ -492,7 +511,8 @@ namespace JortPob
                 CrimeAbsolved,            // temp value, setting it to 1 triggers a common emevd event that clears all crime and hostility flags
                 HostileQuip, Hello,    // temp value that is flagged when a guard is gretting the player, if the player has a bounty and trys to leave dialog without paying they get dunked on
                 OnActivate, OnDeath, CellChanged, GetButtonPressedBit, GetButtonPressedValue, // used by papyrus to emulate mw script behaviours
-                PermanentSpeff,
+                PermanentSpeff, NpcModStat,  // Used for maintaining speffs on the player/npcs permanently
+                NpcInfight,   // Used to make npcs fight each other. papyrus StartCombat/StopCombat calls
                 RunSubscript, // Flag created for StartScript, StopScript, ScriptRunning papyrus calls. when true subscripts run, when false they stop
                 Message,    // Flag to trigger a popmessage or notification
                 PlaySE,     // Flat to trigger playing a sound effect

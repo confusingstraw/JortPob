@@ -1,25 +1,11 @@
-﻿using HKLib.hk2018.hke;
-using IronPython.Compiler;
-using JortPob.Common;
-using SharpAssimp.Unmanaged;
-using SoulsAssetPipeline.Animation;
+﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsFormats.MWC;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static HKLib.hk2018.hkSerialize.CompatTypeParentInfo;
-using static IronPython.Modules._ast;
-using static JortPob.Papyrus;
 using static JortPob.Script;
-using static SoulsFormats.MQB;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -815,34 +801,55 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.PcJoinFaction:
                             {
-                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, npcContent.faction);
+                                string faction;
+                                if (call.parameters.Count() > 0) { faction = call.parameters[0].ToLower().Trim(); }
+                                else { faction = npcContent.faction; }
+
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, faction);
                                 lines.Add($"SetEventFlag({fvar.id}, FlagState.On)");
                                 break;
                             }
                         case Papyrus.Call.Type.ModPcFacRep:
                             {
+                                string faction;
+                                if (call.parameters.Count() > 1) { faction = call.parameters[1].ToLower().Trim(); }
+                                else { faction = npcContent.faction; }
+
                                 int rep = int.Parse(call.parameters[0]);
-                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, call.parameters[1]);
+
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, faction);
                                 lines.Add($"assert t{esdId:D9}_x{Const.ESD_STATE_HARDCODE_MODFACREP}(facrepflag={fvar.id}, value={call.parameters[0]})");
                                 break;
                             }
                         case Papyrus.Call.Type.PcRaiseRank:
                             {
-                                Script.Flag jvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, npcContent.faction);
-                                Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, npcContent.faction);
+                                string faction;
+                                if (call.parameters.Count() > 0) { faction = call.parameters[0].ToLower().Trim(); }
+                                else { faction = npcContent.faction; }
+
+                                Script.Flag jvar = scriptManager.GetFlag(Script.Flag.Designation.FactionJoined, faction);
+                                Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, faction);
                                 lines.Add($"SetEventFlag({jvar.id}, True);");
                                 lines.Add($"SetEventFlagValue({rvar.id}, {rvar.Bits()}, ( GetEventFlagValue({rvar.id}, {rvar.Bits()}) + {1} ))");
                                 break;
                             }
                         case Papyrus.Call.Type.PcExpell:
                             {
-                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, npcContent.faction);
+                                string faction;
+                                if (call.parameters.Count() > 0) { faction = call.parameters[0].ToLower().Trim(); }
+                                else { faction = npcContent.faction; }
+
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, faction);
                                 lines.Add($"SetEventFlag({fvar.id}, FlagState.On)");
                                 break;
                             }
                         case Papyrus.Call.Type.PcClearExpelled:
                             {
-                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, npcContent.faction);
+                                string faction;
+                                if (call.parameters.Count() > 0) { faction = call.parameters[0].ToLower().Trim(); }
+                                else { faction = npcContent.faction; }
+
+                                Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, faction);
                                 lines.Add($"SetEventFlag({fvar.id}, FlagState.Off)");
                                 break;
                             }
@@ -986,21 +993,271 @@ namespace JortPob
                                 }
                                 break;
                             }
-                        case Papyrus.Call.Type.ModStrength:
-                        case Papyrus.Call.Type.ModAxe:
+                        case Papyrus.Call.Type.ModCurrentHealth:
+                        case Papyrus.Call.Type.ModCurrentMagicka:
+                        case Papyrus.Call.Type.ModCurrentFatigue:
                             {
-                                if (call.target == "player")  // only for player
+                                uint entityId;
+                                if (call.target == null) { entityId = npcContent.entity; }                      // case 1: no target so current object is target
+                                else if (call.target == "player") { entityId = 10000; }                        // case 2: target is player
+                                else                                                                          // case 3: target is a direct reference to an object record
                                 {
-                                    lines.Add($"ChangePlayerStat(PlayerStat.Strength, ChangeType.Add, {call.parameters[0]})");
+                                    entityId = layout.FindScriptReference(npcContent, call.target).entity;
                                 }
+
+                                int amount = int.Parse(call.parameters[0]);
+                                SpeffManager.StatMod statToMod;
+                                switch (call.type)
+                                {
+                                    case Papyrus.Call.Type.ModCurrentHealth: statToMod = SpeffManager.StatMod.CurrentHP; break;
+                                    case Papyrus.Call.Type.ModCurrentMagicka: statToMod = SpeffManager.StatMod.CurrentMP; break;
+                                    case Papyrus.Call.Type.ModCurrentFatigue: statToMod = SpeffManager.StatMod.CurrentSP; break;
+                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                }
+
+                                int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
+
+                                lines.Add($"GiveSpEffectToEntity({entityId}, {speffId})");
+
                                 break;
                             }
+                        case Papyrus.Call.Type.ModHealth:
+                        case Papyrus.Call.Type.ModMagicka:
+                        case Papyrus.Call.Type.ModFatigue:
+                        case Papyrus.Call.Type.ModStrength:
+                        case Papyrus.Call.Type.ModIntelligence:
+                        case Papyrus.Call.Type.ModWillpower:
+                        case Papyrus.Call.Type.ModAgility:
+                        case Papyrus.Call.Type.ModSpeed:
+                        case Papyrus.Call.Type.ModEndurance:
+                        case Papyrus.Call.Type.ModPersonality:
+                        case Papyrus.Call.Type.ModLuck:
+                        case Papyrus.Call.Type.ModAcrobatics:
+                        case Papyrus.Call.Type.ModAlchemy:
+                        case Papyrus.Call.Type.ModAlteration:
+                        case Papyrus.Call.Type.ModArmorer:
+                        case Papyrus.Call.Type.ModAthletics:
+                        case Papyrus.Call.Type.ModAxe:
+                        case Papyrus.Call.Type.ModBlock:
+                        case Papyrus.Call.Type.ModBluntWeapon:
+                        case Papyrus.Call.Type.ModConjuration:
+                        case Papyrus.Call.Type.ModDestruction:
+                        case Papyrus.Call.Type.ModEnchant:
+                        case Papyrus.Call.Type.ModHandToHand:
+                        case Papyrus.Call.Type.ModHeavyArmor:
+                        case Papyrus.Call.Type.ModIllusion:
+                        case Papyrus.Call.Type.ModLightArmor:
+                        case Papyrus.Call.Type.ModLongBlade:
+                        case Papyrus.Call.Type.ModMarksman:
+                        case Papyrus.Call.Type.ModMediumArmor:
                         case Papyrus.Call.Type.ModMercantile:
+                        case Papyrus.Call.Type.ModMysticism:
+                        case Papyrus.Call.Type.ModRestoration:
+                        case Papyrus.Call.Type.ModSecurity:
+                        case Papyrus.Call.Type.ModShortBlade:
+                        case Papyrus.Call.Type.ModSneak:
+                        case Papyrus.Call.Type.ModSpear:
+                        case Papyrus.Call.Type.ModSpeechcraft:
+                        case Papyrus.Call.Type.ModUnarmored:
                             {
-                                if (call.target == "player")  // only for player
+                                Content target;
+                                uint entityId;
+                                if (call.target == null) { target = npcContent; entityId = target.entity; }                        // case 1: no target so current object is target
+                                else if (call.target == "player") { target = null; entityId = 10000; }                            // case 2: target is player
+                                else { target = layout.FindScriptReference(npcContent, call.target); entityId = target.entity; } // case 3: target is a direct reference to an object record
+
+                                /* Not the player, modify stat via SPEFF */
+                                if (entityId != 10000)
                                 {
-                                    lines.Add($"ChangePlayerStat(PlayerStat.Arcane, ChangeType.Add, {call.parameters[0]})");
+                                    Script areaScript = scriptManager.FindScriptFor(layout, target);
+
+                                    int amount = int.Parse(call.parameters[0]);
+                                    SpeffManager.StatMod statToMod;
+                                    switch (call.type)
+                                    {
+                                        /* Stats */
+                                        case Papyrus.Call.Type.ModHealth: statToMod = SpeffManager.StatMod.MaxHP; break;
+                                        case Papyrus.Call.Type.ModMagicka: statToMod = SpeffManager.StatMod.MaxMP; break;
+                                        case Papyrus.Call.Type.ModFatigue: statToMod = SpeffManager.StatMod.MaxSP; break;
+                                        /* Attributes */
+                                        case Papyrus.Call.Type.ModStrength: statToMod = SpeffManager.StatMod.Strength; break;
+                                        case Papyrus.Call.Type.ModIntelligence: statToMod = SpeffManager.StatMod.Intelligence; break;
+                                        case Papyrus.Call.Type.ModWillpower: statToMod = SpeffManager.StatMod.Mind; break;
+                                        case Papyrus.Call.Type.ModAgility: statToMod = SpeffManager.StatMod.Dexterity; break;
+                                        case Papyrus.Call.Type.ModSpeed: statToMod = SpeffManager.StatMod.Dexterity; break;
+                                        case Papyrus.Call.Type.ModEndurance: statToMod = SpeffManager.StatMod.Endurance; break;
+                                        case Papyrus.Call.Type.ModPersonality: statToMod = SpeffManager.StatMod.Arcane; break;
+                                        case Papyrus.Call.Type.ModLuck: statToMod = SpeffManager.StatMod.Arcane; break;
+                                        /* Skills */
+                                        case Papyrus.Call.Type.ModArmorer:
+                                        case Papyrus.Call.Type.ModAcrobatics:
+                                        case Papyrus.Call.Type.ModAxe:
+                                        case Papyrus.Call.Type.ModBluntWeapon:
+                                        case Papyrus.Call.Type.ModLongBlade:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Strength;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAlchemy:
+                                        case Papyrus.Call.Type.ModConjuration:
+                                        case Papyrus.Call.Type.ModEnchant:
+                                        case Papyrus.Call.Type.ModSecurity:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Intelligence;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAlteration:
+                                        case Papyrus.Call.Type.ModDestruction:
+                                        case Papyrus.Call.Type.ModMysticism:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Mind;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModRestoration:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Faith;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAthletics:
+                                        case Papyrus.Call.Type.ModHandToHand:
+                                        case Papyrus.Call.Type.ModShortBlade:
+                                        case Papyrus.Call.Type.ModUnarmored:
+                                        case Papyrus.Call.Type.ModBlock:
+                                        case Papyrus.Call.Type.ModLightArmor:
+                                        case Papyrus.Call.Type.ModMarksman:
+                                        case Papyrus.Call.Type.ModSneak:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Dexterity;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModHeavyArmor:
+                                        case Papyrus.Call.Type.ModMediumArmor:
+                                        case Papyrus.Call.Type.ModSpear:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Endurance;
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModIllusion:
+                                        case Papyrus.Call.Type.ModMercantile:
+                                        case Papyrus.Call.Type.ModSpeechcraft:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statToMod = SpeffManager.StatMod.Arcane;
+                                                break;
+                                            }
+                                        default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                    }
+
+                                    int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
+                                    Script.Flag modStatFlag = areaScript.RegisterModStat(entityId, speffId);
+
+                                    lines.Add($"SetEventFlag({modStatFlag.id}, FlagState.On);");                       // turn on flag to make this speff permanent on the npc
+                                    lines.Add($"GiveSpEffectToEntity({entityId}, {speffId})");                        // and apply the speff for right now
                                 }
+                                /* For player, modify stats via HKS nonsense */
+                                else
+                                {
+                                    string statFlagName;
+                                    int amount = int.Parse(call.parameters[0]);
+                                    switch (call.type)
+                                    {
+                                        /* Stats */
+                                        case Papyrus.Call.Type.ModHealth:
+                                            amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
+                                            statFlagName = "SetVigor";
+                                            break;
+                                        case Papyrus.Call.Type.ModMagicka:
+                                            amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
+                                            statFlagName = "SetMind";
+                                            break;
+                                        case Papyrus.Call.Type.ModFatigue:
+                                            amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
+                                            statFlagName = "SetEndurance";
+                                            break;
+                                        /* Attributes */
+                                        case Papyrus.Call.Type.ModStrength: statFlagName = "SetStrength"; break;
+                                        case Papyrus.Call.Type.ModIntelligence: statFlagName = "SetIntelligence"; break;
+                                        case Papyrus.Call.Type.ModWillpower: statFlagName = "SetMind"; break;
+                                        case Papyrus.Call.Type.ModAgility: statFlagName = "SetDexterity"; break;
+                                        case Papyrus.Call.Type.ModSpeed: statFlagName = "SetDexterity"; break;
+                                        case Papyrus.Call.Type.ModEndurance: statFlagName = "SetEndurance"; break;
+                                        case Papyrus.Call.Type.ModPersonality: statFlagName = "SetArcane"; break;
+                                        case Papyrus.Call.Type.ModLuck: statFlagName = "SetArcane"; break;
+                                        /* Skills */
+                                        case Papyrus.Call.Type.ModArmorer:
+                                        case Papyrus.Call.Type.ModAcrobatics:
+                                        case Papyrus.Call.Type.ModAxe:
+                                        case Papyrus.Call.Type.ModBluntWeapon:
+                                        case Papyrus.Call.Type.ModLongBlade:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetStrength";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAlchemy:
+                                        case Papyrus.Call.Type.ModConjuration:
+                                        case Papyrus.Call.Type.ModEnchant:
+                                        case Papyrus.Call.Type.ModSecurity:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetIntelligence";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAlteration:
+                                        case Papyrus.Call.Type.ModDestruction:
+                                        case Papyrus.Call.Type.ModMysticism:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetMind";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModRestoration:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetFaith";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModAthletics:
+                                        case Papyrus.Call.Type.ModHandToHand:
+                                        case Papyrus.Call.Type.ModShortBlade:
+                                        case Papyrus.Call.Type.ModUnarmored:
+                                        case Papyrus.Call.Type.ModBlock:
+                                        case Papyrus.Call.Type.ModLightArmor:
+                                        case Papyrus.Call.Type.ModMarksman:
+                                        case Papyrus.Call.Type.ModSneak:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetDexterity";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModHeavyArmor:
+                                        case Papyrus.Call.Type.ModMediumArmor:
+                                        case Papyrus.Call.Type.ModSpear:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetEndurance";
+                                                break;
+                                            }
+                                        case Papyrus.Call.Type.ModIllusion:
+                                        case Papyrus.Call.Type.ModMercantile:
+                                        case Papyrus.Call.Type.ModSpeechcraft:
+                                            {
+                                                amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                                statFlagName = "SetArcane";
+                                                break;
+                                            }
+                                        default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                    }
+                                    Script.Flag statFlag = scriptManager.GetFlag(Script.Flag.Designation.Hardcode, statFlagName);
+                                    lines.Add($"SetEventFlagValue({statFlag.id}, {statFlag.Bits()}, {100 + amount})"); // the SetStat hks hack offsets value by 100 to allow lowering stats EX: 100 + (-5)
+                                }
+
                                 break;
                             }
                         case Papyrus.Call.Type.ModDisposition:
@@ -1042,7 +1299,18 @@ namespace JortPob
                         case Papyrus.Call.Type.SetPcCrimeLevel:
                             {
                                 Script.Flag cvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
-                                lines.Add($"SetEventFlagValue({cvar.id}, {cvar.Bits()}, {call.parameters[0]})");
+                                string to = call.parameters[0];
+                                /* Setting to a literal, ez pz */
+                                if (Utility.StringIsInteger(to))
+                                {
+                                    lines.Add($"SetEventFlagValue({cvar.id}, {cvar.Bits()}, {to})");
+                                }
+                                /* Setting to a var, handley wandley */
+                                else
+                                {
+                                    Script.Flag toFlag = GetFlagByVariable(to.ToLower().Trim());
+                                    lines.Add($"SetEventFlagValue({cvar.id}, {cvar.Bits()}, GetEventFlagValue({toFlag.id}, {toFlag.Bits()}))");
+                                }
                                 break;
                             }
                         case Papyrus.Call.Type.PayFine:
@@ -1063,22 +1331,64 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.StartCombat:
                             {
-                                // Find our target content
+                                // Find our target content A
+                                CharacterContent targetA;
+                                if (call.target == null) { targetA = npcContent; }
+                                else { targetA = (CharacterContent)layout.FindScriptReference(npcContent, call.target); }
+                                if (targetA == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                if (call.parameters[0].Trim() == "player")
+                                {
+                                    // if a guard starts combat with a player its a crime, if its anyone else it's just them being angy at you
+                                    if (targetA.IsGuard()) {
+                                        Flag cvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, targetA.entity.ToString());
+                                        Script.Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel"); // crime gold flag
+                                        lines.Add($"SetEventFlagValue({lvar.id}, {lvar.Bits()}, {Const.CRIME_GOLD_RESIST})");
+                                        lines.Add($"SetEventFlag({cvar.id}, FlagState.On)");
+                                    }
+                                    else {
+                                        Flag hvar = scriptManager.GetFlag(Flag.Designation.Hostile, targetA.entity.ToString());
+                                        lines.Add($"SetEventFlag({hvar.id}, FlagState.On)");
+                                    }
+                                }
+                                else
+                                {
+                                    CharacterContent targetB = (CharacterContent)layout.FindScriptReference(npcContent, call.parameters[0].ToLower().Trim());
+                                    if (targetB == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                    Script areaScriptA = scriptManager.FindScriptFor(layout, targetA);
+                                    Script areaScriptB = scriptManager.FindScriptFor(layout, targetB);
+
+                                    Flag aFlag = areaScriptA.GetOrRegisterInfight(targetA);
+                                    Flag bFlag = areaScriptB.GetOrRegisterInfight(targetB);
+
+                                    lines.Add($"SetEventFlag({aFlag.id}, FlagState.On)");
+                                    lines.Add($"SetEventFlag({bFlag.id}, FlagState.On)");
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.StopCombat:
+                            {
+                                // Find our target content A
                                 CharacterContent target;
                                 if (call.target == null) { target = npcContent; }
                                 else { target = (CharacterContent)layout.FindScriptReference(npcContent, call.target); }
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                                if (call.parameters[0].Trim() == "player")
+                                Script areaScript = scriptManager.FindScriptFor(layout, target);
+                                Flag hostileFlag = scriptManager.GetFlag(Flag.Designation.Hostile, target.entity.ToString());
+                                Flag fightFlag = areaScript.GetOrRegisterInfight(target);
+                                lines.Add($"SetEventFlag({hostileFlag.id}, FlagState.Off)");
+                                lines.Add($"SetEventFlag({fightFlag.id}, FlagState.Off)");
+                                break;
+                            }
+                        case Papyrus.Call.Type.ShowMap:
+                            {
+                                Script.Flag discoverFlag = scriptManager.GetFlag(Script.Flag.Designation.DiscoverLocation, call.parameters[0]);
+                                if (discoverFlag != null)
                                 {
-                                    Flag hvar; // if a guard starts combat with a player its a crime, if its anyone else it's just them being angy at you
-                                    if (target.IsGuard()) { hvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, target.entity.ToString()); }
-                                    else { hvar = scriptManager.GetFlag(Flag.Designation.Hostile, target.entity.ToString()); }
-                                    lines.Add($"SetEventFlag({hvar.id}, FlagState.On)");
-                                    break;
+                                    lines.Add($"SetEventFlag({discoverFlag.id}, FlagState.On)");
                                 }
-                                // @TODO: might be a good idea to add a small bounty when a guard starts combat with the player to prevent a 0 bounty crime event
-                                // @TODO: startcombat with anything else than player is not supported yet
                                 break;
                             }
                         case Papyrus.Call.Type.PlaySound:
@@ -1135,6 +1445,180 @@ namespace JortPob
 
                                 // Trigger flag for the event
                                 lines.Add($"SetEventFlag({playFlag.id}, FlagState.On)");
+                                break;
+                            }
+                        case Papyrus.Call.Type.SetHealth:
+                        case Papyrus.Call.Type.SetMagicka:
+                        case Papyrus.Call.Type.SetFatigue:
+                            {
+                                int value = int.Parse(call.parameters[0]);
+                                if (value <= 0) { value = -999999; }  // YOU MUST DIE!
+                                else { value = 999999; }             // YOU MUST LIVE!
+
+                                uint entityId;
+                                if (call.target == null) { entityId = npcContent.entity; }                      // case 1: no target so current object is target
+                                else if (call.target == "player") { entityId = 10000; }                        // case 2: target is player
+                                else                                                                          // case 3: target is a direct reference to an object record
+                                {
+                                    entityId = layout.FindScriptReference(npcContent, call.target).entity;
+                                }
+
+                                SpeffManager.StatMod statToMod;
+                                switch (call.type)
+                                {
+                                    case Papyrus.Call.Type.SetHealth: statToMod = SpeffManager.StatMod.CurrentHP; break;
+                                    case Papyrus.Call.Type.SetMagicka: statToMod = SpeffManager.StatMod.CurrentMP; break;
+                                    case Papyrus.Call.Type.SetFatigue: statToMod = SpeffManager.StatMod.CurrentSP; break;
+                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                }
+
+                                int speffId = speffManager.CreateScriptedEffect(statToMod, value, call.RAW);
+                                lines.Add($"GiveSpEffectToEntity({entityId}, {speffId})");
+                                break;
+                            }
+                        case Papyrus.Call.Type.SetStrength:
+                        case Papyrus.Call.Type.SetIntelligence:
+                        case Papyrus.Call.Type.SetWillpower:
+                        case Papyrus.Call.Type.SetAgility:
+                        case Papyrus.Call.Type.SetSpeed:
+                        case Papyrus.Call.Type.SetEndurance:
+                        case Papyrus.Call.Type.SetPersonality:
+                        case Papyrus.Call.Type.SetLuck:
+                        case Papyrus.Call.Type.SetAcrobatics:
+                        case Papyrus.Call.Type.SetAlchemy:
+                        case Papyrus.Call.Type.SetAlteration:
+                        case Papyrus.Call.Type.SetArmorer:
+                        case Papyrus.Call.Type.SetAthletics:
+                        case Papyrus.Call.Type.SetAxe:
+                        case Papyrus.Call.Type.SetBlock:
+                        case Papyrus.Call.Type.SetBluntWeapon:
+                        case Papyrus.Call.Type.SetConjuration:
+                        case Papyrus.Call.Type.SetDestruction:
+                        case Papyrus.Call.Type.SetEnchant:
+                        case Papyrus.Call.Type.SetHandToHand:
+                        case Papyrus.Call.Type.SetHeavyArmor:
+                        case Papyrus.Call.Type.SetIllusion:
+                        case Papyrus.Call.Type.SetLightArmor:
+                        case Papyrus.Call.Type.SetLongBlade:
+                        case Papyrus.Call.Type.SetMarksman:
+                        case Papyrus.Call.Type.SetMediumArmor:
+                        case Papyrus.Call.Type.SetMercantile:
+                        case Papyrus.Call.Type.SetMysticism:
+                        case Papyrus.Call.Type.SetRestoration:
+                        case Papyrus.Call.Type.SetSecurity:
+                        case Papyrus.Call.Type.SetShortBlade:
+                        case Papyrus.Call.Type.SetSneak:
+                        case Papyrus.Call.Type.SetSpear:
+                        case Papyrus.Call.Type.SetSpeechcraft:
+                        case Papyrus.Call.Type.SetUnarmored:
+                            {
+                                CharacterContent target;
+                                uint entityId;
+                                if (call.target == null) { target = npcContent; entityId = target.entity; }                                            // case 1: no target so current object is target
+                                else if (call.target == "player") { throw new Exception("SetStat papyrus call targeting player not supported!"); }    // case 2: target is player. UNSUPPORTED!
+                                else { target = (CharacterContent)layout.FindScriptReference(npcContent, call.target); entityId = target.entity; }   // case 3: target is a direct reference to an object record
+
+                                Script areaScript = scriptManager.FindScriptFor(layout, target);
+
+                                int amount = int.Parse(call.parameters[0]);
+                                SpeffManager.StatMod statToMod;
+                                switch (call.type)
+                                {
+                                    /* Attributes */
+                                    case Papyrus.Call.Type.SetStrength: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Strength); statToMod = SpeffManager.StatMod.Strength; break;
+                                    case Papyrus.Call.Type.SetIntelligence: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Intelligence); statToMod = SpeffManager.StatMod.Intelligence; break;
+                                    case Papyrus.Call.Type.SetWillpower: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Willpower); statToMod = SpeffManager.StatMod.Mind; break;
+                                    case Papyrus.Call.Type.SetAgility: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Agility); statToMod = SpeffManager.StatMod.Dexterity; break;
+                                    case Papyrus.Call.Type.SetSpeed: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Speed); statToMod = SpeffManager.StatMod.Dexterity; break;
+                                    case Papyrus.Call.Type.SetEndurance: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Endurance); statToMod = SpeffManager.StatMod.Endurance; break;
+                                    case Papyrus.Call.Type.SetPersonality: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Personality); statToMod = SpeffManager.StatMod.Arcane; break;
+                                    case Papyrus.Call.Type.SetLuck: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Luck); statToMod = SpeffManager.StatMod.Arcane; break;
+                                    /* Skills */
+                                    case Papyrus.Call.Type.SetArmorer:
+                                    case Papyrus.Call.Type.SetAcrobatics:
+                                    case Papyrus.Call.Type.SetAxe:
+                                    case Papyrus.Call.Type.SetBluntWeapon:
+                                    case Papyrus.Call.Type.SetLongBlade:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Strength;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetAlchemy:
+                                    case Papyrus.Call.Type.SetConjuration:
+                                    case Papyrus.Call.Type.SetEnchant:
+                                    case Papyrus.Call.Type.SetSecurity:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Intelligence;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetAlteration:
+                                    case Papyrus.Call.Type.SetDestruction:
+                                    case Papyrus.Call.Type.SetMysticism:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Mind;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetRestoration:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Faith;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetAthletics:
+                                    case Papyrus.Call.Type.SetHandToHand:
+                                    case Papyrus.Call.Type.SetShortBlade:
+                                    case Papyrus.Call.Type.SetUnarmored:
+                                    case Papyrus.Call.Type.SetBlock:
+                                    case Papyrus.Call.Type.SetLightArmor:
+                                    case Papyrus.Call.Type.SetMarksman:
+                                    case Papyrus.Call.Type.SetSneak:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Dexterity;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetHeavyArmor:
+                                    case Papyrus.Call.Type.SetMediumArmor:
+                                    case Papyrus.Call.Type.SetSpear:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Endurance;
+                                            break;
+                                        }
+                                    case Papyrus.Call.Type.SetIllusion:
+                                    case Papyrus.Call.Type.SetMercantile:
+                                    case Papyrus.Call.Type.SetSpeechcraft:
+                                        {
+                                            CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
+                                            amount = amount - target.stats.Get(skill);
+                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
+                                            statToMod = SpeffManager.StatMod.Arcane;
+                                            break;
+                                        }
+
+                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
+                                }
+
+                                int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
+                                Script.Flag modStatFlag = areaScript.RegisterModStat(entityId, speffId);
+
+                                lines.Add($"SetEventFlag({modStatFlag.id}, FlagState.On);");                       // turn on flag to make this speff permanent on the npc
+                                lines.Add($"GiveSpEffectToEntity({entityId}, {speffId})");                        // and apply the speff for right now
                                 break;
                             }
                         case Papyrus.Call.Type.StopScript:
