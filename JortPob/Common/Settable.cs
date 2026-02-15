@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace JortPob.Common
 {
@@ -12,6 +13,7 @@ namespace JortPob.Common
     {
 
         private static readonly JsonNode _json;
+        private static readonly JsonSerializerOptions _options;
         
         static Settable()
         {
@@ -28,12 +30,25 @@ namespace JortPob.Common
                     AllowTrailingCommas = true
                 }
             );
+            
+            _options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                IncludeFields = true,
+                WriteIndented = true,
+                Converters = 
+                { 
+                    new JsonStringEnumConverter(),
+                    new Vector3ArrayConverter(), // <--- Adds support for [x,y,z]
+                    new Vector2ArrayConverter()  // <--- Adds support for [x,y]
+                }
+            };
         }
         
         public static T Get<T>(string key)
         {
             var node = _json[key] ?? throw new KeyNotFoundException($"Setting '{key}' missing from settings.json");
-            return node.Deserialize<T>();
+            return node.Deserialize<T>(_options);
         }
 
         public static T[] GetArray<T>(string key)
@@ -41,44 +56,62 @@ namespace JortPob.Common
             return Get<T[]>(key);
         }
         
-        public static List<T[]> GetJaggedArray<T>(string key)
+        private class Vector3ArrayConverter : JsonConverter<Vector3>
         {
-            var node = _json[key] ?? throw new KeyNotFoundException($"Setting '{key}' missing from settings.json");
-
-            if (node is not JsonArray outerArray)
+            public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
             {
-                throw new InvalidOperationException($"Setting '{key}' is not a JSON Array.");
+                if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("Expected Array [x,y,z] for Vector3.");
+                
+                reader.Read();
+                float x = (float)reader.GetDouble();
+                
+                reader.Read();
+                float y = (float)reader.GetDouble();
+                
+                reader.Read();
+                float z = (float)reader.GetDouble();
+
+                reader.Read();
+                if (reader.TokenType != JsonTokenType.EndArray) throw new JsonException("Vector3 Array has too many elements.");
+
+                return new Vector3(x, y, z);
             }
 
-            List<T[]> result = new();
-
-            foreach (var innerNode in outerArray)
+            public override void Write(Utf8JsonWriter writer, Vector3 value, JsonSerializerOptions options)
             {
-                if (innerNode is JsonArray innerArray)
-                {
-                    result.Add(innerArray.Select(x => x.GetValue<T>()).ToArray());
-                }
-                else
-                {
-                    throw new InvalidDataException($"Item inside '{key}' was expected to be an array (e.g. [1, 2, 3]), but found a single value.");
-                }
+                writer.WriteStartArray();
+                writer.WriteNumberValue(value.X);
+                writer.WriteNumberValue(value.Y);
+                writer.WriteNumberValue(value.Z);
+                writer.WriteEndArray();
+            }
+        }
+
+        private class Vector2ArrayConverter : JsonConverter<Vector2>
+        {
+            public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("Expected Array [x,y] for Vector2.");
+
+                reader.Read();
+                float x = (float)reader.GetDouble();
+
+                reader.Read();
+                float y = (float)reader.GetDouble();
+
+                reader.Read();
+                if (reader.TokenType != JsonTokenType.EndArray) throw new JsonException("Vector2 Array has too many elements.");
+
+                return new Vector2(x, y);
             }
 
-            return result;
-        }
-
-        public static Vector3 GetVector3(string key)
-        {
-            var arr = GetArray<float>(key);
-            if (arr.Length != 3) throw new InvalidDataException($"Setting '{key}' has more than 3 elements. Element count: {arr.Length}");
-            return new Vector3(arr[0], arr[1], arr[2]);
-        }
-        
-        public static Vector2 GetVector2(string key)
-        {
-            var arr = GetArray<float>(key);
-            if (arr.Length != 2) throw new InvalidDataException($"Setting '{key}' has more than 2 elements. Element count: {arr.Length}");
-            return new Vector2(arr[0], arr[1]);
+            public override void Write(Utf8JsonWriter writer, Vector2 value, JsonSerializerOptions options)
+            {
+                writer.WriteStartArray();
+                writer.WriteNumberValue(value.X);
+                writer.WriteNumberValue(value.Y);
+                writer.WriteEndArray();
+            }
         }
     }
 }
