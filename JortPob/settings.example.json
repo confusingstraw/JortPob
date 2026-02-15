@@ -6,5 +6,46 @@
   "THREAD_COUNT": 16,
   "LOAD_ORDER": [
     "Morrowind.esm"
+  ],
+  "DEFAULT_PROCESS_TIMEOUT": 15000, // when running a subprocess this is the default timeout time in millis.
+  "RANDOM_SEED": 42, // When doing anything random we use this as our seed so results are consistent between builds
+  "GLOBAL_SCALE": 0.0129, // new global scale as float calculated from approx measurements of player height in both games
+  "CELL_EXTERIOR_BOUNDS": 30,
+  "CELL_SIZE": 8192, // float
+  "TILE_SIZE": 256, // float
+  "CELL_GRID_SIZE": 64, // terrain vertices
+  "MSB_OFFSET": [0, 185, 0], // generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
+  "NPC_ROOT_OFFSET": 75,  // how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
+  "TERRAIN_UV_SCALE": 30, // uv scale for terrain textures
+  "TERRAIN_COLOR_OVERLAY_SIZE": 256, // size of texture generated for vertex color overlay on terrain meshes
+  "TERRAIN_DEFAULT_TEXTURE": "Data Files\\textures\\_land_default.dds", // morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
+  "TERRAIN_LOD_VALUES": [
+    {
+      "INDEX": 0,
+      "FLAG": "None",
+      "DIVISOR": 1,
+      "DISTANCE": 512.0
+    },
+    {
+      "INDEX": 1,
+      "FLAG": "LodLevel1",
+      "DIVISOR": 4,
+      "DISTANCE": 1024.0
+    },
+    {
+      "INDEX": 2,
+      "FLAG": "LodLevel2",
+      "DIVISOR": 16,
+      "DISTANCE": 99999.0
+    }
+  ],
+  /* values are [0] = size of the asset model (calculated by radius and stored in modelinfo) [1] = distance it's visible via partsdrawparam. [2] = fade out range */
+  "ASSET_LOD_VALUES": [
+    [1, 32, 4],
+    [3, 64, 8],
+    [7, 128, 16],
+    [14, 256, 32],
+    [22, 512, 64],
+    [99999, 99999, 0]
   ]
 }

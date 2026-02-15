@@ -5,63 +5,51 @@ using SoulsFormats;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace JortPob.Common
 {
     public static class Const
     {
         #region Paths
-        public static string MORROWIND_PATH { get; } = Settable.Get("MORROWIND_PATH");
-        public static string ELDEN_PATH { get; } = Settable.Get("ELDEN_PATH");
-        public static string OUTPUT_PATH { get; } = Settable.Get("OUTPUT_PATH");
-        public static string WWISE_PATH { get; } = Settable.Get("WWISE_PATH");
-        public static string CACHE_PATH { get; } = Path.Combine(OUTPUT_PATH, @"cache\");
-        public static string[] LOAD_ORDER { get; } = Settable.GetArray("LOAD_ORDER");
+        public static readonly string MORROWIND_PATH = Settable.Get<string>("MORROWIND_PATH");
+        public static readonly string ELDEN_PATH = Settable.Get<string>("ELDEN_PATH");
+        public static readonly string OUTPUT_PATH = Settable.Get<string>("OUTPUT_PATH");
+        public static readonly string WWISE_PATH = Settable.Get<string>("WWISE_PATH");
+        public static readonly string CACHE_PATH = Path.Combine(OUTPUT_PATH, @"cache\");
+        public static readonly string[] LOAD_ORDER = Settable.GetArray<string>("LOAD_ORDER");
         #endregion
 
         #region Optimization
-        public static int THREAD_COUNT { get; } = int.Parse(Settable.Get("THREAD_COUNT"));
-        public static readonly int DEFAULT_PROCESS_TIMEOUT = 15000;  // when running a subprocess this is the default timeout time in millis.
+        public static readonly int THREAD_COUNT = Settable.Get<int>("THREAD_COUNT");
+        public static readonly int DEFAULT_PROCESS_TIMEOUT = Settable.Get<int>("DEFAULT_PROCESS_TIMEOUT");  // when running a subprocess this is the default timeout time in millis.
         #endregion
 
         #region General
-        public static readonly int RANDOM_SEED = 42;  // When doing anything random we use this as our seed so results are consistent between builds
+        public static readonly int RANDOM_SEED = Settable.Get<int>("RANDOM_SEED");  // When doing anything random we use this as our seed so results are consistent between builds
 
-        public static readonly float GLOBAL_SCALE = 0.0129f;   // new global scale calculated from approx measurements of player height in both games
-        public static readonly int CELL_EXTERIOR_BOUNDS = 30;
-        public static readonly float CELL_SIZE = 8192f * GLOBAL_SCALE;
-        public static readonly float TILE_SIZE = 256f;
-        public static readonly int CELL_GRID_SIZE = 64;    // terrain vertices
+        public static readonly float GLOBAL_SCALE = Settable.Get<float>("GLOBAL_SCALE");  // new global scale calculated from approx measurements of player height in both games
+        public static readonly int CELL_EXTERIOR_BOUNDS = Settable.Get<int>("CELL_EXTERIOR_BOUNDS");
+        public static readonly float CELL_SIZE = Settable.Get<float>("CELL_SIZE") * GLOBAL_SCALE;
+        public static readonly float TILE_SIZE = Settable.Get<float>("TILE_SIZE");
+        public static readonly int CELL_GRID_SIZE = Settable.Get<int>("CELL_GRID_SIZE");    // terrain vertices
 
-        public static readonly Vector3 MSB_OFFSET = new(0, 185, 0); // generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
-        public static readonly float NPC_ROOT_OFFSET = 75f * GLOBAL_SCALE;  // how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
+        public static readonly Vector3 MSB_OFFSET = Settable.GetVector3("MSB_OFFSET"); // generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
+        public static readonly float NPC_ROOT_OFFSET = Settable.Get<float>("NPC_ROOT_OFFSET") * GLOBAL_SCALE;  // how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
 
-        public static readonly float TERRAIN_UV_SCALE = 20f;  // uv scale for terrain textures
-        public static readonly int TERRAIN_COLOR_OVERLAY_SIZE = 256;  // size of texture generated for vertex color overlay on terrain meshes
-        public static readonly string TERRAIN_DEFAULT_TEXTURE = @"Data Files\textures\_land_default.dds";  // morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
-        public static readonly LOD_VALUE[] TERRAIN_LOD_VALUES = new LOD_VALUE[]
-        {
-            new LOD_VALUE(0, FLVER2.FaceSet.FSFlags.None, 1, 512),
-            new LOD_VALUE(1, FLVER2.FaceSet.FSFlags.LodLevel1, 4, 1024),
-            new LOD_VALUE(2, FLVER2.FaceSet.FSFlags.LodLevel2, 16, 99999),
-        };
+        public static readonly float TERRAIN_UV_SCALE = Settable.Get<float>("TERRAIN_UV_SCALE");  // uv scale for terrain textures
+        public static readonly int TERRAIN_COLOR_OVERLAY_SIZE = Settable.Get<int>("TERRAIN_COLOR_OVERLAY_SIZE");  // size of texture generated for vertex color overlay on terrain meshes
+        public static readonly string TERRAIN_DEFAULT_TEXTURE = Settable.Get<string>("TERRAIN_DEFAULT_TEXTURE");  // morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
+        public static readonly LOD_VALUE[] TERRAIN_LOD_VALUES = Settable.Get<LOD_VALUE[]>("TERRAIN_LOD_VALUES");
 
         /* values are [0] = size of the asset model (calculated by radius and stored in modelinfo) [1] = distance it's visible via partsdrawparam. [2] = fade out range */
-        public static readonly List<float[]> ASSET_LOD_VALUES = new()
-        {
-            new float[] {1f, 32f, 4f},
-            new float[] {3f, 64f, 8f},
-            new float[] {7f, 128f, 16f},
-            new float[] {14f, 256f, 32f},
-            new float[] {22f, 512f, 64f},
-            new float[] {99999f, 99999f, 0f},
-        };
+        public static readonly List<float[]> ASSET_LOD_VALUES = Settable.Get<List<float[]>>("ASSET_LOD_VALUES");
 
         /* Calculated... ESM lowest cell is [-20,-20]~ on the grid. MSB lowest value is [+33,+40]~. Offset so they overlap */
         /* Updated for bloodmoon: bloodmoons furthest cell to the left is -28, 28 so we need to shift a bit more to make that fit */
         public static readonly Vector3 LAYOUT_COORDINATE_OFFSET = new((21*CELL_SIZE)+(35*TILE_SIZE), 0, (12*CELL_SIZE)+(38*TILE_SIZE));
 
-        public static int CHUNK_PARTITION_SIZE = 6;
+        public static readonly int CHUNK_PARTITION_SIZE = 6;
 
         public static readonly float CONTENT_SIZE_BIG = 7f;
         public static readonly float CONTENT_SIZE_HUGE = 20f;
@@ -182,9 +170,13 @@ namespace JortPob.Common
         /* Some CBT */
         public struct LOD_VALUE
         {
-            public readonly FLVER2.FaceSet.FSFlags FLAG;
-            public readonly int INDEX, DIVISOR;
-            public readonly float DISTANCE;
+            [JsonConverter(typeof(JsonStringEnumConverter))]
+            public FLVER2.FaceSet.FSFlags FLAG { get; init; }
+            public int INDEX { get; init; }
+            public int DIVISOR { get; init; }
+            public float DISTANCE { get; init; }
+            
+            [JsonConstructor]
             public LOD_VALUE(int index, FLVER2.FaceSet.FSFlags flag, int divisor, float distance)
             {
                 INDEX = index;
