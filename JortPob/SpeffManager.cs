@@ -318,8 +318,9 @@ namespace JortPob
         /* Returns row id of created speff */
         public enum StatMod
         {
+            Runes,
             MaxHP, MaxMP, MaxSP,
-            CurrentHP, CurrentMP, CurrentSP, 
+            CurrentHP, CurrentMP, CurrentSP,
             Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane
         }
         public int CreateScriptedEffect(StatMod stat, int amount, string name)
@@ -334,6 +335,12 @@ namespace JortPob
 
             switch (stat)
             {
+                case StatMod.Runes:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["soul"].Value.SetValue(amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
                 case StatMod.CurrentHP:
                     {
                         row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);

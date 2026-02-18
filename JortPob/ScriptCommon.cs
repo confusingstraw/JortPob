@@ -22,7 +22,7 @@ namespace JortPob
         {
             LoadDoor, SpawnHandler, SpawnHandlerWithDisable, NpcHostilityHandler, Message, Hello, Essential, DeadBody, 
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
-            StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight
+            StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight, GetSecondsPassed
         }
         public readonly Dictionary<Event, uint> events;
         public readonly Dictionary<int, Flag> messages;  // hash of message text as key, value is flag that when set to true triggers a message to display
@@ -612,10 +612,10 @@ namespace JortPob
 
             string[] triggerDisableEventRaw = new string[]
             {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // blocking wait until flag set...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                   // disable object
-                $"ChangeAssetEnableState({NextParameterName()}, Disabled);",                        // @TODO: Fuck ass hack. please seperate functions for character/asset
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",      // turn flag back off
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",        // blocking wait until flag set...
+                $"ChangeCharacterEnableState({NextParameterName()}, Enabled);",                        // enable object
+                $"ChangeAssetEnableState({NextParameterName()}, Enabled);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",         // turn flag back off
                 $"EndUnconditionally(EventEndType.Restart);"     // restart!
             };
 
@@ -629,8 +629,28 @@ namespace JortPob
             func.Events.Add(triggerDisableEvent);
             events.Add(Event.TriggerDisable, triggerDisableEventFlag.id);
 
-            /* Create some singular common events */
-            CreateWeatherTracker();
+            /* Create event for emulating the GetSecondsPassed papyrus call */
+            Flag getSecondsPassedFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:GetSecondsPassed");
+            EMEVD.Event getSecondsPassed = new(getSecondsPassedFlag.id);
+
+            pc = 0;
+
+            string[] getSecondsPassedRaw = new string[]
+            {
+                $"WaitFixedTimeSeconds(1);", // wait 1 second
+                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, 1, 0, 1, 0);", // increment timer by 1
+                $"EndUnconditionally(EventEndType.Restart);"     // restart!
+            };
+
+            for (int i = 0; i < getSecondsPassedRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(getSecondsPassedRaw[i], i);
+                getSecondsPassed.Parameters.AddRange(newPs);
+                getSecondsPassed.Instructions.Add(instr);
+            }
+
+            func.Events.Add(getSecondsPassed);
+            events.Add(Event.GetSecondsPassed, getSecondsPassedFlag.id);
         }
 
         /* Register a tutorial popup message with given text */
@@ -687,12 +707,39 @@ namespace JortPob
             return removeItemFlag;
         }
 
-        /* Handler that maintains a permanent SPEFF. Used for things that persist like Diseases or Abilities */
+        /* Handler that maintains a permanent SPEFF on the player. Used for things that persist like Diseases or Abilities */
         public Flag CreatePermanentSpeff(SpeffManager.SpeffSpell spell)
         {
             Script.Flag speffFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.PermanentSpeff, spell.id);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.PermanentSpeff]}, {speffFlag.id}, {spell.row}, {spell.row}, {speffFlag.id}, {spell.row}, {spell.row});"));
             return speffFlag;
+        }
+
+        /* Return a Random papyrus call handler */
+        public Flag GetOrRegisterRandom(int max)
+        {
+            Script.Flag randomFlag = GetFlag(Designation.Random, max.ToString());
+            if (randomFlag != null) { return randomFlag; }
+            randomFlag = CreateFlag(Category.Temporary, Type.Short, Designation.Random, max.ToString());
+
+            EMEVD.Event randomEvent = new();
+            Flag randomEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"RandomHandlerEvent");
+            randomEvent.ID = randomEventFlag.id;
+
+            List<int> randomValues = new();
+            for (int i = 0; i < max; i++) { randomValues.Add(i); }
+            randomValues.Shuffle();
+
+            foreach (int i in randomValues) {
+                randomEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({randomFlag.id}, {randomFlag.Bits()}, {i}, 0, 1, 5);")); // assign random value to flag
+                randomEvent.Instructions.Add(AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));  // wait 1 frame then repeat
+            }
+            randomEvent.Instructions.Add(AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);"));  // restart
+
+            emevd.Events.Add(randomEvent);
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeEvent(0, {randomEvent.ID}, 0);"));
+
+            return randomFlag;
         }
 
         /* Create a fixed common event that handles the players ability to use the crafting menu based on what alchemy equipment they have */
@@ -719,6 +766,61 @@ namespace JortPob
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeEvent(0, {alchemyEvent.ID}, 0);"));
         }
 
+        /* Create time handler. These events track minutes, seconds, days, months, and years */
+        /* In order to simplify coding I'm making all months have 30 days */
+        public void TimeHandler()
+        {
+            Flag hour = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "GameHour");
+            Flag day = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Day");
+            Flag month = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Month");
+            Flag year = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Year");
+            Flag daysPassedFlag = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "DaysPassed");
+
+            /* Hour handler */
+            EMEVD.Event hourEvent = new();
+            Flag hourEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"TimeHourEvent");
+            hourEvent.ID = hourEventFlag.id;
+
+            for (int i = 0; i < 24; i++)
+            {
+                hourEvent.Instructions.Add(AUTO.ParseAdd($"IfElapsedSeconds(MAIN, 0);"));                                                 // reset condition group
+                hourEvent.Instructions.Add(AUTO.ParseAdd($"IfTimeOfDayInRange(OR_01, {i}, 0, 0, {i}, 59, 59);"));                         // check a time range...
+                hourEvent.Instructions.Add(AUTO.ParseAdd($"SkipIfConditionGroupStateUncompiled(1, FAIL, OR_01);"));
+                hourEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({hour.id}, {hour.Bits()}, {i}, 0, 1, 5);"));               // set gamehour global value
+            }
+
+            hourEvent.Instructions.Add(AUTO.ParseAdd($"WaitFixedTimeSeconds(1);"));  // update once a second
+            hourEvent.Instructions.Add(AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);"));  // restart
+
+            emevd.Events.Add(hourEvent);
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeEvent(0, {hourEvent.ID}, 0);"));
+
+            /* Day, month, year handler */
+            EMEVD.Event dateEvent = new();
+            Flag dateEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"TimeDateEvent");
+            dateEvent.ID = dateEventFlag.id;
+
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"IfTimeOfDayInRange(MAIN, 12, 0, 0, 23, 59, 59);"));  // if we are in the latter half of a day
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"IfTimeOfDayInRange(MAIN, 0, 0, 0, 11, 59, 59);"));   // and the clock rolls over to 0 (12:00AM~)  // Both of these are blocking waits
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({day.id}, {day.Bits()}, 1, 0, 1, 0);"));  // a day has passed
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({daysPassedFlag.id}, {daysPassedFlag.Bits()}, 1, 0, 1, 0);"));
+
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"IfEventValue(OR_01, {day.id}, {day.Bits()}, 2, 29);"));   // if the day is the 30th
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"SkipIfConditionGroupStateUncompiled(2, FAIL, OR_01);"));
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({month.id}, {month.Bits()}, 1, 0, 1, 0);"));  // a month has passed
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({day.id}, {day.Bits()}, 0, 0, 1, 5);"));  // the day is 0 again
+
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"IfEventValue(OR_02, {month.id}, {month.Bits()}, 2, 11);"));   // if the month is the 12th
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"SkipIfConditionGroupStateUncompiled(2, FAIL, OR_02);"));
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({year.id}, {year.Bits()}, 1, 0, 1, 0);"));  // a year has passed
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EventValueOperation({month.id}, {month.Bits()}, 0, 0, 1, 5);"));  // the month is 0 again
+
+            dateEvent.Instructions.Add(AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);"));  // restart
+
+            emevd.Events.Add(dateEvent);
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeEvent(0, {dateEvent.ID}, 0);"));
+        }
+
         /* Create a simple common event that tracks the current weather and writes it to a flag for dialog filter conditions to read from */
         public enum WeatherEMEVD
         {
@@ -732,7 +834,7 @@ namespace JortPob
             Clear = 0, Cloudy = 1, Foggy = 2, Overcast = 3, Rain = 4, Thunder = 5, Ash = 6, Blight = 7, Snow = 8, Blizzard = 9
         }
 
-        private void CreateWeatherTracker()
+        public void CreateWeatherTracker()
         {
             EMEVD.Event weatherEvent = new();
             Flag weatherEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"WeatherTracker");

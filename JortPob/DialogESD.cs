@@ -1,19 +1,10 @@
 ﻿using JortPob.Common;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
-using System.Security;
 using System.Text;
-using System.Xml.Linq;
 using static JortPob.Dialog;
-using static JortPob.FactionInfo;
-using static JortPob.NpcManager.TopicData;
-using static SoulsFormats.MSBS.Event;
 
 namespace JortPob
 {

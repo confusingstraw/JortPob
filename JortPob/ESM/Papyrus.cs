@@ -298,25 +298,19 @@ namespace JortPob
 
             public enum Type
             {
-                /* Default */
                 None,
 
-                /* Papyrus calls that are fully implemented in dialog and script */
-
-                /* Papyrus calls that are fully implemented in dialog */
                 Set,
                 Journal, Choice, AddTopic,
                 ModDisposition, SetDisposition, ModReputation,
                 ModPcFacRep, PcJoinFaction, PcClearExpelled, PcRaiseRank, PcExpell,
                 SetPcCrimeLevel, MessageBox,
 
-                /* Papyrus calls that are partially implemented */
                 Goodbye,
                 StartCombat,
                 AddItem, RemoveItem,
                 PayFine, GoToJail,
 
-                /* Papyrus calls that are not implemented yet */
                 Disable, Enable,
                 Activate, Playgroup, Say, GetTarget, GetItemCount, Lock, Unlock, GetSpell, SayDone, GetRace, ModRegion, GetDetected, ForceSneak, ClearForceSneak,
                 ChangeWeather, GetPos, RotateWorld, DontSaveObject, HasSoulGem, WakeUpPc, Resurrect, PlayBink, SetAtStart, RemoveSoulGem, Fall,
@@ -331,7 +325,8 @@ namespace JortPob
                 PlaceItem, SetScale, ModResistParalysis, ModResistPoison, ModResistMagicka, ModResistFire, ModResistFrost, SetDelete, ExplodeSpell, TurnMoonRed, TurnMoonWhite, BecomeWerewolf,
                 Random,
                 Xbox,
-                GameHour, Day, Month,
+
+                GetSecondsPassed,
 
                 GetHealth, GetMagicka, GetFatigue,
 

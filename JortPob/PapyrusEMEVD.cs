@@ -4,9 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using static ESDLang.Script.ESDOptions;
 using static JortPob.Papyrus;
-using static JortPob.SpeffManager;
+using static JortPob.Script.Flag;
 
 namespace JortPob
 {
@@ -62,6 +61,8 @@ namespace JortPob
                 return retFlag;
             }
 
+            List<string> post = new(); // generated stuff. not a part of actual papyrus. gets placed at the end of a script or right before an early return
+
             List<string> HandlePapyrus(Papyrus.Call call)
             {
                 switch (call)
@@ -80,7 +81,6 @@ namespace JortPob
                 List<string> lines = new();
                 List<string> pass = HandleScope(call.pass);
                 List<string> fail = HandleScope(call.fail);
-                List<string> post = new(); // generated stuff. not a part of actual papyrus. just things i need to finagle to emulate it cleanly
 
                 if (fail.Count() > 0) { pass.Add($"SkipUnconditionally({fail.Count()});"); } // skip over else scope if true
 
@@ -122,6 +122,24 @@ namespace JortPob
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                         break;
 
+                    case Call.Type.Random:
+                        Script.Flag randFlag = scriptManager.common.GetOrRegisterRandom(int.Parse(call.left.parameters[0]));
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"IfEventValue(OR_01, {randFlag.id}, {randFlag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
+                            lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                        }
+                        else if (call.right.type == Call.Type.Variable)
+                        {
+                            Script.Flag lflag = GetFlagByVariable(call.right.parameters[0]);
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"IfCompareEventValues(OR_01, {randFlag.id}, {randFlag.Bits()}, {call.OperatorIndex()}, {lflag.id}, {lflag.Bits()});");
+                            lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
                     case Call.Type.OnActivate:
                         if (call.right.type == Call.Type.Literal)
                         {
@@ -134,22 +152,75 @@ namespace JortPob
                         break;
 
                     case Call.Type.OnDeath:
+                        if (call.right.type == Call.Type.Literal)
                         {
-                            if (call.right.type == Call.Type.Literal)
+                            bool flagState = int.Parse(call.right.parameters[0]) == 0;
+                            Script.Flag onDeathFlag = RegisterOnDeath(call.left);
+                            if (onDeathFlag == null) // if register fails due to missing target
                             {
-                                bool flagState = int.Parse(call.right.parameters[0]) == 0;
-                                Script.Flag onDeathFlag = RegisterOnDeath(call.left);
-                                if (onDeathFlag == null) // if register fails due to missing target
-                                {
-                                    lines.Add($"SkipUnconditionally({(flagState ? 0 : pass.Count())})");
-                                    break;
-                                }
-                                post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, OFF);"); // switch on death flag back off after this conditional resolves
-                                lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {onDeathFlag.id});");
+                                lines.Add($"SkipUnconditionally({(flagState ? 0 : pass.Count())})");
+                                break;
                             }
-                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
-                            break;
+                            post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, OFF);"); // switch on death flag back off after this conditional resolves
+                            lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {onDeathFlag.id});");
                         }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.OnMurder:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 0;
+                            Script.Flag onDeathFlag = RegisterOnDeath(call.left);
+                            if (onDeathFlag == null) // if register fails due to missing target
+                            {
+                                lines.Add($"SkipUnconditionally({(flagState ? 0 : pass.Count())})");
+                                break;
+                            }
+                            Script.Flag attackedFlag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, onDeathFlag.name);
+
+                            post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, OFF);"); // switch on death flag back off after this conditional resolves
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"IfEventFlag(AND_01, ON, TargetEventFlagType.EventFlag, {onDeathFlag.id});");
+                            lines.Add($"IfEventFlag(AND_01, ON, TargetEventFlagType.EventFlag, {attackedFlag.id});");
+                            lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, AND_01);");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.OnKnockout:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 0;
+
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"IfCharacterHPRatio(OR_01, {target.entity}, 3, 0.25, 0, 1);");
+                            lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.MenuMode:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            if (flagState) // menumode == 1
+                            {
+                                lines.Add($"SkipUnconditionally({pass.Count()});"); // skip to else
+                            }
+                            else           // menumode == 0
+                            {
+                                lines.Add($"SkipUnconditionally(0);"); // no op
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
 
                     case Call.Type.CellChanged:
                         if(call.right.type == Call.Type.Literal)
@@ -221,14 +292,38 @@ namespace JortPob
                             break;
                         }
 
+                    case Call.Type.PcExpelled:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            string faction;
+                            if (call.left.parameters.Count() > 0) { faction = call.left.parameters[0].ToLower().Trim(); }
+                            else { faction = ((CharacterContent)content).faction.ToLower().Trim(); }
+                            Script.Flag exFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionExpelled, faction);
+                            lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {exFlag.id});");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.PcVampire:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            SpeffManager.SpeffSpell speff = speffManager.GetVampirism();
+                            lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {speff.flag.id});");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
                     case Call.Type.GetPcRank:
+                        int rank = int.Parse(call.right.parameters[0]) + 1;  // ranks are shifted +1 in ER. rank 0 is considered "not a member"
                         if (call.right.type == Call.Type.Literal)
                         {
                             // notably, this call in payrus sometimes targets the player. it is already a PC check so it's always the player but like... idk double player is just as good
                             // additionally: some faction names have spaces in them, like "imperial cult" which means we need to join all parameters because they dont always use quotes around the calls
                             Script.Flag fflag = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, string.Join(" ",  call.left.parameters));
                             lines.Add(ResetConditionGroups());
-                            lines.Add($"IfEventValue(OR_01, {fflag.id}, {fflag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
+                            lines.Add($"IfEventValue(OR_01, {fflag.id}, {fflag.Bits()}, {call.OperatorIndex()}, {rank});");
                             lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
                         }
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
@@ -258,13 +353,45 @@ namespace JortPob
                         // Checking if player has an item
                         else if (call.left.target == "player")
                         {
-                            if (pass.Count() > 0) { lines.Add($"SkipUnconditionally({pass.Count()});"); } // returning false for now, no item support yet!
+                            ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.left.parameters[0].ToLower().Trim());
+                            if (itemInfo == null) { throw new Exception("Script failed to find referenced item! This should not happen!"); }
+                            Script.Flag itemCountFlag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerItemCount, itemInfo.id);
+
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"StoreItemAmountHeldInEventValue({itemInfo.EquipType()}, {itemInfo.row}, {itemCountFlag.id}, {itemCountFlag.Bits()});"); // Get item count and store in flag
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                lines.Add($"IfEventValue(OR_01, {itemCountFlag.id}, {itemCountFlag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});"); // compare values
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                            else if (call.right.type == Call.Type.Variable)
+                            {
+                                Script.Flag lflag = GetFlagByVariable(call.right.parameters[0]);
+                                lines.Add($"IfCompareEventValues(OR_01, {itemCountFlag.id}, {itemCountFlag.Bits()}, {call.OperatorIndex()}, {lflag.id}, {lflag.Bits()});");  // compare values
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
                         }
                         // Checking if a non player character has gold or an item, we will simply assume true here because npcs don't have inventories in ER and assuming true is probably mostly fine
                         else
                         {
                             lines.Add($"SkipUnconditionally(0);"); // this is effectively a do nothing command to put in the spot of the if statment. effectively if(true)
                         }
+                        break;
+
+                    case Call.Type.Xbox:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            if (flagState) // xbox == 1
+                            {
+                                lines.Add($"SkipUnconditionally({pass.Count()});"); // skip to else
+                            }
+                            else           // xbox == 0
+                            {
+                                lines.Add($"SkipUnconditionally(0);"); // no op
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                         break;
 
                     // will be refering to any papyrus script that is managed by StartScript, StopScript, ScriptRunning as "subscript" for clarity
@@ -379,30 +506,42 @@ namespace JortPob
                             // Resolve those operations as best as we can
                             Script.Flag lflag = GetFlagByVariable(call.parameters[0]);
                             if (lflag == null) { break; } // another safety break. there is a tribunal script that fails to declare a var "done" and trys to set it resulting in a null
+                            Script.Flag tempFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.Hardcode, $"{papyrus.id}->setworkvalue"); // create temp value to do math on
+                            lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, 0, 1, 5);"); // assign temp value to 0 before we start
                             foreach ((string op, Call call) operation in operations)
                             {
                                 switch (operation.call.type)
                                 {
                                     case Call.Type.Literal:
-                                        lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, {int.Parse(operation.call.parameters[0])}, 0, 1, {GetEventValueOperator(operation.op)});");
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, {int.Parse(operation.call.parameters[0])}, 0, 1, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.Variable:
                                         Script.Flag l2flag = GetFlagByVariable(operation.call.parameters[0]);
-                                        lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {l2flag.id}, {l2flag.Bits()}, {GetEventValueOperator(operation.op)});");
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {l2flag.id}, {l2flag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetJournalIndex:
                                         Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, operation.call.parameters[0]);
-                                        lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {jflag.id}, {jflag.Bits()}, {GetEventValueOperator(operation.op)});");
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {jflag.id}, {jflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetButtonPressed:
                                         Script.Flag bflag = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
-                                        lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {bflag.id}, {bflag.Bits()}, {GetEventValueOperator(operation.op)});");
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {bflag.id}, {bflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         lines.Add($"EventValueOperation({bflag.id}, {bflag.Bits()}, {ushort.MaxValue}, 0, 1, 5);"); // reset value after reading it
+                                        break;
+                                    case Call.Type.Random:
+                                        Script.Flag randFlag = scriptManager.common.GetOrRegisterRandom(int.Parse(operation.call.parameters[0]));
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {randFlag.id}, {randFlag.Bits()}, {GetEventValueOperator(operation.op)});");
+                                        break;
+                                    case Call.Type.GetSecondsPassed:
+                                        Script.Flag gspFlag = RegisterGetSecondsPassed();
+                                        lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {gspFlag.id}, {gspFlag.Bits()}, {GetEventValueOperator(operation.op)});");
+                                        lines.Add($"EventValueOperation({gspFlag.id}, {gspFlag.Bits()}, 0, 0, 1, 5);"); // reset value after reading it
                                         break;
                                     default: if (!UNSUPPORTED_SET_LIST.Contains(operation.call.type)) { Lort.Log($" ## WARNING ## Unsupported Papyrus->EMEVD set operation call {papyrus.id}->{call.type}->{operation.call.type}", Lort.Type.Debug); UNSUPPORTED_SET_LIST.Add(operation.call.type); }
                                         break;
                                 }
                             }
+                            lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {tempFlag.id}, {tempFlag.Bits()}, 5);"); // assign temp value to actual var now that we are done with calculation
                             break;
                         }
 
@@ -540,34 +679,46 @@ namespace JortPob
 
                     case Call.Type.AddItem:
                         {
-                            // only supporting items/gold added to player rn. will eventually support other stuff
+                            int amount = int.Parse(call.parameters[1]);
+
+                            // player
                             if (call.target == "player")
                             {
                                 // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
-                                    // @TODO: need to generate a speff for this to work
+                                    int speffId = speffManager.CreateScriptedEffect(SpeffManager.StatMod.Runes, amount, call.RAW);
+                                    lines.Add($"SetSpEffect(10000, {speffId});");
                                 }
                                 // Any other item
                                 else
                                 {
                                     ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
-                                    if (itemInfo == null) { throw new Exception(); }
-                                    lines.Add($"DirectlyGivePlayerItem({(int)itemInfo.type}, {itemInfo.row}, 0, 0);");
+                                    if (itemInfo == null) { throw new Exception("Script failed to find referenced item! This should not happen!"); }
+                                    int row = paramanager.GenerateAddItemLot(itemInfo, int.Parse(call.parameters[1]));
+                                    lines.Add($"AwardItemLot({row});");
                                 }
+                            }
+                            // not the player
+                            else
+                            {
+                                // unsupported
                             }
                             break;
                         }
 
                     case Call.Type.RemoveItem:
                         {
-                            // only supporting items/gold added to player rn. will eventually support other stuff
+                            int amount = int.Parse(call.parameters[1]);
+
+                            // player
                             if (call.target == "player")
                             {
                                 // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
-                                    // @TODO: need to generate a speff for this to work
+                                    int speffId = speffManager.CreateScriptedEffect(SpeffManager.StatMod.Runes, -amount, call.RAW);
+                                    lines.Add($"SetSpEffect(10000, {speffId});");
                                 }
                                 // Any other item
                                 else
@@ -576,6 +727,11 @@ namespace JortPob
                                     if (itemInfo == null) { throw new Exception(); }
                                     lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, {call.parameters[1]});");
                                 }
+                            }
+                            // not the player
+                            else
+                            {
+                                // unsupported
                             }
                             break;
                         }
@@ -1200,7 +1356,7 @@ namespace JortPob
                             CharacterContent target;
                             uint entityId;
                             if (call.target == null) { target = (CharacterContent)content; entityId = target.entity; }                          // case 1: no target so current object is target
-                            else if (call.target == "player") { throw new Exception("SetStat papyrus call targeting player not supported!"); } // case 2: target is player. UNSUPPORTED!
+                            else if (call.target == "player") { break; }                                                                       // case 2: target is player. UNSUPPORTED!
                             else { target = (CharacterContent)layout.FindScriptReference(content, call.target); entityId = target.entity; }   // case 3: target is a direct reference to an object record
 
                             Script areaScript = scriptManager.FindScriptFor(layout, target);
@@ -1335,6 +1491,7 @@ namespace JortPob
 
                             // Set disp value
                             Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                            if (dvar == null) { break; } // this is here because some base game morrowind scripts try to set disp on creatures which is impossible. thanks todd
                             lines.Add($"EventValueOperation({dvar.id}, {dvar.Bits()}, {call.parameters[0]}, 0, 1, 5);"); // 5 is assign
                             break;
                         }
@@ -1359,8 +1516,17 @@ namespace JortPob
                                 }
                                 else
                                 {
+                                    // Is a talkable character of some kind
                                     Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, targetA.entity.ToString());
-                                    lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hvar.id}, ON);");
+                                    if (hvar != null)
+                                    {
+                                        lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hvar.id}, ON);"); // simply set player hostility flag to true
+                                    }
+                                    // Probably a wild creature
+                                    else
+                                    {
+                                        lines.Add($"SetCharacterTeamType({targetA.entity}, 29);");  // set to indiscriminate team type to make it very hostile
+                                    }
                                 }
                             }
                             else
@@ -1391,9 +1557,10 @@ namespace JortPob
 
                             Script areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target.entity.ToString());
-                            Script.Flag fightFlag = areaScript.GetOrRegisterInfight(target);
-                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);");
-                            lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {fightFlag.id}, OFF);");
+                            Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content.entity.ToString());
+                            if (hostileFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);"); }
+                            if (fightFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {fightFlag.id}, OFF);"); }
+                            if(fightFlag == null && hostileFlag == null) { lines.Add($"SetCharacterTeamType({target.entity}, 26);"); } // fallback, sets team to player friendly
                             break;
                         }
 
@@ -1437,6 +1604,7 @@ namespace JortPob
 
                     case Call.Type.Return:
                         {
+                            lines.AddRange(post);
                             lines.Add($"EndUnconditionally(EventEndType.Restart);");
                             break;
                         }
@@ -1515,13 +1683,18 @@ namespace JortPob
                 // Grab their death flag
                 Script.Flag targetDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
 
-                Script.Flag onDeathFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnDeath, target.entity.ToString());
+                // if this handler is already registered then don't create it again. just return flag
+                Script.Flag onDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.OnDeath, target.entity.ToString());
+                if (onDeathFlag != null) { return onDeathFlag; }
+
+                // Create handler and return
+                onDeathFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnDeath, target.entity.ToString());
                 Script.Flag onDeathEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnDeath->{target.entity.ToString()}");
                 EMEVD.Event onDeathEvent = new();
                 onDeathEvent.ID = onDeathEventFlag.id;
                 onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {targetDeathFlag.id});"));  // pause until target is alive
                 onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {targetDeathFlag.id});"));  // pause until target is dead
-                onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, ON);"));            // mark ondeath flag true
+                onDeathEvent.Instructions.Add(script.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {onDeathFlag.id}, ON);"));          // mark ondeath flag true
                 script.emevd.Events.Add(onDeathEvent);
                 script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {onDeathEventFlag.id}, 0);"));
 
@@ -1534,8 +1707,17 @@ namespace JortPob
                 Script.Flag cellChangedFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.CellChanged, content.entity.ToString());
             }
 
+            /* If there is a "GetSecondsPassed" call we need to create a paralell event to emulate it's function */
+            Script.Flag RegisterGetSecondsPassed()
+            {
+                Script.Flag secondsFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.SecondsPassed, content.entity.ToString());
+                script.init.Instructions.Insert(0, script.AUTO.ParseAdd($"InitializeCommonEvent(0, {scriptManager.common.events[ScriptCommon.Event.GetSecondsPassed]}, {secondsFlag.id}, {secondsFlag.Bits()});"));
+                return secondsFlag;
+            }
+
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
+            lines.AddRange(post);
             if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id}); "); }  // if this is a subscript, only runs when run flag is set true
             if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
 

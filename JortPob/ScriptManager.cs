@@ -87,6 +87,10 @@ namespace JortPob
         /* Also some other globalish vars we need for scripts like Reputation and CrimeLevel */
         public void SetupSpecialFlags(ESM esm)
         {
+            /* Create some special common events */ // these have to wait until after ESM is loaded otherwise we'd just do it in the constructor
+            common.CreateWeatherTracker();
+            common.TimeHandler();
+
             // Create a one time event that sets some default flags at game startup + also moves player to debug area if they aren't there
             Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
             Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
@@ -96,6 +100,7 @@ namespace JortPob
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.End);"));                                       // end event
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6000, OFF);")); // Always off flag
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6001, ON);")); // Always on flag
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 60120, OFF);")); // Flag that enables crafting
             List<int> setFlagsOn = new()
             {
                 62010, 62011, 62012, 62020, 62021, 62022, 62030, 62031, 62032, 62040, 62041, 62050, 62051, 62052,  // Known world map pieces to unlock all major areas of map

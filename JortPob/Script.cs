@@ -505,7 +505,7 @@ namespace JortPob
                 HasBeenAttacked, // used by a specific filter condition. if the npc is ever hit by the player this is permanently true
                 TopicEnabled, TalkedToPc, Disposition, PlayerRace,
                 FactionJoined, FactionReputation, FactionRank, FactionExpelled,    // faction stuff
-                GuardIsGreeting, PlayerIsTalking, PlayerIsSneaking, PlayerRuneCount, PlayerStat,
+                GuardIsGreeting, PlayerIsTalking, PlayerIsSneaking, PlayerRuneCount, PlayerStat, PlayerItemCount,
                 ReturnValueRankReq, ReturnReactionHigh, ReturnReactionLow,          // these are temp values used by ESD to store variables
                 CurrentWeather,
                 CrimeAbsolved,            // temp value, setting it to 1 triggers a common emevd event that clears all crime and hostility flags
@@ -518,6 +518,8 @@ namespace JortPob
                 PlaySE,     // Flat to trigger playing a sound effect
                 TravelWarp, // Flag to trigger warping the player from travel npcs
                 RemoveItem,  // Flag to trigger removing an item from the player
+                Random,      // Flag for EMEVD papyrus to get values from Random calls
+                SecondsPassed, // Timer flag value used to emulate GetSecondsPassed papyrus call
                 TriggerEnable, TriggerDisable,  // Flags set by ESD to trigger an EMEVD event to enable or disable an object
                 DiscoverLocation,  // marks location on your map when set
                 Hardcode     // Used by any jank hardcoding I end up doing
