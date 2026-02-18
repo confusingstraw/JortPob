@@ -695,7 +695,7 @@ namespace JortPob
                                 {
                                     ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
                                     if (itemInfo == null) { throw new Exception("Script failed to find referenced item! This should not happen!"); }
-                                    int row = paramanager.GenerateAddItemLot(itemInfo, int.Parse(call.parameters[1]));
+                                    int row = paramanager.GenerateAddItemLot(itemInfo, amount);
                                     lines.Add($"AwardItemLot({row});");
                                 }
                             }
@@ -725,7 +725,7 @@ namespace JortPob
                                 {
                                     ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
                                     if (itemInfo == null) { throw new Exception(); }
-                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, {call.parameters[1]});");
+                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, {amount});");
                                 }
                             }
                             // not the player

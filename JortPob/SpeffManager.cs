@@ -338,7 +338,7 @@ namespace JortPob
                 case StatMod.Runes:
                     {
                         row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
-                        row["soul"].Value.SetValue(amount);  // this field is weirdly backwards so ye
+                        row["soul"].Value.SetValue(amount);
                         break;
                     }
                 case StatMod.CurrentHP:
