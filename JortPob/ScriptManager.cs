@@ -2,18 +2,10 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Numerics;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -23,10 +15,12 @@ namespace JortPob
 
         public ScriptCommon common;
         public List<Script> scripts; // map scripts
+        public Dictionary<string, uint> locations;
         public ScriptManager()
         {
             common = new(this);
             scripts = new();
+            locations = new();
 
             // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
             // I have these used numbers in a txt file and we parse that into a list
@@ -525,6 +519,19 @@ namespace JortPob
             }
 
             throw new Exception("Could not find area script for a content object"); // should be unreacahable
+        }
+
+        /* These 2 functions are used by PapyrusEMEVD for the GetPcCell check. This just indexes the regions of named locations for use by scripts */
+        public void AddLocation(string name, uint entity)
+        {
+            if (locations.ContainsKey(name.ToLower().Trim())) { return; }
+            locations.Add(name.ToLower().Trim(), entity);
+        }
+
+        public uint GetLocation(string name)
+        {
+            if (!locations.ContainsKey(name.ToLower().Trim())) { return 0; }
+            return locations[name.ToLower().Trim()];
         }
 
         /* Write all EMEVD scripts this class has created */

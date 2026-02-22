@@ -1,7 +1,5 @@
-﻿using IronPython.Hosting;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Hosting;
 using PortJob;
 using SoulsFormats;
 using System;
@@ -9,13 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Nodes;
-using static IronPython.Modules._ast;
-using static JortPob.InteriorGroup;
 using static JortPob.Script;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -35,7 +27,7 @@ namespace JortPob
             TextManager text = new();                                                           // Manages FMG text files
             IconManager icon = new(esm);                                                       // Manages the creation and assignment of item icons
             Paramanager param = new(text);                                                        // Class for managing PARAM files
-            SpeffManager speff = new(esm, param, scriptManager, icon, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
+            SpeffManager speff = new(esm, param, scriptManager, icon, text);                         // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, icon, text);                         // Handles generation and reampping of items
             Layout layout = new(cache, esm, param, text, scriptManager);                          // Subdivides all content data from ESM into a more elden ring friendly format
             SoundManager sound = new();                                                         // Manages vcbanks
@@ -429,6 +421,7 @@ namespace JortPob
                         mpr.Position = point.relative + Const.MSB_OFFSET;
                         mpr.Rotation = Vector3.Zero;
                         mpr.RegionID = nextMPR++;
+                        mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
                         mpr.MapStudioLayer = 4294967295;
                         mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
 
@@ -444,6 +437,7 @@ namespace JortPob
                         mpr.UnkT18 = -1;
 
                         msb.Regions.MapPoints.Add(mpr);
+                        if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
                     }
                 }
 
@@ -820,6 +814,7 @@ namespace JortPob
                     mpr.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                     mpr.Rotation = Vector3.Zero;
                     mpr.RegionID = nextMPR++;
+                    mpr.EntityID = script.CreateEntity(EntityType.Region, chunk.cell.name);
                     mpr.MapStudioLayer = 4294967295;
                     mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, chunk.cell, chunk.root, paramId);
 
@@ -835,6 +830,7 @@ namespace JortPob
                     mpr.UnkT18 = -1;
 
                     msb.Regions.MapPoints.Add(mpr);
+                    scriptManager.AddLocation(chunk.cell.name, mpr.EntityID);
                 }
 
                 /* EnvMap & REM for interior */

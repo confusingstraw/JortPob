@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using static JortPob.Papyrus;
 using static JortPob.Script.Flag;
+using static SoulsFormats.NVM;
 
 namespace JortPob
 {
@@ -291,6 +293,192 @@ namespace JortPob
                             else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                             break;
                         }
+
+                    case Call.Type.GetAttacked:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            Script.Flag atkdFlag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, target.entity.ToString());
+                            lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {atkdFlag.id});");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetCommonDisease:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            if (call.target == "player")
+                            {
+                                List<SpeffManager.SpeffSpell> speffs = speffManager.GetDiseases();
+                                lines.Add(ResetConditionGroups());
+                                foreach (SpeffManager.SpeffSpell speff in speffs)
+                                {
+                                    lines.Add($"IfEventFlag(OR_01, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {speff.flag.id});");
+                                }
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetBlightDisease:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            if (call.target == "player")
+                            {
+                                List<SpeffManager.SpeffSpell> speffs = speffManager.GetDiseases();
+                                lines.Add(ResetConditionGroups());
+                                foreach (SpeffManager.SpeffSpell speff in speffs)
+                                {
+                                    lines.Add($"IfEventFlag(OR_01, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {speff.flag.id});");
+                                }
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetDeadCount:
+                        Script.Flag deadCountFlag = scriptManager.GetFlag(Designation.DeadCount, call.left.parameters[0].ToLower().Trim());
+                        if (deadCountFlag == null) { break; } // happens during partial builds
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            lines.Add(ResetConditionGroups());
+                            lines.Add($"IfEventValue(OR_01, {deadCountFlag.id}, {deadCountFlag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
+                            lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetLOS:
+                    case Call.Type.GetLineOfSight:
+                    case Call.Type.GetDetected:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            if (call.left.parameters[0].ToLower().Trim() == "player")
+                            {
+                                Script.Flag sneakFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
+                                lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {sneakFlag.id});");
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetDisposition:
+                        {
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+                            Script.Flag dispFlag = scriptManager.GetFlag(Designation.Disposition, target.entity.ToString());
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                lines.Add(ResetConditionGroups());
+                                lines.Add($"IfEventValue(OR_01, {dispFlag.id}, {dispFlag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        }
+                        break;
+
+                    case Call.Type.GetFlee:
+                        {
+                            // find our target content
+                            CharacterContent target;
+                            if (call.target == null) { target = (CharacterContent)content; }
+                            else { target = (CharacterContent)layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                lines.Add(ResetConditionGroups());
+                                lines.Add($"IfUnsignedParameterComparison(OR_01, {call.OperatorIndex()}, {target.flee}, {call.right.parameters[0]});");
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        }
+                        break;
+
+                    case Call.Type.GetHealth:
+                        {
+                            // find our target content
+                            Content target;
+                            uint entity;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+
+                            if (call.target == "player") { entity = 10000; }
+                            else if (target != null) { entity = target.entity; }
+                            else { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            if (call.right.type == Call.Type.Literal)
+                            {
+                                lines.Add(ResetConditionGroups());
+                                lines.Add($"IfCharacterHPValue(OR_01, {entity}, {call.OperatorIndex()}, {call.right.parameters[0]}, 0, 1);");
+                                lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
+                            }
+                            else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        }
+                        break;
+
+                    case Call.Type.GetPcCell:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+                            uint region = scriptManager.GetLocation(call.left.parameters[0]);
+                            
+                            lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{(flagState?"Outside":"Inside")}, 10000, {region}, 1);");
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
+
+                    case Call.Type.GetRace:
+                        if (call.right.type == Call.Type.Literal)
+                        {
+                            string raceParam = call.left.parameters[0].Replace(" ", "");
+                            CharacterContent.Race race = Enum.Parse<CharacterContent.Race>(raceParam, true);
+                            bool flagState = int.Parse(call.right.parameters[0]) == 1;
+
+                            // Player race check (dynamic)
+                            if (call.target == "player")
+                            {
+                                Script.Flag raceFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerRace, race.ToString());
+                                lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {raceFlag.id});");
+                            }
+                            // Npc race check (static)
+                            else
+                            {
+                                // find our target content
+                                CharacterContent target;
+                                if (call.target == null) { target = (CharacterContent)content; }
+                                else { target = (CharacterContent)layout.FindScriptReference(content, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                if (target.race == race) { flagState = !flagState; }  // invert comparison if npc IS the given race
+
+                                if (flagState) // true == 0
+                                {
+                                    lines.Add($"SkipUnconditionally({pass.Count()});"); // skip to else
+                                }
+                                else           // true == 1
+                                {
+                                    lines.Add($"SkipUnconditionally(0);"); // no op
+                                }
+                            }
+                        }
+                        else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
+                        break;
 
                     case Call.Type.PcExpelled:
                         if (call.right.type == Call.Type.Literal)

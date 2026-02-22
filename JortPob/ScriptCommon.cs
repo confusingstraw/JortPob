@@ -613,8 +613,8 @@ namespace JortPob
             string[] triggerDisableEventRaw = new string[]
             {
                 $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",        // blocking wait until flag set...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disable);",                        // disable object
-                $"ChangeAssetEnableState({NextParameterName()}, Disable);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                        // disable object
+                $"ChangeAssetEnableState({NextParameterName()}, Disabled);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",         // turn flag back off
                 $"EndUnconditionally(EventEndType.Restart);"     // restart!
             };
