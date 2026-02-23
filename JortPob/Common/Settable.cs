@@ -47,7 +47,7 @@ namespace JortPob.Common
         
         public static T Get<T>(string key)
         {
-            var node = _json[key] ?? throw new KeyNotFoundException($"Setting '{key}' missing from settings.json");
+            var node = _json[key];
             return node.Deserialize<T>(_options);
         }
 

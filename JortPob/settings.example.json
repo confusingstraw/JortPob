@@ -9,43 +9,31 @@
   ],
   "DEFAULT_PROCESS_TIMEOUT": 15000, // when running a subprocess this is the default timeout time in millis.
   "RANDOM_SEED": 42, // When doing anything random we use this as our seed so results are consistent between builds
-  "GLOBAL_SCALE": 0.0129, // new global scale as float calculated from approx measurements of player height in both games
-  "CELL_EXTERIOR_BOUNDS": 30,
-  "CELL_SIZE": 8192, // float
-  "TILE_SIZE": 256, // float
-  "CELL_GRID_SIZE": 64, // terrain vertices
-  "MSB_OFFSET": [0, 185, 0], // generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
-  "NPC_ROOT_OFFSET": 75,  // how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
-  "TERRAIN_UV_SCALE": 30, // uv scale for terrain textures
-  "TERRAIN_COLOR_OVERLAY_SIZE": 256, // size of texture generated for vertex color overlay on terrain meshes
-  "TERRAIN_DEFAULT_TEXTURE": "Data Files\\textures\\_land_default.dds", // morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
-  "TERRAIN_LOD_VALUES": [
-    {
-      "INDEX": 0,
-      "FLAG": "None",
-      "DIVISOR": 1,
-      "DISTANCE": 512.0
-    },
-    {
-      "INDEX": 1,
-      "FLAG": "LodLevel1",
-      "DIVISOR": 4,
-      "DISTANCE": 1024.0
-    },
-    {
-      "INDEX": 2,
-      "FLAG": "LodLevel2",
-      "DIVISOR": 16,
-      "DISTANCE": 99999.0
-    }
-  ],
-  /* values are [0] = size of the asset model (calculated by radius and stored in modelinfo) [1] = distance it's visible via partsdrawparam. [2] = fade out range */
-  "ASSET_LOD_VALUES": [
-    [1, 32, 4],
-    [3, 64, 8],
-    [7, 128, 16],
-    [14, 256, 32],
-    [22, 512, 64],
-    [99999, 99999, 0]
-  ]
+  "DEBUG_SKIP_CUSTOM_MAP": false,
+  "DEBUG_SKIP_SOUND": false, // can make dialog unuseable
+  "DEBUG_SKIP_NON_ESSENTIAL_ITEMS": false, // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
+  "DEBUG_SKIP_ICONS": false, // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
+  "DEBUG_DONT_WRITE_BLANK_MSBS": false, // if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
+  "DEBUG_DISCARD_ANIMATED_DOORS": true, // disables all doors that are NOT load doors
+  "DEBUG_SKIP_FMG_PARAM_SORTING": false,
+  "DEBUG_SKIP_ESD": false, // skip building dialog AND scripts
+  "DEBUG_SKIP_NICE_WATER_CIRCLIFICATION": true, // slow as shit, skipping this saves about a minute per build
+  "DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME": null,  // set to "null" to build entire map.
+  "DEBUG_EXCLUSIVE_BUILD_BY_BOX": [-3, -10, -1, -8 ],  // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+  // seyda neen area (small) = [-3, -10, -1, -8 ]
+  // seyda neen area (large) = [ -5, -15, 5, -5 ]
+  // balmora area (small) = [-4, -3, -2, -1]
+  // caldera area (small) = [-3, 1, 0, 3]
+  // balmora + caldera combo = [-4, -3, -1, 3]
+  // lava area near Marandus and Ashunartes = [1, -5, 5, -1]
+  // all lava areas (big) = [0, -5, 15, 10]
+  // lava area near Galom Daeus = [8, -2, 12, 2]
+  // lava and swamp areas combined = [-10, -10, 15, 5];
+  // half the map = [-10, -15, 20, 0];
+  "DEBUG_SKIP_TERRAIN_BORDER_BLENDING": true, // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
+  "DEBUG_SKIP_INTERIOR": false,
+  // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
+  // set MATCHES to null if for proper normal building
+  "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME": null,  // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
+  "DEBUG_HKX_FORCE_BINARY": true,
 }
