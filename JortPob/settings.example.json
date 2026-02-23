@@ -34,6 +34,6 @@
   "DEBUG_SKIP_INTERIOR": false,
   // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
   // set MATCHES to null if for proper normal building
-  "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME": null,  // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
+  "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES": null,  // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
   "DEBUG_HKX_FORCE_BINARY": true,
 }

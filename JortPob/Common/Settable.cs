@@ -47,7 +47,14 @@ namespace JortPob.Common
         
         public static T Get<T>(string key)
         {
-            var node = _json[key];
+            JsonObject rootObject = _json.AsObject();
+
+            // 1. Check if the key exists at all
+            if (!rootObject.TryGetPropertyValue(key, out JsonNode node))
+            {
+                throw new KeyNotFoundException($"Setting '{key}' is missing from settings.json. Please add it.");
+            }
+  
             return node.Deserialize<T>(_options);
         }
 
