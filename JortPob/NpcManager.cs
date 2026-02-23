@@ -28,9 +28,7 @@ namespace JortPob
         private readonly Dictionary<string, int> topicText; // topic text id map
         private readonly List<EsdInfo> esds;
 
-        private readonly Dictionary<string, int> npcParamMap, npcThinkParamMap;
-
-        private int nextNpcParamId, nextNpcThinkParamId;  // increment by 10
+        private int nextNpcParamId, nextNpcThinkParamId, nextCharInitId;  // increment by 10
 
         public NpcManager(ESM esm, Layout layout, SoundManager sound, Paramanager param, TextManager text, ItemManager item, SpeffManager speff, ScriptManager scriptManager)
         {
@@ -44,70 +42,62 @@ namespace JortPob
             this.scriptManager = scriptManager;
 
             esds = new();
-            npcParamMap = new();
-            npcThinkParamMap = new();
             topicText = new();
 
             nextNpcParamId = 544900010;
             nextNpcThinkParamId = 544900010;
+            nextCharInitId = 2050000;
         }
 
-        public (int npc, int think) GetParams(ItemManager itemManager, Script script, NpcContent content)
+        public (int npc, int think, int init) GetParams(ItemManager itemManager, Script script, NpcContent content)
         {
             int npcRow = GetNpcParam(itemManager, script, content);
             int thinkRow = GetThinkParam(itemManager, script, content);
+            int charInitRow = GetCharInitParam(itemManager, content);
 
-            return (npcRow, thinkRow);
+            return (npcRow, thinkRow, charInitRow);
         }
 
         private int GetNpcParam(ItemManager itemManager, Script script, NpcContent content)
         {
-            // First check if we already generated one for this npc record. If we did return that one. Some npcs like guards and dreamers have multiple placements
-            if (npcParamMap.ContainsKey(content.id)) { return npcParamMap[content.id]; }
-
             int id = nextNpcParamId += 10;
             paramanager.GenerateNpcParam(itemManager, script, content, id);
-            npcParamMap.Add(content.id, id);
-
             return id;
         }
 
         private int GetThinkParam(ItemManager itemManager, Script script, NpcContent content)
         {
-            // First check if we already generated one for this npc record. If we did return that one. Some npcs like guards and dreamers have multiple placements
-            if (npcThinkParamMap.ContainsKey(content.id)) { return npcThinkParamMap[content.id]; }
-
             int id = nextNpcThinkParamId += 10;
             paramanager.GenerateThinkParam(itemManager, script, content, id);
-            npcThinkParamMap.Add(content.id, id);
             return id;
         }
 
-        public (int npc, int think) GetParams(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        private int GetCharInitParam(ItemManager itemManager, NpcContent content)
+        {
+            int id = nextCharInitId += 10;
+            paramanager.GenerateCharInitParam(itemManager, content, id);
+            return id;
+        }
+
+        public (int npc, int think, int init) GetParams(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
         {
             int npcRow = GetNpcParam(itemManager, script, content, remap);
             int thinkRow = GetThinkParam(itemManager, script, content, remap);
 
-            return (npcRow, thinkRow);
+            return (npcRow, thinkRow, -1);
         }
 
         private int GetNpcParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
         {
-            if (npcParamMap.ContainsKey(content.id)) { return npcParamMap[content.id]; }
-
             int id = nextNpcParamId += 10;
             paramanager.GenerateNpcParam(itemManager, script, content, id, remap);
-            npcParamMap.Add(content.id, id);
             return id;
         }
 
         private int GetThinkParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
         {
-            if (npcThinkParamMap.ContainsKey(content.id)) { return npcThinkParamMap[content.id]; }
-
             int id = nextNpcThinkParamId += 10;
             paramanager.GenerateThinkParam(itemManager, script, content, id, remap);
-            npcThinkParamMap.Add(content.id, id);
             return id;
         }
 

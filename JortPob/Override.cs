@@ -1,18 +1,10 @@
-﻿using HKLib.hk2018.hke;
-using JortPob.Common;
-using Newtonsoft.Json.Converters;
+﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
-using static JortPob.Override;
 
 namespace JortPob
 {
@@ -27,6 +19,8 @@ namespace JortPob
 
         private static List<PlayerClass> CHARACTER_CREATION_CLASS;
         private static List<PlayerRace> CHARACTER_CREATION_RACE;
+        private static Dictionary<string, FaceData> FACE_REMAP;
+        private static Dictionary<string, Hair> HAIR_REMAP;
         private static Dictionary<string, ItemRemap> ITEM_REMAPS_BY_ID;
         private static Dictionary<string, ItemDefinition> ITEM_DEFINITIONS_BY_ID;
         private static Dictionary<string, SpeffDefinition> SPEFF_DEFINITIONS_BY_ID;
@@ -120,6 +114,18 @@ namespace JortPob
             string n = name.ToLower().ToString();
             if(MAP_ICONS.ContainsKey(n)) { return MAP_ICONS[n]; }
             else { return Layout.MapPoint.Icon.Auto; }
+        }
+
+        public static Hair GetHair(string name)
+        {
+            if(HAIR_REMAP.ContainsKey(name.ToLower().Trim())) { return HAIR_REMAP[name.ToLower().Trim()]; }
+            else { return new Hair(0, Hair.Color.Black); }  // BALD!
+        }
+
+        public static FaceData GetFace(string name)
+        {
+            if(FACE_REMAP.ContainsKey(name.ToLower().Trim())) { return FACE_REMAP[name.ToLower().Trim()]; }
+            else { return FACE_REMAP["default"]; }
         }
 
         /* load all the override jsons into this class */
@@ -233,6 +239,34 @@ namespace JortPob
             {
                 string iconName = property.Value.GetValue<string>();
                 MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
+            }
+
+            /* Load hair id remap to elden ring hair part ids */
+            HAIR_REMAP = new();
+            JsonNode jsonHairRemap = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\face\hair.json")));
+            foreach (var property in jsonHairRemap.AsObject())
+            {
+                JsonNode node = property.Value;
+
+                string id = property.Key.ToLower().Trim();
+                byte partId = node["part"].GetValue<byte>();
+                string colorName = node["color"].GetValue<string>().Replace(" ", "");
+                Hair.Color color = Enum.Parse<Hair.Color>(colorName, true);
+
+                HAIR_REMAP.Add(id, new(partId, color));
+            }
+
+            /* Load all json files in overrides/face and stick them in a dictionary for us to grab from */
+            FACE_REMAP = new();
+            string[] faceRemapFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\face"));
+            foreach (string faceRemapFile in faceRemapFiles)
+            {
+                string fileName = Path.GetFileNameWithoutExtension(faceRemapFile).ToLower().Trim();
+                if (fileName == "hair") { continue; } // skip hair json file
+
+                JsonNode faceRemapJson = JsonNode.Parse(File.ReadAllText(faceRemapFile));
+                FaceData faceData = new(fileName, faceRemapJson);
+                FACE_REMAP.Add(faceData.id, faceData);
             }
         }
 
@@ -536,6 +570,49 @@ namespace JortPob
                 {
                     this.row = row;
                     data = new();
+                }
+            }
+        }
+
+        public class FaceData
+        {
+            public string id;
+            public Dictionary<string, byte> data;
+
+            public FaceData(string id, JsonNode json)
+            {
+                this.id = id.ToLower().Trim();
+
+                data = new();
+                foreach (var property in json.AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<byte>());
+                }
+            }
+        }
+
+        public record Hair(byte part, Hair.Color color)
+        {
+            public enum Color
+            {
+                Black, DarkBrown, Brown, LightBrown, DirtyBlonde, Blonde, White, Gray, Grey, Red
+            }
+
+            public byte[] GetColor()
+            {
+                switch(color)
+                {
+                    case Color.Black: return new byte[] { 0, 0, 0 };         // @TODO: ai autocomplete set these values and they are fine for testing but CHANGE THEM LATER
+                    case Color.DarkBrown: return new byte[] { 34, 17, 0 };
+                    case Color.Brown: return new byte[] { 85, 42, 0 };
+                    case Color.LightBrown: return new byte[] { 170, 85, 0 };
+                    case Color.DirtyBlonde: return new byte[] { 221, 170, 85 };
+                    case Color.Blonde: return new byte[] { 255, 255, 170 };
+                    case Color.White: return new byte[] { 255, 255, 255 };
+                    case Color.Grey:
+                    case Color.Gray: return new byte[] { 170, 170, 170 };
+                    case Color.Red: return new byte[] { 170, 0, 0 };
+                    default: return new byte[] { 0, 0, 0 };
                 }
             }
         }

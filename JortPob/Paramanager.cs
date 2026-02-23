@@ -742,6 +742,108 @@ namespace JortPob
             }
         }
 
+        public void GenerateFaceParam(NpcContent npc, int id)
+        {
+            Override.FaceData face = Override.GetFace(npc.head);
+            Override.Hair hair = Override.GetHair(npc.hair);
+
+            int rowToCopy = 23150; // default girl women as our template
+
+            FsParam faceParam = param[ParamType.FaceParam];
+            FsParam.Row row = CloneRow(faceParam[rowToCopy], npc.id, id);
+
+            // set values for face
+            foreach(var kvp in face.data)
+            {
+                row[kvp.Key].Value.SetValue(kvp.Value);
+            }
+
+            // set values for hair
+            byte[] color = hair.GetColor();
+            row["hair_partsId"].Value.SetValue(hair.part);
+            row["hair_color_R"].Value.SetValue(color[0]);
+            row["hair_color_G"].Value.SetValue(color[1]);
+            row["hair_color_B"].Value.SetValue(color[2]);
+            row["beard_color_R"].Value.SetValue(color[0]);
+            row["beard_color_G"].Value.SetValue(color[1]);
+            row["beard_color_B"].Value.SetValue(color[2]);
+            row["body_hairColor_R"].Value.SetValue(color[0]);
+            row["body_hairColor_G"].Value.SetValue(color[1]);
+            row["body_hairColor_B"].Value.SetValue(color[2]);
+
+            AddRow(faceParam, row);
+        }
+
+        public void GenerateCharInitParam(ItemManager itemManager, NpcContent npc, int id)
+        {
+            Override.FaceData face = Override.GetFace("");
+            Override.Hair hair = Override.GetHair("");
+
+            int rowToCopy = 23150; // default girl women as our template
+
+            FsParam charInitParam = param[ParamType.CharaInitParam];
+            FsParam.Row row = CloneRow(charInitParam[rowToCopy], npc.id, id);
+
+            /* Face and sex */
+            GenerateFaceParam(npc, id); // create faceparam to pair with this charainit
+            row["npcPlayerFaceGenId"].Value.SetValue(id);  // set faceparam
+            row["npcPlayerSex"].Value.SetValue(npc.sex == CharacterContent.Sex.Male ? (byte)1 : (byte)0); // set sex
+
+            /* Equipment */
+            row["equip_Wep_Right"].Value.SetValue(npc.equipWeaponRight?.row ?? -1);
+            row["equip_Subwep_Right"].Value.SetValue(npc.equipRange?.row ?? -1);
+            row["equip_Wep_Left"].Value.SetValue(npc.equipWeaponLeft?.row ?? -1);
+            row["equip_Helm"].Value.SetValue(npc.equipHead?.row ?? -1);
+            row["equip_Armer"].Value.SetValue(npc.equipBody?.row ?? -1);   // SIC
+            row["equip_Gaunt"].Value.SetValue(npc.equipHands?.row ?? -1);
+            row["equip_Leg"].Value.SetValue(npc.equipLegs?.row ?? -1);
+            row["equip_Arrow"].Value.SetValue(npc.equipArrow?.row ?? -1);
+            row["equip_Bolt"].Value.SetValue(npc.equipBolt?.row ?? -1);
+
+            for (int i = 0; i < npc.equipAcc.Length; i++)
+            {
+                ItemManager.ItemInfo acc = npc.equipAcc[i];
+                row[$"equip_Accessory{i + 1:D2}"].Value.SetValue(acc.row);
+            }
+
+            for (int i = 0; i < npc.equipGood.Length; i++)
+            {
+                ItemManager.ItemInfo good = npc.equipGood[i];
+                row[$"item_{i + 1:D2}"].Value.SetValue(good.row);
+                row[$"itemNum_{i + 1:D2}"].Value.SetValue((byte)1);   // @TODO: npc use item counts?
+            }
+
+            /* Stats */
+            int vigr = (int)(npc.level * 2.9f) + 7;
+            int endr = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Endurance) * .75f);
+            int strg = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Strength) * .75f);
+            int dext = (int)(((npc.stats.Get(CharacterContent.Stats.Attribute.Agility) + npc.stats.Get(CharacterContent.Stats.Attribute.Speed)) * .5f) * .75f);
+            int mind = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Willpower) * .75f);
+            int intl = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Intelligence) * .75f);
+            int fath = (int)(((npc.stats.Get(CharacterContent.Stats.Attribute.Luck) + npc.stats.Get(CharacterContent.Stats.Attribute.Willpower)) * .5f) * .75f);
+            int arcn = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Personality) * .75f);
+            int total = Math.Max(1, vigr + endr + strg + dext + mind + intl + fath + arcn - 79);
+
+            row["baseHp"].Value.SetValue((ushort)0);
+            row["baseMp"].Value.SetValue((ushort)0);
+            row["baseSp"].Value.SetValue((ushort)0);
+
+            row["HpEstMax"].Value.SetValue((sbyte)0);
+            row["MpEstMax"].Value.SetValue((sbyte)0);
+
+            row["soulLv"].Value.SetValue((short)total);
+            row["baseVit"].Value.SetValue((byte)vigr);
+            row["baseWil"].Value.SetValue((byte)mind);
+            row["baseEnd"].Value.SetValue((byte)endr);
+            row["baseStr"].Value.SetValue((byte)strg);
+            row["baseDex"].Value.SetValue((byte)dext);
+            row["baseMag"].Value.SetValue((byte)intl);
+            row["baseFai"].Value.SetValue((byte)fath);
+            row["baseLuc"].Value.SetValue((byte)arcn);
+
+            AddRow(charInitParam, row);
+        }
+
         public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
             // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
@@ -750,7 +852,7 @@ namespace JortPob
             else { rowToCopy = 523010000; }          // white mask varre
 
             FsParam npcParam = param[ParamType.NpcParam];
-            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id);
 
             int itemLotRow;
             List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(npc);
@@ -769,7 +871,6 @@ namespace JortPob
 
         public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
-            // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
             int rowToCopy = remap.npc.row;
 
             FsParam npcParam = param[ParamType.NpcParam];
