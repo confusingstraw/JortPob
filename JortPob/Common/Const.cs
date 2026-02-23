@@ -12,21 +12,21 @@ namespace JortPob.Common
     public static class Const
     {
         #region Paths
-        public static readonly string MORROWIND_PATH = Settable.Get<string>("MORROWIND_PATH");
-        public static readonly string ELDEN_PATH = Settable.Get<string>("ELDEN_PATH");
-        public static readonly string OUTPUT_PATH = Settable.Get<string>("OUTPUT_PATH");
-        public static readonly string WWISE_PATH = Settable.Get<string>("WWISE_PATH");
+        public static readonly string MORROWIND_PATH = Settable.Get<string>(nameof(MORROWIND_PATH));
+        public static readonly string ELDEN_PATH = Settable.Get<string>(nameof(ELDEN_PATH));
+        public static readonly string OUTPUT_PATH = Settable.Get<string>(nameof(OUTPUT_PATH));
+        public static readonly string WWISE_PATH = Settable.Get<string>(nameof(WWISE_PATH));
         public static readonly string CACHE_PATH = Path.Combine(OUTPUT_PATH, @"cache\");
-        public static readonly string[] LOAD_ORDER = Settable.Get<string[]>("LOAD_ORDER");
+        public static readonly string[] LOAD_ORDER = Settable.Get<string[]>(nameof(LOAD_ORDER));
         #endregion
 
         #region Optimization
-        public static readonly int THREAD_COUNT = Settable.Get<int>("THREAD_COUNT");
-        public static readonly int DEFAULT_PROCESS_TIMEOUT = Settable.Get<int>("DEFAULT_PROCESS_TIMEOUT");  // when running a subprocess this is the default timeout time in millis.
+        public static readonly int THREAD_COUNT = Settable.Get<int>(nameof(THREAD_COUNT));
+        public static readonly int DEFAULT_PROCESS_TIMEOUT = Settable.Get<int>(nameof(DEFAULT_PROCESS_TIMEOUT));  // when running a subprocess this is the default timeout time in millis.
         #endregion
 
         #region General
-        public static readonly int RANDOM_SEED = Settable.Get<int>("RANDOM_SEED");  // When doing anything random we use this as our seed so results are consistent between builds
+        public static readonly int RANDOM_SEED = Settable.Get<int>(nameof(RANDOM_SEED));  // When doing anything random we use this as our seed so results are consistent between builds
 
         public static readonly float GLOBAL_SCALE = 0.0129f;   // new global scale calculated from approx measurements of player height in both games
         public static readonly int CELL_EXTERIOR_BOUNDS = 30;
@@ -137,17 +137,17 @@ namespace JortPob.Common
 
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
-        public static readonly bool DEBUG_SKIP_CUSTOM_MAP = Settable.Get<bool>("DEBUG_SKIP_CUSTOM_MAP");
-        public static readonly bool DEBUG_SKIP_SOUND = Settable.Get<bool>("DEBUG_SKIP_SOUND"); // can make dialog unuseable
-        public static readonly bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS = Settable.Get<bool>("DEBUG_SKIP_NON_ESSENTIAL_ITEMS"); // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
-        public static readonly bool DEBUG_SKIP_ICONS = Settable.Get<bool>("DEBUG_SKIP_ICONS"); // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
-        public static readonly bool DEBUG_DONT_WRITE_BLANK_MSBS = Settable.Get<bool>("DEBUG_DONT_WRITE_BLANK_MSBS"); // if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
-        public static readonly bool DEBUG_DISCARD_ANIMATED_DOORS = Settable.Get<bool>("DEBUG_DISCARD_ANIMATED_DOORS"); // disables all doors that are NOT load doors
-        public static readonly bool DEBUG_SKIP_FMG_PARAM_SORTING = Settable.Get<bool>("DEBUG_SKIP_FMG_PARAM_SORTING");
-        public static readonly bool DEBUG_SKIP_ESD = Settable.Get<bool>("DEBUG_SKIP_ESD"); // skip building dialog AND scripts
-        public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = Settable.Get<bool>("DEBUG_SKIP_NICE_WATER_CIRCLIFICATION"); // slow as shit, skipping this saves about a minute per build
-        public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = Settable.Get<string?>("DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME"); // set to "null" to build entire map.
-        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = Settable.Get<int[]>("DEBUG_EXCLUSIVE_BUILD_BY_BOX"); // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        public static readonly bool DEBUG_SKIP_CUSTOM_MAP = Settable.Get<bool>(nameof(DEBUG_SKIP_CUSTOM_MAP));
+        public static readonly bool DEBUG_SKIP_SOUND = Settable.Get<bool>(nameof(DEBUG_SKIP_SOUND)); // can make dialog unuseable
+        public static readonly bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS = Settable.Get<bool>(nameof(DEBUG_SKIP_NON_ESSENTIAL_ITEMS)); // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
+        public static readonly bool DEBUG_SKIP_ICONS = Settable.Get<bool>(nameof(DEBUG_SKIP_ICONS)); // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
+        public static readonly bool DEBUG_DONT_WRITE_BLANK_MSBS = Settable.Get<bool>(nameof(DEBUG_DONT_WRITE_BLANK_MSBS)); // if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
+        public static readonly bool DEBUG_DISCARD_ANIMATED_DOORS = Settable.Get<bool>(nameof(DEBUG_DISCARD_ANIMATED_DOORS)); // disables all doors that are NOT load doors
+        public static readonly bool DEBUG_SKIP_FMG_PARAM_SORTING = Settable.Get<bool>(nameof(DEBUG_SKIP_FMG_PARAM_SORTING));
+        public static readonly bool DEBUG_SKIP_ESD = Settable.Get<bool>(nameof(DEBUG_SKIP_ESD)); // skip building dialog AND scripts
+        public static readonly bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION = Settable.Get<bool>(nameof(DEBUG_SKIP_NICE_WATER_CIRCLIFICATION)); // slow as shit, skipping this saves about a minute per build
+        public static readonly string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME = Settable.Get<string?>(nameof(DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME)); // set to "null" to build entire map.
+        public static readonly int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX = Settable.Get<int[]>(nameof(DEBUG_EXCLUSIVE_BUILD_BY_BOX)); // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         // seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         // seyda neen area (large) = new int[] { -5, -15, 5, -5 }
         // balmora area (small) = new int[] {-4, -3, -2, -1}
@@ -158,9 +158,9 @@ namespace JortPob.Common
         // lava area near Galom Daeus = new int[] {8, -2, 12, 2}
         // lava and swamp areas combined = new int[] {-10, -10, 15, 5};
         // half the map = new int[] {-10, -15, 20, 0};
-        public static readonly bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING = Settable.Get<bool>("DEBUG_SKIP_TERRAIN_BORDER_BLENDING"); // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-        public static readonly bool DEBUG_SKIP_INTERIOR = Settable.Get<bool>("DEBUG_SKIP_INTERIOR");
-        public static readonly string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES = Settable.Get<string[]>("DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES"); // set to "null" to build entire map.
+        public static readonly bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING = Settable.Get<bool>(nameof(DEBUG_SKIP_TERRAIN_BORDER_BLENDING)); // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
+        public static readonly bool DEBUG_SKIP_INTERIOR = Settable.Get<bool>(nameof(DEBUG_SKIP_INTERIOR));
+        public static readonly string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES = Settable.Get<string[]>(nameof(DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES)); // set to "null" to build entire map.
         
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
         {
@@ -179,7 +179,7 @@ namespace JortPob.Common
 
             return false;
         }
-        public static readonly bool DEBUG_HKX_FORCE_BINARY = Settable.Get<bool>("DEBUG_HKX_FORCE_BINARY");   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
+        public static readonly bool DEBUG_HKX_FORCE_BINARY = Settable.Get<bool>(nameof(DEBUG_HKX_FORCE_BINARY));   // if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
         #endregion
 
         /* Some CBT */
