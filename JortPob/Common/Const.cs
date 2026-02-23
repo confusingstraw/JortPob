@@ -220,7 +220,7 @@ namespace JortPob.Common
 		public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
         
         /// set to "null" or remove from settings.json to build entire map.
-		[Setting]
+		[Setting(null)]
 		public static string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME { get; private set; }
         
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
@@ -234,7 +234,7 @@ namespace JortPob.Common
         /// lava area near Galom Daeus = new int[] {8, -2, 12, 2}
         /// lava and swamp areas combined = new int[] {-10, -10, 15, 5};
         /// half the map = new int[] {-10, -15, 20, 0};
-        [Setting([-4, 5, 0, 10 ])]
+        [Setting(null)]
 		public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
         
         /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
@@ -244,7 +244,7 @@ namespace JortPob.Common
 		public static bool DEBUG_SKIP_INTERIOR { get; private set; }
 		
         /// set to "null" or remove from settings.json to build entire map.
-		[Setting]
+		[Setting(null)]
 		public static string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES { get; private set; }
         
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
@@ -252,7 +252,7 @@ namespace JortPob.Common
             if (DEBUG_SKIP_INTERIOR) { return false; }
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
-            // set MATCHES to null  if for proper normal building
+            // set MATCHES to null if for proper normal building
             string[] MATCHES = DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; // new string[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
 
             if (MATCHES == null) { return true; }
