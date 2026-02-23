@@ -20,20 +20,22 @@
   "DEBUG_SKIP_NICE_WATER_CIRCLIFICATION": true, // slow as shit, skipping this saves about a minute per build
   "DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME": null,  // set to "null" to build entire map.
   "DEBUG_EXCLUSIVE_BUILD_BY_BOX": [-3, -10, -1, -8 ],  // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
-  // seyda neen area (small) = [-3, -10, -1, -8 ]
-  // seyda neen area (large) = [ -5, -15, 5, -5 ]
-  // balmora area (small) = [-4, -3, -2, -1]
-  // caldera area (small) = [-3, 1, 0, 3]
-  // balmora + caldera combo = [-4, -3, -1, 3]
-  // lava area near Marandus and Ashunartes = [1, -5, 5, -1]
-  // all lava areas (big) = [0, -5, 15, 10]
-  // lava area near Galom Daeus = [8, -2, 12, 2]
-  // lava and swamp areas combined = [-10, -10, 15, 5];
-  // half the map = [-10, -15, 20, 0];
+  // seyda neen area (small) = [-3, -10, -1, -8 ],
+  // seyda neen area (large) = [ -5, -15, 5, -5 ],
+  // balmora area (small) = [-4, -3, -2, -1],
+  // caldera area (small) = [-3, 1, 0, 3],
+  // balmora + caldera combo = [-4, -3, -1, 3],
+  // lava area near Marandus and Ashunartes = [1, -5, 5, -1],
+  // all lava areas (big) = [0, -5, 15, 10],
+  // lava area near Galom Daeus = [8, -2, 12, 2],
+  // lava and swamp areas combined = [-10, -10, 15, 5],
+  // half the map = [-10, -15, 20, 0],
   "DEBUG_SKIP_TERRAIN_BORDER_BLENDING": true, // big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
   "DEBUG_SKIP_INTERIOR": false,
   // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
   // set MATCHES to null if for proper normal building
-  "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES": null,  // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
+  // Examples:
+  // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
+  "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES": ["Seyda Neen"],  
   "DEBUG_HKX_FORCE_BINARY": true,
 }
