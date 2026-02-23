@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -39,28 +39,64 @@ namespace JortPob.Common
                 Converters = 
                 { 
                     new JsonStringEnumConverter(),
-                    new Vector3ArrayConverter(), // <--- Adds support for [x,y,z]
-                    new Vector2ArrayConverter()  // <--- Adds support for [x,y]
+                    new Vector3ArrayConverter(), // Adds support for [x,y,z]
+                    new Vector2ArrayConverter(),  // Adds support for [x,y]
+                    new SingleOrArrayConverter<string>() // Adds support for a single string to string array
                 }
             };
         }
         
-        public static T Get<T>(string key)
+        public static void PopulateStaticClass(Type type)
         {
             JsonObject rootObject = _json.AsObject();
+            PropertyInfo[] properties = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
 
-            // 1. Check if the key exists at all
-            if (!rootObject.TryGetPropertyValue(key, out JsonNode node))
+            foreach (PropertyInfo prop in properties)
             {
-                throw new KeyNotFoundException($"Setting '{key}' is missing from settings.json. Please add it.");
-            }
-  
-            return node.Deserialize<T>(_options);
-        }
+                var attribute = prop.GetCustomAttribute<SettingAttribute>();
+                if (attribute == null) continue;
 
-        public static T[] GetArray<T>(string key)
-        {
-            return Get<T[]>(key);
+                // Check if the key exists in JSON
+                if (!rootObject.TryGetPropertyValue(prop.Name, out JsonNode node))
+                {
+                    if (attribute.IsRequired)
+                    {
+                        throw new KeyNotFoundException($"Required setting '{prop.Name}' is missing from settings.json.");
+                    }
+                    else
+                    {
+                        // It's optional and missing. Convert the C# default value into a JSON Node.
+                        // This allows it to pass through our custom converters (like Vector3) seamlessly.
+                        node = JsonSerializer.SerializeToNode(attribute.DefaultValue, _options);
+                    }
+                }
+
+                // Handle explicit nulls in the JSON
+                if (node == null)
+                {
+                    Type targetType = prop.PropertyType;
+                    bool isNullable = !targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null;
+
+                    if (!isNullable)
+                    {
+                        throw new InvalidDataException($"Setting '{prop.Name}' is explicitly set to null in JSON, but its C# type ({targetType.Name}) cannot be null.");
+                    }
+
+                    prop.SetValue(null, null);
+                    continue;
+                }
+
+                // Deserialize normally into the property type
+                try
+                {
+                    object parsedValue = node.Deserialize(prop.PropertyType, _options);
+                    prop.SetValue(null, parsedValue);
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidDataException($"Failed to convert setting '{prop.Name}' to type {prop.PropertyType.Name}. JSON Error: {ex.Message}");
+                }
+            }
         }
         
         private class Vector3ArrayConverter : JsonConverter<Vector3>
@@ -117,6 +153,38 @@ namespace JortPob.Common
                 writer.WriteStartArray();
                 writer.WriteNumberValue(value.X);
                 writer.WriteNumberValue(value.Y);
+                writer.WriteEndArray();
+            }
+        }
+        
+        private class SingleOrArrayConverter<T> : JsonConverter<T[]>
+        {
+            public override T[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    var list = new List<T>();
+                    reader.Read();
+                    while (reader.TokenType != JsonTokenType.EndArray)
+                    {
+                        list.Add(JsonSerializer.Deserialize<T>(ref reader, options));
+                        reader.Read();
+                    }
+                    return list.ToArray();
+                }
+
+                // Not an array? Parse single item and wrap it.
+                T singleItem = JsonSerializer.Deserialize<T>(ref reader, options);
+                return new T[] { singleItem };
+            }
+
+            public override void Write(Utf8JsonWriter writer, T[] value, JsonSerializerOptions options)
+            {
+                writer.WriteStartArray();
+                foreach (var item in value)
+                {
+                    JsonSerializer.Serialize(writer, item, options);
+                }
                 writer.WriteEndArray();
             }
         }
