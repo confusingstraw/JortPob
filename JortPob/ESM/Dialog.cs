@@ -758,8 +758,9 @@ namespace JortPob
                     else
                     {
                         // Find refernce to object that matches the record id of this local var 
-                        string recordId = varName.Split(".")[0].Replace("\"", "").Trim();
-                        string varId = varName.Split(".")[1].Replace("\"", "").Trim();
+                        string[] spl = varName.Split(".");
+                        string recordId = spl[0].Replace("\"", "").Trim();
+                        string varId = spl[1].Replace("\"", "").Trim();
                         Content target = layout.FindScriptReference(npcContent, recordId);
                         if (target != null)
                         {
