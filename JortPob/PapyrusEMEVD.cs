@@ -1,17 +1,10 @@
 ﻿using JortPob.Common;
-using Microsoft.Scripting.Runtime;
 using SoulsFormats;
-using SoulsIds;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
 using static JortPob.Papyrus;
-using static JortPob.SpeffManager;
 
 namespace JortPob
 {
@@ -19,12 +12,11 @@ namespace JortPob
     {
         public static List<Call.Type> UNSUPPORTED_CALL_LIST = new(), UNSUPPORTED_CONDITIONAL_LIST = new(), UNSUPPORTED_SET_LIST = new();
 
-        public static List<MSBE.Region> Compile(ESM esm, Layout layout, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
+        public static void Compile(ESM esm, Layout layout, MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
-            if (Const.DEBUG_SKIP_ESD) { return new(); }
+            if (Const.DEBUG_SKIP_ESD) { return; }
 
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
-            List<MSBE.Region> generatedRegions = new();  // return these back to the MSB generation in Main so it can add them.
 
             /* Returns a special EMEVD command that resets all condition groups by making a do-nothing call that checks MAIN */
             string ResetConditionGroups()
@@ -36,16 +28,36 @@ namespace JortPob
             Script.Flag GetFlagByVariable(string varName)
             {
                 Script.Flag retFlag = null;
-                if (!varName.Contains(".") && script is not ScriptCommon)  // probably a local var of this object
+                
+                // probably a local var of this object. ex: powerLevel or angryness
+                if (!varName.Contains("."))
                 {
-                    retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.id}.{varName}");
+                    if (script is ScriptCommon)
+                    {
+                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{papyrus.id}.{varName}");
+                    }
+                    else
+                    {
+                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.entity}.{varName}");
+                    }
                 }
-                if (retFlag == null && varName.Contains(".")) // looks like it's actually a local var of a different object
+                // looks like it's actually a local var of a different object EX: fargoth.sexy or "dagoth ur".dreamy
+                else
                 {
-                    retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, varName); // look for it, if we dont find it we create it
-                    if (retFlag == null) { retFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, varName); }
+                    // Find refernce to object that matches the record id of this local var
+                    string[] spl = varName.Split(".");
+                    string recordId = spl[0].Replace("\"", "").Trim();
+                    string varId = spl[1].Replace("\"", "").Trim();
+                    Content target = layout.FindScriptReference(content, recordId);
+                    if (target != null)
+                    {
+                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{target.entity}.{varId}");
+                    }
                 }
-                if (retFlag == null) { retFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, varName); } // maybe its a global var!
+                // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
+                if (retFlag == null) { retFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, varName); }
+
+                // return whatever we found, even if null
                 return retFlag;
             }
 
@@ -92,18 +104,15 @@ namespace JortPob
                         break;
 
                     case Call.Type.GetJournalIndex:
+                        Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]);
                         if (call.right.type == Call.Type.Literal)
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.left.parameters[0]); // find journal flag, create it if doesn't exist yet
-                            if(jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]); }
                             lines.Add(ResetConditionGroups());
                             lines.Add($"IfEventValue(OR_01, {jflag.id}, {jflag.Bits()}, {call.OperatorIndex()}, {call.right.parameters[0]});");
                             lines.Add($"SkipIfConditionGroupStateUncompiled({pass.Count()}, FAIL, OR_01);");
                         }
                         else if (call.right.type == Call.Type.Variable)
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.left.parameters[0]); // find journal flag, create it if doesn't exist yet
-                            if (jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.left.parameters[0]); }
                             Script.Flag lflag = GetFlagByVariable(call.right.parameters[0]);
                             lines.Add(ResetConditionGroups());
                             lines.Add($"IfCompareEventValues(OR_01, {jflag.id}, {jflag.Bits()}, {call.OperatorIndex()}, {lflag.id}, {lflag.Bits()});");
@@ -202,7 +211,7 @@ namespace JortPob
                                 distanceRegion.Shape = new MSB.Shape.Sphere(float.Parse(call.right.parameters[0]) * Const.GLOBAL_SCALE);
                                 distanceRegion.Position = targetA.relative + Const.MSB_OFFSET;
                                 distanceRegion.EntityID = areaScript.CreateEntity(Script.EntityType.Region, $"{papyrus.id}->{call.RAW.Trim()}");
-                                generatedRegions.Add(distanceRegion);
+                                msb.Regions.Add(distanceRegion);
 
                                 string inOut = call.op == ">" || call.op == ">=" ? "Inside" : "Outside";
                                 lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{inOut}, {(targetB == null ? 10000 : targetB.entity)}, {distanceRegion.EntityID}, 1);");
@@ -266,20 +275,31 @@ namespace JortPob
                                 Papyrus subscript = esm.GetPapyrus(call.left.parameters[0]);
                                 if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
 
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = content; }
+                                else { target = layout.FindScriptReference(content, call.target); }
+                                if (script is not ScriptCommon && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // find area script for this npc
+                                BaseScript targetScript;
+                                if (script is ScriptCommon) { targetScript = script; }
+                                else { targetScript = scriptManager.FindScriptFor(layout, target); }
+
                                 // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
                                 Script.Flag subscriptRunFlag;
-                                if (script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.Event, $"Global->{subscript.id}"); }
-                                else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.Event, $"{content.id}->{subscript.id}->{content.entity}"); }
+                                if (targetScript is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
 
                                 // If the subscript does not exist yet, we create it
                                 if (subscriptRunFlag == null)
                                 {
-                                    if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
-                                    else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                    PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
+                                    if (targetScript is ScriptCommon) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                    else { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
+                                    PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, targetScript, subscript, target, subscriptRunFlag);
                                 }
 
-                                // Finally we just add some code here to start/stop the subscript
+                                // Finally we create an if condition based off the value of the subscript run flag
                                 bool flagState = int.Parse(call.right.parameters[0]) == 0;
                                 lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {subscriptRunFlag.id});");
                             }
@@ -315,23 +335,6 @@ namespace JortPob
                 List<string> lines = new();
                 switch (call.type)
                 {
-                    case Call.Type.Short: 
-                        {
-                            if (script is ScriptCommon)
-                            {
-                                string flagId = call.parameters[0];
-                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Global, flagId); // Look for the flag, create it if it doesn't exist
-                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, flagId); }
-                            }
-                            else
-                            {
-                                string flagId = $"{content.id}.{call.parameters[0]}";
-                                Script.Flag lflag = scriptManager.GetFlag(Script.Flag.Designation.Local, flagId); // Look for the flag, create it if it doesn't exist
-                                if (lflag == null) { lflag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId); }
-                            }
-                            break;
-                        }
-
                     case Call.Type.Set:
                         {
                             // Parse set command to individual operations
@@ -387,8 +390,7 @@ namespace JortPob
                                         lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {l2flag.id}, {l2flag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetJournalIndex:
-                                        Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, operation.call.parameters[0]); // find journal flag or create it if it does not exist
-                                        if(jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, operation.call.parameters[0]); }
+                                        Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, operation.call.parameters[0]);
                                         lines.Add($"EventValueOperation({lflag.id}, {lflag.Bits()}, 0, {jflag.id}, {jflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetButtonPressed:
@@ -405,8 +407,7 @@ namespace JortPob
 
                     case Call.Type.Journal:
                         {
-                            Script.Flag jflag = scriptManager.GetFlag(Script.Flag.Designation.Journal, call.parameters[0]); // look for flag, if not found make one
-                            if (jflag == null) { jflag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.parameters[0]); }
+                            Script.Flag jflag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Journal, call.parameters[0]);
                             Script.Flag mflag = scriptManager.common.GetOrRegisterNotification(paramanager, "Your journal has been updated!");
                             lines.Add($"EventValueOperation({jflag.id}, {jflag.Bits()}, {int.Parse(call.parameters[1])}, 0, 1, 5);");  // 5 is the 'Assign' operation
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {mflag.id}, ON);");
@@ -486,8 +487,7 @@ namespace JortPob
                                 case ScriptCommon.WeatherPapyrus.Blizzard: erw = ScriptCommon.WeatherEMEVD.SnowyHeavyFog; break;
                                 default: throw new Exception("Invalid weather enum"); // unreachable
                             }
-                            string code = $"ChangeWeather({(int)erw}, 1000, true);";
-                            lines.Add(code);
+                            lines.Add($"ChangeWeather({(int)erw}, 1000, true);");
                             break;
                         }
 
@@ -500,33 +500,40 @@ namespace JortPob
                             else { target = layout.FindScriptReference(content, call.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                            // find area script for that target content
-                            Script script = scriptManager.FindScriptFor(layout, target);
-
                             /* Get flag and/or register script */
-                            Script.Flag disabledFlag;
-                            if (target is StaticContent sc)
-                            {
-                                disabledFlag = script.GetOrRegisterStaticDisable(sc);
-                            }
-                            else if (target is ItemContent ic)
-                            {
-                                disabledFlag = script.PreRegisterItemDisable(ic);
-                            }
-                            else if (target is CharacterContent cc)
-                            {
-                                disabledFlag = script.GetOrRegisterCharacterDisable(cc);
-                            }
-                            else if(target is LightContent lc)
-                            {
-                                // Unsupported!
-                                break;
-                            }
-                            else { throw new Exception("Invalid content type for enable/disable call"); }  // unreachable?
+                            Script.Flag disabledFlag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, target.entity.ToString());
 
                             /* Add code */
                             string toggle = call.type == Papyrus.Call.Type.Disable ? "ON" : "OFF";
                             lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {disabledFlag.id}, {toggle});");
+
+                            /* For enable/disable we also need to manually set the enable state but contextually based on the objects currrent status */
+                            string able = call.type == Papyrus.Call.Type.Disable ? "Disabled" : "Enabled";
+                            switch (target)
+                            {
+                                case CharacterContent c:
+                                    {
+                                        if (!c.dead)  // dead bodies don't need this alive/dead check. they can be treated like staticcontent but using CharacterEnable instead of AssetEnable
+                                        {
+                                            Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+                                            lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {deadFlag.id});"); // if character is dead skip enable/disable
+                                        }
+                                        lines.Add($"ChangeCharacterEnableState({target.entity}, {able});");
+                                        break;
+                                    }
+                                case ItemContent i:
+                                    {
+                                        if(i.treasure == null) { goto default; }  // items that dont have treasure are literally just statics so treat them as such
+                                        lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {i.treasure.id});"); // if item already picked up then skip enable/disable
+                                        lines.Add($"ChangeAssetEnableState({target.entity}, {able});");
+                                        break;
+                                    }
+                                default:
+                                    {
+                                        lines.Add($"ChangeAssetEnableState({target.entity}, {able});"); // just send it, no issues
+                                        break;
+                                    }
+                            }
                             break;
                         }
 
@@ -535,7 +542,7 @@ namespace JortPob
                             // only supporting items/gold added to player rn. will eventually support other stuff
                             if (call.target == "player")
                             {
-                                // Gold specifically handled as souls so its diffo from other item checks
+                                // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
                                     // @TODO: need to generate a speff for this to work
@@ -551,28 +558,12 @@ namespace JortPob
                             break;
                         }
 
-                    case Papyrus.Call.Type.FadeIn:
-                        {
-                            float time = float.Parse(call.parameters[0]);
-                            string code = $"FadeToBlack(0, {time}, false, 0);";
-                            lines.Add(code);
-                            break;
-                        }
-
-                    case Papyrus.Call.Type.FadeOut:
-                        {
-                            float time = float.Parse(call.parameters[0]);
-                            string code = $"FadeToBlack(1, {time}, true, 0);";
-                            lines.Add(code);
-                            break;
-                        }
-
                     case Papyrus.Call.Type.RemoveItem:
                         {
                             // only supporting items/gold added to player rn. will eventually support other stuff
                             if (call.target == "player")
                             {
-                                // Gold specifically handled as souls so its diffo from other item checks
+                                // Gold specifically handled as souls
                                 if (call.parameters[0] == "gold_001")
                                 {
                                     // @TODO: need to generate a speff for this to work
@@ -582,9 +573,23 @@ namespace JortPob
                                 {
                                     ItemManager.ItemInfo itemInfo = itemManager.GetItem(call.parameters[0].ToLower());
                                     if (itemInfo == null) { throw new Exception(); }
-                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, 1);");
+                                    lines.Add($"RemoveItemFromPlayer({(int)itemInfo.type}, {itemInfo.row}, {call.parameters[1]});");
                                 }
                             }
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeIn:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            lines.Add($"FadeToBlack(0, {time}, false, 0);");
+                            break;
+                        }
+
+                    case Papyrus.Call.Type.FadeOut:
+                        {
+                            float time = float.Parse(call.parameters[0]);
+                            lines.Add($"FadeToBlack(1, {time}, true, 0);");
                             break;
                         }
 
@@ -703,7 +708,7 @@ namespace JortPob
                         {
                             uint entityId;
                             if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 entityId = layout.FindScriptReference(content, call.target).entity;
@@ -742,7 +747,7 @@ namespace JortPob
                         {
                             uint entityId;
                             if (call.target == null) { entityId = content.entity; }                      // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 entityId = layout.FindScriptReference(content, call.target).entity;
@@ -822,9 +827,8 @@ namespace JortPob
                             if (target == null) { break; } // during partial builds the reference may not resolve
 
                             Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
-                            if (rvar == null) { break; } // @TODO: This needs to be fixed. I'm currently considering options so leaving it for now.
                             lines.Add(ResetConditionGroups());
-                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to dispoition
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to disposition
                             lines.Add($"IfEventValue(OR_01, {rvar.id}, {rvar.Bits()}, 4, 100);");                                   // if disposition is greater or equal to 100
                             lines.Add($"SkipIfConditionGroupStateUncompiled(1, FAIL, OR_01);");
                             lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, 100, 0, 1, 0);");                           // set disposition to 100
@@ -834,8 +838,7 @@ namespace JortPob
                     case Call.Type.ModReputation:
                         {
                             Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Reputation, "Reputation");
-                            string code = $"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
-                            lines.Add(code);
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);"); // 0 is Add
                             break;
                         }
 
@@ -843,8 +846,7 @@ namespace JortPob
                         {
                             int rep = int.Parse(call.parameters[0]);
                             Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, call.parameters[1]);
-                            string code = $"EventValueOperation({fvar.id}, {fvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);";  // 0 is Add
-                            lines.Add(code);
+                            lines.Add($"EventValueOperation({fvar.id}, {fvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);"); // 0 is Add
                             break;
                         }
 
@@ -866,7 +868,7 @@ namespace JortPob
 
                             uint entityId;
                             if(call.target == null) { entityId = content.entity; }                       // case 1: no target so current object is target
-                            else if (call.target.ToLower().Trim() == "player") { entityId = 10000; }     // case 2: target is player
+                            else if (call.target == "player") { entityId = 10000; }                      // case 2: target is player
                             else                                                                         // case 3: target is a direct reference to an object record
                             {
                                 Content speaker = layout.FindScriptReference(content, call.target);
@@ -877,7 +879,6 @@ namespace JortPob
                             lines.Add($"PlaySE({entityId}, 7, {playId * 10});");  // 7 is "Voice"
                             break;
                         }
-
 
                     case Papyrus.Call.Type.PlaySound:
                     case Papyrus.Call.Type.PlaySoundVP:
@@ -938,17 +939,28 @@ namespace JortPob
                             Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
                             if (subscript == null) { break; } // failed to find script, this only happens because our papyrus parsing is still not 100% finished
 
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (script is not ScriptCommon && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            // find area script for this npc
+                            BaseScript targetScript;
+                            if (script is ScriptCommon) { targetScript = script; }
+                            else { targetScript = scriptManager.FindScriptFor(layout, target); }
+
                             // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
                             Script.Flag subscriptRunFlag;
-                            if(script is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
-                            else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
+                            if(targetScript is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                            else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
 
                             // If the subscript does not exist yet, we create it
                             if (subscriptRunFlag == null)
                             {
-                                if (script is ScriptCommon) { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
-                                else { subscriptRunFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{content.id}->{subscript.id}->{content.entity}"); }
-                                PapyrusEMEVD.Compile(esm, layout, sound, scriptManager, paramanager, itemManager, speffManager, script, subscript, content, subscriptRunFlag);
+                                if (targetScript is ScriptCommon) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                else { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
+                                PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, targetScript, subscript, target, subscriptRunFlag);
                             }
 
                             // Finally we just add some code here to start/stop the subscript
@@ -1059,14 +1071,45 @@ namespace JortPob
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
             if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id}); "); }  // if this is a subscript, only runs when run flag is set true
-            if (lines.Count() <= 0) { return new(); } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
+            if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart
             foreach (string line in lines) { evt.Instructions.Add(script.AUTO.ParseAdd(line)); }
             script.emevd.Events.Add(evt);
             script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {evtFlag.id}, 0);"));
 
-            return generatedRegions;
+            return;
+        }
+    
+        public static void InitializeLocalVariables(ESM esm, ScriptManager scriptManager, BaseScript script, Papyrus papyrus, Content content)
+        {
+            void DoStuff(Papyrus p)
+            {
+                /* Create any local variables in this script */
+                List<Papyrus.Call> shorts = p.GetCalls(Call.Type.Short);
+                foreach (Papyrus.Call call in shorts)
+                {
+                    if (script is ScriptCommon)
+                    {
+                        string flagId = $"{p.id}.{call.parameters[0]}";
+                        script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId);
+                    }
+                    else
+                    {
+                        string flagId = $"{content.entity}.{call.parameters[0]}";
+                        script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId);
+                    }
+                }
+                /* If this script runs subscripts we recursively repeate this for those as well */
+                List<Papyrus.Call> starters = p.GetCalls(Call.Type.StartScript);
+                foreach(Papyrus.Call call in starters)
+                {
+                    Papyrus sub = esm.GetPapyrus(call.parameters[0].ToLower().Trim());
+                    if(sub != null) { DoStuff(sub); }
+                }
+            }
+
+            DoStuff(papyrus);
         }
     }
 }
