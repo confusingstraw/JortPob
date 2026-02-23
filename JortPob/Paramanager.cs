@@ -1165,7 +1165,14 @@ namespace JortPob
                 faceMaleRow.Name = $"Male {playerRace.name}";   // row names for helpful debugging
                 faceFemaleRow.Name = $"Female {playerRace.name}";
 
-                faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);  // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
+                /* Apply facedata from json */
+                Override.FaceData maleFaceData = Override.GetFace($"cc_m_{playerRace.name.ToLower().Replace(" ", "")}");
+                Override.FaceData femaleFaceData = Override.GetFace($"cc_f_{playerRace.name.ToLower().Replace(" ", "")}");
+                foreach (var kvp in maleFaceData.data) { faceMaleRow[kvp.Key].Value.SetValue(kvp.Value); }
+                foreach (var kvp in femaleFaceData.data) { faceFemaleRow[kvp.Key].Value.SetValue(kvp.Value); }
+
+                // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
+                faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);
                 faceFemaleRow["burn_scar"].Value.SetValue(playerRace.id);
             }
 
