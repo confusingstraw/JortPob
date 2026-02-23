@@ -27,7 +27,7 @@
   "DEBUG_SKIP_ESD": false, 
   // slow as shit, skipping this saves about a minute per build
   "DEBUG_SKIP_NICE_WATER_CIRCLIFICATION": true, 
-  // set to "null" to build entire map.
+  // set to "null" or remove from settings.json to build entire map.
   "DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME": null,  
   // also set to null to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
   // seyda neen area (small) = [-3, -10, -1, -8 ],
@@ -45,7 +45,7 @@
   "DEBUG_SKIP_TERRAIN_BORDER_BLENDING": true, 
   "DEBUG_SKIP_INTERIOR": false,
   // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
-  // set MATCHES to null if for proper normal building
+  // set MATCHES to null or remove from settings.json if for proper normal building
   // Examples:
   // ["Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" ],
   "DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES": ["Seyda Neen"],  

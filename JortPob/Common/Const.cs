@@ -223,7 +223,7 @@ namespace JortPob.Common
 		[Setting]
 		public static string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME { get; private set; }
         
-        /// set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
+        /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         /// seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         /// seyda neen area (large) = new int[] { -5, -15, 5, -5 }
         /// balmora area (small) = new int[] {-4, -3, -2, -1}
@@ -252,7 +252,7 @@ namespace JortPob.Common
             if (DEBUG_SKIP_INTERIOR) { return false; }
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
-            // set MATCHES to null if for proper normal building
+            // set MATCHES to null  if for proper normal building
             string[] MATCHES = DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; // new string[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
 
             if (MATCHES == null) { return true; }
