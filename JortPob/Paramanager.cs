@@ -1,17 +1,14 @@
 ﻿using FSParam;
 using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Hosting;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text.Json.Nodes;
 using WitchyFormats;
 using static JortPob.Override;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -1137,6 +1134,8 @@ namespace JortPob
             int[] charMakeMenuListItemParam_Races = new int[] { 240, 241, 242, 243, 244, 245, 246, 247, 248, 249 };
             int charMakeMenuListItemParam_Race_Gender_Offset = 20; // add this to above value to get the female version
 
+            FsParam.Row imperialMaleFaceDefault = null;  // setting all class choices to default to imperial male
+
             FsParam charMakeMenuListItemParam = param[ParamType.CharMakeMenuListItemParam];
             FsParam faceParam = param[ParamType.FaceParam];
             for (int i = 0; i < charMakeMenuListItemParam_Races.Count(); i++)
@@ -1174,6 +1173,8 @@ namespace JortPob
                 // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
                 faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);
                 faceFemaleRow["burn_scar"].Value.SetValue(playerRace.id);
+
+                if(playerRace.name.ToLower() == "imperial") { imperialMaleFaceDefault = faceMaleRow; }
             }
 
             // Class stuff
@@ -1199,11 +1200,80 @@ namespace JortPob
                 charMakeMenuListClassRow["captionId"].Value.SetValue(classTextId);
 
                 // Char init rows
-                FsParam.Row classRow = charInitParam[(int)(uint)baseClassRow["chrInitParam"].Value.Value];
-                FsParam.Row originRow = charInitParam[(int)(uint)baseClassRow["originChrInitParam"].Value.Value];
+                FsParam.Row classFaceRow = charInitParam[(int)(uint)baseClassRow["chrInitParam"].Value.Value];     // face default for a class
+                FsParam.Row originRow = charInitParam[(int)(uint)baseClassRow["originChrInitParam"].Value.Value];  // actual class
 
-                classRow.Name = playerClass.name;   // row names for helpful debugging
+                classFaceRow.Name = playerClass.name;   // row names for helpful debugging
                 originRow.Name = playerClass.name;
+
+                classFaceRow["npcPlayerFaceGenId"].Value.SetValue(imperialMaleFaceDefault.ID); // make all class choices have the imperial male a their default chr choice
+
+                foreach(var kvp in playerClass.data)
+                {
+                    FsParam.Cell cell = (FsParam.Cell)originRow[kvp.Key];
+                    switch (cell.Value.GetType())
+                    {
+                        case Type t when t == typeof(short):
+                            cell.SetValue((short)kvp.Value);
+                            break;
+                        case Type t when t == typeof(byte):
+                            cell.SetValue((byte)kvp.Value);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");
+                    }
+                }
+
+                originRow["equip_Wep_Right"].Value.SetValue(-1);
+                originRow["equip_Subwep_Right"].Value.SetValue(-1);
+                originRow["equip_Wep_Left"].Value.SetValue(-1);
+                originRow["equip_Subwep_Left"].Value.SetValue(-1);
+
+                originRow["equip_Helm"].Value.SetValue(-1);
+                originRow["equip_Armer"].Value.SetValue(160100);  // SIC
+                originRow["equip_Gaunt"].Value.SetValue(-1);
+                originRow["equip_Leg"].Value.SetValue(160300);
+
+                originRow["equip_Arrow"].Value.SetValue(-1);
+                originRow["equip_SubArrow"].Value.SetValue(-1);
+            }
+
+            // Gift stuff
+            List<Override.Gift> gifts = Override.GetCharacterCreationGifts();
+            int[] charInitParam_Gifts = new int[] { 2400, 2401, 2402, 2403, 2404, 2405, 2406, 2407, 2408, 2409 };
+            int[] charMakeMenuListItemParam_Gifts = new int[] { 100300, 100301, 100302, 100303, 100304, 100305, 100306, 100307, 100308, 100309 };
+            for (int i = 0; i < baseChrSelectMenuParam_Classes.Count(); i++)
+            {
+                Override.Gift gift = gifts[i];
+                FsParam.Row charMakeMenuListGiftRow = charMakeMenuListItemParam[charMakeMenuListItemParam_Gifts[i]];
+                FsParam.Row charInitGiftRow = charInitParam[charInitParam_Gifts[i]];
+
+                // Text in menu
+                int classTextId = textManager.AddMenuText(gift.name, gift.description);
+                charMakeMenuListGiftRow.Name = gift.name;   // row names for helpful debugging
+                charMakeMenuListGiftRow["captionId"].Value.SetValue(classTextId);
+
+                // Change item in CharInit
+                charInitGiftRow.Name = gift.name;
+                charInitGiftRow["item_03"].Value.SetValue(-1);
+                charInitGiftRow["itemNum_03"].Value.SetValue((byte)0);
+                charInitGiftRow["equip_Accessory01"].Value.SetValue(-1);
+
+                foreach (var kvp in gift.data)
+                {
+                    FsParam.Cell cell = (FsParam.Cell)charInitGiftRow[kvp.Key];
+                    switch (cell.Value.GetType())
+                    {
+                        case Type t when t == typeof(int):
+                            cell.SetValue((int)kvp.Value);
+                            break;
+                        case Type t when t == typeof(byte):
+                            cell.SetValue((byte)kvp.Value);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");
+                    }
+                }
             }
 
             // Minor text tweaks

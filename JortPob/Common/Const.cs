@@ -133,10 +133,10 @@ namespace JortPob.Common
 
         #region Debug
         /* when building for release everything in this group should be FALSE or NULL */
-        public static readonly bool DEBUG_SKIP_CUSTOM_MAP = false;
-        public static readonly bool DEBUG_SKIP_SOUND = false; // can make dialog unuseable
+        public static readonly bool DEBUG_SKIP_CUSTOM_MAP = true;
+        public static readonly bool DEBUG_SKIP_SOUND = true; // can make dialog unuseable
         public static readonly bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS = false; // if true we only generate items that referenced in script files directly, or have overrides. minor speedup
-        public static readonly bool DEBUG_SKIP_ICONS = false; // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
+        public static readonly bool DEBUG_SKIP_ICONS = true; // skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
         public static readonly bool DEBUG_DONT_WRITE_BLANK_MSBS = false; // if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
         public static readonly bool DEBUG_DISCARD_ANIMATED_DOORS = true; // disables all doors that are NOT load doors
         public static readonly bool DEBUG_SKIP_FMG_PARAM_SORTING = false;

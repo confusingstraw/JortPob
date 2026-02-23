@@ -19,6 +19,7 @@ namespace JortPob
 
         private static List<PlayerClass> CHARACTER_CREATION_CLASS;
         private static List<PlayerRace> CHARACTER_CREATION_RACE;
+        private static List<Gift> CHARACTER_CREATION_GIFT;
         private static Dictionary<string, FaceData> FACE_REMAP;
         private static Dictionary<string, Hair> HAIR_REMAP;
         private static Dictionary<string, ItemRemap> ITEM_REMAPS_BY_ID;
@@ -58,6 +59,11 @@ namespace JortPob
         public static List<PlayerRace> GetCharacterCreationRaces()
         {
             return CHARACTER_CREATION_RACE;
+        }
+
+        public static List<Gift> GetCharacterCreationGifts()
+        {
+            return CHARACTER_CREATION_GIFT;
         }
 
         public static ItemRemap GetItemRemap(string id)
@@ -156,7 +162,22 @@ namespace JortPob
                 : [];
 
             /* Load character creation class overrides */
-            CHARACTER_CREATION_CLASS = JsonSerializer.Deserialize<List<PlayerClass>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json")), new JsonSerializerOptions { IncludeFields = true });
+            CHARACTER_CREATION_CLASS = new();
+            JsonArray jsonCharCreaClass = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json"))).AsArray();
+            foreach(JsonNode node in jsonCharCreaClass)
+            {
+                PlayerClass pc = new(node);
+                CHARACTER_CREATION_CLASS.Add(pc);
+            }
+
+            /* Load character creation gift overrides */
+            CHARACTER_CREATION_GIFT = new();
+            JsonArray jsonCharCreaGift = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_gift.json"))).AsArray();
+            foreach (JsonNode node in jsonCharCreaGift)
+            {
+                Gift gift = new(node);
+                CHARACTER_CREATION_GIFT.Add(gift);
+            }
 
             /* Load character creation race overrides */
             CHARACTER_CREATION_RACE = JsonSerializer.Deserialize<List<PlayerRace>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_race.json")), new JsonSerializerOptions { IncludeFields = true });
@@ -274,8 +295,19 @@ namespace JortPob
         public class PlayerClass
         {
             public string name, description;
+            public readonly Dictionary<string, int> data;
 
-            public PlayerClass() { }
+            public PlayerClass(JsonNode json)
+            {
+                name = json["name"].GetValue<string>();
+                description = json["description"].GetValue<string>();
+
+                data = new();
+                foreach (var property in json["data"].AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<int>());
+                }
+            }
         }
 
         public class PlayerRace
@@ -284,6 +316,24 @@ namespace JortPob
             public byte id;  // this id matches the values of the CharacterContent.Race enums
 
             public PlayerRace() { }
+        }
+
+        public class Gift
+        {
+            public string name, description;
+            public readonly Dictionary<string, int> data;
+
+            public Gift(JsonNode json)
+            {
+                name = json["name"].GetValue<string>();
+                description = json["description"].GetValue<string>();
+
+                data = new();
+                foreach (var property in json["data"].AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<int>());
+                }
+            }
         }
 
         public class AlchemyInfo
