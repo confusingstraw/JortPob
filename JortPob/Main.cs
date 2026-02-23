@@ -226,7 +226,7 @@ namespace JortPob
                     MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
                     asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
-                    asset.Scale = new Vector3(content.scale * 0.01f);
+                    asset.Scale = new Vector3(content.scale * 0.01f); // converting from 100-0 int scale to 1f-0f scale
 
                     /* Objects with script references added to PleaseCompile list */
                     if (content.entity > 0)
@@ -364,7 +364,7 @@ namespace JortPob
                     MSBE.Part.Asset asset = MakePart.Asset(pickableInfo);
                     asset.Position = content.relative + Const.MSB_OFFSET;
                     asset.Rotation = content.rotation;
-                    asset.Scale = new Vector3(content.scale * 0.01f);
+                    asset.Scale = new Vector3(content.scale * 0.01f); // converting from 100-0 int scale to 1f-0f scale
 
                     /* Objects with script references added to PleaseCompile list */
                     if (content.entity > 0)
@@ -596,7 +596,7 @@ namespace JortPob
                         MSBE.Part.Asset asset = MakePart.Asset(emitterInfo);
                         asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
-                        asset.Scale = new Vector3(content.scale * 0.01f);
+                        asset.Scale = new Vector3(content.scale * 0.01f); // converting from 100-0 int scale to 1f-0f scale
 
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
@@ -750,7 +750,7 @@ namespace JortPob
                         MSBE.Part.Asset asset = MakePart.Asset(pickableInfo);
                         asset.Position = content.relative + Const.MSB_OFFSET;
                         asset.Rotation = content.rotation;
-                        asset.Scale = new Vector3(content.scale * 0.01f);
+                        asset.Scale = new Vector3(content.scale * 0.01f);  // converting from 100-0 int scale to 1f-0f scale
 
                         asset.Unk1.DisplayGroups[0] = 0;
                         asset.UnkPartNames[1] = rootCollision.Name;
