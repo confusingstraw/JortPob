@@ -268,38 +268,6 @@ namespace JortPob
 
         public void Write()
         {
-            /* Garbage hack */
-            FsParam faceParam = param[Paramanager.ParamType.FaceParam];
-            FsParam.Row row = faceParam[1000];
-            List<string> fuckass = new();
-            byte b = 2;
-            foreach (FsParam.Cell cell in row.Cells)
-            {
-                if (cell.Value is byte || cell.Value is Byte)
-                {
-                    cell.SetValue(b);
-                    b++;
-                    if (b == 56) { b++; }
-                    if (b == 132) { b++; }
-                    if (b == 65) { b++; }
-                    if (b == 127) { b++; }
-                    if (b == 4) { b++; }
-                    if (b == 32) { b++; }
-                    if (b == 246) { b++; }
-                }
-                else
-                {
-                    
-                }
-            }
-            foreach (FsParam.Cell cell in row.Cells)
-            {
-                string key = cell.Def.InternalName;
-                string size = cell.Value.GetType().Name;
-                string value = cell.Value.ToString();
-                fuckass.Add($"{key}, {size}, {value}");
-            }
-
             Lort.Log($"Binding {param.Count()} PARAMs...", Lort.Type.Main);
             Lort.NewTask($"Binding PARAMs", param.Count());
             Lort.Log($"Total TalkParam rows: {param[Paramanager.ParamType.TalkParam].Rows.Count()} out of a max of {ushort.MaxValue}", Lort.Type.Debug);
