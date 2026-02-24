@@ -78,7 +78,10 @@ namespace JortPob
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Activator:
-                        if (!string.IsNullOrEmpty(mesh)) { assets.Add(new AssetContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { break; }
+                        string script = record.json["script"]?.GetValue<string>().ToLower().Trim();
+                        if (script == "bed_standard" || script == "chargenbed") { assets.Add(new BedContent(this, reference, record)); }
+                        else { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
                         if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }

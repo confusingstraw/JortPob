@@ -163,6 +163,25 @@ namespace JortPob
                         contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
                     }
 
+
+                    /* If bed... */
+                    if (content is BedContent bedContent)
+                    {
+                        (uint bed, uint respawn) entityIds = script.RegisterBed();
+
+                        MSBE.Part.Enemy bed = MakePart.Bed();
+                        bed.Position = asset.Position;
+                        bed.Unk1.DisplayGroups[0] = 0;
+                        bed.EntityID = entityIds.bed;
+                        bed.TalkID = character.GetESD(tile, msb, bedContent);
+                        msb.Parts.Enemies.Add(bed);
+
+                        MSBE.Part.Player respawn = MakePart.Player();
+                        respawn.Position = asset.Position;
+                        respawn.EntityID = entityIds.respawn;
+                        msb.Parts.Players.Add(respawn);
+                    }
+
                     /* Add to msb */
                     msb.Parts.Assets.Add(asset);
                 }
@@ -528,6 +547,25 @@ namespace JortPob
                             contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
                         }
 
+                        /* If bed... */
+                        if(content is BedContent bedContent)
+                        {
+                            (uint bed, uint respawn) entityIds = script.RegisterBed();
+
+                            MSBE.Part.Enemy bed = MakePart.Bed();
+                            bed.Position = asset.Position;
+                            bed.Unk1.DisplayGroups[0] = 0;
+                            bed.CollisionPartName = rootCollision.Name;
+                            bed.EntityID = entityIds.bed;
+                            bed.TalkID = character.GetESD(group, msb, bedContent);
+                            msb.Parts.Enemies.Add(bed);
+
+                            MSBE.Part.Player respawn = MakePart.Player();
+                            respawn.Position = asset.Position;
+                            respawn.EntityID = entityIds.respawn;
+                            msb.Parts.Players.Add(respawn);
+                        }
+
                         /* Add to msb */
                         msb.Parts.Assets.Add(asset);
                     }
@@ -875,6 +913,8 @@ namespace JortPob
             Lort.TaskIterate();
             foreach (PleaseCompile compile in contentToCompile)
             {
+                if (compile.content is BedContent) { continue; } // bed scripts become ESD c1000's
+
                 Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                 if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
 
@@ -886,6 +926,8 @@ namespace JortPob
             Lort.TaskIterate();
             foreach (PleaseCompile compile in contentToCompile)
             {
+                if (compile.content is BedContent) { continue; } // bed scripts become ESD c1000's
+
                 Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                 if(papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
 

@@ -109,6 +109,25 @@ namespace JortPob
             ownedContent = new();
         }
 
+        /* Registers bed as a "bonfire" and creates and returns the specail entity ids for a bed and its respawn point */
+        private uint bedCount = 0;
+        public (uint bed, uint respawn) RegisterBed()
+        {
+            if(bedCount > 19) { Lort.Log($"## ERROR ## Failed to register respawn for bed in m{map:D2}_{x:D2}_{y:D2}_{block:D2} due to 19 bed limit!", Lort.Type.Debug); return (0, 0); }
+
+            uint mapOffset;
+            if (map == 60) { mapOffset = uint.Parse($"10{x:D2}{y:D2}0000"); }
+            else { mapOffset = uint.Parse($"{map:D2}{x:D2}0000"); }
+
+            uint bedEntity = mapOffset + 950 + bedCount;
+            uint respawnEntity = bedEntity + 30;
+            bedCount++;
+
+            Flag bedFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.RegisterBed, bedEntity.ToString());
+            init.Instructions.Add(AUTO.ParseAdd($"RegisterBonfire({bedFlag.id}, {bedEntity}, 0, 0, 0, 5);"));
+            return (bedEntity, respawnEntity);
+        }
+
         public void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo)
         {
             int actionParamId = paramanager.GenerateActionButtonDoorParam(modelInfo, door.warp.prompt);
@@ -457,7 +476,7 @@ namespace JortPob
             //if (rawCount >= 1000) { throw new Exception($" Entity ID overflow in m{map:D2}_{x:D2}_{y:D2}"); }
 
             uint newid;
-            if (rawCount >= 1000) { newid = manager.common.CreateEntity(type, name); }
+            if (rawCount >= 950) { newid = manager.common.CreateEntity(type, name); }
             else { newid = mapOffset + ((uint)type) + rawCount; }
 
             entityIdMapping.Add(newid, name);
@@ -522,6 +541,7 @@ namespace JortPob
                 SecondsPassed, // Timer flag value used to emulate GetSecondsPassed papyrus call
                 TriggerEnable, TriggerDisable,  // Flags set by ESD to trigger an EMEVD event to enable or disable an object
                 DiscoverLocation,  // marks location on your map when set
+                RegisterBed,      // For register bonfire calls in EMEVD
                 Hardcode     // Used by any jank hardcoding I end up doing
             }
 

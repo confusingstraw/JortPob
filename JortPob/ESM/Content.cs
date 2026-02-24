@@ -513,6 +513,21 @@ namespace JortPob
         }
     }
 
+    /* beds, which will have esd objects assocaitd with them */
+    public class BedContent : AssetContent
+    {
+        public readonly string ownerNpc; // npc record id of the owenr of this bed, can be null
+        public readonly string ownerFaction; // faction id that owns this bed, player can use it if they are in that faction. can be null
+        public readonly string ownerGlobal; // a global var is used to control ownership. used by rentable beds
+
+        public BedContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
+        {
+            if (json["owner"] != null) { ownerNpc = json["owner"].GetValue<string>(); }
+            if (json["owner_faction"] != null) { ownerFaction = json["owner_faction"].GetValue<string>(); }
+            if (json["owner_global"] != null) { ownerGlobal = json["owner_global"].GetValue<string>(); }
+        }
+    }
+
     /* doors, both warp doors and activator doors */
     public class DoorContent : StaticContent
     {
