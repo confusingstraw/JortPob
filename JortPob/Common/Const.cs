@@ -5,64 +5,77 @@ using System.Numerics;
 
 namespace JortPob.Common
 {
-	/// <summary>
-	/// Const class that contains settings.json values.
-	/// Properties marked with [Setting] are required in the json.
-	/// Properties marked with [Setting(value)] have a default value and thus not required in the json.
-	/// Properties marked with either `Setting` attribute MUST have { get; private set; }. Even if your IDE tells you
-	/// that it's never used, it's lying.
-	/// </summary>
+    /// <summary>
+    /// Const class that contains settings.json values.
+    /// Properties marked with [Setting] are required in the json.
+    /// Properties marked with [Setting(value)] have a default value and thus not required in the json.
+    /// Properties marked with either `Setting` attribute MUST have { get; private set; }. Even if your IDE tells you
+    /// that it's never used, it's lying.
+    /// </summary>
     public static class Const
     {
-	    static Const()
-	    {
-		    Settable.PopulateStaticClass(typeof(Const));
-	    }
+        static Const()
+        {
+            Settable.PopulateStaticClass(typeof(Const));
+        }
+
         #region Paths
-        [Setting]
+
+        [Setting] 
         public static string MORROWIND_PATH { get; private set; }
-        [Setting]
+        [Setting] 
         public static string ELDEN_PATH { get; private set; }
-        [Setting]
+        [Setting] 
         public static string OUTPUT_PATH { get; private set; }
-        [Setting]
+        [Setting] 
         public static string WWISE_PATH { get; private set; }
         public static string CACHE_PATH => Path.Combine(OUTPUT_PATH, @"cache\");
-        [Setting("Morrowind.esm")]
+        [Setting("Morrowind.esm")] 
         public static string[] LOAD_ORDER { get; private set; }
+
         #endregion
 
         #region Optimization
-        [Setting(16)]
-		public static int THREAD_COUNT { get; private set; }
+
+        [Setting(16)] public static int THREAD_COUNT { get; private set; }
+
         [Setting(15000)]
-		/// when running a subprocess this is the default timeout time in millis.
-		public static int DEFAULT_PROCESS_TIMEOUT { get; private set; } 
+        /// when running a subprocess this is the default timeout time in millis.
+        public static int DEFAULT_PROCESS_TIMEOUT { get; private set; }
+
         #endregion
 
         #region General
-		/// When doing anything random we use this as our seed so results are consistent between builds
+
+        /// When doing anything random we use this as our seed so results are consistent between builds
         [Setting(42)]
-		public static int RANDOM_SEED { get; private set; } 
+        public static int RANDOM_SEED { get; private set; }
 
         /// new global scale calculated from approx measurements of player height in both games
-		public static readonly float GLOBAL_SCALE = 0.0129f;  
+        public static readonly float GLOBAL_SCALE = 0.0129f;
+
         public static readonly int CELL_EXTERIOR_BOUNDS = 30;
         public static readonly float CELL_SIZE = 8192f * GLOBAL_SCALE;
         public static readonly float TILE_SIZE = 256f;
+
         /// terrain vertices
-		public static readonly int CELL_GRID_SIZE = 64;   
-        
-		/// generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
-        public static readonly Vector3 MSB_OFFSET = new(0, 185, 0); 
-		/// how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
+        public static readonly int CELL_GRID_SIZE = 64;
+
+        /// generic value added to all positions in an MSB. just shifting vertical position a bit so the morrowind map isn't super far down
+        public static readonly Vector3 MSB_OFFSET = new(0, 185, 0);
+
+        /// how far the morrownid npc root (pelvis) is from it's feet. this is to fix the offset of spawn points since elden ring uses feet for characters position and mw uses pelvis
         public static readonly float NPC_ROOT_OFFSET = 75f * GLOBAL_SCALE;
-		/// uv scale for terrain textures
+
+        /// uv scale for terrain textures
         public static readonly float TERRAIN_UV_SCALE = 20f;
-		/// size of texture generated for vertex color overlay on terrain meshes
+
+        /// size of texture generated for vertex color overlay on terrain meshes
         public static readonly int TERRAIN_COLOR_OVERLAY_SIZE = 256;
-		/// morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
+
+        /// morrowind has a default terrain texture that is hardcoded to the exe. id = 65535
         public static readonly string TERRAIN_DEFAULT_TEXTURE = @"Data Files\textures\_land_default.dds";
+
         public static readonly LOD_VALUE[] TERRAIN_LOD_VALUES = new LOD_VALUE[]
         {
             new LOD_VALUE(0, FLVER2.FaceSet.FSFlags.None, 1, 512),
@@ -73,12 +86,12 @@ namespace JortPob.Common
         /* values are [0] = size of the asset model (calculated by radius and stored in modelinfo) [1] = distance it's visible via partsdrawparam. [2] = fade out range */
         public static readonly List<float[]> ASSET_LOD_VALUES = new()
         {
-            new float[] {1f, 32f, 4f},
-            new float[] {3f, 64f, 8f},
-            new float[] {7f, 128f, 16f},
-            new float[] {14f, 256f, 32f},
-            new float[] {22f, 512f, 64f},
-            new float[] {99999f, 99999f, 0f},
+            new float[] { 1f, 32f, 4f },
+            new float[] { 3f, 64f, 8f },
+            new float[] { 7f, 128f, 16f },
+            new float[] { 14f, 256f, 32f },
+            new float[] { 22f, 512f, 64f },
+            new float[] { 99999f, 99999f, 0f },
         };
 
         /* Calculated... ESM lowest cell is [-20,-20]~ on the grid. MSB lowest value is [+33,+40]~. Offset so they overlap */
@@ -90,8 +103,9 @@ namespace JortPob.Common
         public static readonly float CONTENT_SIZE_BIG = 7f;
         public static readonly float CONTENT_SIZE_HUGE = 20f;
 
-		/// how many assets need a scale before we bake it into a prescaled asset. otherwise dynamic scale is used
+        /// how many assets need a scale before we bake it into a prescaled asset. otherwise dynamic scale is used
         public static readonly int ASSET_BAKE_SCALE_CUTOFF = 5;
+
         public static readonly int DYNAMIC_ASSET = -1;
 
         public static readonly short FLVER_DMY_ROOT = 90;
@@ -100,49 +114,67 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_TOP = 102;
 
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
-		public static readonly int ASSET_GROUP = 900;
-        /// asset folder id for stuff generated by the watermanager
-		public static readonly int WATER_ASSET_GROUP = 910;
-        /// asset folder id for pickable assets
-		public static readonly int PICKABLE_ASSET_GROUP = 911;
-        /// param row starting id for this type of param
-		public static readonly short PART_DRAW_PARAM = 9000;
+        public static readonly int ASSET_GROUP = 900;
 
-		/// used to build water. primarily, if a collision triangle is under this value it becomes the water material. i have no idea why morrowind water is at -3f
+        /// asset folder id for stuff generated by the watermanager
+        public static readonly int WATER_ASSET_GROUP = 910;
+
+        /// asset folder id for pickable assets
+        public static readonly int PICKABLE_ASSET_GROUP = 911;
+
+        /// param row starting id for this type of param
+        public static readonly short PART_DRAW_PARAM = 9000;
+
+        /// used to build water. primarily, if a collision triangle is under this value it becomes the water material. i have no idea why morrowind water is at -3f
         public static readonly float WATER_HEIGHT = -3 * GLOBAL_SCALE;
+
         /// when we generate water squares, we generate a circle of cells this size. 30 means 30 CELLS of water not 30 units
-		public static readonly int WATER_RADIUS = 30;
+        public static readonly int WATER_RADIUS = 30;
+
         /// the ""center"" cell of morrowind. the actual 0,0 of the morrowind map is very off center. this correction is just for the water plane to look nicer.
-		public static readonly Vector2 WATER_CENTER = new Vector2(3f, 5f);
+        public static readonly Vector2 WATER_CENTER = new Vector2(3f, 5f);
+
         /// number of times to subdivide squares for water
-		public static readonly int WATER_TESSELATION = 2;
+        public static readonly int WATER_TESSELATION = 2;
+
         /// size of a quad for lava/swamp visual mesh. affects tesselation and edge accuracy. smaller than 2f gets really slow! ideal value is like 1.28 though
-		public static readonly float LIQUID_QUAD_GENERATE_SIZE = 2.56f;
+        public static readonly float LIQUID_QUAD_GENERATE_SIZE = 2.56f;
+
         /// add a bottom to lava pools so they dont get super deep
-		public static readonly float LAVA_FLOOR_DEPTH = -0.3f;
+        public static readonly float LAVA_FLOOR_DEPTH = -0.3f;
+
         /// lowers visual mesh  of lava. this offset is to fix the issue of the lava waves going way higher than the edge of pools sometimes
-		public static readonly float LAVA_VISUAL_OFFSET = -0.125f;
+        public static readonly float LAVA_VISUAL_OFFSET = -0.125f;
+
         /// add a bottom to swamp pools so they dont get super deep
-		public static readonly float SWAMP_FLOOR_DEPTH = -0.875f;
+        public static readonly float SWAMP_FLOOR_DEPTH = -0.875f;
+
         /// increase size of cutouts slightly so we dont get any clipping at the edges, only used by water visual mesh subtraction
-		public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f;
+        public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f;
+
         #endregion
 
         #region SFX
+
         public static readonly int FXR_START_ID = 900000000;
+
         #endregion
 
         #region Gameplay
+
         public static readonly float MERCANTILE_BUY_SCALE = 1.1f;
         public static readonly float MERCANTILE_SELL_SCALE = 0.45f;
+
         /// multiplier of spells mana cost to it's purchase value
-		public static readonly float MERCANTILE_SPELL_VALUE_SCALE = 10f;
+        public static readonly float MERCANTILE_SPELL_VALUE_SCALE = 10f;
 
         /// instead of 100 being "master" its 100 * X
-		public static readonly float ALCHEMY_TIER_REQUIREMENT_SCALE = 0.45f;
+        public static readonly float ALCHEMY_TIER_REQUIREMENT_SCALE = 0.45f;
+
         #endregion
 
         #region Papyrus
+
         public static readonly int ESD_STATE_HARDCODE_MODDISPOSITION = 45;
         public static readonly int ESD_STATE_HARDCODE_MODFACREP = 46;
         public static readonly int ESD_STATE_HARDCODE_PERSUADEMENU = 47;
@@ -157,72 +189,82 @@ namespace JortPob.Common
         public static readonly int ESD_STATE_HARDCODE_TRAVELMENU = 56;
         public static readonly int ESD_STATE_HARDCODE_RANKREQUIREMENT = 57;
         public static readonly int ESD_STATE_HARDCODE_REACTIONCALC = 58;
-		/// this one must be last as it can generate multiple ones after this number
+
+        /// this one must be last as it can generate multiple ones after this number
         public static readonly int ESD_STATE_HARDCODE_CHOICE = 59;
+
         public static readonly int CRIME_GOLD_PICKPOCKET = 50;
         public static readonly int CRIME_GOLD_ASSAULT = 250;
         public static readonly int CRIME_GOLD_RESIST = 100;
         public static readonly int CRIME_GOLD_MURDER = 1000;
+
         /// interior travel like mage guild teleporters just use a set value
-		public static readonly int TRAVEL_DEFAULT_COST = 100;
+        public static readonly int TRAVEL_DEFAULT_COST = 100;
+
         /// distance in cells multiplied by this value
-		public static readonly int TRAVEL_DISTANCE_COST = 10;
+        public static readonly int TRAVEL_DISTANCE_COST = 10;
+
         #endregion
 
         #region Dialog
-		/// very ultra mega hyper slow, only for stress testing dialog
+
+        /// very ultra mega hyper slow, only for stress testing dialog
         [Setting(true)]
-		public static bool USE_SAM { get; private set; }
-		/// generating voice synth is slightly inconsistent. it occasionally fails for no real reason.
+        public static bool USE_SAM { get; private set; }
+
+        /// generating voice synth is slightly inconsistent. it occasionally fails for no real reason.
         [Setting(10)]
-		public static int SAM_MAX_RETRY { get; private set; }
+        public static int SAM_MAX_RETRY { get; private set; }
+
         public static readonly string DEFAULT_DIALOG_WEM = Utility.ResourcePath(@"sound\page_turn.wem");
+
         /// character limit in a line of dialog. prevents subtitle cutting off
-		[Setting(160)]
-		public static int MAX_CHAR_PER_TALK { get; private set; }
-        [Setting(10)]
-		public static int MAX_ESD_PER_VCBNK { get; private set; }
+        [Setting(160)]
+        public static int MAX_CHAR_PER_TALK { get; private set; }
+
+        [Setting(10)] public static int MAX_ESD_PER_VCBNK { get; private set; }
+
         #endregion
 
         #region Debug
+
         /* when building for release everything in this group should be FALSE or NULL */
-        [Setting(false)]
-		public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
-		
+        [Setting(false)] public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
+
         /// can make dialog unuseable
-		[Setting(false)]
-		public static bool DEBUG_SKIP_SOUND { get; private set; }
-        
-        /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
-		[Setting(false)]
-		public static bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS { get; private set; }
-        
-        /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
-		[Setting(false)]
-		public static bool DEBUG_SKIP_ICONS { get; private set; }
-        
-        /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
-		[Setting(false)]
-		public static bool DEBUG_DONT_WRITE_BLANK_MSBS { get; private set; }
-        
-        /// disables all doors that are NOT load doors
-		[Setting(true)]
-		public static bool DEBUG_DISCARD_ANIMATED_DOORS { get; private set; }
         [Setting(false)]
-		public static bool DEBUG_SKIP_FMG_PARAM_SORTING { get; private set; }
-		
+        public static bool DEBUG_SKIP_SOUND { get; private set; }
+
+        /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
+        [Setting(false)]
+        public static bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS { get; private set; }
+
+        /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
+        [Setting(false)]
+        public static bool DEBUG_SKIP_ICONS { get; private set; }
+
+        /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
+        [Setting(false)]
+        public static bool DEBUG_DONT_WRITE_BLANK_MSBS { get; private set; }
+
+        /// disables all doors that are NOT load doors
+        [Setting(true)]
+        public static bool DEBUG_DISCARD_ANIMATED_DOORS { get; private set; }
+
+        [Setting(false)] public static bool DEBUG_SKIP_FMG_PARAM_SORTING { get; private set; }
+
         /// skip building dialog AND scripts
-		[Setting(false)]
-		public static bool DEBUG_SKIP_ESD { get; private set; }
-        
+        [Setting(false)]
+        public static bool DEBUG_SKIP_ESD { get; private set; }
+
         /// slow as shit, skipping this saves about a minute per build
-		[Setting(true)]
-		public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
-        
+        [Setting(true)]
+        public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
+
         /// set to "null" or remove from settings.json to build entire map.
-		[Setting(null)]
-		public static string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME { get; private set; }
-        
+        [Setting(null)]
+        public static string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME { get; private set; }
+
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         /// seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         /// seyda neen area (large) = new int[] { -5, -15, 5, -5 }
@@ -235,39 +277,51 @@ namespace JortPob.Common
         /// lava and swamp areas combined = new int[] {-10, -10, 15, 5};
         /// half the map = new int[] {-10, -15, 20, 0};
         [Setting(null)]
-		public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
-        
+        public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
+
         /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-		[Setting(true)]
-		public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
-        [Setting(false)]
-		public static bool DEBUG_SKIP_INTERIOR { get; private set; }
-		
+        [Setting(true)]
+        public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
+
+        [Setting(false)] public static bool DEBUG_SKIP_INTERIOR { get; private set; }
+
         /// set to "null" or remove from settings.json to build entire map.
-		[Setting(null)]
-		public static string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES { get; private set; }
-        
+        [Setting(null)]
+        public static string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES { get; private set; }
+
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
         {
-            if (DEBUG_SKIP_INTERIOR) { return false; }
+            if (DEBUG_SKIP_INTERIOR)
+            {
+                return false;
+            }
 
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
-            string[] MATCHES = DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; // new string[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
+            string[]
+                MATCHES =
+                    DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; // new string[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
 
-            if (MATCHES == null) { return true; }
-
-            foreach(string m in MATCHES)
+            if (MATCHES == null)
             {
-                if (name.ToLower().Contains(m.ToLower())) { return true; }
+                return true;
+            }
+
+            foreach (string m in MATCHES)
+            {
+                if (name.ToLower().Contains(m.ToLower()))
+                {
+                    return true;
+                }
             }
 
             return false;
         }
-        
+
         /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
-		[Setting(true)]
-		public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
+        [Setting(true)]
+        public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
+
         #endregion
 
         /* Some CBT */
@@ -276,6 +330,7 @@ namespace JortPob.Common
             public readonly FLVER2.FaceSet.FSFlags FLAG;
             public readonly int INDEX, DIVISOR;
             public readonly float DISTANCE;
+
             public LOD_VALUE(int index, FLVER2.FaceSet.FSFlags flag, int divisor, float distance)
             {
                 INDEX = index;
