@@ -310,7 +310,7 @@ namespace JortPob
             }
         }
 
-        /* Normal NpcContent contructor */
+        /* Normal CharacterContent contructor */
         public CharacterContent(ESM esm, Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {
             /* NPC Specific data */

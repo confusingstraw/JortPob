@@ -1,7 +1,5 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsIds;
-using System;
 using System.Collections.Generic;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
@@ -22,8 +20,9 @@ namespace JortPob
 
         public enum Event
         {
-            LoadDoor, SpawnHandler, NpcHostilityHandler, Message, Hello, Essential, DeadBody, ItemAsset, OwnedItemAsset, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
-            StaticDisable, CharacterDisable, ItemDisable, PlaySE
+            LoadDoor, SpawnHandler, SpawnHandlerWithDisable, NpcHostilityHandler, Message, Hello, Essential, DeadBody, 
+            ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
+            StaticDisable, PlaySE, TriggerEnable, TriggerDisable
         }
         public readonly Dictionary<Event, uint> events;
         public readonly Dictionary<int, Flag> messages;  // hash of message text as key, value is flag that when set to true triggers a message to display
@@ -35,7 +34,7 @@ namespace JortPob
          */
         private readonly Dictionary<ScriptFlagLookupKey, Flag> flagsByLookupKey;
 
-        public ScriptCommon() : base()
+        public ScriptCommon(ScriptManager manager) : base(manager)
         {
             func = EMEVD.Read(Utility.ResourcePath(@"script\common_func.emevd.dcx"));
 
@@ -121,6 +120,37 @@ namespace JortPob
             func.Events.Add(spawnHandler);
             events.Add(Event.SpawnHandler, spawnEventFlag.id);
 
+            /* Create an event for handling creature/npc spawn/respawn and disable/enable */
+            Flag spawnHandlerWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandlerWithDisable");
+            EMEVD.Event spawnHandlerWithDisableEvent = new(spawnHandlerWithDisableEventFlag.id);
+
+            pc = 0;
+
+            string[] spawnHandlerWithDisableRaw = new string[]
+            {
+                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if dead flag is on disable and end event
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
+                $"EndUnconditionally(EventEndType.End);",
+
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable character
+
+                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
+                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
+                $"EndUnconditionally(EventEndType.End);"
+            };
+
+            for (int i = 0; i < spawnHandlerWithDisableRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(spawnHandlerWithDisableRaw[i], i);
+                spawnHandlerWithDisableEvent.Parameters.AddRange(newPs);
+                spawnHandlerWithDisableEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(spawnHandlerWithDisableEvent);
+            events.Add(Event.SpawnHandlerWithDisable, spawnHandlerWithDisableEventFlag.id);
+
             /* Create an event for handling friendly npc hostility */
             Flag hostileEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcHostilityHandler");
             EMEVD.Event hostileEvent = new(hostileEventFlag.id);
@@ -202,9 +232,10 @@ namespace JortPob
 
             string[] essentialEventRaw = new string[]
             {
-                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",    // dead flag starts off
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // dead flag changes to on. meaning dood is dead
-                $"ShowTutorialPopup({NextParameterName()}, true, true);",                          // let the player know he's fucked
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",    // if npc is already dead...
+                $"EndUnconditionally(EventEndType.End);",                                            // end event
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // otherwise blocking wait for the dead flag to change
+                $"ShowTutorialPopup({NextParameterName()}, true, true);",                          // then let the player know he's fucked
             };
 
             for (int i = 0; i < essentialEventRaw.Length; i++)
@@ -239,6 +270,64 @@ namespace JortPob
 
             func.Events.Add(deadBodyEvent);
             events.Add(Event.DeadBody, deadBodyEventFlag.id);
+
+            /* Create an event for making itemcontent assets placed on the map dissapear when the item is actually taken by the player */
+            Flag itemAssetWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:ItemAssetWithDisable");
+            EMEVD.Event itemAssetWithDisableEvent = new(itemAssetWithDisableEventFlag.id);
+
+            pc = 0;
+
+            string[] itemAssetWithDisableEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
+                $"ChangeAssetEnableState({NextParameterName()}, 0);"
+            };
+
+            for (int i = 0; i < itemAssetWithDisableEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(itemAssetWithDisableEventRaw[i], i);
+                itemAssetWithDisableEvent.Parameters.AddRange(newPs);
+                itemAssetWithDisableEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(itemAssetWithDisableEvent);
+            events.Add(Event.ItemAssetWithDisable, itemAssetWithDisableEventFlag.id);
+
+            /* Same as above but also triggers a crime on the player when the item is taken */
+            Flag ownedItemAssetWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:OwnedItemAssetWithDisable");
+            EMEVD.Event ownedItemAssetWithDisableEvent = new(ownedItemAssetWithDisableEventFlag.id);
+
+            pc = 0;
+
+            string[] ownedItemAssetWithDisableEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
+
+                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if item is already taken
+                $"ChangeAssetEnableState({NextParameterName()}, 0);",                              // hide asset
+                $"EndUnconditionally(EventEndType.End);",                                      // end event early to preven crime retriggering
+
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // wait till item picked up
+                $"ChangeAssetEnableState({NextParameterName()}, 0);",                               // hide asset
+                $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
+            };
+
+            for (int i = 0; i < ownedItemAssetWithDisableEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(ownedItemAssetWithDisableEventRaw[i], i);
+                ownedItemAssetWithDisableEvent.Parameters.AddRange(newPs);
+                ownedItemAssetWithDisableEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(ownedItemAssetWithDisableEvent);
+            events.Add(Event.OwnedItemAssetWithDisable, ownedItemAssetWithDisableEventFlag.id);
+
 
             /* Create an event for making itemcontent assets placed on the map dissapear when the item is actually taken by the player */
             Flag itemAssetEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:ItemAsset");
@@ -402,11 +491,8 @@ namespace JortPob
 
             string[] staticDisableEventRaw = new string[]
             {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is set
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                              // disable static
-                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is not set
-                $"ChangeAssetEnableState({NextParameterName()}, 1);",                                // enable static
-                $"EndUnconditionally(EventEndType.Restart);"  // restart!
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
             };
 
             for (int i = 0; i < staticDisableEventRaw.Length; i++)
@@ -418,60 +504,6 @@ namespace JortPob
 
             func.Events.Add(staticDisableEvent);
             events.Add(Event.StaticDisable, staticDisableEventFlag.id);
-
-            /* Create an event for handling disable/enable of characters */
-            Flag characterDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:CharacterDisable");
-            EMEVD.Event characterDisableEvent = new(characterDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] characterDisableEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is set
-                $"ChangeCharacterEnableState({NextParameterName()}, 0);",                              // disable static
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is not set
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",      // and the npc is not dead
-                $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"ChangeCharacterEnableState({NextParameterName()}, 1);",                                // enable static
-                $"EndUnconditionally(EventEndType.Restart);"  // restart!
-            };
-
-            for (int i = 0; i < characterDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(characterDisableEventRaw[i], i);
-                characterDisableEvent.Parameters.AddRange(newPs);
-                characterDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(characterDisableEvent);
-            events.Add(Event.CharacterDisable, characterDisableEventFlag.id);
-
-            /* Create an event for handling disable/enable of items */
-            Flag itemDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:ItemDisable");
-            EMEVD.Event itemDisableEvent = new(itemDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] itemDisableEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is set
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                              // disable static
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if disabled flag is not set
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",      // and the item has not been picked up
-                $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"ChangeAssetEnableState({NextParameterName()}, 1);",                                // enable static
-                $"EndUnconditionally(EventEndType.Restart);"  // restart!
-            };
-
-            for (int i = 0; i < itemDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(itemDisableEventRaw[i], i);
-                itemDisableEvent.Parameters.AddRange(newPs);
-                itemDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(itemDisableEvent);
-            events.Add(Event.ItemDisable, itemDisableEventFlag.id);
 
             /* Create an event for playing an SE. Used by ESD to trigger sound effects */
             Flag playSEEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:PlaySE");
@@ -496,6 +528,56 @@ namespace JortPob
 
             func.Events.Add(playSEEvent);
             events.Add(Event.PlaySE, playSEEventFlag.id);
+
+            /* Create an event for esd to trigger an object enable*/
+            Flag triggerEnableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:TriggerEnable");
+            EMEVD.Event triggerEnableEvent = new(triggerEnableEventFlag.id);
+
+            pc = 0;
+
+            string[] triggerEnableEventRaw = new string[]
+            {
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",        // blocking wait until flag set...
+                $"ChangeCharacterEnableState({NextParameterName()}, Enabled);",                        // enable object
+                $"ChangeAssetEnableState({NextParameterName()}, Enabled);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",         // turn flag back off
+                $"EndUnconditionally(EventEndType.Restart);"     // restart!
+            };
+
+            for (int i = 0; i < triggerEnableEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(triggerEnableEventRaw[i], i);
+                triggerEnableEvent.Parameters.AddRange(newPs);
+                triggerEnableEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(triggerEnableEvent);
+            events.Add(Event.TriggerEnable, triggerEnableEventFlag.id);
+
+            /* Create an event for esd to trigger an object disable*/
+            Flag triggerDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:TriggerDisable");
+            EMEVD.Event triggerDisableEvent = new(triggerDisableEventFlag.id);
+
+            pc = 0;
+
+            string[] triggerDisableEventRaw = new string[]
+            {
+                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // blocking wait until flag set...
+                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                   // disable object
+                $"ChangeAssetEnableState({NextParameterName()}, Disabled);",                        // @TODO: Fuck ass hack. please seperate functions for character/asset
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",      // turn flag back off
+                $"EndUnconditionally(EventEndType.Restart);"     // restart!
+            };
+
+            for (int i = 0; i < triggerDisableEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(triggerDisableEventRaw[i], i);
+                triggerDisableEvent.Parameters.AddRange(newPs);
+                triggerDisableEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(triggerDisableEvent);
+            events.Add(Event.TriggerDisable, triggerDisableEventFlag.id);
 
             /* Create some singular common events */
             CreateWeatherTracker();
@@ -656,6 +738,13 @@ namespace JortPob
             ScriptFlagLookupKey lookupKey = Script.FormatFlagLookupKey(designation, name.ToLower());
 
             return FindFlagByLookupKey(lookupKey);
+        }
+
+        public override Flag GetOrCreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        {
+            Flag flag = manager.GetFlag(designation, name);
+            if (flag != null) { return flag; }
+            return CreateFlag(category, type, designation, name, value);
         }
 
         /* There are some bugs with this system. It defo wastes some flag space. We have lots tho. Maybe fix later */

@@ -360,7 +360,7 @@ namespace JortPob
 
         public SoundInfo? GetSound(string id) => sounds.FirstOrDefault(sound => sound.id == id.ToLower());
 
-        public Papyrus? GetPapyrus(string id) => scripts.FirstOrDefault(script => script.id == id.ToLower());
+        public Papyrus? GetPapyrus(string? id) => id is null ? null : scripts.FirstOrDefault(script => script.id == id.ToLower());
 
         public LeveledCreature? GetLeveledCreature(string id) => leveled.FirstOrDefault(lc => lc.id == id.ToLower());
 
