@@ -274,6 +274,7 @@ namespace JortPob
                  GiveSpEffectToPlayer(108)
                  GiveSpEffectToPlayer(109)
                  UpdatePlayerRespawnPoint()
+                 ClearPlayerDamageInfo()
                  assert GetCurrentStateElapsedTime() > 2.5
                  return 0
 
