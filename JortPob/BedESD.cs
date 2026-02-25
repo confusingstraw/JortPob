@@ -1,10 +1,5 @@
-﻿using SoulsFormats;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JortPob
 {
@@ -165,7 +160,7 @@ namespace JortPob
                              ClearPreviousMenuSelection()
                          assert t{id:D9}_x3()
                          SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
-                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1
+                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
                      # 2 - "Long Rest"
                      elif GetTalkListEntryResult() == 2:
                          SetCanOpenMap(False)

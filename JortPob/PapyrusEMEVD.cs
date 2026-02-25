@@ -462,7 +462,11 @@ namespace JortPob
                             {
                                 // find our target content
                                 CharacterContent target;
-                                if (call.target == null) { target = (CharacterContent)content; }
+                                if (call.target == null)
+                                {
+                                    if (content is not CharacterContent) { break; }  // apparently this actually happened during a full build. Todd. Why.
+                                    target = (CharacterContent)content;
+                                }
                                 else { target = (CharacterContent)layout.FindScriptReference(content, call.target); }
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
@@ -1351,7 +1355,11 @@ namespace JortPob
                         {
                             string faction;
                             if (call.parameters.Count() > 1) { faction = call.parameters[1].ToLower().Trim(); }
-                            else { faction = ((NpcContent)content).faction; }
+                            else
+                            {
+                                if (content is not CharacterContent) { break; }  // Somehow this also came up in a full build. Todd.....
+                                faction = ((CharacterContent)content).faction;
+                            }
 
                             int rep = int.Parse(call.parameters[0]);
 
