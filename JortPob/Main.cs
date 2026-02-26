@@ -73,10 +73,11 @@ namespace JortPob
                 ResourcePool pool = new(tile, msb, lightManager, script);
 
                 /* Create NVA */
-                SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m10\m10_00_00_00\m10_00_00_00.nva.dcx")); // delete me
+                //SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
                 SoulsFormats.NVA nva = new();
                 nva.Compression = Const.GetKrak();
-                List<string> navMeshes = new();
+                int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                List<string> navMeshesToWrite = new();
 
                 /* Various Indices */
                 int nextC = 0, nextMPR = 0;
@@ -89,7 +90,7 @@ namespace JortPob
                     // superoverworld msb is  handled by its own class -> OverworldManager
                     foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                     {
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC.ToString("D2")}";
 
                         MSBE.Part.Collision collision = MakePart.Collision();
                         collision.Name = $"h{collisionIndex}_0000";
@@ -99,13 +100,23 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
+                        //Directory.SetCurrentDirectory(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game");
                         ERNavmeshGen navgen = new();
                         string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
                         string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
                         navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
-                        navMeshes.Add(hkxOut);
                         NVA.Navmesh navMesh = new();
+                        navMesh.NameID = nextNavId++;
+                        navMesh.ModelID = nextC;
+                        navMesh.IsConnectedNavmeshesInline = true;
+                        navMesh.Position = new(collision.Position, 1f);
+                        navMesh.Rotation = new(0f);
+                        navMesh.Scale = new(1f, 1f, 1f, 0f);
+
                         nva.Navmeshes.Add(navMesh);
+                        navMeshesToWrite.Add(hkxOut);
+
+                        nextC++;
                     }
 
                     /* Add water collision if terrain 'hasWater' */
@@ -457,6 +468,10 @@ namespace JortPob
 
                 /* Auto resource */
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
+
+                /* Wrap up NVA */
+                nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00.nva.dcx"));
+                // @TODO: write navmesh files to bind when thats fixed
 
                 /* Done */
                 msbs.Add(pool);
