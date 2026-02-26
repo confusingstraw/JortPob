@@ -100,11 +100,11 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
-                        //Directory.SetCurrentDirectory(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game");
-                        //ERNavmeshGen navgen = new();
+                        //Directory.SetCurrentDirectory(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game"); // delete me
+                        ERNavmeshGen navgen = new();
                         string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
                         string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
-                        //navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
+                        navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
                         NVA.Navmesh navMesh = new();
                         navMesh.NameID = nextNavId++;
                         navMesh.ModelID = nextC;
@@ -470,7 +470,7 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Wrap up NVA */
-                //nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00.nva.dcx"));
+                nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00.nva.dcx"));
                 // @TODO: write navmesh files to bind when thats fixed
 
                 /* Done */
