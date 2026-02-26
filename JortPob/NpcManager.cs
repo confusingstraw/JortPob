@@ -111,13 +111,13 @@ namespace JortPob
             return id;
         }
 
-        public int GetESD(BaseTile tile, CharacterContent content) { return GetESD(tile.IdList(), content); }
-        public int GetESD(InteriorGroup group, CharacterContent content) { return GetESD(group.IdList(), content); }
+        public int GetESD(BaseTile tile, MSBE msb, CharacterContent content) { return GetESD(tile.IdList(), msb, content); }
+        public int GetESD(InteriorGroup group, MSBE msb, CharacterContent content) { return GetESD(group.IdList(), msb, content); }
 
         /* Creates an ESD for the given instance of a npc */
         /* ESDs are generally 1 to 1 with characters but there are some exceptions like guards */
         // @TODO: THIS SYSTEM USING AN ARRAY OF INTS IS FUCKING SHIT PLEASE GOD REFACTOR THIS TO JUST USE THE ACTUAL TILE OR INTERIOR GROUP
-        public int GetESD(int[] msbIdList, CharacterContent content)
+        public int GetESD(int[] msbIdList, MSBE msb, CharacterContent content)
         {
             if (Const.DEBUG_SKIP_ESD) { return 0; } // debug skip
 
@@ -196,10 +196,7 @@ namespace JortPob
 
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
-            areaScript.RegisterNpcHostility(content);  // setup hostility flag/event
-            areaScript.RegisterNpcHello(content);      // setup hello flags and turntoplayer script
-
-            DialogESD dialogEsd = new(esm, layout, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
+            DialogESD dialogEsd = new(esm, layout, msb, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
             string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
             string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
             dialogEsd.Write(pyPath);
