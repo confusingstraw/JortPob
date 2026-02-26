@@ -21,7 +21,7 @@ namespace JortPob
             this.block = block;
             btl = new();
             btl.Version = 6;
-            btl.Compression = new DCX.DcxDfltCompressionInfo();
+            btl.Compression = Compression.KRAK();
         }
 
         public LightManager(int map, Int2 coordinate, int block) : this(map, coordinate.x, coordinate.y, block) { }
@@ -99,8 +99,7 @@ namespace JortPob
         public void Write()
         {
             string path = $"{Const.OUTPUT_PATH}map\\m{map:D2}\\m{map:D2}_{x:D2}_{y:D2}_{block:D2}\\m{map:D2}_{x:D2}_{y:D2}_{block:D2}_0000.btl.dcx";
-            btl.Write(path, new DCX.DcxDfltCompressionInfo());
-            //btab.Write($"{path}.btab.dcx", DCX.Type.DCX_DFLT_10000_44_9);
+            btl.Write(path);
         }
     }
 }

@@ -109,7 +109,7 @@ namespace JortPob
                 FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{terrainInfo.path}");
 
                 BND4 bnd = new();
-                bnd.Compression = Const.GetKrak();
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 BinderFile file = new();
@@ -255,7 +255,7 @@ namespace JortPob
                     FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{mppath}");
 
                     BND4 bnd = new();
-                    bnd.Compression = Const.GetKrak();
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
                     BinderFile file = new();

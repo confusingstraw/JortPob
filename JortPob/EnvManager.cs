@@ -65,7 +65,7 @@ namespace JortPob
                     int size = levelPair.Value;
 
                     BND4 bnd = new();
-                    bnd.Compression = Const.GetKrak();
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
                     List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, envId, timeId, size, weatherData.rem);
@@ -77,8 +77,7 @@ namespace JortPob
                         byte[] data = texture.Item2;
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
+                        tpf.Compression = Compression.NONE();
 
                         TPF.Texture tex = new();
                         tex.Flags1 = 128;
@@ -107,7 +106,7 @@ namespace JortPob
                 string level = levelPair.Key;
 
                 BND4 ivBnd = new();
-                ivBnd.Compression = Const.GetKrak();
+                ivBnd.Compression = Compression.KRAK();
                 ivBnd.Version = "07D7R6";
 
                 for (int timeId = 0; timeId < 7; timeId++)
@@ -142,7 +141,7 @@ namespace JortPob
                 int size = levelPair.Value;
 
                 BND4 bnd = new();
-                bnd.Compression = Const.GetKrak();
+                bnd.Compression = Compression.NONE();
                 bnd.Version = "07D7R6";
 
                 List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(group.map, group.area, group.unk, group.block, envId, 0, size, weatherData.rem);
@@ -154,9 +153,7 @@ namespace JortPob
                     byte[] data = texture.Item2;
 
                     TPF tpf = new TPF();
-                    tpf.Compression = Const.GetKrak();
-                    tpf.Encoding = 1;
-                    tpf.Flag2 = 3;
+                    tpf.Compression = Compression.KRAK();
 
                     TPF.Texture tex = new();
                     tex.Flags1 = 128;
@@ -185,7 +182,7 @@ namespace JortPob
                 string level = levelPair.Key;
 
                 BND4 ivBnd = new();
-                ivBnd.Compression = Const.GetKrak();
+                ivBnd.Compression = Compression.KRAK();
                 ivBnd.Version = "07D7R6";
 
                 /* Also make IvInfo */

@@ -866,10 +866,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(data);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = Const.GetKrak();
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -882,10 +880,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(dataLow);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = Const.GetKrak();
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, dataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -903,10 +899,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(errorData);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = Const.GetKrak();
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, errorData, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -919,10 +913,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(errorDataLow);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = Const.GetKrak();
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, errorDataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);

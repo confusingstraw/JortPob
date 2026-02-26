@@ -56,10 +56,7 @@ namespace JortPob.Common
                 // Bind up emitter asset flver
                 {
                     BND4 bnd = new();
-                    bnd.Compression = new DCX.DcxDfltCompressionInfo();
-                    bnd.Extended = 4;
-                    bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-                    bnd.Unicode = true;
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
                     FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, pickable.model.path));
@@ -85,10 +82,7 @@ namespace JortPob.Common
                 // Bind up emitter asset flver
                 {
                     BND4 bnd = new();
-                    bnd.Compression = new DCX.DcxDfltCompressionInfo();
-                    bnd.Extended = 4;
-                    bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-                    bnd.Unicode = true;
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
                     FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, emitterInfo.model.path));
@@ -109,10 +103,7 @@ namespace JortPob.Common
             // Bind up asset flver
             {
                 BND4 bnd = new();
-                bnd.Compression = new DCX.DcxDfltCompressionInfo();
-                bnd.Extended = 4;
-                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-                bnd.Unicode = true;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path));
@@ -130,10 +121,7 @@ namespace JortPob.Common
             if(modelInfo.collision != null)
             {
                 BND4 bnd = new();
-                bnd.Compression = Const.GetKrak();
-                bnd.Extended = 4;
-                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-                bnd.Unicode = true;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 BinderFile file = new();
@@ -151,10 +139,7 @@ namespace JortPob.Common
             // Bind up asset flver
             {
                 BND4 bnd = new();
-                bnd.Compression = new DCX.DcxDfltCompressionInfo();
-                bnd.Extended = 4;
-                bnd.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-                bnd.Unicode = true;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, waterInfo.path));
@@ -204,10 +189,7 @@ namespace JortPob.Common
 
             /* Bind all textures */
             BXF4 tpfbdt = new();
-            tpfbdt.Extended = 4;
-            tpfbdt.Format = SoulsFormats.Binder.Format.IDs | SoulsFormats.Binder.Format.Names1 | SoulsFormats.Binder.Format.Names2 | SoulsFormats.Binder.Format.Compression;
-            tpfbdt.Unicode = true;
-            tpfbdt.Version = "25E14X35";
+            tpfbdt.Version = "07D7R6";
             int index = 0;
             foreach (TextureInfo tex in textures)
             {
@@ -215,6 +197,7 @@ namespace JortPob.Common
                 {
                     TPF tpf = TPF.Read(Path.Combine(Const.CACHE_PATH, tex.path));
                     BinderFile bf = new();
+                    bf.CompressionInfo = Compression.NONE();
                     bf.ID = index++;
                     bf.Name = $"{tex.name}.tpf.dcx";
                     bf.Bytes = tpf.Write();
@@ -224,6 +207,7 @@ namespace JortPob.Common
                 {
                     TPF tpf = TPF.Read(Path.Combine(Const.CACHE_PATH, tex.low));
                     BinderFile bf = new();
+                    bf.CompressionInfo = Compression.NONE();
                     bf.ID = index++;
                     bf.Name = $"{tex.name}_l.tpf.dcx";
                     bf.Bytes = tpf.Write();

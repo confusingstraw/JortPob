@@ -93,7 +93,7 @@ namespace JortPob
         public static void Write(Layout layout)
         {
             BND4 ffxbnd = new();
-            ffxbnd.Compression = Const.GetKrak();
+            ffxbnd.Compression = Compression.KRAK();
             ffxbnd.Version = "25I10A23";
 
             int fxrid = -1; int texid = 99999;

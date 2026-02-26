@@ -299,10 +299,8 @@ namespace JortPob
                     int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(scaledDDS);
 
                     TPF tpf = new TPF();
-                    tpf.Encoding = 1;
-                    tpf.Flag2 = 3;
                     tpf.Platform = TPF.TPFPlatform.PC;
-                    tpf.Compression = Const.GetKrak();
+                    tpf.Compression = Compression.KRAK();
 
                     TPF.Texture tex = new(icon.TextureName(), (byte)format, 0, scaledDDS, TPF.TPFPlatform.PC);
                     tpf.Textures.Add(tex);

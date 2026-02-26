@@ -64,7 +64,7 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
-                msb.Compression = Const.GetKrak();
+                msb.Compression = Compression.KRAK();
 
                 Script script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
@@ -75,7 +75,7 @@ namespace JortPob
                 /* Create NVA */
                 //SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
                 SoulsFormats.NVA nva = new();
-                nva.Compression = Const.GetKrak();
+                nva.Compression = Compression.KRAK();
                 int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
                 List<string> navMeshesToWrite = new();
 
@@ -101,10 +101,10 @@ namespace JortPob
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
                         //Directory.SetCurrentDirectory(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game");
-                        ERNavmeshGen navgen = new();
+                        //ERNavmeshGen navgen = new();
                         string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
                         string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
-                        navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
+                        //navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
                         NVA.Navmesh navMesh = new();
                         navMesh.NameID = nextNavId++;
                         navMesh.ModelID = nextC;
@@ -470,7 +470,7 @@ namespace JortPob
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
                 /* Wrap up NVA */
-                nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00.nva.dcx"));
+                //nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00", $"m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00.nva.dcx"));
                 // @TODO: write navmesh files to bind when thats fixed
 
                 /* Done */
@@ -496,7 +496,7 @@ namespace JortPob
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
                 Script script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
-                msb.Compression = Const.GetKrak();
+                msb.Compression = Compression.KRAK();
 
                 /* Handle chunks */
                 for (int i = 0; i < group.chunks.Count(); i++)
