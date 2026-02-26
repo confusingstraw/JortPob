@@ -109,12 +109,10 @@ namespace JortPob
                 FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{terrainInfo.path}");
 
                 BND4 bnd = new();
-                bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                bnd.Compression = Const.GetKrak();
                 bnd.Version = "07D7R6";
 
                 BinderFile file = new();
-                file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
                 file.ID = 200;
                 file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{name}\\m{name}_{mpid.ToString("D8")}\\Model\\m{name}_{mpid.ToString("D8")}.flver";
                 file.Bytes = flver.Write();
@@ -257,12 +255,10 @@ namespace JortPob
                     FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{mppath}");
 
                     BND4 bnd = new();
-                    bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                    bnd.Compression = Const.GetKrak();
                     bnd.Version = "07D7R6";
 
                     BinderFile file = new();
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
-                    file.Flags = SoulsFormats.Binder.FileFlags.Flag1;
                     file.ID = 200;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{name}\\m{name}_{mpid.ToString("D8")}\\Model\\m{name}_{mpid.ToString("D8")}.flver";
                     file.Bytes = flver.Write();

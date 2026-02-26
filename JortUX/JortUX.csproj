@@ -19,6 +19,9 @@
     <Reference Include="DrSwizzler">
       <HintPath>..\JortPob\DLL\DrSwizzler.dll</HintPath>
     </Reference>
+    <Reference Include="ERNavmeshGenCS">
+      <HintPath>..\JortPob\DLL\ERNavmeshGenCS.dll</HintPath>
+    </Reference>
     <Reference Include="ESDLang">
       <HintPath>..\JortPob\DLL\ESDLang.dll</HintPath>
     </Reference>
@@ -98,11 +101,18 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+	
   <Target Name="CopyESDLangDocs" AfterTargets="AfterBuild">
     <ItemGroup Label="ESDLangDocs">
       <ESDLangDocsSourceFiles Include="..\JortPob\Resources\tools\ESDTool\dist\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(ESDLangDocsSourceFiles)" DestinationFolder="$(OutDir)\dist" SkipUnchangedFiles="true" ContinueOnError="false" />
   </Target>
+
+	<Target Name="CopyFileToRoot" AfterTargets="AfterBuild">
+		<Copy SourceFiles="..\JortPob\DLL\ERNavmeshGen.dll" DestinationFolder="$(OutDir)" />
+		<Copy SourceFiles="..\JortPob\DLL\keystone.dll" DestinationFolder="$(OutDir)" />
+		<Copy SourceFiles="..\JortPob\DLL\Zydis.dll" DestinationFolder="$(OutDir)" />
+	</Target>
 
 </Project>

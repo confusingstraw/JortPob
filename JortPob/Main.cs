@@ -1,7 +1,7 @@
-﻿using IronPython.Hosting;
+﻿using ERNavmeshGenCS;
+using HKLib.hk2018.hkaiWorldCommands;
 using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Hosting;
 using PortJob;
 using SoulsFormats;
 using System;
@@ -9,13 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Nodes;
-using static IronPython.Modules._ast;
-using static JortPob.InteriorGroup;
 using static JortPob.Script;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -70,13 +64,19 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Const.GetKrak();
 
                 Script script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
                 List<Tuple<Vector3, TerrainInfo>> terrains = isTileType ? tile.terrain : emptyTerrainList;
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
                 ResourcePool pool = new(tile, msb, lightManager, script);
+
+                /* Create NVA */
+                SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m10\m10_00_00_00\m10_00_00_00.nva.dcx")); // delete me
+                SoulsFormats.NVA nva = new();
+                nva.Compression = Const.GetKrak();
+                List<string> navMeshes = new();
 
                 /* Various Indices */
                 int nextC = 0, nextMPR = 0;
@@ -98,6 +98,14 @@ namespace JortPob
 
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
+
+                        ERNavmeshGen navgen = new();
+                        string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
+                        string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
+                        navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
+                        navMeshes.Add(hkxOut);
+                        NVA.Navmesh navMesh = new();
+                        nva.Navmeshes.Add(navMesh);
                     }
 
                     /* Add water collision if terrain 'hasWater' */
@@ -473,7 +481,7 @@ namespace JortPob
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
                 Script script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Const.GetKrak();
 
                 /* Handle chunks */
                 for (int i = 0; i < group.chunks.Count(); i++)

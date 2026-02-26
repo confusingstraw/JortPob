@@ -93,7 +93,7 @@ namespace JortPob
         public static void Write(Layout layout)
         {
             BND4 ffxbnd = new();
-            ffxbnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+            ffxbnd.Compression = Const.GetKrak();
             ffxbnd.Version = "25I10A23";
 
             int fxrid = -1; int texid = 99999;
@@ -110,7 +110,6 @@ namespace JortPob
                 {
                     BinderFile file = new();
                     file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.fxr}"));
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = fxrid;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
                     ffxbnd.Files.Add(file);
@@ -119,7 +118,6 @@ namespace JortPob
                 {
                     BinderFile file = new();
                     file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{fxr.res}"));
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = 400000 + fxrid++;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
                     ffxbnd.Files.Add(file);
@@ -129,7 +127,6 @@ namespace JortPob
                 {
                     BinderFile file = new();
                     file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{tpf}"));
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = texid++;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\tex\\{Utility.PathToFileName(tpf)}.tpf";
                     ffxbnd.Files.Add(file);
@@ -143,7 +140,6 @@ namespace JortPob
                 {
                     BinderFile file = new();
                     file.Bytes = fxr.GetBytes();
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = fxrid;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\effect\\f{fxr.id}.fxr";
                     ffxbnd.Files.Add(file);
@@ -153,7 +149,6 @@ namespace JortPob
                 {
                     BinderFile file = new();
                     file.Bytes = new byte[0]; // lol, lmao even
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = 400000 + fxrid++;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\ResourceList\\f{fxr.id}.ffxreslist";
                     ffxbnd.Files.Add(file);

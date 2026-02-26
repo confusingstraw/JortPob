@@ -302,7 +302,7 @@ namespace JortPob
                     tpf.Encoding = 1;
                     tpf.Flag2 = 3;
                     tpf.Platform = TPF.TPFPlatform.PC;
-                    tpf.Compression = DCX.Type.DCX_KRAK;
+                    tpf.Compression = Const.GetKrak();
 
                     TPF.Texture tex = new(icon.TextureName(), (byte)format, 0, scaledDDS, TPF.TPFPlatform.PC);
                     tpf.Textures.Add(tex);

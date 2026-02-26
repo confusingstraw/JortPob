@@ -3,6 +3,7 @@ using JortPob.Common;
 using JortPob.Worker;
 using Microsoft.Scripting.Hosting;
 using SoulsFormats;
+using SoulsFormats.Cryptography;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -108,7 +109,7 @@ namespace JortPob
             interactActionButtons = new();
             itemActionButtons = new();
 
-            SoulsFormats.BND4 paramBnd = SoulsFormats.SFUtil.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
+            SoulsFormats.BND4 paramBnd = RegulationDecryptor.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
             string[] files = Directory.GetFiles(Utility.ResourcePath(@"misc\paramdefs"));
 
             Dictionary<ParamDefType, WitchyFormats.PARAMDEF> paramdefs = new();
@@ -278,7 +279,7 @@ namespace JortPob
             
             /* Write params */
             BND4 bnd = new();
-            bnd.Compression = SoulsFormats.DCX.Type.DCX_ZSTD;
+            bnd.Compression = new DCX.DcxZstdCompressionInfo();
             bnd.Version = "11601000";
             int i = 0;
             foreach (KeyValuePair<ParamType, FsParam> kvp in param)
@@ -298,7 +299,7 @@ namespace JortPob
 
                 Lort.TaskIterate();
             }
-            SFUtil.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
+            RegulationDecryptor.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
 
             /* Write LiveParam extended talk rows */
             extendedTalkParam.Write(Path.Combine(Const.OUTPUT_PATH, "ExtendedTalkParam.param"));

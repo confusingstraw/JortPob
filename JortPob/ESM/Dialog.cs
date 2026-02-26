@@ -1,25 +1,12 @@
-﻿using HKLib.hk2018.hke;
-using IronPython.Compiler;
-using JortPob.Common;
-using SharpAssimp.Unmanaged;
-using SoulsAssetPipeline.Animation;
+﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsFormats.MWC;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static HKLib.hk2018.hkSerialize.CompatTypeParentInfo;
-using static IronPython.Modules._ast;
-using static JortPob.Papyrus;
 using static JortPob.Script;
-using static SoulsFormats.MQB;
-using static SoulsFormats.MSBAC4.Event;
+
 
 namespace JortPob
 {

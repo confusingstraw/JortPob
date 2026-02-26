@@ -19,6 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="ERNavmeshGenCS">
+      <HintPath>DLL\ERNavmeshGenCS.dll</HintPath>
+    </Reference>
     <Reference Include="ESDLang">
       <HintPath>DLL\ESDLang.dll</HintPath>
     </Reference>
@@ -87,6 +90,12 @@
 
   <!-- DLLs -->
   <ItemGroup>
+    <None Update="DLL\ERNavmeshGen.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="DLL\ERNavmeshGenCS.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
     <None Update="DLL\HKLib.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
@@ -99,14 +108,20 @@
     <None Update="DLL\HKX2.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
+    <None Update="DLL\keystone.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
     <None Update="DLL\SoulsIds.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="DLL\tes3-interop.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="DLL\tes3.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="DLL\Zydis.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="libzstd.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -124,6 +139,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+	<Target Name="CopyFileToRoot" AfterTargets="AfterBuild">
+		<Copy SourceFiles="DLL\ERNavmeshGen.dll" DestinationFolder="$(OutDir)" />
+		<Copy SourceFiles="DLL\Zydis.dll" DestinationFolder="$(OutDir)" />
+		<Copy SourceFiles="DLL\keystone.dll" DestinationFolder="$(OutDir)" />
+	</Target>
 	
   <!-- Resources -->
   <ItemGroup>

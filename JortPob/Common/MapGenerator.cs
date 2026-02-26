@@ -356,7 +356,7 @@ namespace JortPob.Common
                 Format = (byte)JortPob.Common.DDS.GetTpfFormatFromDdsBytes(ddsBytes)
             };
 
-            TPF tpf = new() { Compression = DCX.Type.DCX_KRAK };
+            TPF tpf = new() { Compression = Const.GetKrak() };
             tpf.Textures.Add(texture);
             byte[] tpfBytes = tpf.Write();
 
