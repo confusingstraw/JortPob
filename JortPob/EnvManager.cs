@@ -141,7 +141,7 @@ namespace JortPob
                 int size = levelPair.Value;
 
                 BND4 bnd = new();
-                bnd.Compression = Compression.NONE();
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(group.map, group.area, group.unk, group.block, envId, 0, size, weatherData.rem);
@@ -153,7 +153,7 @@ namespace JortPob
                     byte[] data = texture.Item2;
 
                     TPF tpf = new TPF();
-                    tpf.Compression = Compression.KRAK();
+                    tpf.Compression = Compression.NONE();
 
                     TPF.Texture tex = new();
                     tex.Flags1 = 128;
