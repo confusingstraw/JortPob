@@ -100,7 +100,6 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
-                        //Directory.SetCurrentDirectory(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game");
                         ERNavmeshGen navgen = new();
                         string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
                         string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
