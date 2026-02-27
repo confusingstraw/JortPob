@@ -119,8 +119,6 @@ namespace JortPob
         // @TODO: THIS SYSTEM USING AN ARRAY OF INTS IS FUCKING SHIT PLEASE GOD REFACTOR THIS TO JUST USE THE ACTUAL TILE OR INTERIOR GROUP
         public int GetESD(int[] msbIdList, MSBE msb, CharacterContent content)
         {
-            if (Const.DEBUG_SKIP_ESD) { return 0; } // debug skip
-
             if (content.race == CharacterContent.Race.Creature && !esm.HasDialog((CreatureContent)content)) { return 0; } // if this is a creature, verify it has dialog lines to build dialog for
 
             // First check if we even need one, hostile or dead npcs dont' get talk data for now

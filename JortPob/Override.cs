@@ -1,18 +1,10 @@
-﻿using HKLib.hk2018.hke;
-using JortPob.Common;
-using Newtonsoft.Json.Converters;
+﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
-using static JortPob.Override;
 
 namespace JortPob
 {
@@ -35,6 +27,7 @@ namespace JortPob
         private static List<AlchemyInfo> ALCHEMY_INFOS;
         private static List<EnemyRemap> ENEMY_REMAPS;
         private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
+        private static List<LoadingTip> LOADING_TIPS;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -113,6 +106,11 @@ namespace JortPob
                 if (remap.id == id.ToLower().Trim()) { return remap; }
             }
             return new();
+        }
+
+        public static List<LoadingTip> GetLoadingTips()
+        {
+            return LOADING_TIPS;
         }
 
         public static Layout.MapPoint.Icon GetMapIcon(string name)
@@ -233,6 +231,16 @@ namespace JortPob
             {
                 string iconName = property.Value.GetValue<string>();
                 MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
+            }
+
+            /* Loading tips overrides */
+            LOADING_TIPS = new();
+            JsonNode jsonLoadingTips = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
+            foreach (var property in jsonLoadingTips.AsObject())
+            {
+                JsonNode jsonNode = property.Value;
+                LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
+                LOADING_TIPS.Add(loadingTip);
             }
         }
 
@@ -537,6 +545,17 @@ namespace JortPob
                     this.row = row;
                     data = new();
                 }
+            }
+        }
+
+        public class LoadingTip
+        {
+            public readonly string title, text;
+
+            public LoadingTip(string title, string text)
+            {
+                this.title = title;
+                this.text = text;
             }
         }
     }
