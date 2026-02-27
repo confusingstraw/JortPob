@@ -279,7 +279,7 @@ namespace JortPob
             
             /* Write params */
             BND4 bnd = new();
-            bnd.Compression = new DCX.DcxZstdCompressionInfo();
+            bnd.Compression = Compression.ZSTD();
             bnd.Version = "11601000";
             int i = 0;
             foreach (KeyValuePair<ParamType, FsParam> kvp in param)

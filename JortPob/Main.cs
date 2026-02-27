@@ -64,7 +64,7 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
-                msb.Compression = Const.GetKrak();
+                msb.Compression = Compression.KRAK();
 
                 Script script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
@@ -75,7 +75,7 @@ namespace JortPob
                 /* Create NVA */
                 //SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
                 SoulsFormats.NVA nva = new();
-                nva.Compression = Const.GetKrak();
+                nva.Compression = Compression.KRAK();
                 int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
                 List<string> navMeshesToWrite = new();
 
@@ -495,7 +495,7 @@ namespace JortPob
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
                 Script script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
-                msb.Compression = Const.GetKrak();
+                msb.Compression = Compression.KRAK();
 
                 /* Handle chunks */
                 for (int i = 0; i < group.chunks.Count(); i++)

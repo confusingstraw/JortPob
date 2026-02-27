@@ -37,7 +37,7 @@ namespace JortPob.Worker
                 FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{mppath}");
 
                 BND4 bnd = new();
-                bnd.Compression = Const.GetKrak();
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 BinderFile file = new();
@@ -53,7 +53,7 @@ namespace JortPob.Worker
             bxfH.Version = "07D7R6";
             BinderFile comH = new();
             comH.Name = $"m{name}\\h{name}.compendium.dcx";
-            comH.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), Const.GetKrak());
+            comH.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), Compression.KRAK());
             comH.ID = 0;
             bxfH.Files.Add(comH);
             int id = 1;
@@ -64,7 +64,7 @@ namespace JortPob.Worker
 
                 BinderFile testH = new();
                 testH.Name = $"m{name}\\h{name}_{index}.hkx.dcx";
-                testH.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), Const.GetKrak());
+                testH.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), Compression.KRAK());
                 testH.ID = id++;
                 bxfH.Files.Add(testH);
             }
@@ -74,7 +74,7 @@ namespace JortPob.Worker
             bxfL.Version = "07D7R6";
             BinderFile comL = new();
             comL.Name = $"m{name}\\l{name}.compendium.dcx";
-            comL.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), Const.GetKrak());
+            comL.Bytes = DCX.Compress(File.ReadAllBytes(Utility.ResourcePath(@"test\test.compendium")), Compression.KRAK());
             comL.ID = 0;
             bxfL.Files.Add(comL);
             id = 1;
@@ -85,7 +85,7 @@ namespace JortPob.Worker
 
                 BinderFile testL = new();
                 testL.Name = $"m{name}\\l{name}_{index}.hkx.dcx";
-                testL.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), Const.GetKrak());
+                testL.Bytes = DCX.Compress(File.ReadAllBytes($"{Const.CACHE_PATH}{collisionInfo.hkx}"), Compression.KRAK());
                 testL.ID = id++;
                 bxfL.Files.Add(testL);
             }

@@ -30,7 +30,7 @@ namespace JortPob
             AUTO = new(Utility.ResourcePath(@"script\er-common.emedf.json"), true, true);
 
             emevd = new EMEVD();
-            emevd.Compression = Const.GetKrak();
+            emevd.Compression = Compression.KRAK();
             emevd.Format = SoulsFormats.EMEVD.Game.Sekiro;
 
             // Linked file offsets are stored as bytes of a UTF16 string pointing to the commonfunc and macro emevd files
