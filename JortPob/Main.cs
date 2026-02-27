@@ -864,7 +864,7 @@ namespace JortPob
             Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*2);
 
             /* Initialize local variables first */
-            if (Const.DEBUG_SKIP_SCRIPTS)
+            if (!Const.DEBUG_SKIP_SCRIPTS)
             {
                 Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
                 if (papyrusMain != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, scriptManager.common, papyrusMain, null); }
