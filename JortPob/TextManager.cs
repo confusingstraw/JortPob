@@ -16,7 +16,7 @@ namespace JortPob
 
         private Dictionary<TextType, FMG> menu, item;
 
-        private volatile int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId, nextMenuId, nextTutorial, nextMapEventText, nextWeaponEffectId;
+        private volatile int nextTopicId, nextNpcNameId, nextActionButtonId, nextLocationId, nextMenuId, nextTutorial, nextMapEventText, nextWeaponEffectId, nextLoadScreenTipId;
 
         public TextManager()
         {
@@ -28,6 +28,7 @@ namespace JortPob
             nextTutorial = 500000;
             nextMapEventText = 20209000;
             nextWeaponEffectId = 7000;
+            nextLoadScreenTipId = 300;
 
             Dictionary<TextType, FMG> LoadMsgBnd(string path)
             {
@@ -68,7 +69,7 @@ namespace JortPob
         /* Check if this text already exists before adding it to avoid duplicates */
         public int AddChoice(string text)
         {
-            foreach(FMG.Entry entry in menu[TextType.EventTextForTalk].Entries)
+            foreach (FMG.Entry entry in menu[TextType.EventTextForTalk].Entries)
             {
                 if (entry.Text == text) { return entry.ID; }
             }
@@ -91,7 +92,7 @@ namespace JortPob
             FMG fmg = menu[TextType.EventTextForTalk];
             foreach (FMG.Entry entry in fmg.Entries)
             {
-                if(entry.Text == text) { return entry.ID; }
+                if (entry.Text == text) { return entry.ID; }
             }
 
             int id = nextTopicId++;
@@ -167,7 +168,7 @@ namespace JortPob
         {
             string InfusionName(ItemManager.Infusion inf, string name)
             {
-                switch(inf)
+                switch (inf)
                 {
                     case ItemManager.Infusion.FlameArt: return $"Flame Art {name}";
                     case ItemManager.Infusion.None: return name;
@@ -265,6 +266,14 @@ namespace JortPob
         public void EditMenuText(int id, string text)
         {
             GetEntry(menu[TextType.GR_MenuText], id).Text = text;
+        }
+
+        public int AddLoadingTip(string title, string text)
+        {
+            int id = nextWeaponEffectId++;
+            item[TextType.LoadingTitle].Entries.Add(new(id, text));
+            item[TextType.LoadingText].Entries.Add(new(id, title));
+            return id;
         }
 
         public void Write(string dir)

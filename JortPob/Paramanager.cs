@@ -1,17 +1,13 @@
 ﻿using FSParam;
 using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Hosting;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text.Json.Nodes;
 using WitchyFormats;
-using static JortPob.Override;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -1234,6 +1230,36 @@ namespace JortPob
 
             nextEnemyItemLotId += 10;
             return baseRow;
+        }
+
+        public void GenerateLoadingMenuRows(TextManager text)
+        {
+            // all custom loading menu items are stored in "resources/msg/loadingMenuItems.json"
+            // quantity testing hasn't been done yet, but there can be more loading titles than the base game
+            // just don't go crazy without telling one of the mods
+
+            if (Const.DEBUG_SKIP_CUSTOM_LOADING_TEXT) return;
+
+            // Grab loading menu text override
+            List<Override.LoadingTip> loadingTips = Override.GetLoadingTips();
+
+            // Wipe out loading text param
+            FsParam loadingMenuParam = param[ParamType.KnowledgeLoadScreenItemParam];
+            loadingMenuParam.ClearRows();
+
+            // Add our new ones in
+            foreach (Override.LoadingTip loadingTip in loadingTips)
+            {
+                FsParam.Row row = new FsParam.Row(loadingMenuParam.Rows.Count()+1, loadingTip.title, loadingMenuParam);
+                int textId = textManager.AddLoadingTip(loadingTip.title, loadingTip.text);
+
+                row["disableParam_NT"].Value.SetValue((byte)0);
+                row["unlockFlagId"].Value.SetValue((UInt32)0);
+                row["invalidFlagId"].Value.SetValue((UInt32)0);
+                row["msgId"].Value.SetValue(textId);
+
+                loadingMenuParam.AddRow(row);
+            }
         }
     }
 }

@@ -231,6 +231,12 @@ namespace JortPob.Common
         /* when building for release everything in this group should be FALSE or NULL */
         [Setting(false)] public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
+        [Setting(false)]
+        public static bool DEBUG_SKIP_CUSTOM_LOADING_TEXT { get; private set; }
+
+        [Setting(false)]
+        public static bool DEBUG_SKIP_CUSTOM_LOADING_IMAGES { get; private set; } // same here
+
         /// can make dialog unuseable
         [Setting(false)]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
