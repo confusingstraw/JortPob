@@ -452,8 +452,6 @@ namespace JortPob
             Lort.NewTask("Generating MSB", layout.interiors.Count);
             foreach (InteriorGroup group in layout.interiors)
             {
-                if (Const.DEBUG_SKIP_INTERIOR) { break; }
-
                 // Skip empty groups.
                 if (group.IsEmpty()) { continue; }
 
@@ -866,34 +864,37 @@ namespace JortPob
             Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*2);
 
             /* Initialize local variables first */
-            Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
-            if (papyrusMain != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, scriptManager.common, papyrusMain, null); }
-            Lort.TaskIterate();
-            foreach (PleaseCompile compile in contentToCompile)
+            if (Const.DEBUG_SKIP_SCRIPTS)
             {
-                Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
-                if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
-
+                Papyrus papyrusMain = esm.GetPapyrus("main");   // null check is needed because the vanilla "Main" script won't compile rn. only works with the compatibility patch
+                if (papyrusMain != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, scriptManager.common, papyrusMain, null); }
                 Lort.TaskIterate();
-            }
-
-            /* Then compile papyrus and dialog */
-            if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
-            Lort.TaskIterate();
-            foreach (PleaseCompile compile in contentToCompile)
-            {
-                Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
-                if(papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
-
-                if(compile.content is CharacterContent)
+                foreach (PleaseCompile compile in contentToCompile)
                 {
-                    MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
-                    CharacterContent characterContent = compile.content as CharacterContent;
-                    if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
-                    else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
+                    Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
+                    if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
+
+                    Lort.TaskIterate();
                 }
 
+                /* Then compile papyrus and dialog */
+                if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
                 Lort.TaskIterate();
+                foreach (PleaseCompile compile in contentToCompile)
+                {
+                    Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
+                    if (papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
+
+                    if (compile.content is CharacterContent)
+                    {
+                        MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
+                        CharacterContent characterContent = compile.content as CharacterContent;
+                        if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
+                        else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
+                    }
+
+                    Lort.TaskIterate();
+                }
             }
 
             /* Geneate debug area in Stranded Graveyard */

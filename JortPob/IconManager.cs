@@ -326,7 +326,6 @@ namespace JortPob
                 }
 
                 /* Write */
-                //bxf.Write($"{Const.OUTPUT_PATH}{path}.tpfbhd", $"{Const.OUTPUT_PATH}{path}.tpfbdt");
                 return bxf;
             }
 

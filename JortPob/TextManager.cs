@@ -271,8 +271,8 @@ namespace JortPob
         public int AddLoadingTip(string title, string text)
         {
             int id = nextWeaponEffectId++;
-            item[TextType.LoadingTitle].Entries.Add(new(id, text));
-            item[TextType.LoadingText].Entries.Add(new(id, title));
+            menu[TextType.LoadingTitle].Entries.Add(new(id, text));
+            menu[TextType.LoadingText].Entries.Add(new(id, title));
             return id;
         }
 

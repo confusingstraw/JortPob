@@ -14,8 +14,6 @@ namespace JortPob
 
         public static void Compile(ESM esm, Layout layout, MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
-            if (Const.DEBUG_SKIP_ESD) { return; }
-
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
 
             /* Returns a special EMEVD command that resets all condition groups by making a do-nothing call that checks MAIN */

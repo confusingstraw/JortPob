@@ -261,15 +261,11 @@ namespace JortPob.Common
 
         /// skip building dialog AND scripts
         [Setting(false)]
-        public static bool DEBUG_SKIP_ESD { get; private set; }
+        public static bool DEBUG_SKIP_SCRIPTS { get; private set; }
 
         /// slow as shit, skipping this saves about a minute per build
         [Setting(true)]
         public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
-
-        /// set to "null" or remove from settings.json to build entire map.
-        [Setting(null)]
-        public static string DEBUG_EXCLUSIVE_CELL_BUILD_BY_NAME { get; private set; }
 
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         /// seyda neen area (small) = new int[] {-3, -10, -1, -8 }
@@ -289,19 +285,12 @@ namespace JortPob.Common
         [Setting(true)]
         public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
 
-        [Setting(false)] public static bool DEBUG_SKIP_INTERIOR { get; private set; }
-
         /// set to "null" or remove from settings.json to build entire map.
         [Setting(null)]
         public static string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES { get; private set; }
 
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
         {
-            if (DEBUG_SKIP_INTERIOR)
-            {
-                return false;
-            }
-
             // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
             // set MATCHES to null if for proper normal building
             string[]

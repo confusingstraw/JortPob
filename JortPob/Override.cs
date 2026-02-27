@@ -236,7 +236,7 @@ namespace JortPob
             /* Loading tips overrides */
             LOADING_TIPS = new();
             JsonNode jsonLoadingTips = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
-            foreach (var property in jsonSpellRemap.AsObject())
+            foreach (var property in jsonLoadingTips.AsObject())
             {
                 JsonNode jsonNode = property.Value;
                 LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
