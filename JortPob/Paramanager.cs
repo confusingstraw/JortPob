@@ -810,7 +810,7 @@ namespace JortPob
                 row[$"itemNum_{i + 1:D2}"].Value.SetValue((byte)1);   // @TODO: npc use item counts?
             }
 
-            /* Stats */
+            /* Stats */  // @TODO: placeholder calc for stats. directly translation with a little scaling. will comeback to this when we get more into gameplay design
             int vigr = (int)(npc.level * 2.9f) + 7;
             int endr = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Endurance) * .75f);
             int strg = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Strength) * .75f);
@@ -1208,16 +1208,16 @@ namespace JortPob
 
                 classFaceRow["npcPlayerFaceGenId"].Value.SetValue(imperialMaleFaceDefault.ID); // make all class choices have the imperial male a their default chr choice
 
-                foreach(var kvp in playerClass.data)
+                foreach(var (key, value) in playerClass.data)
                 {
-                    FsParam.Cell cell = (FsParam.Cell)originRow[kvp.Key];
-                    switch (cell.Value.GetType())
+                    FsParam.Cell cell = (FsParam.Cell)originRow[key];
+                    switch (cell.Value)
                     {
-                        case Type t when t == typeof(short):
-                            cell.SetValue((short)kvp.Value);
+                        case short:
+                            cell.SetValue((short)value);
                             break;
-                        case Type t when t == typeof(byte):
-                            cell.SetValue((byte)kvp.Value);
+                        case byte:
+                            cell.SetValue((byte)value);
                             break;
                         default:
                             throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");
@@ -1259,16 +1259,16 @@ namespace JortPob
                 charInitGiftRow["itemNum_03"].Value.SetValue((byte)0);
                 charInitGiftRow["equip_Accessory01"].Value.SetValue(-1);
 
-                foreach (var kvp in gift.data)
+                foreach (var (key, value) in gift.data)
                 {
-                    FsParam.Cell cell = (FsParam.Cell)charInitGiftRow[kvp.Key];
-                    switch (cell.Value.GetType())
+                    FsParam.Cell cell = (FsParam.Cell)charInitGiftRow[key];
+                    switch (cell.Value)
                     {
-                        case Type t when t == typeof(int):
-                            cell.SetValue((int)kvp.Value);
+                        case int:
+                            cell.SetValue((int)value);
                             break;
-                        case Type t when t == typeof(byte):
-                            cell.SetValue((byte)kvp.Value);
+                        case byte:
+                            cell.SetValue((byte)value);
                             break;
                         default:
                             throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");

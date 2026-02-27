@@ -626,8 +626,8 @@ namespace JortPob
 
         public class FaceData
         {
-            public string id;
-            public Dictionary<string, byte> data;
+            public readonly string id;
+            public readonly Dictionary<string, byte> data;
 
             public FaceData(string id, JsonNode json)
             {
