@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using SoulsFormats.Formats.Morpheme.NSA;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -182,6 +183,17 @@ namespace JortPob
                 }
             }
             return false;
+        }
+
+        /* Returns number of BedContents in this cell */
+        public int BedCount()
+        {
+            int beds = 0;
+            foreach(StaticContent content in assets)
+            {
+                if(content is BedContent) { beds++; }
+            }
+            return beds;
         }
     }
 }

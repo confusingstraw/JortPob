@@ -287,20 +287,47 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
 
-            /* Subdivide all interior cells into groups */
+            /* Pre-sort interior cells by the number of beds they have (to avoid the 19 bed limit per msb) */
             int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
-            int start = 0, end = partition;
-            foreach (InteriorGroup group in interiors)
+            List<Cell>[] cellPreSort = new List<Cell>[interiors.Count];
+            int CountBeds(List<Cell> cells)
             {
-                for(int i=start; i<Math.Min(end, esm.interior.Count); i++)
+                int beds = 0;
+                foreach (Cell cell in cells) { beds += cell.BedCount(); }
+                return beds;
+            }
+
+            for(int i=0;i<cellPreSort.Length;i++) { cellPreSort[i] = new(); }  // initialize
+
+            foreach(Cell cell in esm.interior)
+            {
+                int beds = cell.BedCount();
+                bool fail = true;
+                foreach(List<Cell> cells in cellPreSort)
                 {
-                    Cell cell = esm.interior[i];
-                    group.AddCell(cell);
+                    if (cells.Count() >= partition) { continue; }     // group must be less than the partition size of cells
+                    if (CountBeds(cells) + beds > 19) { continue; }  // number of beds in a group has to be 19 or less
+
+                    fail = false;
+                    cells.Add(cell);
+                    break;
                 }
 
-                start += partition;
-                end += partition;
+                if(fail) { throw new Exception("Too many beds! Oh god so many beds! Help!"); }
             }
+
+            /* Subdivide all interior cells into groups */
+            for(int i=0;i<cellPreSort.Length;i++)
+            {
+                InteriorGroup group = interiors[i];
+                List<Cell> cells = cellPreSort[i];
+
+                foreach(Cell cell in cells)
+                {
+                    group.AddCell(cell);
+                }
+            }
+
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
