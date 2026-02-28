@@ -262,9 +262,10 @@ namespace JortPob
                         msb.Events.Treasures.Add(treasure);
                     }
 
-                    (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
+                    (int npc, int think, int init) paramRows = character.GetParams(item, script, npc); // creates/gets and returns NpcParam, NpcThinkParam, and CharInitParam
                     enemy.NPCParamID = paramRows.npc;
                     enemy.ThinkParamID = paramRows.think;
+                    enemy.CharaInitID = paramRows.init;
 
                     /* Objects with script references added to PleaseCompile list */
                     if (npc.entity > 0)
@@ -286,9 +287,10 @@ namespace JortPob
                     enemy.Position = creature.relative + Const.MSB_OFFSET;
                     enemy.Rotation = creature.rotation;
 
-                    (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                    (int npc, int think, int init) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns NpcParam, NpcThinkParam, and CharInitParam
                     enemy.NPCParamID = paramRows.npc;
                     enemy.ThinkParamID = paramRows.think;
+                    enemy.CharaInitID = paramRows.init;
 
                     /* Objects with script references added to PleaseCompile list */
                     if (creature.entity > 0)
@@ -636,9 +638,10 @@ namespace JortPob
                             msb.Events.Treasures.Add(treasure);
                         }
 
-                        (int npc, int think) paramRows = character.GetParams(item, script, npc); // creates/gets and returns both an NpcParam and NpcThinkParam
+                        (int npc, int think, int init) paramRows = character.GetParams(item, script, npc); // creates/gets and returns NpcParam, NpcThinkParam, and CharInitParam
                         enemy.NPCParamID = paramRows.npc;
                         enemy.ThinkParamID = paramRows.think;
+                        enemy.CharaInitID = paramRows.init;
 
                         /* Objects with script references added to PleaseCompile list */
                         if (npc.entity > 0)
@@ -663,9 +666,10 @@ namespace JortPob
                         enemy.Unk1.DisplayGroups[0] = 0;
                         enemy.CollisionPartName = rootCollision.Name;
 
-                        (int npc, int think) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns both an NpcParam and NpcThinkParam
+                        (int npc, int think, int init) paramRows = character.GetParams(item, script, creature, remap); // creates/gets and returns NpcParam, NpcThinkParam, and CharInitParam
                         enemy.NPCParamID = paramRows.npc;
                         enemy.ThinkParamID = paramRows.think;
+                        enemy.CharaInitID = paramRows.init;
 
                         /* Objects with script references added to PleaseCompile list */
                         if (creature.entity > 0)

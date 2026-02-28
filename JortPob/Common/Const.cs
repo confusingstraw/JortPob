@@ -295,7 +295,7 @@ namespace JortPob.Common
             // set MATCHES to null if for proper normal building
             string[]
                 MATCHES =
-                    DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; // new string[] { "Seyda Neen", "Addamasartus", "Nimawia Grotto", "Thelas Ancestral Tomb", "Samarys Ancestral Tomb", "Andrano Ancestral Tomb", "Abaesen-Pulu Egg Mine" };
+                    DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; 
 
             if (MATCHES == null)
             {
