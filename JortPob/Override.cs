@@ -30,6 +30,7 @@ namespace JortPob
         private static List<AlchemyInfo> ALCHEMY_INFOS;
         private static List<EnemyRemap> ENEMY_REMAPS;
         private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
+        private static List<LoadingTip> LOADING_TIPS;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -113,6 +114,11 @@ namespace JortPob
                 if (remap.id == id.ToLower().Trim()) { return remap; }
             }
             return new();
+        }
+
+        public static List<LoadingTip> GetLoadingTips()
+        {
+            return LOADING_TIPS;
         }
 
         public static Layout.MapPoint.Icon GetMapIcon(string name)
@@ -288,6 +294,16 @@ namespace JortPob
                 JsonNode faceRemapJson = JsonNode.Parse(File.ReadAllText(faceRemapFile));
                 FaceData faceData = new(fileName, faceRemapJson);
                 FACE_REMAP.Add(faceData.id, faceData);
+            }
+
+            /* Loading tips overrides */
+            LOADING_TIPS = new();
+            JsonNode jsonLoadingTips = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
+            foreach (var property in jsonLoadingTips.AsObject())
+            {
+                JsonNode jsonNode = property.Value;
+                LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
+                LOADING_TIPS.Add(loadingTip);
             }
         }
 
@@ -650,7 +666,7 @@ namespace JortPob
 
             public byte[] GetColor()
             {
-                switch(color)
+                switch (color)
                 {
                     case Color.Black: return new byte[] { 0, 0, 0 };         // @TODO: ai autocomplete set these values and they are fine for testing but CHANGE THEM LATER
                     case Color.DarkBrown: return new byte[] { 34, 17, 0 };
@@ -664,6 +680,17 @@ namespace JortPob
                     case Color.Red: return new byte[] { 170, 0, 0 };
                     default: return new byte[] { 0, 0, 0 };
                 }
+            }
+        }
+
+        public class LoadingTip
+        {
+            public readonly string title, text;
+
+            public LoadingTip(string title, string text)
+            {
+                this.title = title;
+                this.text = text;
             }
         }
     }
