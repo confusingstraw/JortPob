@@ -738,6 +738,108 @@ namespace JortPob
             }
         }
 
+        public void GenerateFaceParam(NpcContent npc, int id)
+        {
+            Override.FaceData face = Override.GetFace(npc.head);
+            Override.Hair hair = Override.GetHair(npc.hair);
+
+            int rowToCopy = 23150; // default girl women as our template
+
+            FsParam faceParam = param[ParamType.FaceParam];
+            FsParam.Row row = CloneRow(faceParam[rowToCopy], npc.id, id);
+
+            // set values for face
+            foreach(var kvp in face.data)
+            {
+                row[kvp.Key].Value.SetValue(kvp.Value);
+            }
+
+            // set values for hair
+            byte[] color = hair.GetColor();
+            row["hair_partsId"].Value.SetValue(hair.part);
+            row["hair_color_R"].Value.SetValue(color[0]);
+            row["hair_color_G"].Value.SetValue(color[1]);
+            row["hair_color_B"].Value.SetValue(color[2]);
+            row["beard_color_R"].Value.SetValue(color[0]);
+            row["beard_color_G"].Value.SetValue(color[1]);
+            row["beard_color_B"].Value.SetValue(color[2]);
+            row["body_hairColor_R"].Value.SetValue(color[0]);
+            row["body_hairColor_G"].Value.SetValue(color[1]);
+            row["body_hairColor_B"].Value.SetValue(color[2]);
+
+            AddRow(faceParam, row);
+        }
+
+        public void GenerateCharInitParam(ItemManager itemManager, NpcContent npc, int id)
+        {
+            Override.FaceData face = Override.GetFace("");
+            Override.Hair hair = Override.GetHair("");
+
+            int rowToCopy = 23150; // default girl women as our template
+
+            FsParam charInitParam = param[ParamType.CharaInitParam];
+            FsParam.Row row = CloneRow(charInitParam[rowToCopy], npc.id, id);
+
+            /* Face and sex */
+            GenerateFaceParam(npc, id); // create faceparam to pair with this charainit
+            row["npcPlayerFaceGenId"].Value.SetValue(id);  // set faceparam
+            row["npcPlayerSex"].Value.SetValue(npc.sex == CharacterContent.Sex.Male ? (byte)1 : (byte)0); // set sex
+
+            /* Equipment */
+            row["equip_Wep_Right"].Value.SetValue(npc.equipWeaponRight?.row ?? -1);
+            row["equip_Subwep_Right"].Value.SetValue(npc.equipRange?.row ?? -1);
+            row["equip_Wep_Left"].Value.SetValue(npc.equipWeaponLeft?.row ?? -1);
+            row["equip_Helm"].Value.SetValue(npc.equipHead?.row ?? -1);
+            row["equip_Armer"].Value.SetValue(npc.equipBody?.row ?? -1);   // SIC
+            row["equip_Gaunt"].Value.SetValue(npc.equipHands?.row ?? -1);
+            row["equip_Leg"].Value.SetValue(npc.equipLegs?.row ?? -1);
+            row["equip_Arrow"].Value.SetValue(npc.equipArrow?.row ?? -1);
+            row["equip_Bolt"].Value.SetValue(npc.equipBolt?.row ?? -1);
+
+            for (int i = 0; i < npc.equipAcc.Length; i++)
+            {
+                ItemManager.ItemInfo acc = npc.equipAcc[i];
+                row[$"equip_Accessory{i + 1:D2}"].Value.SetValue(acc.row);
+            }
+
+            for (int i = 0; i < npc.equipGood.Length; i++)
+            {
+                ItemManager.ItemInfo good = npc.equipGood[i];
+                row[$"item_{i + 1:D2}"].Value.SetValue(good.row);
+                row[$"itemNum_{i + 1:D2}"].Value.SetValue((byte)1);   // @TODO: npc use item counts?
+            }
+
+            /* Stats */  // @TODO: placeholder calc for stats. directly translation with a little scaling. will comeback to this when we get more into gameplay design
+            int vigr = (int)(npc.level * 2.9f) + 7;
+            int endr = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Endurance) * .75f);
+            int strg = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Strength) * .75f);
+            int dext = (int)(((npc.stats.Get(CharacterContent.Stats.Attribute.Agility) + npc.stats.Get(CharacterContent.Stats.Attribute.Speed)) * .5f) * .75f);
+            int mind = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Willpower) * .75f);
+            int intl = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Intelligence) * .75f);
+            int fath = (int)(((npc.stats.Get(CharacterContent.Stats.Attribute.Luck) + npc.stats.Get(CharacterContent.Stats.Attribute.Willpower)) * .5f) * .75f);
+            int arcn = (int)(npc.stats.Get(CharacterContent.Stats.Attribute.Personality) * .75f);
+            int total = Math.Max(1, vigr + endr + strg + dext + mind + intl + fath + arcn - 79);
+
+            row["baseHp"].Value.SetValue((ushort)0);
+            row["baseMp"].Value.SetValue((ushort)0);
+            row["baseSp"].Value.SetValue((ushort)0);
+
+            row["HpEstMax"].Value.SetValue((sbyte)0);
+            row["MpEstMax"].Value.SetValue((sbyte)0);
+
+            row["soulLv"].Value.SetValue((short)total);
+            row["baseVit"].Value.SetValue((byte)vigr);
+            row["baseWil"].Value.SetValue((byte)mind);
+            row["baseEnd"].Value.SetValue((byte)endr);
+            row["baseStr"].Value.SetValue((byte)strg);
+            row["baseDex"].Value.SetValue((byte)dext);
+            row["baseMag"].Value.SetValue((byte)intl);
+            row["baseFai"].Value.SetValue((byte)fath);
+            row["baseLuc"].Value.SetValue((byte)arcn);
+
+            AddRow(charInitParam, row);
+        }
+
         public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
             // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
@@ -746,7 +848,7 @@ namespace JortPob
             else { rowToCopy = 523010000; }          // white mask varre
 
             FsParam npcParam = param[ParamType.NpcParam];
-            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(npcParam[rowToCopy], npc.id, id);
 
             int itemLotRow;
             List<(ItemManager.ItemInfo item, int quantity)> inventory = itemManager.ResolveInventory(npc);
@@ -765,7 +867,6 @@ namespace JortPob
 
         public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
-            // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
             int rowToCopy = remap.npc.row;
 
             FsParam npcParam = param[ParamType.NpcParam];
@@ -1032,6 +1133,8 @@ namespace JortPob
             int[] charMakeMenuListItemParam_Races = new int[] { 240, 241, 242, 243, 244, 245, 246, 247, 248, 249 };
             int charMakeMenuListItemParam_Race_Gender_Offset = 20; // add this to above value to get the female version
 
+            FsParam.Row imperialMaleFaceDefault = null;  // setting all class choices to default to imperial male
+
             FsParam charMakeMenuListItemParam = param[ParamType.CharMakeMenuListItemParam];
             FsParam faceParam = param[ParamType.FaceParam];
             for (int i = 0; i < charMakeMenuListItemParam_Races.Count(); i++)
@@ -1060,8 +1163,17 @@ namespace JortPob
                 faceMaleRow.Name = $"Male {playerRace.name}";   // row names for helpful debugging
                 faceFemaleRow.Name = $"Female {playerRace.name}";
 
-                faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);  // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
+                /* Apply facedata from json */
+                Override.FaceData maleFaceData = Override.GetFace($"cc_m_{playerRace.name.ToLower().Replace(" ", "")}");
+                Override.FaceData femaleFaceData = Override.GetFace($"cc_f_{playerRace.name.ToLower().Replace(" ", "")}");
+                foreach (var kvp in maleFaceData.data) { faceMaleRow[kvp.Key].Value.SetValue(kvp.Value); }
+                foreach (var kvp in femaleFaceData.data) { faceFemaleRow[kvp.Key].Value.SetValue(kvp.Value); }
+
+                // the burn scars value is used as a race indentifier. this is picked up by scripts and reset to 0 on first game load
+                faceMaleRow["burn_scar"].Value.SetValue(playerRace.id);
                 faceFemaleRow["burn_scar"].Value.SetValue(playerRace.id);
+
+                if(playerRace.name.ToLower() == "imperial") { imperialMaleFaceDefault = faceMaleRow; }
             }
 
             // Class stuff
@@ -1087,11 +1199,80 @@ namespace JortPob
                 charMakeMenuListClassRow["captionId"].Value.SetValue(classTextId);
 
                 // Char init rows
-                FsParam.Row classRow = charInitParam[(int)(uint)baseClassRow["chrInitParam"].Value.Value];
-                FsParam.Row originRow = charInitParam[(int)(uint)baseClassRow["originChrInitParam"].Value.Value];
+                FsParam.Row classFaceRow = charInitParam[(int)(uint)baseClassRow["chrInitParam"].Value.Value];     // face default for a class
+                FsParam.Row originRow = charInitParam[(int)(uint)baseClassRow["originChrInitParam"].Value.Value];  // actual class
 
-                classRow.Name = playerClass.name;   // row names for helpful debugging
+                classFaceRow.Name = playerClass.name;   // row names for helpful debugging
                 originRow.Name = playerClass.name;
+
+                classFaceRow["npcPlayerFaceGenId"].Value.SetValue(imperialMaleFaceDefault.ID); // make all class choices have the imperial male a their default chr choice
+
+                foreach(var (key, value) in playerClass.data)
+                {
+                    FsParam.Cell cell = (FsParam.Cell)originRow[key];
+                    switch (cell.Value)
+                    {
+                        case short:
+                            cell.SetValue((short)value);
+                            break;
+                        case byte:
+                            cell.SetValue((byte)value);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");
+                    }
+                }
+
+                originRow["equip_Wep_Right"].Value.SetValue(-1);
+                originRow["equip_Subwep_Right"].Value.SetValue(-1);
+                originRow["equip_Wep_Left"].Value.SetValue(-1);
+                originRow["equip_Subwep_Left"].Value.SetValue(-1);
+
+                originRow["equip_Helm"].Value.SetValue(-1);
+                originRow["equip_Armer"].Value.SetValue(160100);  // SIC
+                originRow["equip_Gaunt"].Value.SetValue(-1);
+                originRow["equip_Leg"].Value.SetValue(160300);
+
+                originRow["equip_Arrow"].Value.SetValue(-1);
+                originRow["equip_SubArrow"].Value.SetValue(-1);
+            }
+
+            // Gift stuff
+            List<Override.Gift> gifts = Override.GetCharacterCreationGifts();
+            int[] charInitParam_Gifts = new int[] { 2400, 2401, 2402, 2403, 2404, 2405, 2406, 2407, 2408, 2409 };
+            int[] charMakeMenuListItemParam_Gifts = new int[] { 100300, 100301, 100302, 100303, 100304, 100305, 100306, 100307, 100308, 100309 };
+            for (int i = 0; i < baseChrSelectMenuParam_Classes.Count(); i++)
+            {
+                Override.Gift gift = gifts[i];
+                FsParam.Row charMakeMenuListGiftRow = charMakeMenuListItemParam[charMakeMenuListItemParam_Gifts[i]];
+                FsParam.Row charInitGiftRow = charInitParam[charInitParam_Gifts[i]];
+
+                // Text in menu
+                int classTextId = textManager.AddMenuText(gift.name, gift.description);
+                charMakeMenuListGiftRow.Name = gift.name;   // row names for helpful debugging
+                charMakeMenuListGiftRow["captionId"].Value.SetValue(classTextId);
+
+                // Change item in CharInit
+                charInitGiftRow.Name = gift.name;
+                charInitGiftRow["item_03"].Value.SetValue(-1);
+                charInitGiftRow["itemNum_03"].Value.SetValue((byte)0);
+                charInitGiftRow["equip_Accessory01"].Value.SetValue(-1);
+
+                foreach (var (key, value) in gift.data)
+                {
+                    FsParam.Cell cell = (FsParam.Cell)charInitGiftRow[key];
+                    switch (cell.Value)
+                    {
+                        case int:
+                            cell.SetValue((int)value);
+                            break;
+                        case byte:
+                            cell.SetValue((byte)value);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in GenerateCustomCharacterCreation()");
+                    }
+                }
             }
 
             // Minor text tweaks
@@ -1230,6 +1411,36 @@ namespace JortPob
 
             nextEnemyItemLotId += 10;
             return baseRow;
+        }
+
+        public void GenerateLoadingMenuRows(TextManager text)
+        {
+            // all custom loading menu items are stored in "resources/msg/loadingMenuItems.json"
+            // quantity testing hasn't been done yet, but there can be more loading titles than the base game
+            // just don't go crazy without telling one of the mods
+
+            if (Const.DEBUG_SKIP_CUSTOM_LOADING_TEXT) return;
+
+            // Grab loading menu text override
+            List<Override.LoadingTip> loadingTips = Override.GetLoadingTips();
+
+            // Wipe out loading text param
+            FsParam loadingMenuParam = param[ParamType.KnowledgeLoadScreenItemParam];
+            loadingMenuParam.ClearRows();
+
+            // Add our new ones in
+            foreach (Override.LoadingTip loadingTip in loadingTips)
+            {
+                FsParam.Row row = new FsParam.Row(loadingMenuParam.Rows.Count()+1, loadingTip.title, loadingMenuParam);
+                int textId = textManager.AddLoadingTip(loadingTip.title, loadingTip.text);
+
+                row["disableParam_NT"].Value.SetValue((byte)0);
+                row["unlockFlagId"].Value.SetValue((UInt32)0);
+                row["invalidFlagId"].Value.SetValue((UInt32)0);
+                row["msgId"].Value.SetValue(textId);
+
+                loadingMenuParam.AddRow(row);
+            }
         }
     }
 }

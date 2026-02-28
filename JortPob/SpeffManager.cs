@@ -29,15 +29,15 @@ namespace JortPob
         public readonly List<Speff> speffs;
 
         private Paramanager paramanager;
-        private IconManager iconManager;
+        private MenuTextureManager textureManager;
         private TextManager textManager;
 
         private int nextSpeffId = 1000100;
 
-        public SpeffManager(ESM esm, Paramanager paramanager, ScriptManager scriptManager, IconManager iconManager, TextManager textManager)
+        public SpeffManager(ESM esm, Paramanager paramanager, ScriptManager scriptManager, MenuTextureManager textureManager, TextManager textManager)
         {
             this.paramanager = paramanager;
-            this.iconManager = iconManager;
+            this.textureManager = textureManager;
             this.textManager = textManager;
 
             speffs = new();
@@ -102,7 +102,7 @@ namespace JortPob
                     SillyJsonUtils.CopyRowAndModify(paramanager, this, Paramanager.ParamType.SpEffectParam, $"Custom :: {speff.id}", def.row, speff.row, def.data);
                     if (def.icon != SpeffManager.Speff.Effect.MagicEffect.None && !Const.DEBUG_SKIP_ICONS)
                     {
-                        SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.SpEffectParam, speff.row, "iconId", (int)(iconManager.GetBuffByType(def.icon).id));
+                        SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.SpEffectParam, speff.row, "iconId", (int)(textureManager.icon.GetBuffByType(def.icon).id));
                     }
                 }
                 // Generate via data parsed from esm
@@ -191,7 +191,7 @@ namespace JortPob
             /* Find and apply icon for buff */
             if (speff.effects.Count() > 0)
             {
-                IconManager.BuffInfo buffIcon = iconManager.GetBuffByType(speff.effects[0].effect);
+                IconManager.BuffInfo buffIcon = textureManager.icon.GetBuffByType(speff.effects[0].effect);
                 if (buffIcon != null) { row["iconId"].Value.SetValue((int)(buffIcon.id)); }
             }
 

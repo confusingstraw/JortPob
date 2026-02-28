@@ -302,7 +302,7 @@ namespace JortPob
                     }
                 }
                 ScoopEmUp(esm.exterior, true);
-                if (!Const.DEBUG_SKIP_INTERIOR) { ScoopEmUp(esm.interior, false); }
+                ScoopEmUp(esm.interior, false);
 
                 Lort.Log($"Generating new cache...", Lort.Type.Main);
 

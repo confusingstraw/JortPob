@@ -477,9 +477,16 @@ namespace JortPob
     /* npcs, humanoid only */
     public class NpcContent : CharacterContent
     {
+        public readonly string head, hair;
+
+        // can be null, these fields are resolved by ItemManager.ResolveInventory
+        public ItemManager.ItemInfo equipWeaponLeft, equipWeaponRight, equipRange, equipHead, equipBody, equipHands, equipLegs, equipArrow, equipBolt;
+        public ItemManager.ItemInfo[] equipAcc, equipGood;
+
         public NpcContent(ESM esm, Cell cell, JsonNode json, Record record) : base(esm, cell, json, record)
         {
-            /* Parent constructor does all the work */
+            head = record.json["head"].GetValue<string>();
+            hair = record.json["hair"].GetValue<string>();
         }
     }
 
