@@ -945,25 +945,6 @@ namespace JortPob
 
                     Lort.TaskIterate();
                 }
-
-                /* Then compile papyrus and dialog */
-                if (papyrusMain != null) { PapyrusEMEVD.Compile(esm, layout, null, sound.main, scriptManager, param, item, speff, scriptManager.common, papyrusMain, null); }
-                Lort.TaskIterate();
-                foreach (PleaseCompile compile in contentToCompile)
-                {
-                    Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
-                    if (papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
-
-                    if (compile.content is CharacterContent)
-                    {
-                        MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
-                        CharacterContent characterContent = compile.content as CharacterContent;
-                        if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
-                        else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
-                    }
-
-                    Lort.TaskIterate();
-                }
             }
 
             /* Geneate debug area in Stranded Graveyard */

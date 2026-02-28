@@ -59,7 +59,7 @@
   // lava area near Galom Daeus = [8, -2, 12, 2],
   // lava and swamp areas combined = [-10, -10, 15, 5],
   // half the map = [-10, -15, 20, 0],
-  "DEBUG_EXCLUSIVE_BUILD_BY_BOX": null,
+  "DEBUG_EXCLUSIVE_BUILD_BY_BOX": [ -3, -10, -1, -8 ],
 
   // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
   // set MATCHES to null or remove from settings.json if for proper normal building
