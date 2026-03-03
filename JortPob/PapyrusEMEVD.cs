@@ -5,8 +5,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Mime;
+using System.Numerics;
 using static JortPob.Papyrus;
 using static JortPob.Script.Flag;
+using static SoulsAssetPipeline.Audio.Wwise.WwiseBlock;
 using static SoulsFormats.NVM;
 
 namespace JortPob
@@ -634,7 +636,6 @@ namespace JortPob
 
                 lines.AddRange(pass);
                 lines.AddRange(fail);
-                lines.AddRange(post);
 
                 return lines;
             }
@@ -1479,6 +1480,63 @@ namespace JortPob
 
                             // Play SE call
                             lines.Add($"PlaySE({targetId}, 5, {seId});");
+                            break;
+                        }
+
+                    case Call.Type.Position:
+                        {
+                            // find where to teleport to
+                            float x = float.Parse(call.parameters[0]);
+                            float y = float.Parse(call.parameters[2]);
+                            float z = float.Parse(call.parameters[1]);
+                            Vector3 position = new(x, y, z);
+                            position *= Const.GLOBAL_SCALE;
+                            Layout.ScriptedPosition sp = layout.FindScriptedPosition(position);
+
+                            // player teleport
+                            if(call.target == "player")
+                            {
+                                lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
+                            }
+                            // npc teleport
+                            else
+                            {
+                                // TODO:
+                            }
+                            break;
+                        }
+
+                    case Call.Type.PositionCell:
+                        {
+                            // find where to teleport to
+                            float x = float.Parse(call.parameters[0]);
+                            float y = float.Parse(call.parameters[2]);
+                            float z = float.Parse(call.parameters[1]);
+                            Vector3 position = new(x, y, z);
+                            position *= Const.GLOBAL_SCALE;
+                            string name = call.parameters[4];
+                            Layout.ScriptedPosition sp = layout.FindScriptedPosition(name, position);
+
+                            // player teleport
+                            if (call.target == "player")
+                            {
+                                lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
+                            }
+                            // npc teleport
+                            else
+                            {
+                                // TODO:
+                            }
+                            break;
+                        }
+
+                    case Call.Type.PlayBink:
+                        {
+                            if (Const.DEBUG_SKIP_CUTSCENES) { break; }
+                            string name = call.parameters[0].ToLower().Trim();
+                            string path = Path.Combine(Const.MORROWIND_PATH, @"Data Files\video", name);
+                            int cutscene = Cutscener.Create(path);
+                            lines.Add($"PlayCutsceneToAll({cutscene}, 0);");
                             break;
                         }
 

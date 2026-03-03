@@ -163,7 +163,7 @@ namespace JortPob
                         string wemFile;
                         uint nxtid = (uint)(info.id + i);
                         string hashName = $"{info.text.GetMD5Hash()}+{i}"; // Get the hash of the actual text string for this line, it will be our unique identier and filename for the cached wav/wem
-                        if (Const.USE_SAM) { wemFile = soundManager.GenerateLine(dia, info, line, hashName, content); }
+                        if (Const.USE_SAM && !Const.DEBUG_SKIP_SOUND) { wemFile = soundManager.GenerateLine(dia, info, line, hashName, content); }
                         else { wemFile = Const.DEFAULT_DIALOG_WEM; }
 
                         // If this is not the first line in a talkparam group we must generate with sequential ids!

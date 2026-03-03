@@ -13,6 +13,31 @@ namespace JortPob.Common
 {
     public class SAM
     {
+        /* Creates the WWISE project. Made this a seperate call so that we don't have multiple threads trying to do this at the same time! */
+        public static void CreateProject()
+        {
+            if (Const.DEBUG_SKIP_SOUND) { return; }
+
+            string wwiseConsolePath = Path.Combine(Const.WWISE_PATH, "WwiseConsole.exe");
+            string projectDir = Path.Combine(Const.CACHE_PATH, @"wwise\");
+            string projectPath = $"{projectDir}wwise.wproj";
+
+            // Create project if it doesn't exist
+            if (!File.Exists(projectPath))
+            {
+                if (Directory.Exists(projectDir)) { Directory.Delete(projectDir); } // creating a wwise proj requires the folder to not exist
+                ProcessStartInfo startInfo = new(wwiseConsolePath)
+                {
+                    WorkingDirectory = Const.CACHE_PATH,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                startInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
+                Utility.ExecuteProcess(startInfo);
+            }
+        }
+
+        /* DO NOT USE */
         public static string Generate(Dialog.DialogRecord dialog, Dialog.DialogInfoRecord info, string line, string hashName, NpcContent npc)
         {
             // Get the exact location this file will be in
@@ -64,20 +89,6 @@ namespace JortPob.Common
                                 """";
                     File.WriteAllText(xmlPath, xmlRaw);
 
-                    // Create project if it doesn't exist
-                    if (!File.Exists(projectPath))
-                    {
-                        if (Directory.Exists(projectDir)) { Directory.Delete(projectDir); } // creating a wwise proj requires the folder to not exist
-                        ProcessStartInfo startInfo = new(wwiseConsolePath)
-                        {
-                            WorkingDirectory = Const.CACHE_PATH,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        };
-                        startInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        Utility.ExecuteProcess(startInfo);
-                    }
-
                     // Call wwise console to convert wav to wem
                     {
                         ProcessStartInfo startInfo = new(wwiseConsolePath)
@@ -108,7 +119,7 @@ namespace JortPob.Common
             return wemPath;
         }
 
-
+        /* Generate TTS of dialog via flite and convert to WEM */
         public static string GenerateAlt(Dialog.DialogRecord dialog, Dialog.DialogInfoRecord info, string line, string hashName, CharacterContent npc)
         {
             // Define paths
@@ -177,22 +188,6 @@ namespace JortPob.Common
                         <ExternalSourcesList SchemaVersion="1" Root="{lineDir}"><Source Path="{hashName}.wav" Conversion="Vorbis Quality High" /></ExternalSourcesList>
                         """;
                     File.WriteAllText(xmlPath, xmlRaw);
-
-                    // Create Wwise project if it doesn't exist
-                    if (!File.Exists(projectPath))
-                    {
-                        // Wwise requires the folder to not exist for project creation
-                        if (Directory.Exists(projectDir)) { Directory.Delete(projectDir, true); }
-                        
-                        ProcessStartInfo createProjectInfo = new(wwiseConsolePath)
-                        {
-                            WorkingDirectory = Const.CACHE_PATH,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        };
-                        createProjectInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        Utility.ExecuteProcess(createProjectInfo);
-                    }
 
                     // Convert wav to wem
                     ProcessStartInfo convertInfo = new(wwiseConsolePath)

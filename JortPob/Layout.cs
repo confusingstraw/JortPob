@@ -1,9 +1,11 @@
 ﻿using JortPob.Common;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Windows.Forms;
 using static JortPob.InteriorGroup;
 
 namespace JortPob
@@ -331,37 +333,11 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
-            InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
-            {
-                foreach(InteriorGroup group in interiors)
-                {
-                    foreach (InteriorGroup.Chunk chunk in group.chunks)
-                    {
-                        if (chunk.cell.name == name) { return chunk; }
-                    }
-                }
-
-                return null; // may happen if debug options are enabled to build only some cells
-            }
-
-            Tile FindTile(Vector3 position) // find a tile based on coords
-            {
-                foreach (Tile tile in tiles)
-                {
-                    if(tile.PositionInside(position))
-                    {
-                        return tile;
-                    }
-                }
-
-                return null; // may happen if debug options are enabled to build only some cells
-            }
-
             Cell FindCell(Vector3 position)  // getting an ext cell by morrowind coordinates. used to find exterior cell name
             {
                 int x = (int)Math.Floor(position.X / Const.CELL_SIZE);
                 int y = (int)Math.Floor(position.Z / Const.CELL_SIZE);
-                return esm.GetCellByGrid(new Int2(x,y));
+                return esm.GetCellByGrid(new Int2(x, y));
             }
 
             void HandleDoor(DoorContent door)
@@ -618,7 +594,7 @@ namespace JortPob
             }
             Lort.TaskIterate(); // Progress bar update
 
-            /* Pat 2 of Papyrus preprocess */
+            /* Part 2 of Papyrus preprocess */
             /* This assigns entity ids to objects that have scripts referencing them */
             /* It also in some cases creates flags and events for objects that require them. */
             /* Also notably we setup disable/enable flags here as well */
@@ -719,6 +695,59 @@ namespace JortPob
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
             }
             Lort.TaskIterate(); // Progress bar update
+
+            /* Preprocess papyrus calls like 'Position' that need a region placed at a location in the world */
+            foreach(Tile tile in tiles)
+            {
+                foreach(Content content in tile.GetAllContent())
+                {
+                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                    if(papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = papyrus.GetCalls();
+                    foreach(Papyrus.Call call in calls)
+                    {
+                        switch(call.type)
+                        {
+                            case Papyrus.Call.Type.Position:
+                                {
+                                    // Find tile this position call is pointing too
+                                    float x = float.Parse(call.parameters[0]);
+                                    float y = float.Parse(call.parameters[2]);
+                                    float z = float.Parse(call.parameters[1]);
+                                    Vector3 position = new(x, y, z);
+                                    position *= Const.GLOBAL_SCALE;
+                                    float rot = float.Parse(call.parameters[3]);
+                                    Tile target = GetTile(position);
+                                    if (target == null) { throw new Exception("Failed to place region for preprocessed position call"); }
+
+                                    // Add a point at this position that will become a region we can use in scripts later
+                                    Script script = scriptManager.GetScript(target);
+                                    target.AddScriptedPosition(script, position, rot);
+                                    break;
+                                }
+                            case Papyrus.Call.Type.PositionCell:
+                                {
+                                    float x = float.Parse(call.parameters[0]);
+                                    float y = float.Parse(call.parameters[2]);
+                                    float z = float.Parse(call.parameters[1]);
+                                    Vector3 position = new(x, y, z);
+                                    position *= Const.GLOBAL_SCALE;
+                                    float rot = float.Parse(call.parameters[3]);
+                                    string name = call.parameters[4];
+                                    InteriorGroup.Chunk target = FindChunk(name);
+                                    if (target == null) { throw new Exception("Failed to place region for preprocessed positioncell call"); }
+
+                                    // Add a point at this position that will become a region we can use in scripts later
+                                    Script script = scriptManager.GetScript(target.group);
+                                    target.AddScriptedPosition(script, position, rot);
+                                    break;
+                                }
+                            default: break; // do nothing
+                        }
+                    }
+                }
+            }
 
             /* Generate map point placements */
             Dictionary<string, List<Vector3>> mapPoints = new();
@@ -932,6 +961,32 @@ namespace JortPob
             return null;
         }
 
+        InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
+        {
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    if (chunk.cell.name.ToLower().Trim() == name.ToLower().Trim()) { return chunk; }
+                }
+            }
+
+            return null; // may happen if debug options are enabled to build only some cells
+        }
+
+        Tile FindTile(Vector3 position) // find a tile based on coords
+        {
+            foreach (Tile tile in tiles)
+            {
+                if (tile.PositionInside(position))
+                {
+                    return tile;
+                }
+            }
+
+            return null; // may happen if debug options are enabled to build only some cells
+        }
+
         /* Called by script compilers in DialogESD.cs and PapyrusEMEVD.cs */
         /* When a Papyrus script references an object by it's record name we need to find that object to do operations on it */
         /* Example is like "fargoth"->disable */
@@ -992,6 +1047,30 @@ namespace JortPob
             }
 
             return null; // not found anywhere!
+        }
+
+        /* Finds scripted position in exterior */
+        public ScriptedPosition FindScriptedPosition(Vector3 position)
+        {
+            foreach(Tile tile in tiles)
+            {
+                foreach(ScriptedPosition sp in tile.positions)
+                {
+                    if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
+                }
+            }
+            return null;
+        }
+
+        /* Finds scripted position in interior */
+        public ScriptedPosition FindScriptedPosition(string name, Vector3 position)
+        {
+            InteriorGroup.Chunk chunk = FindChunk(name);
+            foreach(ScriptedPosition sp in chunk.positions)
+            {
+                if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
+            }
+            return null;
         }
 
         public class MapPoint
@@ -1076,6 +1155,26 @@ namespace JortPob
                 this.position = position - new Vector3(0f, Const.NPC_ROOT_OFFSET, 0f);  // fix load door offset
                 this.rotation = rotation;
                 this.id = id;
+            }
+        }
+
+        public class ScriptedPosition
+        {
+            public readonly Vector3 position, relative, rotation;
+            public readonly uint region, player;  // entity ids
+            public int map, area, unk, block;     // for WarpPlayer if needed
+
+            public ScriptedPosition(Vector3 position, Vector3 relative, Vector3 rotation, uint region, uint player, int map, int area, int unk, int block)
+            {
+                this.position = position;
+                this.relative = relative - new Vector3(0f, Const.NPC_ROOT_OFFSET, 0f);  // fix offset
+                this.rotation = rotation;
+                this.region = region;
+                this.player = player;
+                this.map = map;
+                this.area = area;
+                this.unk = unk;
+                this.block = block;
             }
         }
     }

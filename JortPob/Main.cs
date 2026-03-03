@@ -21,7 +21,7 @@ namespace JortPob
             Utility.InitSRGBCache();
 
             /* Loading stuff */
-            ScriptManager scriptManager = new();                                                // Manages EMEVD scripts
+            ScriptManager scriptManager = new();                                               // Manages EMEVD scripts
             ESM esm = new ESM(scriptManager);                                               // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             TextManager text = new();                                                           // Manages FMG text files
@@ -38,6 +38,7 @@ namespace JortPob
             List<Tuple<Vector3, TerrainInfo>> emptyTerrainList = [];
 
             /* Some quick setup stuff */
+            SAM.CreateProject(); // generate wwise project if it does not exist
             scriptManager.SetupSpecialFlags(esm);
 
             /* Create some needed text data that is ref'd later */
@@ -45,6 +46,9 @@ namespace JortPob
 
             /* Write custom map */
             if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+
+            /* Replace openign cutscene */
+            if(!Const.DEBUG_SKIP_CUTSCENES) { Cutscener.Create(Path.Combine(Const.MORROWIND_PATH, @"Data Files\video\mw_intro.bik"), 0040); }
 
             /* Collect content that needs script compiling for post MSB generation */
             List<PleaseCompile> contentToCompile = new();
@@ -427,6 +431,29 @@ namespace JortPob
 
                     /* Add to msb */
                     msb.Parts.Assets.Add(asset);
+                }
+
+                /* Add scripted positions */
+                if(isTileType)
+                {
+                    foreach(Layout.ScriptedPosition sp in tile.positions)
+                    {
+                        MSBE.Part.Player player = MakePart.Player();
+                        player.Position = sp.relative + Const.MSB_OFFSET;
+                        player.Rotation = sp.rotation;
+                        player.EntityID = sp.player;
+                        msb.Parts.Players.Add(player);
+
+                        MSBE.Region.Other region = new();
+                        region.Name = $"ScriptedPosition:{sp.position}";
+                        region.Shape = new MSB.Shape.Point();
+                        region.Position = sp.relative + Const.MSB_OFFSET;
+                        region.Rotation = sp.rotation;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = sp.region;
+                        region.MapStudioLayer = 4294967295;
+                        msb.Regions.Add(region);
+                    }
                 }
 
                 /* Handle area names */
@@ -844,9 +871,28 @@ namespace JortPob
                         msb.Parts.Assets.Add(asset);
                     }
 
+                    /* Add scripted positions */
+                    foreach (Layout.ScriptedPosition sp in chunk.positions)
+                    {
+                        MSBE.Part.Player player = MakePart.Player();
+                        player.Position = sp.relative + Const.MSB_OFFSET;
+                        player.Rotation = sp.rotation;
+                        player.EntityID = sp.player;
+                        msb.Parts.Players.Add(player);
+
+                        MSBE.Region.Other region = new();
+                        region.Name = $"ScriptedPosition:{sp.position}";
+                        region.Shape = new MSB.Shape.Point();
+                        region.Position = sp.relative + Const.MSB_OFFSET;
+                        region.Rotation = sp.rotation;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = sp.region;
+                        region.MapStudioLayer = 4294967295;
+                        msb.Regions.Add(region);
+                    }
+
                     /* Handle area name */
                     int paramId = int.Parse($"60{group.map:D2}{group.area:D2}{nextMPR:D2}");
-
 
                     MSBE.Region.MapPoint mpr = new();
                     mpr.Name = $"{chunk.cell.name} placename";

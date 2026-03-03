@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageVersion Include="DirectXTexNet" Version="1.0.7" />
     <PackageVersion Include="gfoidl.Base64" Version="2.0.0" />
+    <PackageVersion Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="NAudio" Version="2.2.1" />
     <PackageVersion Include="SharpAssimp" Version="6.0.5" />

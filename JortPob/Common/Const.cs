@@ -29,6 +29,8 @@ namespace JortPob.Common
         public static string OUTPUT_PATH { get; private set; }
         [Setting] 
         public static string WWISE_PATH { get; private set; }
+        [Setting]
+        public static string RAD_PATH { get; private set; }
         public static string CACHE_PATH => Path.Combine(OUTPUT_PATH, @"cache\");
         [Setting("Morrowind.esm")] 
         public static string[] LOAD_ORDER { get; private set; }
@@ -229,13 +231,8 @@ namespace JortPob.Common
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
-        [Setting(false)] public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
-
         [Setting(false)]
-        public static bool DEBUG_SKIP_CUSTOM_LOADING_TEXT { get; private set; }
-
-        [Setting(false)]
-        public static bool DEBUG_SKIP_CUSTOM_LOADING_IMAGES { get; private set; } // same here
+        public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         /// can make dialog unuseable
         [Setting(false)]
@@ -247,7 +244,11 @@ namespace JortPob.Common
 
         /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
         [Setting(false)]
-        public static bool DEBUG_SKIP_ICONS { get; private set; }
+        public static bool DEBUG_SKIP_MENU_TEXTURES { get; private set; }
+
+        /// skip generating cutscene binds and BK2 videos.
+        [Setting(false)]
+        public static bool DEBUG_SKIP_CUTSCENES { get; private set; }
 
         /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
         [Setting(false)]

@@ -1419,7 +1419,7 @@ namespace JortPob
             // quantity testing hasn't been done yet, but there can be more loading titles than the base game
             // just don't go crazy without telling one of the mods
 
-            if (Const.DEBUG_SKIP_CUSTOM_LOADING_TEXT) return;
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) return;
 
             // Grab loading menu text override
             List<Override.LoadingTip> loadingTips = Override.GetLoadingTips();

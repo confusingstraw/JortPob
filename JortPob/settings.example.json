@@ -3,6 +3,7 @@
   "ELDEN_PATH": "P:\\ATH\\TO\\ELDENRING\\",
   "WWISE_PATH": "P:\\ATH\\TO\\WWISE\\",
   "OUTPUT_PATH": "P:\\ATH\\TO\\MOD\\FOLDER\\",
+  "RAD_PATH": "P:\\ATH\\TO\\RADVideo\\",
   "THREAD_COUNT": 16,
   "LOAD_ORDER": [
     "Morrowind.esm"
@@ -20,8 +21,11 @@
   // Saves anywhere between 2 and 45 minutes on a build. Makes all dialog skip instantly though.
   "DEBUG_SKIP_SOUND": false,
 
-  // Saves 2 or 3 minutes on a build
-  "DEBUG_SKIP_ICONS": false,
+  // Saves 3 to 5 minutes on a build
+  "DEBUG_SKIP_MENU_TEXTURES": false,
+
+  // Saves a little time on builds
+  "DEBUG_SKIP_CUTSCENES": false,
 
   // Saves anywhere between 1 and 15 minutes on a build. Disables all papyrus scripts and all NPC dialog.
   "DEBUG_SKIP_SCRIPTS": false,

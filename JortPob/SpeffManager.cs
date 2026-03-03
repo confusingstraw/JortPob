@@ -100,7 +100,7 @@ namespace JortPob
                 {
                     Override.SpeffDefinition def = Override.GetSpeffDefinition(speff.id);
                     SillyJsonUtils.CopyRowAndModify(paramanager, this, Paramanager.ParamType.SpEffectParam, $"Custom :: {speff.id}", def.row, speff.row, def.data);
-                    if (def.icon != SpeffManager.Speff.Effect.MagicEffect.None && !Const.DEBUG_SKIP_ICONS)
+                    if (def.icon != SpeffManager.Speff.Effect.MagicEffect.None && !Const.DEBUG_SKIP_MENU_TEXTURES)
                     {
                         SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.SpEffectParam, speff.row, "iconId", (int)(textureManager.icon.GetBuffByType(def.icon).id));
                     }
