@@ -25,7 +25,7 @@ namespace JortPob
             if (content.ownerNpc != null)
             {
                 Content owner = layout.FindScriptReference(content, content.ownerNpc);
-                if(owner != null) { ownerFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, owner.entity.ToString()); }
+                if(owner != null) { ownerFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, owner); }
                 else { ownerFlag = null; }
             }
             else { ownerFlag = null; }

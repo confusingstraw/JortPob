@@ -3,6 +3,7 @@ using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
@@ -16,11 +17,15 @@ namespace JortPob
         public ScriptCommon common;
         public List<Script> scripts; // map scripts
         public Dictionary<string, uint> locations;
+        public Dictionary<PhasedNpcContent, string> routing; // a routing dictionary for phased npcs to share flags
+        public Dictionary<Cell, uint> areas; // dictionary of region entity ids that cover the volume of an interior cell
         public ScriptManager()
         {
             common = new(this);
             scripts = new();
             locations = new();
+            routing = new();
+            areas = new();
 
             // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
             // I have these used numbers in a txt file and we parse that into a list
@@ -61,6 +66,21 @@ namespace JortPob
             return GetScript(group.map, group.area, group.unk, group.block);
         }
 
+        /* Supports phased routing */
+        public Flag GetFlag(Designation designation, Content content)
+        {
+            if (content is PhasedNpcContent && routing.ContainsKey((PhasedNpcContent)content)) { return GetFlag(designation, routing[(PhasedNpcContent)content]); }
+            else { return GetFlag(designation, content.entity.ToString()); }
+        }
+
+        /* Supports phased routing */
+        public Flag GetFlagLocal(Content content, string name)
+        {
+            if (content is PhasedNpcContent && routing.ContainsKey((PhasedNpcContent)content)) { return GetFlag(Designation.Local, $"{routing[(PhasedNpcContent)content]}.{name}"); }
+            else { return GetFlag(Designation.Local, $"{content.entity.ToString()}.{name}"); }
+        }
+
+        /* Does not support phased routing */
         public Flag GetFlag(Designation designation, string name)
         {
             (Designation, string) lookupKey = FormatFlagLookupKey(designation, name.ToLower());
@@ -75,6 +95,11 @@ namespace JortPob
             }
 
             return null;
+        }
+
+        public void AddRoute(PhasedNpcContent phase, Content original)
+        {
+            routing.Add(phase, original.entity.ToString());
         }
 
         /* Sets up race and faction flags that are used globally and interact with specific papyrus calls */
@@ -532,6 +557,26 @@ namespace JortPob
         {
             if (!locations.ContainsKey(name.ToLower().Trim())) { return 0; }
             return locations[name.ToLower().Trim()];
+        }
+
+        /* Retrieve info on a PhasedNpcContent based on a Papyrus call of Position or PositionCell */
+        public PhasedNpcContent FindPhase(PhasedNpcContent pnpc, string location, Vector3 position) { return FindPhase(pnpc.source, location, position); }
+        public PhasedNpcContent FindPhase(uint source, string location, Vector3 position)
+        {
+            foreach(var (pnpc, route) in routing)
+            {
+                if(pnpc.source == source)
+                {
+                    if ((pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim()))
+                    {
+                        if (Vector3.Distance(pnpc.position, position) < 1f)
+                        {
+                            return pnpc;
+                        }
+                    }
+                }
+            }
+            return null;
         }
 
         /* Write all EMEVD scripts this class has created */

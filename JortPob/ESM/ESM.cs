@@ -1,7 +1,5 @@
 ﻿using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Utils;
-using SoulsFormats;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,14 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using static HKLib.hk2018.hkbStateMachine;
-using static IronPython.Modules._ast;
 using static JortPob.Dialog;
-using static JortPob.NpcManager;
-using static JortPob.NpcManager.TopicData;
-using static JortPob.Papyrus;
-using static JortPob.Script;
 
 namespace JortPob
 {

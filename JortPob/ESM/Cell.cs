@@ -195,5 +195,10 @@ namespace JortPob
             }
             return beds;
         }
+
+        public bool IsExterior()
+        {
+            return !flags.Contains(Flag.IsInterior);
+        }
     }
 }

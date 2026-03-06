@@ -181,8 +181,7 @@ namespace JortPob
                             {
                                 case DialogFilter.Function.VariableCompare:
                                     {
-                                        string localId = $"{npc.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
-                                        Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
+                                        Flag lvar = scriptManager.GetFlagLocal(npc, filter.id); // look for flag
                                         if (lvar != null) { return true; } // local vars are preprocessed so we can just check if the local var exists or not
                                         break;
                                     }
@@ -196,8 +195,7 @@ namespace JortPob
                             {
                                 case DialogFilter.Function.VariableCompare:
                                     {
-                                        string localId = $"{npc.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
-                                        Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
+                                        Flag lvar = scriptManager.GetFlagLocal(npc, filter.id); // look for flag
                                         if (lvar == null) { return true; } // local vars are preprocessed so we can just check if the local var exists or not
                                         break;
                                     }
@@ -289,7 +287,7 @@ namespace JortPob
                 // Handle disposition check
                 if (disposition > 0)
                 {
-                    Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                    Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
                     conditions.Add($"GetEventFlagValue({flag.id}, {(int)flag.type}) >= {disposition}");
                 }
 
@@ -323,7 +321,7 @@ namespace JortPob
                                         }
                                     case DialogFilter.Function.Attacked:
                                         {
-                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent.entity.ToString());
+                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent);
                                             return $"GetEventFlag({flag.id}) == {filter.ResolveBinaryComparison()}";
                                         }
                                     case DialogFilter.Function.FactionRankDifference:
@@ -335,7 +333,7 @@ namespace JortPob
                                     case DialogFilter.Function.RankRequirement:
                                         {
                                             if (npcContent.faction == null) { return "False"; } // static false return if npc is not in a faction
-                                            Script.Flag retVal = scriptManager.GetFlag(Script.Flag.Designation.ReturnValueRankReq, npcContent.entity.ToString());
+                                            Script.Flag retVal = scriptManager.GetFlag(Script.Flag.Designation.ReturnValueRankReq, npcContent);
                                             return $"GetEventFlagValue({retVal.id}, {retVal.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
                                     case DialogFilter.Function.SameFaction:
@@ -357,7 +355,7 @@ namespace JortPob
                                         }
                                     case DialogFilter.Function.TalkedToPc:
                                         {
-                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString());
+                                            Script.Flag flag = scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent);
                                             return $"GetEventFlag({flag.id}) == {filter.ResolveBinaryComparison()}";
                                         }
                                     case DialogFilter.Function.PcLevel:
@@ -465,7 +463,7 @@ namespace JortPob
                                             // NPC is in a faction so we need to call the substate for calculating reaction values
                                             if (npcContent.faction != null)
                                             {
-                                                Script.Flag highFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionHigh, npcContent.entity.ToString());
+                                                Script.Flag highFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionHigh, npcContent);
                                                 return $"GetEventFlagValue({highFlag.id}, {highFlag.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                             }
                                             // NPC not in a faction so reaction is 0
@@ -479,7 +477,7 @@ namespace JortPob
                                             // NPC is in a faction so we need to call the substate for calculating reaction values
                                             if (npcContent.faction != null)
                                             {
-                                                Script.Flag lowFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionLow, npcContent.entity.ToString());
+                                                Script.Flag lowFlag = scriptManager.GetFlag(Flag.Designation.ReturnReactionLow, npcContent);
                                                 return $"(0 - GetEventFlagValue({lowFlag.id}, {lowFlag.Bits()})) {filter.OperatorSymbol()} {filter.value}";
                                             }
                                             // NPC not in a faction so reaction is 0
@@ -490,9 +488,9 @@ namespace JortPob
                                         }
                                     case DialogFilter.Function.FriendHit:
                                         {
-                                            Script.Flag hflag = scriptManager.GetFlag(Flag.Designation.Hostile, npcContent.entity.ToString());
-                                            Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent.entity.ToString());
-                                            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+                                            Script.Flag hflag = scriptManager.GetFlag(Flag.Designation.Hostile, npcContent);
+                                            Script.Flag fvar = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent);
+                                            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
                                             return $"(not GetEventFlag({hflag.id}) and GetEventFlagValue({dvar.id}, {dvar.Bits()}) > 60 and GetEventFlagValue({fvar.id}, {fvar.Bits()}) {filter.OperatorSymbol()} {filter.value - 1})";
                                         }
 
@@ -560,8 +558,7 @@ namespace JortPob
                                 {
                                     case DialogFilter.Function.VariableCompare:
                                         {
-                                            string localId = $"{npcContent.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
-                                            Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag
+                                            Flag lvar = scriptManager.GetFlagLocal(npcContent, filter.id); // look for flag
                                             if(lvar == null) { return "True"; } // if we don't find the flag for a local var it doesn't exist
                                             return $"False";
                                         }
@@ -635,8 +632,7 @@ namespace JortPob
                                     case DialogFilter.Function.VariableCompare:
                                     case DialogFilter.Function.Global:  // This appears to be a bug where Locals that are floats get marked as FunctionType 'Global'
                                         {
-                                            string localId = $"{npcContent.entity}.{filter.id}"; // local vars use the characters entity id + the var id. many characters can have their own copy of a local
-                                            Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.Local, localId); // look for flag, if not found it dosent exist so return false
+                                            Flag lvar = scriptManager.GetFlagLocal(npcContent, filter.id); // look for flag, if not found it doesnt exist so return false
                                             if (lvar == null) { return "False"; }
                                             return $"GetEventFlagValue({lvar.id}, {lvar.Bits()}) {filter.OperatorSymbol()} {filter.value}";
                                         }
@@ -752,7 +748,7 @@ namespace JortPob
                     // probably a local var of this object. ex: powerLevel or angryness
                     if (!varName.Contains(".")) 
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varName}");
+                        retFlag = scriptManager.GetFlagLocal(npcContent, varName); // look for flag
                     }
                     // looks like it's actually a local var of a different object EX: fargoth.sexy or "dagoth ur".dreamy
                     else
@@ -764,7 +760,7 @@ namespace JortPob
                         Content target = layout.FindScriptReference(npcContent, recordId);
                         if (target != null)
                         {
-                            retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{npcContent.entity}.{varId}");
+                            retFlag = scriptManager.GetFlagLocal(target, varId);
                         }
                     }
                     // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
@@ -956,7 +952,7 @@ namespace JortPob
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 /* Get flag and/or register script */
-                                Script.Flag disabledFlag = scriptManager.GetFlag(Flag.Designation.Disabled, target.entity.ToString());
+                                Script.Flag disabledFlag = scriptManager.GetFlag(Flag.Designation.Disabled, target);
 
                                 /* Add code */
                                 string toggle = call.type == Papyrus.Call.Type.Disable ? "On" : "Off";
@@ -974,7 +970,7 @@ namespace JortPob
                                     case CharacterContent c:
                                         {
                                             if(c.dead) { goto default; } // dead bodies can be treated basically like static objects
-                                            Script.Flag deadFlag = scriptManager.GetFlag(Flag.Designation.Dead, target.entity.ToString());
+                                            Script.Flag deadFlag = scriptManager.GetFlag(Flag.Designation.Dead, target);
                                             lines.Add($"if not GetEventFlag({deadFlag.id}):");               // if character is not dead then trigger enable/disable
                                             lines.Add($"    SetEventFlag({triggerFlag.id}, FlagState.On)");
                                             break;
@@ -1270,7 +1266,7 @@ namespace JortPob
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 // Add call to mod disposition func
-                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                                 lines.Add($"assert t{esdId:D9}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dvar.id}, value={call.parameters[0]})");
                                 break;
                             }
@@ -1283,7 +1279,7 @@ namespace JortPob
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 // Set disp value
-                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                                Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                                 lines.Add($"SetEventFlagValue({dvar.id}, {dvar.Bits()}, {call.parameters[0]})");
                                 break;
                             }
@@ -1342,13 +1338,13 @@ namespace JortPob
                                 {
                                     // if a guard starts combat with a player its a crime, if its anyone else it's just them being angy at you
                                     if (targetA.IsGuard()) {
-                                        Flag cvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, targetA.entity.ToString());
+                                        Flag cvar = scriptManager.GetFlag(Flag.Designation.CrimeEvent, targetA);
                                         Script.Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel"); // crime gold flag
                                         lines.Add($"SetEventFlagValue({lvar.id}, {lvar.Bits()}, {Const.CRIME_GOLD_RESIST})");
                                         lines.Add($"SetEventFlag({cvar.id}, FlagState.On)");
                                     }
                                     else {
-                                        Flag hvar = scriptManager.GetFlag(Flag.Designation.Hostile, targetA.entity.ToString());
+                                        Flag hvar = scriptManager.GetFlag(Flag.Designation.Hostile, targetA);
                                         lines.Add($"SetEventFlag({hvar.id}, FlagState.On)");
                                     }
                                 }
@@ -1377,7 +1373,7 @@ namespace JortPob
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 Script areaScript = scriptManager.FindScriptFor(layout, target);
-                                Flag hostileFlag = scriptManager.GetFlag(Flag.Designation.Hostile, target.entity.ToString());
+                                Flag hostileFlag = scriptManager.GetFlag(Flag.Designation.Hostile, target);
                                 Flag fightFlag = areaScript.GetOrRegisterInfight(target);
                                 lines.Add($"SetEventFlag({hostileFlag.id}, FlagState.Off)");
                                 lines.Add($"SetEventFlag({fightFlag.id}, FlagState.Off)");

@@ -1,12 +1,9 @@
 ﻿using JortPob.Common;
-using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
-using static JortPob.NpcContent;
 
 namespace JortPob
 {
@@ -90,6 +87,7 @@ namespace JortPob
             scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
 
+        /* Copy constructor for emitters */
         public Content(Cell cell, string id, string name, ESM.Type type, Int2 load, string papyrus, Vector3 position, Vector3 rotation, int scale)
         {
             this.cell = cell;
@@ -101,6 +99,24 @@ namespace JortPob
             this.position = position;
             this.rotation = rotation;
             this.scale = scale;
+        }
+        
+        /* Copy constructor for Phasing */
+        public Content(Content content, Cell cell, Vector3 position, Vector3 rotation)
+        {
+            this.cell = cell;
+            this.position = position;
+            this.rotation = rotation;
+
+            this.id = content.id;
+            this.name = content.name;
+            this.type = content.type;
+            this.scale = content.scale;
+            this.entity = content.entity;
+            this.papyrus = content.papyrus;
+            this.relative = content.relative;
+            this.load = content.load;
+            this.mesh = content.mesh;
         }
     }
 
@@ -408,6 +424,38 @@ namespace JortPob
             }
         }
 
+        /* Copy constructor for phasing */
+        public CharacterContent(Content content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            if (content is not CharacterContent) { throw new Exception("What the fuck are you doing?"); }
+            CharacterContent c = (CharacterContent)content;
+
+            job = c.job;
+            faction = c.faction;
+            race = c.race;
+            sex = c.sex;
+            level = c.level;
+            disposition = c.disposition;
+            reputation = c.reputation;
+            rank = c.rank;
+            gold = c.gold;
+            hello = c.hello;
+            fight = c.fight;
+            flee = c.flee;
+            alarm = c.alarm;
+            hostile = c.hostile;
+            dead = c.dead;
+            essential = c.essential;
+            hasWitness = c.hasWitness;
+            stats = c.stats;
+            treasure = c.treasure;
+            services = c.services;
+            inventory = c.inventory;
+            spells = c.spells;
+            travel = c.travel;
+            barter = c.barter;
+        }
+
         /* Return true if this npc is a generic guard that can arrest the player for crimes */
         public bool IsGuard() { return job == "Guard" || job == "Ordinator Guard"; }
 
@@ -485,8 +533,44 @@ namespace JortPob
 
         public NpcContent(ESM esm, Cell cell, JsonNode json, Record record) : base(esm, cell, json, record)
         {
+            equipAcc = [];   // initialized with empty arrays because if a character has an empty inventory (barbarians) we will skip resolving equipment for them
+            equipGood = [];
+
             head = record.json["head"].GetValue<string>();
             hair = record.json["hair"].GetValue<string>();
+        }
+
+        public NpcContent(Content content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            if (content is not NpcContent) { throw new Exception("What the fuck are you doing?"); }
+            NpcContent c = (NpcContent)content;
+
+            head = c.head;
+            hair = c.hair;
+
+            equipWeaponLeft = c.equipWeaponLeft;
+            equipWeaponRight = c.equipWeaponRight;
+            equipRange = c.equipRange;
+            equipHead = c.equipHead;
+            equipBody = c.equipBody;
+            equipHands = c.equipHands;
+            equipLegs = c.equipLegs;
+            equipArrow = c.equipArrow;
+            equipBolt = c.equipBolt;
+            equipAcc = c.equipAcc;
+            equipGood = c.equipGood;
+        }
+    }
+
+    public class PhasedNpcContent : NpcContent
+    {
+        public readonly uint source;  // source entity id. from original NpcContent that was converted to phased
+        public readonly int phase;   // index of which phase this is for the phased npc
+
+        public PhasedNpcContent(Content content, Cell cell, Vector3 position, Vector3 rotation, uint source, int phase) : base(content, cell, position, rotation)
+        {
+            this.source = source;
+            this.phase = phase;
         }
     }
 

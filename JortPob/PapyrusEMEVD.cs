@@ -4,12 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Numerics;
 using static JortPob.Papyrus;
 using static JortPob.Script.Flag;
-using static SoulsAssetPipeline.Audio.Wwise.WwiseBlock;
-using static SoulsFormats.NVM;
 
 namespace JortPob
 {
@@ -41,7 +38,7 @@ namespace JortPob
                     }
                     else
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{content.entity}.{varName}");
+                        retFlag = scriptManager.GetFlagLocal(content, varName);
                     }
                 }
                 // looks like it's actually a local var of a different object EX: fargoth.sexy or "dagoth ur".dreamy
@@ -54,7 +51,7 @@ namespace JortPob
                     Content target = layout.FindScriptReference(content, recordId);
                     if (target != null)
                     {
-                        retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{target.entity}.{varId}");
+                        retFlag = scriptManager.GetFlagLocal(target, varId);
                     }
                 }
                 // if the above cases failed to turn up anything then lets see if its a global var EX: crimeGold or tutorialDone
@@ -147,7 +144,7 @@ namespace JortPob
                         if (call.right.type == Call.Type.Literal)
                         {
                             bool flagState = int.Parse(call.right.parameters[0]) == 0;
-                            Script.Flag aflag = scriptManager.GetFlag(Script.Flag.Designation.OnActivate, content.entity.ToString());
+                            Script.Flag aflag = scriptManager.GetFlag(Script.Flag.Designation.OnActivate, content);
                             post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {aflag.id}, OFF);"); // switch on activate flag back off after this conditional resolves
                             lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {aflag.id});");
                         }
@@ -229,7 +226,7 @@ namespace JortPob
                         if(call.right.type == Call.Type.Literal)
                         {
                             bool flagState = int.Parse(call.right.parameters[0]) == 1;
-                            Script.Flag cflag = scriptManager.GetFlag(Script.Flag.Designation.CellChanged, content.entity.ToString());
+                            Script.Flag cflag = scriptManager.GetFlag(Script.Flag.Designation.CellChanged, content);
                             post.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {cflag.id}, ON);");
                             lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "ON" : "OFF")}, TargetEventFlagType.EventFlag, {cflag.id});");
                         }
@@ -240,7 +237,7 @@ namespace JortPob
                         if (call.right.type == Call.Type.Literal)
                         {
                             bool flagState = int.Parse(call.right.parameters[0]) == 0;
-                            Script.Flag dflag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content.entity.ToString());
+                            Script.Flag dflag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content);
                             if(dflag == null)  // if flag not found skip. likely just due to partial builds or papyrus parsing
                             {
                                 lines.Add($"SkipUnconditionally({(flagState?0:pass.Count())})");
@@ -306,7 +303,7 @@ namespace JortPob
                             else { target = layout.FindScriptReference(content, call.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                            Script.Flag atkdFlag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, target.entity.ToString());
+                            Script.Flag atkdFlag = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, target);
                             lines.Add($"SkipIfEventFlag({pass.Count()}, {(flagState ? "OFF" : "ON")}, TargetEventFlagType.EventFlag, {atkdFlag.id});");
                         }
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
@@ -382,7 +379,7 @@ namespace JortPob
                             if (call.target == null) { target = content; }
                             else { target = layout.FindScriptReference(content, call.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
-                            Script.Flag dispFlag = scriptManager.GetFlag(Designation.Disposition, target.entity.ToString());
+                            Script.Flag dispFlag = scriptManager.GetFlag(Designation.Disposition, target);
                             if (call.right.type == Call.Type.Literal)
                             {
                                 lines.Add(ResetConditionGroups());
@@ -716,7 +713,7 @@ namespace JortPob
                                         lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {jflag.id}, {jflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         break;
                                     case Call.Type.GetButtonPressed:
-                                        Script.Flag bflag = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
+                                        Script.Flag bflag = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content);
                                         lines.Add($"EventValueOperation({tempFlag.id}, {tempFlag.Bits()}, 0, {bflag.id}, {bflag.Bits()}, {GetEventValueOperator(operation.op)});");
                                         lines.Add($"EventValueOperation({bflag.id}, {bflag.Bits()}, {ushort.MaxValue}, 0, 1, 5);"); // reset value after reading it
                                         break;
@@ -833,7 +830,7 @@ namespace JortPob
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                             /* Get flag and/or register script */
-                            Script.Flag disabledFlag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, target.entity.ToString());
+                            Script.Flag disabledFlag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, target);
 
                             /* Add code */
                             string toggle = call.type == Call.Type.Disable ? "ON" : "OFF";
@@ -847,7 +844,7 @@ namespace JortPob
                                     {
                                         if (!c.dead)  // dead bodies don't need this alive/dead check. they can be treated like staticcontent but using CharacterEnable instead of AssetEnable
                                         {
-                                            Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+                                            Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target);
                                             lines.Add($"SkipIfEventFlag(1, ON, TargetEventFlagType.EventFlag, {deadFlag.id});"); // if character is dead skip enable/disable
                                         }
                                         lines.Add($"ChangeCharacterEnableState({target.entity}, {able});");
@@ -975,14 +972,14 @@ namespace JortPob
                                 }
 
                                 // even though you can have multiple messagebox calls per script, since its blocking they can share temp flags for values
-                                Script.Flag buttonChoicePass = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} pass");
-                                Script.Flag buttonChoiceFail = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} fail");
-                                Script.Flag buttonChoiceValue = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
+                                Script.Flag buttonChoicePass = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPassBit, content);
+                                Script.Flag buttonChoiceFail = scriptManager.GetFlag(Script.Flag.Designation.GetButtonFailBit, content);
+                                Script.Flag buttonChoiceValue = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content);
                                 if (buttonChoiceValue == null) // if any of these are null then they all are because we create them only in this scope as a group
                                 {
-                                    buttonChoicePass = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} pass");
-                                    buttonChoiceFail = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} fail");
-                                    buttonChoiceValue = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
+                                    buttonChoicePass = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPassBit, content);
+                                    buttonChoiceFail = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonFailBit, content);
+                                    buttonChoiceValue = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.GetButtonPressedValue, content);
                                 }
                                 lines.Add($"EventValueOperation({buttonChoiceValue.id}, {buttonChoiceValue.Bits()}, {nibbleMaxValue}, 0, 1, 5);"); // reset value before we show prompts
                                 lines.Add($"WaitFixedTimeFrames(1);"); // wait 1 frame before showing prompt to avoid menus overlapping
@@ -1014,14 +1011,14 @@ namespace JortPob
 
                                 lines.Add($"ShowTutorialPopup({messageRow}, true, true);");
                                 // even though you can have multiple messagebox calls per script, since its blocking they can share temp flags for values
-                                Script.Flag buttonChoicePass = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} pass");
-                                Script.Flag buttonChoiceFail = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} fail");
-                                Script.Flag buttonChoiceValue = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
+                                Script.Flag buttonChoicePass = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPassBit, content);
+                                Script.Flag buttonChoiceFail = scriptManager.GetFlag(Script.Flag.Designation.GetButtonFailBit, content);
+                                Script.Flag buttonChoiceValue = scriptManager.GetFlag(Script.Flag.Designation.GetButtonPressedValue, content);
                                 if (buttonChoiceValue == null) // if any of these are null then they all are because we create them only in this scope as a group
                                 {
-                                    buttonChoicePass = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} pass");
-                                    buttonChoiceFail = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPressedBit, $"{content.entity} fail");
-                                    buttonChoiceValue = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.GetButtonPressedValue, content.entity.ToString());
+                                    buttonChoicePass = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonPassBit, content);
+                                    buttonChoiceFail = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GetButtonFailBit, content);
+                                    buttonChoiceValue = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.GetButtonPressedValue, content);
                                 }
                                 lines.Add($"EventValueOperation({buttonChoiceValue.id}, {buttonChoiceValue.Bits()}, {nibbleMaxValue}, 0, 1, 5);"); // reset value before we show prompts
                                 lines.Add($"WaitFixedTimeFrames(1);"); // wait 1 frame before showing prompt to avoid menus overlapping
@@ -1334,12 +1331,12 @@ namespace JortPob
 
                             if (target == null) { break; } // during partial builds the reference may not resolve
 
-                            Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                            Script.Flag rvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                             lines.Add(ResetConditionGroups());
                             lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, {int.Parse(call.parameters[0])}, 0, 1, 0);");  // add value to disposition
                             lines.Add($"IfEventValue(OR_01, {rvar.id}, {rvar.Bits()}, 4, 100);");                                   // if disposition is greater or equal to 100
                             lines.Add($"SkipIfConditionGroupStateUncompiled(1, FAIL, OR_01);");
-                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, 100, 0, 1, 0);");                           // set disposition to 100
+                            lines.Add($"EventValueOperation({rvar.id}, {rvar.Bits()}, 100, 0, 1, 5);");                           // set disposition to 100
                             break;
                         }
 
@@ -1491,17 +1488,32 @@ namespace JortPob
                             float z = float.Parse(call.parameters[1]);
                             Vector3 position = new(x, y, z);
                             position *= Const.GLOBAL_SCALE;
-                            Layout.ScriptedPosition sp = layout.FindScriptedPosition(position);
 
                             // player teleport
                             if(call.target == "player")
                             {
+                                Layout.ScriptedPosition sp = layout.FindScriptedPosition(position);
                                 lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
                             }
                             // npc teleport
                             else
                             {
-                                // TODO:
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = content; }
+                                else { target = layout.FindScriptReference(content, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+                                if (target is not PhasedNpcContent) { Lort.Log($" ## WARNING ## Tried to process 'Position' call on non phased content: {content.id}", Lort.Type.Debug); break; }
+
+                                // find our phase
+                                PhasedNpcContent phaseTo = scriptManager.FindPhase((PhasedNpcContent)target, null, position);
+                                if (phaseTo == null) { break; } // Failed to find phase. Partial build thing
+
+                                // set phase
+                                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
+                                lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded
+                                lines.Add($"ChangeCharacterEnableState({phaseTo.entity}, 1);");   // enable phaseTo if loaded
+                                lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
                             }
                             break;
                         }
@@ -1514,18 +1526,33 @@ namespace JortPob
                             float z = float.Parse(call.parameters[1]);
                             Vector3 position = new(x, y, z);
                             position *= Const.GLOBAL_SCALE;
-                            string name = call.parameters[4];
-                            Layout.ScriptedPosition sp = layout.FindScriptedPosition(name, position);
+                            string location = call.parameters[4];
 
                             // player teleport
                             if (call.target == "player")
                             {
+                                Layout.ScriptedPosition sp = layout.FindScriptedPosition(location, position);
                                 lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
                             }
                             // npc teleport
                             else
                             {
-                                // TODO:
+                                // find our target content
+                                Content target;
+                                if (call.target == null) { target = content; }
+                                else { target = layout.FindScriptReference(content, call.target); }
+                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+                                if (target is not PhasedNpcContent) { Lort.Log($" ## WARNING ## Tried to process 'PositionCell' call on non phased content: {content.id}", Lort.Type.Debug); break; }
+
+                                // find our phase
+                                PhasedNpcContent phaseTo = scriptManager.FindPhase((PhasedNpcContent)target, location, position);
+                                if (phaseTo == null) { break; } // Failed to find phase. Partial build thing
+
+                                // set phase
+                                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
+                                lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded
+                                lines.Add($"ChangeCharacterEnableState({phaseTo.entity}, 1);");   // enable phaseTo if loaded
+                                lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
                             }
                             break;
                         }
@@ -1743,7 +1770,7 @@ namespace JortPob
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                             // Set disp value
-                            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target.entity.ToString());
+                            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                             if (dvar == null) { break; } // this is here because some base game morrowind scripts try to set disp on creatures which is impossible. thanks todd
                             lines.Add($"EventValueOperation({dvar.id}, {dvar.Bits()}, {call.parameters[0]}, 0, 1, 5);"); // 5 is assign
                             break;
@@ -1762,7 +1789,7 @@ namespace JortPob
                                 // if a guard starts combat with a player its a crime, if its anyone else it's just them being angy at you
                                 if (targetA.IsGuard())
                                 {
-                                    Script.Flag cvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, targetA.entity.ToString());
+                                    Script.Flag cvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, targetA);
                                     Script.Flag lvar = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel"); // crime gold flag
                                     lines.Add($"EventValueOperation({lvar.id}, {lvar.Bits()}, {Const.CRIME_GOLD_RESIST}, 0, 1, 5);"); // 5 is assign
                                     lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {cvar.id}, ON);");
@@ -1770,7 +1797,7 @@ namespace JortPob
                                 else
                                 {
                                     // Is a talkable character of some kind
-                                    Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, targetA.entity.ToString());
+                                    Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, targetA);
                                     if (hvar != null)
                                     {
                                         lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hvar.id}, ON);"); // simply set player hostility flag to true
@@ -1809,8 +1836,8 @@ namespace JortPob
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                             Script areaScript = scriptManager.FindScriptFor(layout, target);
-                            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target.entity.ToString());
-                            Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content.entity.ToString());
+                            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target);
+                            Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content);
                             if (hostileFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);"); }
                             if (fightFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {fightFlag.id}, OFF);"); }
                             if(fightFlag == null && hostileFlag == null) { lines.Add($"SetCharacterTeamType({target.entity}, 26);"); } // fallback, sets team to player friendly
@@ -1892,7 +1919,7 @@ namespace JortPob
                 /* If the object is an ItemContent or ContainerContent we can emulate OnActivate by simply waiting for the treasure flag to be set */
                 if (treasuerLootFlag != null)
                 {
-                    Script.Flag onActivateFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content.entity.ToString());
+                    Script.Flag onActivateFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content, 0, true);
                     Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnActivate->{content.entity.ToString()}");
                     EMEVD.Event onActivateEvent = new();
                     onActivateEvent.ID = onActivateEventFlag.id;
@@ -1909,7 +1936,7 @@ namespace JortPob
                 else
                 {
                     int actionButtonId = paramanager.GenerateActionButtonInteractParam($"Interact with {content.name}");
-                    Script.Flag onActivateFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content.entity.ToString());
+                    Script.Flag onActivateFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content, 0, true);
                     Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnActivate->{content.entity.ToString()}");
                     EMEVD.Event onActivateEvent = new();
                     onActivateEvent.ID = onActivateEventFlag.id;
@@ -1934,14 +1961,14 @@ namespace JortPob
                 if (target == null) { return null; } // Failed to find script reference. Should only happen when making partial builds.
 
                 // Grab their death flag
-                Script.Flag targetDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target.entity.ToString());
+                Script.Flag targetDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, target);
 
                 // if this handler is already registered then don't create it again. just return flag
-                Script.Flag onDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.OnDeath, target.entity.ToString());
+                Script.Flag onDeathFlag = scriptManager.GetFlag(Script.Flag.Designation.OnDeath, target);
                 if (onDeathFlag != null) { return onDeathFlag; }
 
                 // Create handler and return
-                onDeathFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnDeath, target.entity.ToString());
+                onDeathFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnDeath, target, 0, true);
                 Script.Flag onDeathEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnDeath->{target.entity.ToString()}");
                 EMEVD.Event onDeathEvent = new();
                 onDeathEvent.ID = onDeathEventFlag.id;
@@ -1957,13 +1984,13 @@ namespace JortPob
             /* If there is a "Cell Changed" call we need a temp flag created to use as our "run once" flag */
             if (papyrus.HasCall(Call.Type.CellChanged))
             {
-                Script.Flag cellChangedFlag = script.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.CellChanged, content.entity.ToString());
+                Script.Flag cellChangedFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.CellChanged, content, 0, true);
             }
 
             /* If there is a "GetSecondsPassed" call we need to create a paralell event to emulate it's function */
             Script.Flag RegisterGetSecondsPassed()
             {
-                Script.Flag secondsFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.SecondsPassed, content.entity.ToString());
+                Script.Flag secondsFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.SecondsPassed, content, 0, true);
                 script.init.Instructions.Insert(0, script.AUTO.ParseAdd($"InitializeCommonEvent(0, {scriptManager.common.events[ScriptCommon.Event.GetSecondsPassed]}, {secondsFlag.id}, {secondsFlag.Bits()});"));
                 return secondsFlag;
             }
@@ -1971,7 +1998,18 @@ namespace JortPob
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
             lines.AddRange(post);
-            if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id}); "); }  // if this is a subscript, only runs when run flag is set true
+            if(script is not ScriptCommon && ((Script)script).IsInterior())
+            {
+                lines.Insert(0, $"EndUnconditionally(EventEndType.End);"); // interior cell bounds check, halts execution of papyrus if player is not in the cell its from
+                lines.Insert(0, $"SkipIfInoutsideArea(1, InsideOutsideState.Inside, 10000, {scriptManager.areas[content.cell]}, 1);");
+            }
+            if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id});"); }  // if this is a subscript, only runs when run flag is set true
+            if(content is PhasedNpcContent)      
+            {
+                PhasedNpcContent pnpc = (PhasedNpcContent)content;
+                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, pnpc);
+                lines.Insert(0, $"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {pnpc.phase});"); // if phased npc then only run script when npc is phased in
+            }
             if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart
@@ -1997,8 +2035,7 @@ namespace JortPob
                     }
                     else
                     {
-                        string flagId = $"{content.entity}.{call.parameters[0]}";
-                        script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId);
+                        script.CreateFlagLocal(content, call.parameters[0]);
                     }
                 }
                 /* If this script runs subscripts we recursively repeate this for those as well */

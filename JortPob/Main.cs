@@ -900,7 +900,7 @@ namespace JortPob
                     mpr.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                     mpr.Rotation = Vector3.Zero;
                     mpr.RegionID = nextMPR++;
-                    mpr.EntityID = script.CreateEntity(EntityType.Region, chunk.cell.name);
+                    mpr.EntityID = scriptManager.areas[chunk.cell]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
                     mpr.MapStudioLayer = 4294967295;
                     mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, chunk.cell, chunk.root, paramId);
 

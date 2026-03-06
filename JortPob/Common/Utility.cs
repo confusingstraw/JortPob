@@ -519,6 +519,16 @@ namespace JortPob.Common
                 ts[r] = tmp;
             }
         }
+
+        /* copy pasted from example */
+        public static void Replace<T>(this IList<T> list, T oldItem, T newItem)
+        {
+            int index = list.IndexOf(oldItem);
+            if (index != -1)
+            {
+                list[index] = newItem;
+            }
+        }
     }
 
     public static class BitmapUtilities
