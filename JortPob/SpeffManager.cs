@@ -330,7 +330,7 @@ namespace JortPob
 
             float ToScalar(int magnitude)
             {
-                return 1f + ((magnitude / 100f) * 1f);
+                return 1f + (magnitude / 100f);
             }
 
             switch (stat)

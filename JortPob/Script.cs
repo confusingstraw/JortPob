@@ -115,7 +115,7 @@ namespace JortPob
         private uint bedCount = 0;
         public (uint bed, uint respawn) RegisterBed()
         {
-            if(bedCount > 19) { Lort.Log($"## ERROR ## Failed to register respawn for bed in m{map:D2}_{x:D2}_{y:D2}_{block:D2} due to 19 bed limit!", Lort.Type.Debug); return (0, 0); }
+            if(bedCount > Const.MAX_BEDS_PER_MSB) { Lort.Log($"## ERROR ## Failed to register respawn for bed in m{map:D2}_{x:D2}_{y:D2}_{block:D2} due to 19 bed limit!", Lort.Type.Debug); return (0, 0); }
 
             uint mapOffset;
             if (map == 60) { mapOffset = uint.Parse($"10{x:D2}{y:D2}0000"); }

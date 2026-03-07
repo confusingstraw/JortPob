@@ -3,8 +3,8 @@ using JortPob.Worker;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using static JortPob.Dialog;
 
 namespace JortPob
@@ -191,8 +191,8 @@ namespace JortPob
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
             DialogESD dialogEsd = new(esm, layout, msb, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
-            string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
-            string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
+            string pyPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.py");
+            string esdPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.esd");
             dialogEsd.Write(pyPath);
 
             EsdInfo esdInfo = new(pyPath, esdPath, content.id, esdId);
@@ -208,8 +208,8 @@ namespace JortPob
         {
             int esdId = int.Parse($"{nextBedId++}{msbIdList[0]:D2}{(msbIdList[0] == 60 ? 0 : msbIdList[1]):D2}");  // i know guh guhhhhh
             BedESD bedEsd = new(layout, scriptManager, paramanager, textManager, content, esdId);
-            string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId:D9}.py";
-            string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId:D9}.esd";
+            string pyPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.py");
+            string esdPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.esd");
             bedEsd.Write(pyPath);
 
             EsdInfo esdInfo = new(pyPath, esdPath, "bed", esdId);

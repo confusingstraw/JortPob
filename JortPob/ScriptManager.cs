@@ -555,8 +555,9 @@ namespace JortPob
 
         public uint GetLocation(string name)
         {
-            if (!locations.ContainsKey(name.ToLower().Trim())) { return 0; }
-            return locations[name.ToLower().Trim()];
+            if (locations.TryGetValue(name.ToLower().Trim(), out var entity))
+                return entity;
+            return 0;
         }
 
         /* Retrieve info on a PhasedNpcContent based on a Papyrus call of Position or PositionCell */

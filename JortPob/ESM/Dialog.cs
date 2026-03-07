@@ -1331,7 +1331,7 @@ namespace JortPob
                                 // Find our target content A
                                 CharacterContent targetA;
                                 if (call.target == null) { targetA = npcContent; }
-                                else { targetA = (CharacterContent)layout.FindScriptReference(npcContent, call.target); }
+                                else { targetA = layout.FindScriptReference(npcContent, call.target) as CharacterContent; }
                                 if (targetA == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 if (call.parameters[0].Trim() == "player")
@@ -1350,7 +1350,7 @@ namespace JortPob
                                 }
                                 else
                                 {
-                                    CharacterContent targetB = (CharacterContent)layout.FindScriptReference(npcContent, call.parameters[0].ToLower().Trim());
+                                    CharacterContent targetB = layout.FindScriptReference(npcContent, call.parameters[0].ToLower().Trim()) as CharacterContent;
                                     if (targetB == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                     Script areaScriptA = scriptManager.FindScriptFor(layout, targetA);
@@ -1369,7 +1369,7 @@ namespace JortPob
                                 // Find our target content A
                                 CharacterContent target;
                                 if (call.target == null) { target = npcContent; }
-                                else { target = (CharacterContent)layout.FindScriptReference(npcContent, call.target); }
+                                else { target = layout.FindScriptReference(npcContent, call.target) as CharacterContent; }
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 Script areaScript = scriptManager.FindScriptFor(layout, target);
@@ -1513,7 +1513,7 @@ namespace JortPob
                                 uint entityId;
                                 if (call.target == null) { target = npcContent; entityId = target.entity; }                                            // case 1: no target so current object is target
                                 else if (call.target == "player") { throw new Exception("SetStat papyrus call targeting player not supported!"); }    // case 2: target is player. UNSUPPORTED!
-                                else { target = (CharacterContent)layout.FindScriptReference(npcContent, call.target); entityId = target.entity; }   // case 3: target is a direct reference to an object record
+                                else { target = layout.FindScriptReference(npcContent, call.target) as CharacterContent; entityId = target.entity; } // case 3: target is a direct reference to an object record
 
                                 Script areaScript = scriptManager.FindScriptFor(layout, target);
 

@@ -1,6 +1,7 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
 using System.Collections.Generic;
+using System.Linq;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
 
@@ -867,8 +868,7 @@ namespace JortPob
             Flag randomEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"RandomHandlerEvent");
             randomEvent.ID = randomEventFlag.id;
 
-            List<int> randomValues = new();
-            for (int i = 0; i < max; i++) { randomValues.Add(i); }
+            List<int> randomValues = Enumerable.Range(0, max).ToList();
             randomValues.Shuffle();
 
             foreach (int i in randomValues) {

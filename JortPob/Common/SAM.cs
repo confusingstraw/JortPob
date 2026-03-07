@@ -19,8 +19,8 @@ namespace JortPob.Common
             if (Const.DEBUG_SKIP_SOUND) { return; }
 
             string wwiseConsolePath = Path.Combine(Const.WWISE_PATH, "WwiseConsole.exe");
-            string projectDir = Path.Combine(Const.CACHE_PATH, @"wwise\");
-            string projectPath = $"{projectDir}wwise.wproj";
+            string projectDir = Path.Combine(Const.CACHE_PATH, "wwise");
+            string projectPath = Path.Combine(projectDir, "wwise.wproj");
 
             // Create project if it doesn't exist
             if (!File.Exists(projectPath))

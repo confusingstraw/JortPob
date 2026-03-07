@@ -42,10 +42,11 @@ namespace JortPob
                 Utility.ExecuteProcess(radStartInfo, false);
             }
 
-            /* Clone BK2 audio tracks 5 times */
+            /* Clone BK2 audio tracks 4 times. */  // Elden Ring for whatever reason needs this in order to playback audio on BK2 ingame.
             string tempPath = Path.Combine(bk2Dir, $"{bk2}.temp.bk2");
             for (int i = 1; i < 5; i++)
             {
+                // Bruteforce approach here. Simply clones audio track 0 to 1,2,3,4 one at a time via a loop writing to a temp file each time till it's done
                 string args = $"BinkMix \"{bk2Path}\" \"{bk2Path}\" \"{tempPath}\" /T{i} /#";
                 ProcessStartInfo radStartInfo = new(radExe)
                 {

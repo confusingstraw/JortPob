@@ -613,9 +613,9 @@ namespace JortPob
 
         public BedContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {
-            if (json["owner"] != null) { ownerNpc = json["owner"].GetValue<string>(); }
-            if (json["owner_faction"] != null) { ownerFaction = json["owner_faction"].GetValue<string>(); }
-            if (json["owner_global"] != null) { ownerGlobal = json["owner_global"].GetValue<string>(); }
+            ownerNpc = json["owner"]?.GetValue<string>();
+            ownerFaction = json["owner_faction"]?.GetValue<string>();
+            ownerGlobal = json["owner_global"]?.GetValue<string>();
         }
     }
 

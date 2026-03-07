@@ -5,12 +5,10 @@ namespace JortPob
 {
     public class BedESD
     {
-        public readonly List<string> defs;
+        private readonly string def;
 
         /* generate an esd script for beds */
         public BedESD(Layout layout, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, BedContent content, int id) {
-            defs = new();
-
             int interactAction = paramanager.GenerateActionButtonInteractParam("Use Bed");
             int restAction = textManager.GetTopic("Rest");
             int longRestAction = textManager.GetTopic("Long Rest");
@@ -103,7 +101,7 @@ namespace JortPob
             }
 
             /* Create ESD code */
-            string code = $""""
+            def = $""""
              # -*- coding: utf-8 -*-
              # Init
              def t{id:D9}_1():
@@ -335,14 +333,12 @@ namespace JortPob
                  return 0
 
              """";
-
-            defs.Add(code);
         }
 
         public void Write(string pyPath)
         {
-            if (!Directory.Exists(Path.GetDirectoryName(pyPath))) { Directory.CreateDirectory(Path.GetDirectoryName(pyPath)); }
-            System.IO.File.WriteAllLines(pyPath, defs);
+            Directory.CreateDirectory(Path.GetDirectoryName(pyPath));
+            System.IO.File.WriteAllText(pyPath, def);
         }
     }
 }

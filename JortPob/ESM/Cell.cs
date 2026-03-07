@@ -2,6 +2,7 @@
 using SoulsFormats.Formats.Morpheme.NSA;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 
@@ -188,12 +189,7 @@ namespace JortPob
         /* Returns number of BedContents in this cell */
         public int BedCount()
         {
-            int beds = 0;
-            foreach(StaticContent content in assets)
-            {
-                if(content is BedContent) { beds++; }
-            }
-            return beds;
+            return assets.Where(content => content is BedContent).Count();
         }
 
         public bool IsExterior()

@@ -290,12 +290,8 @@ namespace JortPob
             /* Pre-sort interior cells by the number of beds they have (to avoid the 19 bed limit per msb) */
             int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
             List<Cell>[] cellPreSort = new List<Cell>[interiors.Count];
-            int CountBeds(List<Cell> cells)
-            {
-                int beds = 0;
-                foreach (Cell cell in cells) { beds += cell.BedCount(); }
-                return beds;
-            }
+
+            int CountBeds(List<Cell> cells) { return cells.Sum(cell => cell.BedCount()); }
 
             for (int i = 0; i < cellPreSort.Length; i++) { cellPreSort[i] = new(); }  // initialize
 
@@ -305,8 +301,8 @@ namespace JortPob
                 bool fail = true;
                 foreach (List<Cell> cells in cellPreSort)
                 {
-                    if (cells.Count() >= partition) { continue; }     // group must be less than the partition size of cells
-                    if (CountBeds(cells) + beds > 19) { continue; }  // number of beds in a group has to be 19 or less
+                    if (cells.Count() >= partition) { continue; }                         // group must be less than the partition size of cells
+                    if (CountBeds(cells) + beds > Const.MAX_BEDS_PER_MSB) { continue; }  // number of beds in a group has to be 19 or less
 
                     fail = false;
                     cells.Add(cell);
@@ -1173,30 +1169,14 @@ namespace JortPob
             return null;
         }
 
-        InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
+        public Chunk FindChunk(string name) // find a chunk that contains the named cell
         {
-            foreach (InteriorGroup group in interiors)
-            {
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
-                {
-                    if (chunk.cell.name.ToLower().Trim() == name.ToLower().Trim()) { return chunk; }
-                }
-            }
-
-            return null; // may happen if debug options are enabled to build only some cells
+            return interiors.SelectMany(g => g.chunks).FirstOrDefault(chunk => string.Equals(chunk.cell.name, name, StringComparison.OrdinalIgnoreCase));
         }
 
-        Tile FindTile(Vector3 position) // find a tile based on coords
+        public Tile FindTile(Vector3 position) // find a tile based on coords
         {
-            foreach (Tile tile in tiles)
-            {
-                if (tile.PositionInside(position))
-                {
-                    return tile;
-                }
-            }
-
-            return null; // may happen if debug options are enabled to build only some cells
+            return tiles.FirstOrDefault(tile => tile.PositionInside(position));
         }
 
         /* Called by script compilers in DialogESD.cs and PapyrusEMEVD.cs */

@@ -154,6 +154,9 @@ namespace JortPob.Common
         /// increase size of cutouts slightly so we dont get any clipping at the edges, only used by water visual mesh subtraction
         public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f;
 
+        /// an MSB can only support 19 "bonfires" due to entity ids being hardcoded to the range of 0950 to 0999 in the msb block
+        public static readonly int MAX_BEDS_PER_MSB = 19;
+
         #endregion
 
         #region SFX
