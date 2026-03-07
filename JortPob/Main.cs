@@ -6,6 +6,7 @@ using PortJob;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -100,10 +101,18 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
-                        ERNavmeshGen navgen = new();
                         string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
                         string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
-                        navgen.GenerateNavmesh(hkxIn, hkxOut, string.Empty);
+                        string gamePath = @$"{Const.ELDEN_PATH}\Game\eldenring.exe";
+                        ProcessStartInfo startInfo = new(@$"{AppDomain.CurrentDomain.BaseDirectory}\ERNavmeshGenerator.exe", [gamePath, hkxIn, hkxOut])
+                        {
+                            WorkingDirectory = @$"{AppDomain.CurrentDomain.BaseDirectory}\",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardError = true,
+                        };
+                        Utility.ExecuteProcess(startInfo);
+                        
                         NVA.Navmesh navMesh = new();
                         navMesh.NameID = nextNavId++;
                         navMesh.ModelID = nextC;
