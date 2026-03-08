@@ -74,7 +74,6 @@ namespace JortPob
                 ResourcePool pool = new(tile, msb, lightManager, script);
 
                 /* Create NVA */
-                //SoulsFormats.NVA example = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
                 SoulsFormats.NVA nva = new();
                 nva.Compression = Compression.KRAK();
                 int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
@@ -114,7 +113,7 @@ namespace JortPob
                         Utility.ExecuteProcess(startInfo);
                         
                         NVA.Navmesh navMesh = new();
-                        navMesh.NameID = nextNavId++;
+                        navMesh.NameID = nextNavId;
                         navMesh.ModelID = nextC;
                         navMesh.IsConnectedNavmeshesInline = true;
                         navMesh.Position = new(collision.Position, 1f);
@@ -124,6 +123,7 @@ namespace JortPob
                         nva.Navmeshes.Add(navMesh);
                         navMeshesToWrite.Add((nextC, hkxOut));
 
+                        nextNavId += 10;
                         nextC++;
                     }
 
@@ -479,6 +479,10 @@ namespace JortPob
 
                 /* Write NVA and NVM */
                 //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_42_36_00\m60_42_36_00.nvmhktbnd.dcx"); // delete me
+                SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
+                nva.Entries10 = nvaExample.Entries10;
+                nva.Entries11 = nvaExample.Entries11;
+
                 string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00";
                 nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
                 BND4 nvbnd = new();
@@ -487,11 +491,19 @@ namespace JortPob
 
                 int bid = 10000;
                 foreach ((int id, string file) entry in navMeshesToWrite) {
-                    BinderFile bf = new();
-                    bf.Bytes = File.ReadAllBytes(entry.file);
-                    bf.ID = bid++;
-                    bf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{entry.id}.hkx";
-                    nvbnd.Files.Add(bf);
+                    BinderFile nbf = new();
+                    nbf.Bytes = File.ReadAllBytes(entry.file);
+                    nbf.ID = bid;
+                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{entry.id:D6}.hkx";
+                    nvbnd.Files.Add(nbf);
+
+                    BinderFile obf = new();
+                    obf.Bytes = File.ReadAllBytes(entry.file);
+                    obf.ID = 10000 + bid;
+                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{entry.id:D6}.hkx";
+                    nvbnd.Files.Add(obf);
+
+                    bid++;
                 }
 
                 nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
