@@ -1,12 +1,10 @@
-﻿using ERNavmeshGenCS;
-using HKLib.hk2018.hkaiWorldCommands;
-using JortPob.Common;
+﻿using JortPob.Common;
+using JortPob.Model;
 using JortPob.Worker;
 using PortJob;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -77,6 +75,7 @@ namespace JortPob
                 SoulsFormats.NVA nva = new();
                 nva.Compression = Compression.KRAK();
                 int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                nva.Navmeshes.Version = 4;
                 List<(int id, string file)> navMeshesToWrite = new();
 
                 /* Various Indices */
@@ -100,28 +99,27 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
-                        string hkxIn = Path.Combine(Const.CACHE_PATH, collisionInfo.hkx);
-                        string hkxOut = Path.ChangeExtension(hkxIn, ".nav");
-                        string gamePath = @$"{Const.ELDEN_PATH}\Game\eldenring.exe";
-                        ProcessStartInfo startInfo = new(@$"{AppDomain.CurrentDomain.BaseDirectory}\ERNavmeshGenerator.exe", [gamePath, hkxIn, hkxOut])
-                        {
-                            WorkingDirectory = @$"{AppDomain.CurrentDomain.BaseDirectory}\",
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardError = true,
-                        };
-                        Utility.ExecuteProcess(startInfo);
-                        
+                        string objPath = Path.Combine(Const.CACHE_PATH, terrainInfo.obj);
+                        string hkxPath = Path.ChangeExtension(objPath, ".hkx");
+                        string navPath = Path.ChangeExtension(hkxPath, ".nav");
+                        ModelConverter.OBJtoHKX(objPath, hkxPath);
+                        ModelConverter.HKXtoNAV(hkxPath, navPath);
+
                         NVA.Navmesh navMesh = new();
+                        int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextC:D2}");
                         navMesh.NameID = nextNavId;
-                        navMesh.ModelID = nextC;
+                        navMesh.ModelID = nextN;
                         navMesh.IsConnectedNavmeshesInline = true;
-                        navMesh.Position = new(collision.Position, 1f);
+                        navMesh.Position = new((position + Const.MSB_OFFSET), 1f);
                         navMesh.Rotation = new(0f);
                         navMesh.Scale = new(1f, 1f, 1f, 0f);
+                        navMesh.FaceCount = new Obj(objPath).count(); // might be unnesscary? doesn't really seem to do anything?
+                        navMesh.Unk3C = 0;
+                        navMesh.Unk4C = 0;
+                        navMesh.Unk44 = 1075419545; // magic number used
 
                         nva.Navmeshes.Add(navMesh);
-                        navMeshesToWrite.Add((nextC, hkxOut));
+                        navMeshesToWrite.Add((nextN, navPath));
 
                         nextNavId += 10;
                         nextC++;
@@ -477,36 +475,43 @@ namespace JortPob
                 /* Auto resource */
                 AutoResource.Generate(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, msb);
 
-                /* Write NVA and NVM */
-                //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_42_36_00\m60_42_36_00.nvmhktbnd.dcx"); // delete me
-                SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
-                nva.Entries10 = nvaExample.Entries10;
-                nva.Entries11 = nvaExample.Entries11;
+                /* Write NVA and NVM for regular Tiles */
+                if (isTileType)
+                {
+                    //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_42_36_00\m60_42_36_00.nvmhktbnd.dcx"); // delete me
+                    //SoulsFormats.NVA nvaExample2 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nva.dcx")); // delete me
+                    //SoulsFormats.NVA nvaExample3 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_44_44_00\m60_44_44_00.nva.dcx")); // delete me
+                    //SoulsFormats.BND4 nvbndExample = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nvmhktbnd.dcx")); // delete me
+                    SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
+                    nva.Entries10 = nvaExample.Entries10;  // @TODO: copying values from a stock nva, please fix this when convienent
+                    nva.Entries11 = nvaExample.Entries11;
 
-                string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00";
-                nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
-                BND4 nvbnd = new();
-                nvbnd.Compression = Compression.KRAK();
-                nvbnd.Version = "07D7R6";
 
-                int bid = 10000;
-                foreach ((int id, string file) entry in navMeshesToWrite) {
-                    BinderFile nbf = new();
-                    nbf.Bytes = File.ReadAllBytes(entry.file);
-                    nbf.ID = bid;
-                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{entry.id:D6}.hkx";
-                    nvbnd.Files.Add(nbf);
+                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00";
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    BND4 nvbnd = new();
+                    nvbnd.Compression = Compression.KRAK();
+                    nvbnd.Version = "07D7R6";
 
-                    BinderFile obf = new();
-                    obf.Bytes = File.ReadAllBytes(entry.file);
-                    obf.ID = 10000 + bid;
-                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{entry.id:D6}.hkx";
-                    nvbnd.Files.Add(obf);
+                    int bid = 10000;
+                    foreach ((int id, string file) entry in navMeshesToWrite) {
+                        BinderFile nbf = new();
+                        nbf.Bytes = File.ReadAllBytes(entry.file);
+                        nbf.ID = bid;
+                        nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{entry.id:D6}.hkx";
+                        nvbnd.Files.Add(nbf);
 
-                    bid++;
-                }
+                        BinderFile obf = new(); // @TODO: may not be nesscary? would be good to generate a real one though
+                        obf.Bytes = File.ReadAllBytes(Utility.ResourcePath(@"misc\o60_42_36_00_423600.hkx"));
+                        obf.ID = 10000 + bid;
+                        obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{entry.id:D6}.hkx";
+                        nvbnd.Files.Add(obf);
 
-                nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                        bid++;
+                    }
+
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+               }
 
                 /* Done */
                 msbs.Add(pool);

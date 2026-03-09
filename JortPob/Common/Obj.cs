@@ -186,6 +186,38 @@ namespace JortPob.Common
             return objs;
         }
 
+        /* Merges all faces into a single G of the given material */
+        public Obj merge(Obj.CollisionMaterial material)
+        {
+            Obj obj = new();
+            obj.vs.AddRange(vs);
+            obj.vts.AddRange(vts);
+            obj.vns.AddRange(vns);
+
+            ObjG objG = new();
+            objG.name = $"{material}";
+            objG.mtl = $"hkm_{material}_Safe1";
+            
+            foreach(ObjG g in gs)
+            {
+                objG.fs.AddRange(g.fs);
+            }
+
+            obj.gs.Add(objG);
+            return obj;
+        }
+
+        /* Returns number of triangles in this obj */
+        public int count()
+        {
+            int c = 0;
+            foreach(ObjG g in gs)
+            {
+                c += g.fs.Count();
+            }
+            return c;
+        }
+
         /* Takes data in this class and writes an obj file of it to the path specified */
         public void write(string outPath)
         {

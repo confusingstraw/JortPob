@@ -456,7 +456,7 @@ namespace JortPob
     public class TerrainInfo
     {
         public readonly Int2 coordinate;   // Location in world cell grid
-        public readonly string path;
+        public readonly string path, obj;  // path goes to flver, obj goes to full obj
         public List<CollisionInfo> collision;
         public List<TextureInfo> textures; // All generated tpf files
         public bool hasWater, hasLava, hasSwamp; // caching these flags so we dont have to load the landscape to find out
@@ -466,6 +466,7 @@ namespace JortPob
         {
             this.coordinate = coordinate;
             this.path = path;
+            obj = Path.ChangeExtension(path, ".obj");
             textures = new();
             collision = new();
 
