@@ -10,7 +10,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using WitchyFormats;
 using Xbrz;
-using static Community.CsharpSqlite.Sqlite3;
 
 namespace JortPob.Common
 {

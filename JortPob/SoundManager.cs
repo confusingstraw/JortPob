@@ -9,9 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static IronPython.Modules._ast;
 using static JortPob.Dialog;
-using static SoulsFormats.DRB.Shape;
 
 namespace JortPob
 {
@@ -21,6 +19,7 @@ namespace JortPob
         private readonly List<SoundBankInfo> banks;
         private readonly SoundBankGlobals globals;
         public readonly MainSoundBank main;
+        public readonly MusicSoundBank music;
 
         private readonly List<SAMData> samQueue;
 
@@ -49,6 +48,7 @@ namespace JortPob
             samQueue = new();
 
             main = new(globals);
+            music = new(globals);
         }
 
         /* Either returns an existing bank meeting the requirements, or makes a new one */
@@ -127,6 +127,8 @@ namespace JortPob
         public void Write()
         {
             if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
+
+            music.Write();
 
             SamWorker.Go(samQueue); // actually generate and convert wems
 
