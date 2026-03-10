@@ -667,7 +667,6 @@ namespace JortPob
                                         /* Register some scripts for NPCs */
                                         areaScript.RegisterCharacter(param, character, countFlag);
                                         areaScript.RegisterNpcHostility(character);  // setup hostility flag/event
-                                        areaScript.RegisterNpcHello(character);      // setup hello flags and turntoplayer script
                                     }
                                 }
                                 // Regular creatures
@@ -709,11 +708,7 @@ namespace JortPob
                         uint arg2;
 
                         // all of these ended up being at the 12 byte offset but im leaving this structure incase we ever need to change things.
-                        if (arg1 == scriptManager.common.events[ScriptCommon.Event.Hello])
-                        {
-                            arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
-                        }
-                        else if (arg1 == scriptManager.common.events[ScriptCommon.Event.NpcHostilityHandler])
+                        if (arg1 == scriptManager.common.events[ScriptCommon.Event.NpcHostilityHandler])
                         {
                             arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
                         }
@@ -744,7 +739,6 @@ namespace JortPob
                             scriptManager.AddRoute(replacement, original);
                             script.RegisterCharacter(param, replacement, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, replacement.id));
                             script.RegisterNpcHostility(replacement);
-                            script.RegisterNpcHello(replacement);
                             return true;
                         }
                     }
@@ -845,7 +839,6 @@ namespace JortPob
                 scriptManager.AddRoute(pnpc, target);
                 script.RegisterCharacter(param, pnpc, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, pnpc.id));
                 script.RegisterNpcHostility(pnpc);
-                script.RegisterNpcHello(pnpc);
             }
 
             void PreProcessScriptedPositions(Content content, List<Papyrus.Call> calls)

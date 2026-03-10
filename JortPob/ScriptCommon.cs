@@ -22,7 +22,7 @@ namespace JortPob
         public enum Event
         {
             SpawnHandler, SpawnHandlerDisableable, SpawnHandlerPhased, IntSpawnHandler, IntSpawnHandlerDisableable, IntSpawnHandlerPhased,
-            LoadDoor, NpcHostilityHandler, Message, Hello, Essential, DeadBody, 
+            LoadDoor, NpcHostilityHandler, Message, Essential, DeadBody, 
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
             StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight, GetSecondsPassed
         }
@@ -317,32 +317,6 @@ namespace JortPob
 
             func.Events.Add(hostileEvent);
             events.Add(Event.NpcHostilityHandler, hostileEventFlag.id);
-
-
-
-            /* Create an event for handling npc hello turntoplayer from esd */
-            Flag helloEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Hello");
-            EMEVD.Event helloEvent = new(helloEventFlag.id);
-
-            pc = 0;
-
-            string[] helloEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",  // wait for flag to trigger
-                //$"RotateCharacter({NextParameterName()}, 10000, -1, false);",   // turn character to face the player
-                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // wait for flag to go back to off
-                $"EndUnconditionally(EventEndType.Restart);",    // restart so it's ready to go again if needed
-            };
-
-            for (int i = 0; i < helloEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(helloEventRaw[i], i);
-                helloEvent.Parameters.AddRange(newPs);
-                helloEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(helloEvent);
-            events.Add(Event.Hello, helloEventFlag.id);
 
             /* Create an event for handling messages */
             Flag messageEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Message");

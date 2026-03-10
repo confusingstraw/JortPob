@@ -228,15 +228,9 @@ namespace JortPob
             Flag crimeFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeEvent, npc);
             Flag hostileQuipFlag = GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.HostileQuip, npc);
             Flag hasBeenAttackedFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.HasBeenAttacked, npc);
+            Flag helloFlag = GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Hello, npc);
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {hostileFlag.id}, {npc.entity});"));
             npcs.Add(npc);
-        }
-
-        public void RegisterNpcHello(CharacterContent npc)
-        {
-            /* Hello event: npc turns to player when player enters a certain radius and the esd sets a flag and says a hello line */
-            Flag helloFlag = GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Hello, npc);
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.Hello]}, {helloFlag.id}, {npc.entity}, {helloFlag.id});"));
         }
 
         /* Dead body */
