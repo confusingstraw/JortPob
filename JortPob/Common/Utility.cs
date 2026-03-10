@@ -8,6 +8,8 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using ERNavmeshGenCS;
 using WitchyFormats;
 using Xbrz;
 using static Community.CsharpSqlite.Sqlite3;
@@ -573,6 +575,61 @@ namespace JortPob.Common
             }
 
             return [ alpha, red, green, blue ];
+        }
+    }
+
+    public static class NavmeshUtilities
+    {
+        public static void SaveNavmeshGenerationSettings(string outputPath)
+        {
+            // Initialize the root snapshot struct
+            hkaiNavMeshGenerationSnapshot snapshot = new hkaiNavMeshGenerationSnapshot();
+
+            // Populate the settings
+            snapshot.settings = new hkaiNavMeshGenerationUtilsSettings();
+
+            // --- Basic Primitives ---
+            snapshot.settings.characterHeight = 1.75f;
+            snapshot.settings.quantizationGridSize = 0.5f;
+            snapshot.settings.maxWalkableSlope = 1.047f; // roughly 60 degrees in radians
+            snapshot.settings.convexThreshold = 0.1f;
+            snapshot.settings.maxNumEdgesPerFace = 6;
+
+            // --- Enums ---
+            snapshot.settings.triangleWinding = TriangleWinding.WINDING_CCW;
+            snapshot.settings.edgeMatchingMetric = EdgeMatchingMetric.ORDER_BY_OVERLAP;
+
+            // --- Nested Vectors ---
+            snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 1f };
+
+            // --- Strings (Will safely marshal to char* in C++) --
+            snapshot.settings.saveInputSnapshot = true;
+            snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
+
+            // --- Nested Structs ---
+            // Edge Matching Parameters
+            snapshot.settings.edgeMatchingParams = new hkaiNavMeshEdgeMatchingParameters();
+            snapshot.settings.edgeMatchingParams.maxStepHeight = 0.5f;
+            snapshot.settings.edgeMatchingParams.maxSeparation = 0.1f;
+            snapshot.settings.edgeMatchingParams.edgeParallelTolerance = 0.1f;
+
+            // Simplification Settings
+            snapshot.settings.simplificationSettings = new hkaiNavMeshSimplificationUtils_Settings();
+            snapshot.settings.simplificationSettings.maxBorderSimplifyArea = 1.5f;
+            snapshot.settings.simplificationSettings.useHeightPartitioning = true;
+            snapshot.settings.simplificationSettings.saveInputSnapshot = true;
+            snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
+
+            // Configure the JSON Serializer
+            var jsonOptions = new JsonSerializerOptions
+            {
+                IncludeFields = true, // CRITICAL: Tells the serializer to look at our struct fields!
+                WriteIndented = true
+            };
+
+            // Serialize to a JSON string and write to disk  
+            string jsonOutput = JsonSerializer.Serialize(snapshot, jsonOptions);
+            File.WriteAllText(outputPath, jsonOutput);
         }
     }
 }
