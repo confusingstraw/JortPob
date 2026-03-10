@@ -3,8 +3,8 @@ using JortPob.Worker;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using static JortPob.Dialog;
 
 namespace JortPob
@@ -16,6 +16,8 @@ namespace JortPob
         /* This class handles both the creation and assignment of params (NPCPARAM, NPCTHINKPARAM, CHARAINITPARAM) and manages ESDs and data for dialog generation and compiling */
         /* Morrowind makes a distinction between these 2 types of characters but ER does not */
 
+        /* Bonus soda: This class also handles Beds because the morrowind c1000 object is technically an enemy so guh gughhh */
+
         private readonly ESM esm;
         private readonly Layout layout;
         private readonly SoundManager soundManager;
@@ -26,9 +28,12 @@ namespace JortPob
         private readonly ScriptManager scriptManager;
 
         private readonly Dictionary<string, int> topicText; // topic text id map
-        private readonly List<EsdInfo> esds;
+        private readonly List<EsdInfo> esds; // npcs, beds
+
+        private readonly Dictionary<string, int> npcParamMap, npcThinkParamMap;
 
         private int nextNpcParamId, nextNpcThinkParamId, nextCharInitId;  // increment by 10
+        private int nextBedId;
 
         public NpcManager(ESM esm, Layout layout, SoundManager sound, Paramanager param, TextManager text, ItemManager item, SpeffManager speff, ScriptManager scriptManager)
         {
@@ -47,6 +52,7 @@ namespace JortPob
             nextNpcParamId = 544900010;
             nextNpcThinkParamId = 544900010;
             nextCharInitId = 2050000;
+            nextBedId = 90000;
         }
 
         public (int npc, int think, int init) GetParams(ItemManager itemManager, Script script, NpcContent content)
@@ -157,7 +163,7 @@ namespace JortPob
                         string wemFile;
                         uint nxtid = (uint)(info.id + i);
                         string hashName = $"{info.text.GetMD5Hash()}+{i}"; // Get the hash of the actual text string for this line, it will be our unique identier and filename for the cached wav/wem
-                        if (Const.USE_SAM) { wemFile = soundManager.GenerateLine(dia, info, line, hashName, content); }
+                        if (Const.USE_SAM && !Const.DEBUG_SKIP_SOUND) { wemFile = soundManager.GenerateLine(dia, info, line, hashName, content); }
                         else { wemFile = Const.DEFAULT_DIALOG_WEM; }
 
                         // If this is not the first line in a talkparam group we must generate with sequential ids!
@@ -185,11 +191,28 @@ namespace JortPob
             Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
             DialogESD dialogEsd = new(esm, layout, msb, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
-            string pyPath = $"{Const.CACHE_PATH}esd\\t{esdId}.py";
-            string esdPath = $"{Const.CACHE_PATH}esd\\t{esdId}.esd";
+            string pyPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.py");
+            string esdPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.esd");
             dialogEsd.Write(pyPath);
 
             EsdInfo esdInfo = new(pyPath, esdPath, content.id, esdId);
+            esds.Add(esdInfo);
+
+            return esdId;
+        }
+
+        /* Create a bed esd */
+        public int GetESD(BaseTile tile, MSBE msb, BedContent content) { return GetESD(tile.IdList(), msb, content); }
+        public int GetESD(InteriorGroup group, MSBE msb, BedContent content) { return GetESD(group.IdList(), msb, content); }
+        public int GetESD(int[] msbIdList, MSBE msb, BedContent content)
+        {
+            int esdId = int.Parse($"{nextBedId++}{msbIdList[0]:D2}{(msbIdList[0] == 60 ? 0 : msbIdList[1]):D2}");  // i know guh guhhhhh
+            BedESD bedEsd = new(layout, scriptManager, paramanager, textManager, content, esdId);
+            string pyPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.py");
+            string esdPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.esd");
+            bedEsd.Write(pyPath);
+
+            EsdInfo esdInfo = new(pyPath, esdPath, "bed", esdId);
             esds.Add(esdInfo);
 
             return esdId;

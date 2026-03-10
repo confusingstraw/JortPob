@@ -1,12 +1,9 @@
 ﻿using JortPob.Common;
-using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
-using static JortPob.NpcContent;
 
 namespace JortPob
 {
@@ -90,6 +87,7 @@ namespace JortPob
             scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
 
+        /* Copy constructor for emitters */
         public Content(Cell cell, string id, string name, ESM.Type type, Int2 load, string papyrus, Vector3 position, Vector3 rotation, int scale)
         {
             this.cell = cell;
@@ -101,6 +99,24 @@ namespace JortPob
             this.position = position;
             this.rotation = rotation;
             this.scale = scale;
+        }
+        
+        /* Copy constructor for Phasing */
+        public Content(Content content, Cell cell, Vector3 position, Vector3 rotation)
+        {
+            this.cell = cell;
+            this.position = position;
+            this.rotation = rotation;
+
+            this.id = content.id;
+            this.name = content.name;
+            this.type = content.type;
+            this.scale = content.scale;
+            this.entity = content.entity;
+            this.papyrus = content.papyrus;
+            this.relative = content.relative;
+            this.load = content.load;
+            this.mesh = content.mesh;
         }
     }
 
@@ -408,6 +424,35 @@ namespace JortPob
             }
         }
 
+        /* Copy constructor for phasing */
+        public CharacterContent(CharacterContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            job = content.job;
+            faction = content.faction;
+            race = content.race;
+            sex = content.sex;
+            level = content.level;
+            disposition = content.disposition;
+            reputation = content.reputation;
+            rank = content.rank;
+            gold = content.gold;
+            hello = content.hello;
+            fight = content.fight;
+            flee = content.flee;
+            alarm = content.alarm;
+            hostile = content.hostile;
+            dead = content.dead;
+            essential = content.essential;
+            hasWitness = content.hasWitness;
+            stats = content.stats;
+            treasure = content.treasure;
+            services = content.services;
+            inventory = content.inventory;
+            spells = content.spells;
+            travel = content.travel;
+            barter = content.barter;
+        }
+
         /* Return true if this npc is a generic guard that can arrest the player for crimes */
         public bool IsGuard() { return job == "Guard" || job == "Ordinator Guard"; }
 
@@ -485,8 +530,41 @@ namespace JortPob
 
         public NpcContent(ESM esm, Cell cell, JsonNode json, Record record) : base(esm, cell, json, record)
         {
+            equipAcc = [];   // initialized with empty arrays because if a character has an empty inventory (barbarians) we will skip resolving equipment for them
+            equipGood = [];
+
             head = record.json["head"].GetValue<string>();
             hair = record.json["hair"].GetValue<string>();
+        }
+
+        public NpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            head = content.head;
+            hair = content.hair;
+
+            equipWeaponLeft = content.equipWeaponLeft;
+            equipWeaponRight = content.equipWeaponRight;
+            equipRange = content.equipRange;
+            equipHead = content.equipHead;
+            equipBody = content.equipBody;
+            equipHands = content.equipHands;
+            equipLegs = content.equipLegs;
+            equipArrow = content.equipArrow;
+            equipBolt = content.equipBolt;
+            equipAcc = content.equipAcc;
+            equipGood = content.equipGood;
+        }
+    }
+
+    public class PhasedNpcContent : NpcContent
+    {
+        public readonly uint source;  // source entity id. from original NpcContent that was converted to phased
+        public readonly int phase;   // index of which phase this is for the phased npc
+
+        public PhasedNpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation, uint source, int phase) : base(content, cell, position, rotation)
+        {
+            this.source = source;
+            this.phase = phase;
         }
     }
 
@@ -517,6 +595,21 @@ namespace JortPob
         public EmitterContent ConvertToEmitter()
         {
             return new EmitterContent(cell, id, name, type, load, papyrus, position, rotation, scale, mesh);
+        }
+    }
+
+    /* beds, which will have esd objects assocaitd with them */
+    public class BedContent : AssetContent
+    {
+        public readonly string ownerNpc; // npc record id of the owenr of this bed, can be null
+        public readonly string ownerFaction; // faction id that owns this bed, player can use it if they are in that faction. can be null
+        public readonly string ownerGlobal; // a global var is used to control ownership. used by rentable beds
+
+        public BedContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
+        {
+            ownerNpc = json["owner"]?.GetValue<string>();
+            ownerFaction = json["owner_faction"]?.GetValue<string>();
+            ownerGlobal = json["owner_global"]?.GetValue<string>();
         }
     }
 

@@ -3,15 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Text.Json.Schema;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static HKLib.hk2018.hkSerialize.CompatTypeParentInfo;
-using static JortPob.Papyrus;
-using static SoulsFormats.DRB.Shape;
 
 namespace JortPob
 {
@@ -305,25 +298,19 @@ namespace JortPob
 
             public enum Type
             {
-                /* Default */
                 None,
 
-                /* Papyrus calls that are fully implemented in dialog and script */
-
-                /* Papyrus calls that are fully implemented in dialog */
                 Set,
                 Journal, Choice, AddTopic,
                 ModDisposition, SetDisposition, ModReputation,
                 ModPcFacRep, PcJoinFaction, PcClearExpelled, PcRaiseRank, PcExpell,
                 SetPcCrimeLevel, MessageBox,
 
-                /* Papyrus calls that are partially implemented */
                 Goodbye,
                 StartCombat,
                 AddItem, RemoveItem,
                 PayFine, GoToJail,
 
-                /* Papyrus calls that are not implemented yet */
                 Disable, Enable,
                 Activate, Playgroup, Say, GetTarget, GetItemCount, Lock, Unlock, GetSpell, SayDone, GetRace, ModRegion, GetDetected, ForceSneak, ClearForceSneak,
                 ChangeWeather, GetPos, RotateWorld, DontSaveObject, HasSoulGem, WakeUpPc, Resurrect, PlayBink, SetAtStart, RemoveSoulGem, Fall,
@@ -338,7 +325,8 @@ namespace JortPob
                 PlaceItem, SetScale, ModResistParalysis, ModResistPoison, ModResistMagicka, ModResistFire, ModResistFrost, SetDelete, ExplodeSpell, TurnMoonRed, TurnMoonWhite, BecomeWerewolf,
                 Random,
                 Xbox,
-                GameHour, Day, Month,
+
+                GetSecondsPassed,
 
                 GetHealth, GetMagicka, GetFatigue,
 
@@ -349,9 +337,9 @@ namespace JortPob
                 SetStrength, SetIntelligence, SetWillpower, SetAgility, SetSpeed, SetEndurance, SetPersonality, SetLuck,
                 ModStrength, ModIntelligence, ModWillpower, ModAgility, ModSpeed, ModEndurance, ModPersonality, ModLuck,
 
-                GetSecurity, GetMarksman,
-                SetAthletics, SetMarksman, SetLongBlade, SetAlchemy, SetBlock, SetMercantile, SetEnchant, SetDestruction, SetAlteration, SetIllusion, SetConjuration, SetMysticism, SetRestoration, SetSpear, SetAxe, SetBluntWeapon, SetArmorer, SetHeavyArmor, SetMediumArmor,
-                ModRestoration, ModAthletics, ModLongBlade, ModHeavyArmor, ModMediumArmor, ModBlock, ModSpear, ModAxe, ModBluntWeapon, ModArmorer, ModMarksman, ModMercantile,
+                GetAcrobatics, GetAlchemy, GetAlteration, GetArmorer, GetAthletics, GetAxe, GetBlock, GetBluntWeapon, GetConjuration, GetDestruction, GetEnchant, GetHandToHand, GetHeavyArmor, GetIllusion, GetLightArmor, GetLongBlade, GetMarksman, GetMediumArmor, GetMercantile, GetMysticism, GetRestoration, GetSecurity, GetShortBlade, GetSneak, GetSpear, GetSpeechcraft, GetUnarmored,
+                ModAcrobatics, ModAlchemy, ModAlteration, ModArmorer, ModAthletics, ModAxe, ModBlock, ModBluntWeapon, ModConjuration, ModDestruction, ModEnchant, ModHandToHand, ModHeavyArmor, ModIllusion, ModLightArmor, ModLongBlade, ModMarksman, ModMediumArmor, ModMercantile, ModMysticism, ModRestoration, ModSecurity, ModShortBlade, ModSneak, ModSpear, ModSpeechcraft, ModUnarmored,
+                SetAcrobatics, SetAlchemy, SetAlteration, SetArmorer, SetAthletics, SetAxe, SetBlock, SetBluntWeapon, SetConjuration, SetDestruction, SetEnchant, SetHandToHand, SetHeavyArmor, SetIllusion, SetLightArmor, SetLongBlade, SetMarksman, SetMediumArmor, SetMercantile, SetMysticism, SetRestoration, SetSecurity, SetShortBlade, SetSneak, SetSpear, SetSpeechcraft, SetUnarmored,
 
                 ShowRestMenu,
                 EnableStatsMenu, EnableMapMenu, EnableRaceMenu, EnableMagicMenu, EnableStatReviewMenu, EnableBirthMenu, EnableClassMenu, EnableInventoryMenu, EnableNameMenu,

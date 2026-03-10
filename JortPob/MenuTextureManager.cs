@@ -14,6 +14,8 @@ namespace JortPob
 
         public void Write()
         {
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return; }
+
             (var hiBxf, var lowBxf) = icon.Write();
             (var newHiBxf, var newLowBxf) = LoadingImagesManager.Write(hiBxf, lowBxf);
 

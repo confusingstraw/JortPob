@@ -16,9 +16,6 @@ namespace JortPob
         // but having smaller images is tollerable
         public static (BXF4 hiBxf, BXF4 lowBxf) Write(BXF4 hiBxf, BXF4 lowBxf)
         {
-            if (Const.DEBUG_SKIP_CUSTOM_LOADING_IMAGES)
-                return (hiBxf, lowBxf);
-
             Lort.NewTask("Binding Loading Menu Images", 2);
             Lort.Log("Writting Loading Menu Images...", Lort.Type.Main);
 

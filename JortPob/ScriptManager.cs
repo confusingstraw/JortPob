@@ -2,18 +2,11 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -23,10 +16,16 @@ namespace JortPob
 
         public ScriptCommon common;
         public List<Script> scripts; // map scripts
+        public Dictionary<string, uint> locations;
+        public Dictionary<PhasedNpcContent, string> routing; // a routing dictionary for phased npcs to share flags
+        public Dictionary<Cell, uint> areas; // dictionary of region entity ids that cover the volume of an interior cell
         public ScriptManager()
         {
             common = new(this);
             scripts = new();
+            locations = new();
+            routing = new();
+            areas = new();
 
             // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
             // I have these used numbers in a txt file and we parse that into a list
@@ -67,6 +66,27 @@ namespace JortPob
             return GetScript(group.map, group.area, group.unk, group.block);
         }
 
+        /* Supports phased routing */
+        public Flag GetFlag(Designation designation, Content content)
+        {
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(designation, route);
+            }
+            else { return GetFlag(designation, content.entity.ToString()); }
+        }
+
+        /* Supports phased routing */
+        public Flag GetFlagLocal(Content content, string name)
+        {
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(Designation.Local, $"{route}.{name}");
+            }
+            else { return GetFlag(Designation.Local, $"{content.entity.ToString()}.{name}"); }
+        }
+
+        /* Does not support phased routing */
         public Flag GetFlag(Designation designation, string name)
         {
             (Designation, string) lookupKey = FormatFlagLookupKey(designation, name.ToLower());
@@ -83,10 +103,19 @@ namespace JortPob
             return null;
         }
 
+        public void AddRoute(PhasedNpcContent phase, Content original)
+        {
+            routing.Add(phase, original.entity.ToString());
+        }
+
         /* Sets up race and faction flags that are used globally and interact with specific papyrus calls */
         /* Also some other globalish vars we need for scripts like Reputation and CrimeLevel */
         public void SetupSpecialFlags(ESM esm)
         {
+            /* Create some special common events */ // these have to wait until after ESM is loaded otherwise we'd just do it in the constructor
+            common.CreateWeatherTracker();
+            common.TimeHandler();
+
             // Create a one time event that sets some default flags at game startup + also moves player to debug area if they aren't there
             Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
             Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
@@ -96,6 +125,7 @@ namespace JortPob
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.End);"));                                       // end event
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6000, OFF);")); // Always off flag
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6001, ON);")); // Always on flag
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 60120, OFF);")); // Flag that enables crafting
             List<int> setFlagsOn = new()
             {
                 62010, 62011, 62012, 62020, 62021, 62022, 62030, 62031, 62032, 62040, 62041, 62050, 62051, 62052,  // Known world map pieces to unlock all major areas of map
@@ -520,6 +550,38 @@ namespace JortPob
             }
 
             throw new Exception("Could not find area script for a content object"); // should be unreacahable
+        }
+
+        /* These 2 functions are used by PapyrusEMEVD for the GetPcCell check. This just indexes the regions of named locations for use by scripts */
+        public void AddLocation(string name, uint entity)
+        {
+            if (locations.ContainsKey(name.ToLower().Trim())) { return; }
+            locations.Add(name.ToLower().Trim(), entity);
+        }
+
+        public uint GetLocation(string name)
+        {
+            if (locations.TryGetValue(name.ToLower().Trim(), out var entity))
+                return entity;
+            return 0;
+        }
+
+        /* Retrieve info on a PhasedNpcContent based on a Papyrus call of Position or PositionCell */
+        public PhasedNpcContent FindPhase(PhasedNpcContent pnpc, string location, Vector3 position) { return FindPhase(pnpc.source, location, position); }
+        public PhasedNpcContent FindPhase(uint source, string location, Vector3 position)
+        {
+            foreach(var (pnpc, route) in routing)
+            {
+                if (
+                    pnpc.source == source &&                                                                                                // phase is of the same character
+                    ((pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim())) &&   // phase location matches the interior cell or is in the overworld
+                    Vector3.Distance(pnpc.position, position) < 1f                                                                          // phase position is a close enough match
+                )
+                {
+                    return pnpc;
+                }
+            }
+            return null;
         }
 
         /* Write all EMEVD scripts this class has created */

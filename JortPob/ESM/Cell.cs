@@ -1,6 +1,8 @@
 ﻿using JortPob.Common;
+using SoulsFormats.Formats.Morpheme.NSA;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 
@@ -78,7 +80,10 @@ namespace JortPob
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Activator:
-                        if (!string.IsNullOrEmpty(mesh)) { assets.Add(new AssetContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { break; }
+                        string script = record.json["script"]?.GetValue<string>().ToLower().Trim();
+                        if (script == "bed_standard" || script == "chargenbed") { assets.Add(new BedContent(this, reference, record)); }
+                        else { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
                         if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }
@@ -179,6 +184,17 @@ namespace JortPob
                 }
             }
             return false;
+        }
+
+        /* Returns number of BedContents in this cell */
+        public int BedCount()
+        {
+            return assets.Where(content => content is BedContent).Count();
+        }
+
+        public bool IsExterior()
+        {
+            return !flags.Contains(Flag.IsInterior);
         }
     }
 }

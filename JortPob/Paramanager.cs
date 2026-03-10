@@ -859,7 +859,7 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(npc.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)26); // team type (hostile=27, friendly=26)
+            row.Cells[105].SetValue((byte)26); // team type [friendlynpc=26]
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
             AddRow(npcParam, row);
@@ -879,7 +879,7 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(creature.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)(creature.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row.Cells[105].SetValue((byte)(creature.hostile ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
             // @TODO: apply data from json remap to param!
@@ -1419,7 +1419,7 @@ namespace JortPob
             // quantity testing hasn't been done yet, but there can be more loading titles than the base game
             // just don't go crazy without telling one of the mods
 
-            if (Const.DEBUG_SKIP_CUSTOM_LOADING_TEXT) return;
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) return;
 
             // Grab loading menu text override
             List<Override.LoadingTip> loadingTips = Override.GetLoadingTips();

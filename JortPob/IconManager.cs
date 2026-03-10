@@ -1,21 +1,12 @@
 ﻿using DirectXTexNet;
 using JortPob.Common;
-using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization.Metadata;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using TeximpNet.DDS;
-using static IronPython.Modules._ast;
-using static JortPob.IconManager.IconLayout;
 using static JortPob.SpeffManager.Speff.Effect;
 
 namespace JortPob
@@ -30,7 +21,7 @@ namespace JortPob
 
         public IconManager(ESM esm)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return; }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return; }
 
             /* Item Icons */
             Lort.Log($"Loading icons...", Lort.Type.Main);
@@ -95,7 +86,7 @@ namespace JortPob
         /* This one is special, this is getting an icon based on a record that uses it. Multiple records can use the same icon so its a slow search */
         public IconInfo GetIconByRecord(string record)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return new IconInfo("Default", 0); }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return new IconInfo("Default", 0); }
 
             foreach (IconInfo icon in icons)
             {
@@ -109,7 +100,7 @@ namespace JortPob
 
         public BuffInfo GetBuffByType(SpeffManager.Speff.Effect.MagicEffect type)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return null; }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return null; }
 
             foreach (BuffInfo buff in buffs)
             {
@@ -123,8 +114,6 @@ namespace JortPob
 
         public (BXF4 hiBxf, BXF4 lowBxf) Write()
         {
-            if (Const.DEBUG_SKIP_ICONS) { return (null, null); }
-
             /* Do regular icons for use in the inventory */
             const int WIDTH = 4096;
             const int HEIGHT = 2048;
