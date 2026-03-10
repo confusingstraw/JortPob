@@ -581,6 +581,7 @@ namespace JortPob
             return flagsByLookupKey.GetValueOrDefault(key);
         }
 
+        // map 60 and 61 are the main overworld and dlc overworld respectively. All other map ids are interior areas like caves/forts. Important disction as there are differences in how they are handled by the game engine.
         public bool IsInterior()
         {
             return !(map == 60 || map == 61);

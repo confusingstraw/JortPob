@@ -566,15 +566,13 @@ namespace JortPob
         {
             foreach(var (pnpc, route) in routing)
             {
-                if(pnpc.source == source)
+                if (
+                    pnpc.source == source &&
+                    (pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim()) &&
+                    Vector3.Distance(pnpc.position, position) < 1f
+                )
                 {
-                    if ((pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim()))
-                    {
-                        if (Vector3.Distance(pnpc.position, position) < 1f)
-                        {
-                            return pnpc;
-                        }
-                    }
+                    return pnpc;
                 }
             }
             return null;

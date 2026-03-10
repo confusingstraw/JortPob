@@ -7,6 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using WitchyFormats;
 using Xbrz;
@@ -229,6 +230,15 @@ namespace JortPob.Common
             }
 
             return true;
+        }
+
+        /* Convert parameters from papyrus call to a Vector 3. offset moves starting index away from 0. automatically converts xyz to xzy */
+        public static System.Numerics.Vector3 Vector3FromParameters(string[] parameters, int offset = 0)
+        {
+            float x = float.Parse(parameters[0 + offset]);
+            float y = float.Parse(parameters[2 + offset]);
+            float z = float.Parse(parameters[1 + offset]);
+            return new(x, y, z);
         }
 
         private static Random random;

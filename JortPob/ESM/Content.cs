@@ -425,35 +425,32 @@ namespace JortPob
         }
 
         /* Copy constructor for phasing */
-        public CharacterContent(Content content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        public CharacterContent(CharacterContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
         {
-            if (content is not CharacterContent) { throw new Exception("What the fuck are you doing?"); }
-            CharacterContent c = (CharacterContent)content;
-
-            job = c.job;
-            faction = c.faction;
-            race = c.race;
-            sex = c.sex;
-            level = c.level;
-            disposition = c.disposition;
-            reputation = c.reputation;
-            rank = c.rank;
-            gold = c.gold;
-            hello = c.hello;
-            fight = c.fight;
-            flee = c.flee;
-            alarm = c.alarm;
-            hostile = c.hostile;
-            dead = c.dead;
-            essential = c.essential;
-            hasWitness = c.hasWitness;
-            stats = c.stats;
-            treasure = c.treasure;
-            services = c.services;
-            inventory = c.inventory;
-            spells = c.spells;
-            travel = c.travel;
-            barter = c.barter;
+            job = content.job;
+            faction = content.faction;
+            race = content.race;
+            sex = content.sex;
+            level = content.level;
+            disposition = content.disposition;
+            reputation = content.reputation;
+            rank = content.rank;
+            gold = content.gold;
+            hello = content.hello;
+            fight = content.fight;
+            flee = content.flee;
+            alarm = content.alarm;
+            hostile = content.hostile;
+            dead = content.dead;
+            essential = content.essential;
+            hasWitness = content.hasWitness;
+            stats = content.stats;
+            treasure = content.treasure;
+            services = content.services;
+            inventory = content.inventory;
+            spells = content.spells;
+            travel = content.travel;
+            barter = content.barter;
         }
 
         /* Return true if this npc is a generic guard that can arrest the player for crimes */
@@ -540,25 +537,22 @@ namespace JortPob
             hair = record.json["hair"].GetValue<string>();
         }
 
-        public NpcContent(Content content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        public NpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
         {
-            if (content is not NpcContent) { throw new Exception("What the fuck are you doing?"); }
-            NpcContent c = (NpcContent)content;
+            head = content.head;
+            hair = content.hair;
 
-            head = c.head;
-            hair = c.hair;
-
-            equipWeaponLeft = c.equipWeaponLeft;
-            equipWeaponRight = c.equipWeaponRight;
-            equipRange = c.equipRange;
-            equipHead = c.equipHead;
-            equipBody = c.equipBody;
-            equipHands = c.equipHands;
-            equipLegs = c.equipLegs;
-            equipArrow = c.equipArrow;
-            equipBolt = c.equipBolt;
-            equipAcc = c.equipAcc;
-            equipGood = c.equipGood;
+            equipWeaponLeft = content.equipWeaponLeft;
+            equipWeaponRight = content.equipWeaponRight;
+            equipRange = content.equipRange;
+            equipHead = content.equipHead;
+            equipBody = content.equipBody;
+            equipHands = content.equipHands;
+            equipLegs = content.equipLegs;
+            equipArrow = content.equipArrow;
+            equipBolt = content.equipBolt;
+            equipAcc = content.equipAcc;
+            equipGood = content.equipGood;
         }
     }
 
@@ -567,7 +561,7 @@ namespace JortPob
         public readonly uint source;  // source entity id. from original NpcContent that was converted to phased
         public readonly int phase;   // index of which phase this is for the phased npc
 
-        public PhasedNpcContent(Content content, Cell cell, Vector3 position, Vector3 rotation, uint source, int phase) : base(content, cell, position, rotation)
+        public PhasedNpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation, uint source, int phase) : base(content, cell, position, rotation)
         {
             this.source = source;
             this.phase = phase;

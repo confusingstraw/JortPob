@@ -300,6 +300,16 @@ namespace JortPob
             return null;
         }
 
+        /* By Morrowind coordinates, not elden ring relative coordinates. Only exterior cells (obviously) */
+        public Cell GetCellByPosition(System.Numerics.Vector3 position)
+        {
+            foreach(Cell cell in exterior)
+            {
+                if (cell.IsPointInside(position)) { return cell; }
+            }
+            return null;
+        }
+
         public Landscape GetLandscape(Int2 coordinate)
         {
             if (GetCellByGrid(coordinate) == null) { return null; } // Performance hack.

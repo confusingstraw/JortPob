@@ -733,15 +733,14 @@ namespace JortPob
                 }
 
                 // Find this content and replace it with a phased copy. Searches for matching reference, not by id or anything
-                foreach(Tile t in tiles)
+                void DoReplacement(Script script, NpcContent original, List<NpcContent> npcs)
                 {
-                    foreach(NpcContent c in t.npcs)
+                    foreach (NpcContent c in npcs)
                     {
-                        if(original == c)
+                        if (original == c)
                         {
-                            Script script = scriptManager.GetScript(t);
                             RemoveOriginalNpcRegistration(script);
-                            t.npcs.Replace(original, replacement);
+                            npcs.Replace(original, replacement);
                             scriptManager.AddRoute(replacement, original);
                             script.RegisterCharacter(param, replacement, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, replacement.id));
                             script.RegisterNpcHostility(replacement);
@@ -751,24 +750,18 @@ namespace JortPob
                     }
                 }
 
+                foreach(Tile t in tiles)
+                {
+                    Script script = scriptManager.GetScript(t);
+                    DoReplacement(script, original, t.npcs);
+                }
+
                 foreach (InteriorGroup g in interiors)
                 {
                     foreach (InteriorGroup.Chunk c in g.chunks)
                     {
-                        foreach (NpcContent n in c.npcs)
-                        {
-                            if (original == n)
-                            {
-                                Script script = scriptManager.GetScript(g);
-                                RemoveOriginalNpcRegistration(script);
-                                c.npcs.Replace(original, replacement);
-                                scriptManager.AddRoute(replacement, original);
-                                script.RegisterCharacter(param, replacement, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, replacement.id));
-                                script.RegisterNpcHostility(replacement);
-                                script.RegisterNpcHello(replacement);
-                                return;
-                            }
-                        }
+                        Script script = scriptManager.GetScript(g);
+                        DoReplacement(script, original, c.npcs);
                     }
                 }
 
@@ -786,7 +779,7 @@ namespace JortPob
                 else
                 {
                     // See if our target is already phased
-                    foreach(var (t, p) in phases)
+                    foreach(var (t, _) in phases)
                     {
                         if(t.id == call.target) { target = t; break; }
                     }
@@ -833,8 +826,8 @@ namespace JortPob
                 PhasedNpcContent pnpc;
                 if (tile != null)
                 {
-                    // @TODO: cell value is lazy but functional. find the correct one maybe?
-                    pnpc = new(npc, tile.cells[0], position, new Vector3(0, rotation, 0), npc.entity, phase);
+                    Cell cell = esm.GetCellByPosition(position);
+                    pnpc = new(npc, cell, position, new Vector3(0, rotation, 0), npc.entity, phase);
                     script = scriptManager.GetScript(tile);
                     pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
                     tile.AddContent(cache, tile.cells[0], pnpc);
@@ -863,10 +856,7 @@ namespace JortPob
                         case Papyrus.Call.Type.Position:
                             {
                                 // Find tile this position call is pointing too
-                                float x = float.Parse(call.parameters[0]);
-                                float y = float.Parse(call.parameters[2]);
-                                float z = float.Parse(call.parameters[1]);
-                                Vector3 position = new(x, y, z);
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
                                 position *= Const.GLOBAL_SCALE;
                                 float rot = float.Parse(call.parameters[3]);
                                 Tile target = GetTile(position);
@@ -887,10 +877,7 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.PositionCell:
                             {
-                                float x = float.Parse(call.parameters[0]);
-                                float y = float.Parse(call.parameters[2]);
-                                float z = float.Parse(call.parameters[1]);
-                                Vector3 position = new(x, y, z);
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
                                 position *= Const.GLOBAL_SCALE;
                                 float rot = float.Parse(call.parameters[3]);
                                 string name = call.parameters[4];
@@ -917,11 +904,9 @@ namespace JortPob
 
             foreach (Tile tile in tiles)
             {
-
-                for (int i = 0; i < tile.GetAllContent().Count(); i++)
+                List<Content> allContent = tile.GetAllContent().ToList();
+                foreach(Content content in allContent)
                 {
-                    Content content = tile.GetAllContent().ToList()[i]; // cant use foreach here because lists can be modified
-
                     if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
 
                     Papyrus papyrus = esm.GetPapyrus(content.papyrus);
@@ -936,10 +921,9 @@ namespace JortPob
             {
                 foreach(InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    for (int i = 0; i<chunk.GetAllContent().Count(); i++)
+                    List<Content> allContent = chunk.GetAllContent().ToList();
+                    foreach (Content content in allContent)
                     {
-                        Content content = chunk.GetAllContent().ToList()[i]; // cant use foreach here because lists can be modified
-
                         if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
 
                         Papyrus papyrus = esm.GetPapyrus(content.papyrus);
@@ -1257,6 +1241,8 @@ namespace JortPob
         /* Finds scripted position in interior */
         public ScriptedPosition FindScriptedPosition(string name, Vector3 position)
         {
+            if (name == null) { return FindScriptedPosition(position); }  // if location = null then we assume its an exterior
+
             InteriorGroup.Chunk chunk = FindChunk(name);
             if (chunk == null) { return null; } // partial build case
             foreach(ScriptedPosition sp in chunk.positions)

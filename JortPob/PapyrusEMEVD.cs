@@ -286,7 +286,7 @@ namespace JortPob
                                 msb.Regions.Add(distanceRegion);
 
                                 string inOut = call.op == ">" || call.op == ">=" ? "Inside" : "Outside";
-                                lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{inOut}, {(targetB == null ? 10000 : targetB.entity)}, {distanceRegion.EntityID}, 1);");
+                                lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{inOut}, {(targetB == null ? 10000 : targetB.entity)}, {distanceRegion.EntityID}, 1);"); // SIC
                             }
                             else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                             break;
@@ -436,7 +436,7 @@ namespace JortPob
                             bool flagState = int.Parse(call.right.parameters[0]) == 1;
                             uint region = scriptManager.GetLocation(call.left.parameters[0]);
                             
-                            lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{(flagState?"Outside":"Inside")}, 10000, {region}, 1);");
+                            lines.Add($"SkipIfInoutsideArea({pass.Count()}, InsideOutsideState.{(flagState?"Outside":"Inside")}, 10000, {region}, 1);"); // SIC
                         }
                         else { Lort.Log($"## BAD CONDITIONAL ## {papyrus.id}->{call.type} [{call.left.type} ? {call.right.type}]", Lort.Type.Debug); }
                         break;
@@ -1480,19 +1480,24 @@ namespace JortPob
                             break;
                         }
 
+                    case Call.Type.PositionCell:
                     case Call.Type.Position:
                         {
                             // find where to teleport to
-                            float x = float.Parse(call.parameters[0]);
-                            float y = float.Parse(call.parameters[2]);
-                            float z = float.Parse(call.parameters[1]);
-                            Vector3 position = new(x, y, z);
+                            Vector3 position = Utility.Vector3FromParameters(call.parameters);
                             position *= Const.GLOBAL_SCALE;
 
+                            string location;
+                            if (call.type == Call.Type.PositionCell) { location = call.parameters[4]; }
+                            else { location = null; }
+
                             // player teleport
-                            if(call.target == "player")
+                            if (call.target == "player")
                             {
-                                Layout.ScriptedPosition sp = layout.FindScriptedPosition(position);
+                                Layout.ScriptedPosition sp;
+                                if (call.type == Call.Type.PositionCell) { sp = layout.FindScriptedPosition(location, position); }
+                                else { sp = layout.FindScriptedPosition(location, position); }
+                                
                                 lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
                             }
                             // npc teleport
@@ -1504,45 +1509,6 @@ namespace JortPob
                                 else { target = layout.FindScriptReference(content, call.target); }
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
                                 if (target is not PhasedNpcContent) { Lort.Log($" ## WARNING ## Tried to process 'Position' call on non phased content: {content.id}", Lort.Type.Debug); break; }
-
-                                // find our phase
-                                PhasedNpcContent phaseTo = scriptManager.FindPhase((PhasedNpcContent)target, null, position);
-                                if (phaseTo == null) { break; } // Failed to find phase. Partial build thing
-
-                                // set phase
-                                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
-                                lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded
-                                lines.Add($"ChangeCharacterEnableState({phaseTo.entity}, 1);");   // enable phaseTo if loaded
-                                lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
-                            }
-                            break;
-                        }
-
-                    case Call.Type.PositionCell:
-                        {
-                            // find where to teleport to
-                            float x = float.Parse(call.parameters[0]);
-                            float y = float.Parse(call.parameters[2]);
-                            float z = float.Parse(call.parameters[1]);
-                            Vector3 position = new(x, y, z);
-                            position *= Const.GLOBAL_SCALE;
-                            string location = call.parameters[4];
-
-                            // player teleport
-                            if (call.target == "player")
-                            {
-                                Layout.ScriptedPosition sp = layout.FindScriptedPosition(location, position);
-                                lines.Add($"WarpPlayer({sp.map}, {sp.area}, {sp.unk}, {sp.block}, {sp.player}, 0);");
-                            }
-                            // npc teleport
-                            else
-                            {
-                                // find our target content
-                                Content target;
-                                if (call.target == null) { target = content; }
-                                else { target = layout.FindScriptReference(content, call.target); }
-                                if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
-                                if (target is not PhasedNpcContent) { Lort.Log($" ## WARNING ## Tried to process 'PositionCell' call on non phased content: {content.id}", Lort.Type.Debug); break; }
 
                                 // find our phase
                                 PhasedNpcContent phaseTo = scriptManager.FindPhase((PhasedNpcContent)target, location, position);
@@ -2001,7 +1967,7 @@ namespace JortPob
             if(script is not ScriptCommon && ((Script)script).IsInterior())
             {
                 lines.Insert(0, $"EndUnconditionally(EventEndType.End);"); // interior cell bounds check, halts execution of papyrus if player is not in the cell its from
-                lines.Insert(0, $"SkipIfInoutsideArea(1, InsideOutsideState.Inside, 10000, {scriptManager.areas[content.cell]}, 1);");
+                lines.Insert(0, $"SkipIfInoutsideArea(1, InsideOutsideState.Inside, 10000, {scriptManager.areas[content.cell]}, 1);");  // SIC
             }
             if(subscriptRunFlag != null) { lines.Insert(0, $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {subscriptRunFlag.id});"); }  // if this is a subscript, only runs when run flag is set true
             if(content is PhasedNpcContent)      
