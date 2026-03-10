@@ -614,13 +614,13 @@ namespace JortPob.Common
 
             // This snapshot can be loaded up in havok content tools, and I think modified and then ran through
             // another function I will have to add to generate from snapshot.
-            snapshot.settings.saveInputSnapshot = true;
-            snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
+            // snapshot.settings.saveInputSnapshot = true;
+            // snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
             
             // This snapshot didn't seem to do anything???? Does this mean the simplification isn't happening or maybe it
             // needs to be turned on with a flag in the settings here?
-            snapshot.settings.simplificationSettings.saveInputSnapshot = true;
-            snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
+            // snapshot.settings.simplificationSettings.saveInputSnapshot = true;
+            // snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
 
             // Configure the JSON Serializer
             var jsonOptions = new JsonSerializerOptions
