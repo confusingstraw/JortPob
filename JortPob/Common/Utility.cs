@@ -609,34 +609,16 @@ namespace JortPob.Common
 
             // set the up for Elden Ring
             snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 0f };
+            // IDK what this does but it was set in the 
             snapshot.settings.precalculateClearanceSeedingData = true;
 
-            // --- Basic Primitives ---
-            snapshot.settings.characterHeight = 1.75f;
-            snapshot.settings.quantizationGridSize = 0.5f;
-            snapshot.settings.maxWalkableSlope = 1.047f; // roughly 60 degrees in radians
-            snapshot.settings.convexThreshold = 0.1f;
-            snapshot.settings.maxNumEdgesPerFace = 6;
-
-            // --- Enums ---
-            snapshot.settings.triangleWinding = TriangleWinding.WINDING_CCW;
-            snapshot.settings.edgeMatchingMetric = EdgeMatchingMetric.ORDER_BY_OVERLAP;
-
-            // --- Nested Vectors ---
-
-            // --- Strings (Will safely marshal to char* in C++) --
+            // This snapshot can be loaded up in havok content tools, and I think modified and then ran through
+            // another function I will have to add to generate from snapshot.
             snapshot.settings.saveInputSnapshot = true;
             snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
-
-            // --- Nested Structs ---
-            // Edge Matching Parameters
-            snapshot.settings.edgeMatchingParams.maxStepHeight = 0.5f;
-            snapshot.settings.edgeMatchingParams.maxSeparation = 0.1f;
-            snapshot.settings.edgeMatchingParams.edgeParallelTolerance = 0.1f;
-
-            // Simplification Settings
-            snapshot.settings.simplificationSettings.maxBorderSimplifyArea = 1.5f;
-            snapshot.settings.simplificationSettings.useHeightPartitioning = true;
+            
+            // This snapshot didn't seem to do anything???? Does this mean the simplification isn't happening or maybe it
+            // needs to be turned on with a flag in the settings here?
             snapshot.settings.simplificationSettings.saveInputSnapshot = true;
             snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
 
