@@ -505,8 +505,12 @@ namespace JortPob
                     /* Create NVA */
                     SoulsFormats.NVA nva = new();
                     nva.Compression = Compression.KRAK();
-                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                    NVA.Entry11 entry11 = new();
+                    entry11.Unk00 = 1726789910; entry11.Unk04 = 0; entry11.Unk08 = 0; entry11.Unk0C = 0;
+                    nva.Entries11.Add(entry11);
                     nva.Navmeshes.Version = 4;
+
+                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
                     List<(int id, string file)> navMeshesToWrite = new();
 
                     Tile t = tile as Tile;
@@ -540,15 +544,6 @@ namespace JortPob
 
                         nextNavId += 10;
                     }
-
-                    //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_42_36_00\m60_42_36_00.nvmhktbnd.dcx"); // delete me
-                    //SoulsFormats.NVA nvaExample2 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nva.dcx")); // delete me
-                    //SoulsFormats.NVA nvaExample3 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_44_44_00\m60_44_44_00.nva.dcx")); // delete me
-                    //SoulsFormats.BND4 nvbndExample = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nvmhktbnd.dcx")); // delete me
-                    SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_42_36_00\m60_42_36_00.nva.dcx")); // delete me
-                    nva.Entries10 = nvaExample.Entries10;  // @TODO: copying values from a stock nva, please fix this when convienent
-                    nva.Entries11 = nvaExample.Entries11;
-
 
                     string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
                     nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
@@ -1032,13 +1027,17 @@ namespace JortPob
                 /* Create NVA */
                 SoulsFormats.NVA nva = new();
                 nva.Compression = Compression.KRAK();
-                int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
+                NVA.Entry11 entry11 = new();
+                entry11.Unk00 = 1726789910; entry11.Unk04 = 0; entry11.Unk08 = 0; entry11.Unk0C = 0;
+                nva.Entries11.Add(entry11);
                 nva.Navmeshes.Version = 4;
+
+                int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
                 List<(int id, string file)> navMeshesToWrite = new();
 
-                int j = 0;
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                for (int j=0;j<group.chunks.Count();j++)
                 {
+                    InteriorGroup.Chunk chunk = group.chunks[j];
                     if (!chunk.nav.empty())
                     {
                         /* Finalize nav scene repersentation of this msb */
@@ -1069,17 +1068,7 @@ namespace JortPob
 
                         nextNavId += 10;
                     }
-                    j++;
                 }
-
-                //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m10\m10_00_00_00\m10_00_00_00.nvmhktbnd.dcx"); // delete me
-                //SoulsFormats.NVA nvaExample2 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nva.dcx")); // delete me
-                //SoulsFormats.NVA nvaExample3 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_44_44_00\m60_44_44_00.nva.dcx")); // delete me
-                //SoulsFormats.BND4 nvbndExample = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nvmhktbnd.dcx")); // delete me
-                SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m10\m10_00_00_00\m10_00_00_00.nva.dcx")); // delete me
-                //nva.Entries10 = nvaExample.Entries10;  // @TODO: copying values from a stock nva, please fix this when convienent
-                nva.Entries11 = nvaExample.Entries11;
-
 
                 string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
                 nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
