@@ -122,7 +122,7 @@ namespace JortPob.Model
 
             /* Generate collision obj */
             Obj obj = LANDSCAPEtoOBJ(landscape);
-            Obj navObj = obj.merge(Obj.CollisionMaterial.Stock).optimize();
+            Obj navObj = obj.collapse(Obj.CollisionMaterial.Stock).optimize();
             navObj.write(Path.ChangeExtension(outputFilename, ".obj"));
             List<Obj> objs = obj.split();            // due to an issue with OBJtoHKX we can only have one material per hkx so until that's fixed im splitting objs off their materials
 

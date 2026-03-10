@@ -1,5 +1,6 @@
 ﻿using JortPob.Common;
 using JortPob.Worker;
+using NAudio.Utils;
 using PortJob;
 using SoulsFormats;
 using System;
@@ -74,13 +75,6 @@ namespace JortPob
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
                 ResourcePool pool = new(tile, msb, lightManager, script);
 
-                /* Create NVA */
-                SoulsFormats.NVA nva = new();
-                nva.Compression = Compression.KRAK();
-                int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
-                nva.Navmeshes.Version = 4;
-                List<(int id, string file)> navMeshesToWrite = new();
-
                 /* Various Indices */
                 int nextC = 0, nextMPR = 0;
 
@@ -102,29 +96,6 @@ namespace JortPob
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
 
-                        string objPath = Path.Combine(Const.CACHE_PATH, terrainInfo.obj);
-                        string hkxPath = Path.ChangeExtension(objPath, ".hkx");
-                        string navPath = Path.ChangeExtension(hkxPath, ".nav");
-                        Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
-                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath);
-
-                        NVA.Navmesh navMesh = new();
-                        int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextC:D2}");
-                        navMesh.NameID = nextNavId;
-                        navMesh.ModelID = nextN;
-                        navMesh.IsConnectedNavmeshesInline = true;
-                        navMesh.Position = new((position + Const.MSB_OFFSET), 1f);
-                        navMesh.Rotation = new(0f);
-                        navMesh.Scale = new(1f, 1f, 1f, 0f);
-                        navMesh.FaceCount = new Obj(objPath).count(); // might be unnesscary? doesn't really seem to do anything?
-                        navMesh.Unk3C = 0;
-                        navMesh.Unk4C = 0;
-                        navMesh.Unk44 = 1075419545; // magic number used
-
-                        nva.Navmeshes.Add(navMesh);
-                        navMeshesToWrite.Add((nextN, navPath));
-
-                        nextNavId += 10;
                         nextC++;
                     }
 
@@ -527,6 +498,45 @@ namespace JortPob
                 /* Write NVA and NVM for regular Tiles */
                 if (isTileType)
                 {
+                    /* Create NVA */
+                    SoulsFormats.NVA nva = new();
+                    nva.Compression = Compression.KRAK();
+                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                    nva.Navmeshes.Version = 4;
+                    List<(int id, string file)> navMeshesToWrite = new();
+
+                    Tile t = tile as Tile;
+                    if (!t.nav.empty())
+                    {
+                        /* Finalize nav scene repersentation of this msb */
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
+                        t.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(Path.Combine(Const.CACHE_PATH, objPath));
+
+                        /* Add navmesh to NVA */
+                        string hkxPath = Path.ChangeExtension(objPath, ".hkx");
+                        string navPath = Path.ChangeExtension(hkxPath, ".nav");
+                        Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
+                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath);
+
+                        NVA.Navmesh navMesh = new();
+                        int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
+                        navMesh.NameID = nextNavId;
+                        navMesh.ModelID = nextN;
+                        navMesh.IsConnectedNavmeshesInline = true;
+                        navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                        navMesh.Rotation = new(0f);
+                        navMesh.Scale = new(1f, 1f, 1f, 0f);
+                        navMesh.FaceCount = new Obj(objPath).count(); // might be unnesscary? doesn't really seem to do anything?
+                        navMesh.Unk3C = 0;
+                        navMesh.Unk4C = 0;
+                        navMesh.Unk44 = 1075419545; // magic number used
+
+                        nva.Navmeshes.Add(navMesh);
+                        navMeshesToWrite.Add((nextN, navPath));
+
+                        nextNavId += 10;
+                    }
+
                     //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m60\m60_42_36_00\m60_42_36_00.nvmhktbnd.dcx"); // delete me
                     //SoulsFormats.NVA nvaExample2 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nva.dcx")); // delete me
                     //SoulsFormats.NVA nvaExample3 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_44_44_00\m60_44_44_00.nva.dcx")); // delete me
@@ -536,7 +546,7 @@ namespace JortPob
                     nva.Entries11 = nvaExample.Entries11;
 
 
-                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_00";
+                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
                     nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
                     BND4 nvbnd = new();
                     nvbnd.Compression = Compression.KRAK();
@@ -1014,6 +1024,84 @@ namespace JortPob
 
                 /* Auto resource */
                 AutoResource.Generate(group.map, group.area, group.unk, group.block, msb);
+
+                /* Create NVA */
+                SoulsFormats.NVA nva = new();
+                nva.Compression = Compression.KRAK();
+                int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
+                nva.Navmeshes.Version = 4;
+                List<(int id, string file)> navMeshesToWrite = new();
+
+                int j = 0;
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    if (!chunk.nav.empty())
+                    {
+                        /* Finalize nav scene repersentation of this msb */
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{j:D2}.obj");
+                        chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(Path.Combine(Const.CACHE_PATH, objPath));
+
+                        /* Add navmesh to NVA */
+                        string hkxPath = Path.ChangeExtension(objPath, ".hkx");
+                        string navPath = Path.ChangeExtension(hkxPath, ".nav");
+                        Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
+                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath);
+
+                        NVA.Navmesh navMesh = new();
+                        int nextN = int.Parse($"{group.map:D2}{group.area:D2}{j:D2}");
+                        navMesh.NameID = nextNavId;
+                        navMesh.ModelID = nextN;
+                        navMesh.IsConnectedNavmeshesInline = true;
+                        navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                        navMesh.Rotation = new(0f);
+                        navMesh.Scale = new(1f, 1f, 1f, 0f);
+                        navMesh.FaceCount = new Obj(objPath).count(); // might be unnesscary? doesn't really seem to do anything?
+                        navMesh.Unk3C = 0;
+                        navMesh.Unk4C = 0;
+                        navMesh.Unk44 = 1075419545; // magic number used
+
+                        nva.Navmeshes.Add(navMesh);
+                        navMeshesToWrite.Add((nextN, navPath));
+
+                        nextNavId += 10;
+                    }
+                    j++;
+                }
+
+                //BND4 example = BND4.Read(@"I:\SteamLibrary\steamapps\common\ELDEN RING\Game\map\m10\m10_00_00_00\m10_00_00_00.nvmhktbnd.dcx"); // delete me
+                //SoulsFormats.NVA nvaExample2 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nva.dcx")); // delete me
+                //SoulsFormats.NVA nvaExample3 = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_44_44_00\m60_44_44_00.nva.dcx")); // delete me
+                //SoulsFormats.BND4 nvbndExample = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m60\m60_43_39_00\m60_43_39_00.nvmhktbnd.dcx")); // delete me
+                SoulsFormats.NVA nvaExample = NVA.Read(Path.Combine(Const.ELDEN_PATH, @"game\map\m10\m10_00_00_00\m10_00_00_00.nva.dcx")); // delete me
+                //nva.Entries10 = nvaExample.Entries10;  // @TODO: copying values from a stock nva, please fix this when convienent
+                nva.Entries11 = nvaExample.Entries11;
+
+
+                string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
+                nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                BND4 nvbnd = new();
+                nvbnd.Compression = Compression.KRAK();
+                nvbnd.Version = "07D7R6";
+
+                int bid = 10000;
+                foreach ((int id, string file) entry in navMeshesToWrite)
+                {
+                    BinderFile nbf = new();
+                    nbf.Bytes = File.ReadAllBytes(entry.file);
+                    nbf.ID = bid;
+                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{entry.id:D6}.hkx";
+                    nvbnd.Files.Add(nbf);
+
+                    BinderFile obf = new(); // @TODO: may not be nesscary? would be good to generate a real one though
+                    obf.Bytes = File.ReadAllBytes(Utility.ResourcePath(@"misc\o60_42_36_00_423600.hkx"));
+                    obf.ID = 10000 + bid;
+                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{entry.id:D6}.hkx";
+                    nvbnd.Files.Add(obf);
+
+                    bid++;
+                }
+
+                nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
 
                 /* Done */
                 msbs.Add(pool);

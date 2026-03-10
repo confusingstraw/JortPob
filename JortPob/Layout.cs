@@ -321,7 +321,7 @@ namespace JortPob
 
                 foreach (Cell cell in cells)
                 {
-                    group.AddCell(cell);
+                    group.AddCell(cache,cell);
                     scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
                 }
             }
@@ -833,7 +833,7 @@ namespace JortPob
                     script = scriptManager.GetScript(chunk.group);
                     pnpc.relative = position + chunk.root - chunk.offset;
                     pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
-                    chunk.AddContent(pnpc);
+                    chunk.AddContent(cache, pnpc);
                 }
 
                 scriptManager.AddRoute(pnpc, target);

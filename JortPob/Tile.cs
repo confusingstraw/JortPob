@@ -1,10 +1,11 @@
 ﻿using JortPob.Common;
+using SharpAssimp.Unmanaged;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
-using static SoulsFormats.MSBE.Region;
 
 namespace JortPob
 {
@@ -15,9 +16,11 @@ namespace JortPob
         public HugeTile huge;
         public BigTile big;
 
+        public Obj nav;  // navmesh repersentation of this msb tile
+
         public Tile(int m, int x, int y, int b) : base(m, x, y, b)
         {
-            
+            nav = new();
         }
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
@@ -105,6 +108,7 @@ namespace JortPob
             float y = (coordinate.y * Const.TILE_SIZE);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
+            nav.add(new Obj(Path.Combine(Const.CACHE_PATH, terrainInfo.obj)), relative, Vector3.Zero, 1f);
         }
 
         public new void AddContent(Cache cache, Cell cell, Content content)
@@ -113,7 +117,27 @@ namespace JortPob
             float y = (coordinate.y * Const.TILE_SIZE);
             content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
 
+            AddNav(cache, cell, content);
+
             base.AddContent(cache, cell, content);
+        }
+
+        public void AddNav(Cache cache, Cell cell, Content content)
+        {
+            /* Recalcualte relative for this tile because this content may be coming from a BigTile or HugeTile and the content.relative will not be valid in those cases */
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+            Vector3 relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+
+            switch (content)
+            {
+                case AssetContent a:
+                    ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
+                    if (!modelInfo.HasCollision()) { break; } // no collision means no nav info
+                    nav.add(new Obj(Path.Combine(Const.CACHE_PATH, modelInfo.collision.obj)), relative, content.rotation, modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
+                    break;
+                default: break;
+            }
         }
 
         public void AddWarp(DoorContent.Warp warp)
