@@ -733,7 +733,7 @@ namespace JortPob
                 }
 
                 // Find this content and replace it with a phased copy. Searches for matching reference, not by id or anything
-                void DoReplacement(Script script, NpcContent original, List<NpcContent> npcs)
+                bool DoReplacement(Script script, NpcContent original, List<NpcContent> npcs)
                 {
                     foreach (NpcContent c in npcs)
                     {
@@ -745,15 +745,16 @@ namespace JortPob
                             script.RegisterCharacter(param, replacement, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, replacement.id));
                             script.RegisterNpcHostility(replacement);
                             script.RegisterNpcHello(replacement);
-                            return;
+                            return true;
                         }
                     }
+                    return false;
                 }
 
                 foreach(Tile t in tiles)
                 {
                     Script script = scriptManager.GetScript(t);
-                    DoReplacement(script, original, t.npcs);
+                    if(DoReplacement(script, original, t.npcs)) { return; }
                 }
 
                 foreach (InteriorGroup g in interiors)
@@ -761,7 +762,7 @@ namespace JortPob
                     foreach (InteriorGroup.Chunk c in g.chunks)
                     {
                         Script script = scriptManager.GetScript(g);
-                        DoReplacement(script, original, c.npcs);
+                        if (DoReplacement(script, original, c.npcs)) { return; }
                     }
                 }
 

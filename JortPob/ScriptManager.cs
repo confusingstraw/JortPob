@@ -69,14 +69,20 @@ namespace JortPob
         /* Supports phased routing */
         public Flag GetFlag(Designation designation, Content content)
         {
-            if (content is PhasedNpcContent && routing.ContainsKey((PhasedNpcContent)content)) { return GetFlag(designation, routing[(PhasedNpcContent)content]); }
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(designation, route);
+            }
             else { return GetFlag(designation, content.entity.ToString()); }
         }
 
         /* Supports phased routing */
         public Flag GetFlagLocal(Content content, string name)
         {
-            if (content is PhasedNpcContent && routing.ContainsKey((PhasedNpcContent)content)) { return GetFlag(Designation.Local, $"{routing[(PhasedNpcContent)content]}.{name}"); }
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(Designation.Local, $"{route}.{name}");
+            }
             else { return GetFlag(Designation.Local, $"{content.entity.ToString()}.{name}"); }
         }
 
@@ -567,9 +573,9 @@ namespace JortPob
             foreach(var (pnpc, route) in routing)
             {
                 if (
-                    pnpc.source == source &&
-                    (pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim()) &&
-                    Vector3.Distance(pnpc.position, position) < 1f
+                    pnpc.source == source &&                                                                                                // phase is of the same character
+                    ((pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim())) &&   // phase location matches the interior cell or is in the overworld
+                    Vector3.Distance(pnpc.position, position) < 1f                                                                          // phase position is a close enough match
                 )
                 {
                     return pnpc;
