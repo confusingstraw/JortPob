@@ -133,6 +133,18 @@ namespace JortPob
             point.relative = (point.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             points.Add(point);
         }
+
+        public void AddScriptedPosition(Script script, Vector3 position, float rot)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+
+            Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
+            uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position.ToString()}");
+            uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position.ToString()}");
+            positions.Add(new(position, relative, rotation, region, player, map, coordinate.x, coordinate.y, block));
+        }
     }
 
 
@@ -158,6 +170,7 @@ namespace JortPob
 
         public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
         public readonly List<Layout.MapPoint> points;
+        public readonly List<Layout.ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
 
         public BaseTile(int m, int x, int y, int b)
         {
@@ -179,6 +192,7 @@ namespace JortPob
             pickables = new();
             items = new();
 
+            positions = new();
             points = new();
             warps = new();
         }
