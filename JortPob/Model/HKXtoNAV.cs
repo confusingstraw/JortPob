@@ -16,7 +16,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 30000);
         }
     }
 }

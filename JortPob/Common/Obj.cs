@@ -295,7 +295,7 @@ namespace JortPob.Common
             StringBuilder sb = new();
 
             /* Header */
-            sb.Append($"## Triangle Count: {count()}");
+            sb.Append($"## Triangle Count: {count()}\r\n");
             sb.Append($"mtllib {Utility.PathToFileName(outPath)}.mtl\r\n");
 
             /* write vertices */
