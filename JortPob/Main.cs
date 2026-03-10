@@ -57,7 +57,7 @@ namespace JortPob
             List<ResourcePool> msbs = new();
             
             // Navmesh settings only need to be written once for now.
-            string navmeshSettingsPath = $@"{Const.CACHE_PATH}\settings.json";
+            string navmeshSettingsPath = $@"{Const.CACHE_PATH}\NavmeshSettings.json";
             NavmeshUtilities.SaveNavmeshGenerationSettings(navmeshSettingsPath);
             
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
