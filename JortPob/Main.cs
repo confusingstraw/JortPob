@@ -56,7 +56,11 @@ namespace JortPob
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
-
+            
+            // Navmesh settings only need to be written once for now.
+            string navmeshSettingsPath = $@"{Const.CACHE_PATH}\NavmeshSettings.json";
+            NavmeshUtilities.SaveNavmeshGenerationSettings(navmeshSettingsPath);
+            
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.tiles.Count);
 
@@ -516,7 +520,7 @@ namespace JortPob
                         string hkxPath = Path.ChangeExtension(objPath, ".hkx");
                         string navPath = Path.ChangeExtension(hkxPath, ".nav");
                         Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
-                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath);
+                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath, navmeshSettingsPath);
 
                         NVA.Navmesh navMesh = new();
                         int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
@@ -1045,7 +1049,7 @@ namespace JortPob
                         string hkxPath = Path.ChangeExtension(objPath, ".hkx");
                         string navPath = Path.ChangeExtension(hkxPath, ".nav");
                         Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
-                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath);
+                        Model.ModelConverter.HKXtoNAV(hkxPath, navPath, navmeshSettingsPath);
 
                         NVA.Navmesh navMesh = new();
                         int nextN = int.Parse($"{group.map:D2}{group.area:D2}{j:D2}");
