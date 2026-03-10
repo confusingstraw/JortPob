@@ -1,5 +1,4 @@
-﻿using IronPython.Modules;
-using JortPob.Common;
+﻿using JortPob.Common;
 using Microsoft.Scripting.Utils;
 using NAudio.Wave;
 using System;
@@ -7,12 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.Pkcs;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static Community.CsharpSqlite.Sqlite3;
-using static IronPython.Modules._ast;
 using static JortPob.SoundManager;
 
 namespace JortPob
@@ -31,8 +25,10 @@ namespace JortPob
         // Returns the row id of the sound you add
         public int AddSound(string record, Sound.Type type, bool loop, bool spatialize, float volume, float pitch, string file)
         {
+            if (Const.DEBUG_SKIP_SOUND) { return 5; } // see below
+
             /* See if this sound has already been added to the bank with the same (or similar enough) settings */
-            foreach(Sound s in sounds)
+            foreach (Sound s in sounds)
             {
                 if(s.IsSame(record, type, loop, spatialize, volume, pitch))
                 {

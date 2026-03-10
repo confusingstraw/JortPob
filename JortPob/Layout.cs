@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +9,6 @@ using static JortPob.InteriorGroup;
 
 namespace JortPob
 {
-
     /* Takes the Morrowind ESM cell grid and re-subdivides it into the Elden Ring tile grid */
     public class Layout
     {
@@ -43,7 +43,7 @@ namespace JortPob
                 int y = int.Parse(split[2]);
                 int b = int.Parse(split[3]);
 
-                if(m == 60 && b == 0)
+                if (m == 60 && b == 0)
                 {
                     Tile tile = new Tile(m, x, y, b);
                     tiles.Add(tile);
@@ -96,7 +96,7 @@ namespace JortPob
                 {
                     HugeTile huge = new HugeTile(m, x, y, b);
 
-                    foreach(BigTile big in bigs)
+                    foreach (BigTile big in bigs)
                     {
                         int x1 = x * 2;
                         int y1 = y * 2;
@@ -108,13 +108,13 @@ namespace JortPob
                         }
                     }
 
-                    foreach(Tile tile in tiles)
+                    foreach (Tile tile in tiles)
                     {
                         int x1 = x * 4;
                         int y1 = y * 4;
                         int x2 = x1 + 4;
                         int y2 = y1 + 4;
-                        if(tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
+                        if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
                         {
                             huge.AddTile(tile);
                         }
@@ -167,7 +167,7 @@ namespace JortPob
                 // Grab record reference from target if exists
                 if (call.target != null && call.target != "player")
                 {
-                    if(!allReferences.Contains(call.target)) { allReferences.Add(call.target); }
+                    if (!allReferences.Contains(call.target)) { allReferences.Add(call.target); }
 
                     switch (call.type)
                     {
@@ -203,10 +203,10 @@ namespace JortPob
 
             void PreProcessSelfDisableCalls(Cell cell)
             {
-                foreach(Content content in cell.contents)
+                foreach (Content content in cell.contents)
                 {
                     Papyrus papyrus = esm.GetPapyrus(content.papyrus);
-                    if(
+                    if (
                         papyrus != null &&
                         (
                             papyrus.HasCall(Papyrus.Call.Type.Disable) ||
@@ -221,14 +221,14 @@ namespace JortPob
                 }
             }
 
-            foreach(Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
+            foreach (Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
             foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
             Lort.TaskIterate(); // Progress bar update
 
             /* Subdivide all cell content into tiles */
             Content EmitterConversionCheck(Content content)
             {
-                if(content.GetType() != typeof(AssetContent)) { return content; }
+                if (content.GetType() != typeof(AssetContent)) { return content; }
                 AssetContent assetContent = content as AssetContent;
 
                 /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
@@ -287,54 +287,53 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
 
-            /* Subdivide all interior cells into groups */
+            /* Pre-sort interior cells by the number of beds they have (to avoid the 19 bed limit per msb) */
             int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
-            int start = 0, end = partition;
-            foreach (InteriorGroup group in interiors)
+            List<Cell>[] cellPreSort = new List<Cell>[interiors.Count];
+
+            int CountBeds(List<Cell> cells) { return cells.Sum(cell => cell.BedCount()); }
+
+            for (int i = 0; i < cellPreSort.Length; i++) { cellPreSort[i] = new(); }  // initialize
+
+            foreach (Cell cell in esm.interior)
             {
-                for(int i=start; i<Math.Min(end, esm.interior.Count); i++)
+                int beds = cell.BedCount();
+                bool fail = true;
+                foreach (List<Cell> cells in cellPreSort)
                 {
-                    Cell cell = esm.interior[i];
-                    group.AddCell(cell);
+                    if (cells.Count() >= partition) { continue; }                         // group must be less than the partition size of cells
+                    if (CountBeds(cells) + beds > Const.MAX_BEDS_PER_MSB) { continue; }  // number of beds in a group has to be 19 or less
+
+                    fail = false;
+                    cells.Add(cell);
+                    break;
                 }
 
-                start += partition;
-                end += partition;
+                if (fail) { throw new Exception("Too many beds! Oh god so many beds! Help!"); }
             }
+
+            /* Subdivide all interior cells into groups */
+            for (int i = 0; i < cellPreSort.Length; i++)
+            {
+                InteriorGroup group = interiors[i];
+                List<Cell> cells = cellPreSort[i];
+                Script script = scriptManager.GetScript(group);
+
+                foreach (Cell cell in cells)
+                {
+                    group.AddCell(cell);
+                    scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
+                }
+            }
+
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
-            InteriorGroup.Chunk FindChunk(string name) // find a chunk that contains the named cell
-            {
-                foreach(InteriorGroup group in interiors)
-                {
-                    foreach (InteriorGroup.Chunk chunk in group.chunks)
-                    {
-                        if (chunk.cell.name == name) { return chunk; }
-                    }
-                }
-
-                return null; // may happen if debug options are enabled to build only some cells
-            }
-
-            Tile FindTile(Vector3 position) // find a tile based on coords
-            {
-                foreach (Tile tile in tiles)
-                {
-                    if(tile.PositionInside(position))
-                    {
-                        return tile;
-                    }
-                }
-
-                return null; // may happen if debug options are enabled to build only some cells
-            }
-
             Cell FindCell(Vector3 position)  // getting an ext cell by morrowind coordinates. used to find exterior cell name
             {
                 int x = (int)Math.Floor(position.X / Const.CELL_SIZE);
                 int y = (int)Math.Floor(position.Z / Const.CELL_SIZE);
-                return esm.GetCellByGrid(new Int2(x,y));
+                return esm.GetCellByGrid(new Int2(x, y));
             }
 
             void HandleDoor(DoorContent door)
@@ -415,7 +414,7 @@ namespace JortPob
                                 travel.cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
                             }
                             else { travel.cost = Const.TRAVEL_DEFAULT_COST; }
-                                to.AddWarp(travel);
+                            to.AddWarp(travel);
                         }
                     }
                 }
@@ -423,15 +422,15 @@ namespace JortPob
 
             foreach (InteriorGroup group in interiors)
             {
-                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    foreach(DoorContent door in chunk.doors)
+                    foreach (DoorContent door in chunk.doors)
                     {
                         HandleDoor(door);
-                        if(door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
+                        if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
                     }
 
-                    foreach(NpcContent npc in chunk.npcs)
+                    foreach (NpcContent npc in chunk.npcs)
                     {
                         HandleTravel(npc);
                     }
@@ -492,7 +491,7 @@ namespace JortPob
 
                 bool WillBarter(CharacterContent npc, ESM.Type type)
                 {
-                    switch(type)
+                    switch (type)
                     {
                         case ESM.Type.Armor:
                             return npc.services.Contains(CharacterContent.Service.BartersArmor);
@@ -528,10 +527,10 @@ namespace JortPob
 
                 void AddOrIncrement(List<(string id, int quantity)> list, (string id, int quantity) tuple)
                 {
-                    for(int i=0;i<list.Count();i++)
+                    for (int i = 0; i < list.Count(); i++)
                     {
                         (string id, int quantity) entry = list[i];
-                        if(entry.id.ToLower() == tuple.id.ToLower()) {
+                        if (entry.id.ToLower() == tuple.id.ToLower()) {
                             list.RemoveAt(i);
                             list.Add((entry.id, entry.quantity + tuple.quantity)); // can't increment value in a tuple because fuck
                             return;
@@ -565,7 +564,7 @@ namespace JortPob
                     }
                 }
 
-                foreach((string id, int quantity) tuple in npc.inventory) // add own inventory to potential barter
+                foreach ((string id, int quantity) tuple in npc.inventory) // add own inventory to potential barter
                 {
                     Record record = esm.FindRecordById(tuple.id);
                     if (WillBarter(npc, record.type))
@@ -579,7 +578,7 @@ namespace JortPob
             foreach (Tile tile in tiles)
             {
                 foreach (NpcContent npc in tile.npcs) { ResolveShop(npc); }
-                foreach(CreatureContent creature in tile.creatures) { ResolveShop(creature); }
+                foreach (CreatureContent creature in tile.creatures) { ResolveShop(creature); }
             }
             foreach (InteriorGroup group in interiors)
             {
@@ -591,14 +590,14 @@ namespace JortPob
             }
             Lort.TaskIterate(); // Progress bar update
 
-            /* Pat 2 of Papyrus preprocess */
+            /* Part 2 of Papyrus preprocess */
             /* This assigns entity ids to objects that have scripts referencing them */
             /* It also in some cases creates flags and events for objects that require them. */
             /* Also notably we setup disable/enable flags here as well */
             int debugCount = 0;
             void PreprocessContent(Script areaScript, IEnumerable<Content> contents)
             {
-                foreach(Content content in contents)
+                foreach (Content content in contents)
                 {
                     string contentId = content.id.ToLower().Trim();
                     if (allReferences.Contains(contentId) || content is CharacterContent || content is ItemContent || content is DoorContent || content.papyrus != null)
@@ -619,7 +618,7 @@ namespace JortPob
                         if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || ableReferences.Contains(contentId))
                         {
                             // Object disabled flag
-                            Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content.entity.ToString());
+                            Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
                         }
 
                         debugCount++;
@@ -660,10 +659,10 @@ namespace JortPob
                                     else
                                     {
                                         /* Create various flags requried for NPCs */
-                                        Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, character.entity.ToString());
-                                        Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, character.entity.ToString(), (uint)character.disposition);
-                                        Script.Flag pickpocketedFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Pickpocketed, character.entity.ToString());
-                                        Script.Flag thiefFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.ThiefCrime, character.entity.ToString());
+                                        Script.Flag firstGreet = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.TalkedToPc, character);
+                                        Script.Flag disposition = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Disposition, character, (uint)character.disposition);
+                                        Script.Flag pickpocketedFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Pickpocketed, character);
+                                        Script.Flag thiefFlag = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.ThiefCrime, character);
 
                                         /* Register some scripts for NPCs */
                                         areaScript.RegisterCharacter(param, character, countFlag);
@@ -692,6 +691,256 @@ namespace JortPob
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
             }
             Lort.TaskIterate(); // Progress bar update
+
+            /* Preprocess papyrus calls like 'Position' that need a region placed at a location in the world */
+            /* Also preprocess Position and PositionCell calls for npcs by creating "PhasedNPCs" */
+            Dictionary<NpcContent, int> phases = new();
+
+            void ReplaceNpc(NpcContent original, PhasedNpcContent replacement)
+            {
+                // Find any registration scripts pointing at the original content and murder them. This is kind of a bandaid fix for some unanticipated side effects. It gets the job done but ew.
+                void RemoveOriginalNpcRegistration(Script script)
+                {
+                    for(int i=0;i<script.init.Instructions.Count();i++)
+                    {
+                        EMEVD.Instruction instruction = script.init.Instructions[i];
+
+                        uint arg1 = BitConverter.ToUInt32(instruction.ArgData, 4);
+                        uint arg2;
+
+                        // all of these ended up being at the 12 byte offset but im leaving this structure incase we ever need to change things.
+                        if (arg1 == scriptManager.common.events[ScriptCommon.Event.Hello])
+                        {
+                            arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
+                        }
+                        else if (arg1 == scriptManager.common.events[ScriptCommon.Event.NpcHostilityHandler])
+                        {
+                            arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
+                        }
+                        else if (arg1 == scriptManager.common.events[ScriptCommon.Event.SpawnHandler])
+                        {
+                            arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
+                        }
+                        else if (arg1 == scriptManager.common.events[ScriptCommon.Event.SpawnHandlerDisableable])
+                        {
+                            arg2 = BitConverter.ToUInt32(instruction.ArgData, 12);
+                        }
+                        else { arg2 = 0; }
+
+                        // Delete if matches
+                        if (arg2 != 0 && arg2 == original.entity) { script.init.Instructions.RemoveAt(i--); }
+                    }
+                }
+
+                // Find this content and replace it with a phased copy. Searches for matching reference, not by id or anything
+                bool DoReplacement(Script script, NpcContent original, List<NpcContent> npcs)
+                {
+                    foreach (NpcContent c in npcs)
+                    {
+                        if (original == c)
+                        {
+                            RemoveOriginalNpcRegistration(script);
+                            npcs.Replace(original, replacement);
+                            scriptManager.AddRoute(replacement, original);
+                            script.RegisterCharacter(param, replacement, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, replacement.id));
+                            script.RegisterNpcHostility(replacement);
+                            script.RegisterNpcHello(replacement);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                foreach(Tile t in tiles)
+                {
+                    Script script = scriptManager.GetScript(t);
+                    if(DoReplacement(script, original, t.npcs)) { return; }
+                }
+
+                foreach (InteriorGroup g in interiors)
+                {
+                    foreach (InteriorGroup.Chunk c in g.chunks)
+                    {
+                        Script script = scriptManager.GetScript(g);
+                        if (DoReplacement(script, original, c.npcs)) { return; }
+                    }
+                }
+
+                throw new Exception("Failed to replace NPC during phased npc preprocess stage!"); // shouldn't happen in theory
+            }
+
+            void HandleNpcPhase(Tile tile, InteriorGroup.Chunk chunk, Vector3 position, float rotation, Content content, Papyrus.Call call)
+            {
+                // Quick checks before we do anything
+                if (content == null && call.target == null) { Lort.Log($" ## Cannot handle self reference position call from empty context! '{call.RAW}' Bad!", Lort.Type.Debug); return; }
+
+                // Find our target
+                Content target = null;
+                if(call.target == null) { target = content; }
+                else
+                {
+                    // See if our target is already phased
+                    foreach(var (t, _) in phases)
+                    {
+                        if(t.id == call.target) { target = t; break; }
+                    }
+
+                    // Otherwise look for it
+                    if (target == null) { target = FindScriptReference(content, call.target); }
+                }
+                if (target == null) { return; } // Failed to find ref, likely a partial build where it doesn't exist
+                if (target is not NpcContent) { Lort.Log($" ## Position and PositionCell calls do not support '{target.type}' content. call = '{call.RAW}'", Lort.Type.Debug); return; }
+
+                // See if there is already a phased npc for this content at the given location
+                PhasedNpcContent similar;
+                string locationName;
+                if(call.type == Papyrus.Call.Type.PositionCell) { locationName = call.parameters[4]; }
+                else { locationName = null; }
+                if (target is PhasedNpcContent) { similar = scriptManager.FindPhase((PhasedNpcContent)target, locationName, position); }
+                else { similar = scriptManager.FindPhase(target.entity, locationName, position); }
+                if (similar != null) { return; } // found a phasednpc for this content at the given location already so no need to create another one
+
+                // Get phase
+                int phase;
+                NpcContent npc = (NpcContent)target;
+                if (phases.ContainsKey(npc))
+                {
+                    // This is NOT the first phase for this npc, just interate and go
+                    phase = phases[npc] + 1;
+                    phases.Remove(npc);
+                    phases.Add(npc, phase);
+                }
+                else
+                {
+                    // This is the first phase for this npc so replace the original actor with a phasedactor as phase 0 before we start adding additional phases
+                    scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Nibble, Script.Flag.Designation.Phase, npc);
+                    PhasedNpcContent rnpc = new(npc, npc.cell, npc.position, npc.rotation, npc.entity, 0);
+                    rnpc.entity = npc.entity;
+                    ReplaceNpc(npc, rnpc);
+                    
+                    phase = 1;
+                    phases.Add(npc, phase);
+                }
+
+                // Add a phased npc to the target location
+                Script script;
+                PhasedNpcContent pnpc;
+                if (tile != null)
+                {
+                    Cell cell = esm.GetCellByPosition(position);
+                    pnpc = new(npc, cell, position, new Vector3(0, rotation, 0), npc.entity, phase);
+                    script = scriptManager.GetScript(tile);
+                    pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
+                    tile.AddContent(cache, tile.cells[0], pnpc);
+                }
+                else
+                {
+                    pnpc = new(npc, chunk.cell, position, new Vector3(0, rotation, 0), npc.entity, phase);
+                    script = scriptManager.GetScript(chunk.group);
+                    pnpc.relative = position + chunk.root - chunk.offset;
+                    pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
+                    chunk.AddContent(pnpc);
+                }
+
+                scriptManager.AddRoute(pnpc, target);
+                script.RegisterCharacter(param, pnpc, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, pnpc.id));
+                script.RegisterNpcHostility(pnpc);
+                script.RegisterNpcHello(pnpc);
+            }
+
+            void PreProcessScriptedPositions(Content content, List<Papyrus.Call> calls)
+            {
+                foreach (Papyrus.Call call in calls)
+                {
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.Position:
+                            {
+                                // Find tile this position call is pointing too
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
+                                position *= Const.GLOBAL_SCALE;
+                                float rot = float.Parse(call.parameters[3]);
+                                Tile target = GetTile(position);
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed position call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                // Add a point at this position that will become a region we can use in scripts later to warp the player around
+                                if (call.target == "player")
+                                {
+                                    Script script = scriptManager.GetScript(target);
+                                    target.AddScriptedPosition(script, position, rot);
+                                }
+                                // Create a phased npc
+                                else
+                                {
+                                    HandleNpcPhase(target, null, position, rot, content, call);
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.PositionCell:
+                            {
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
+                                position *= Const.GLOBAL_SCALE;
+                                float rot = float.Parse(call.parameters[3]);
+                                string name = call.parameters[4];
+                                InteriorGroup.Chunk target = FindChunk(name);
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed positioncell call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                // Add a point at this position that will become a region we can use in scripts later to warp the player around
+                                if (call.target == "player")
+                                {
+                                    Script script = scriptManager.GetScript(target.group);
+                                    target.AddScriptedPosition(script, position, rot);
+                                }
+                                // Create a phased npc
+                                else
+                                {
+                                    HandleNpcPhase(null, target, position, rot, content, call);
+                                }
+                                break;
+                            }
+                        default: break; // do nothing
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles)
+            {
+                List<Content> allContent = tile.GetAllContent().ToList();
+                foreach(Content content in allContent)
+                {
+                    if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
+
+                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                    if (papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = papyrus.GetCalls();
+                    PreProcessScriptedPositions(content, calls);
+                }
+            }
+
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    List<Content> allContent = chunk.GetAllContent().ToList();
+                    foreach (Content content in allContent)
+                    {
+                        if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
+
+                        Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                        if (papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                        List<Papyrus.Call> calls = papyrus.GetCalls();
+                        PreProcessScriptedPositions(content, calls);
+                    }
+                }
+            }
+
+            foreach (Dialog.DialogRecord dialog in esm.dialog)
+            {
+                List<Papyrus.Call> calls = dialog.GetCalls();
+                PreProcessScriptedPositions(null, calls); // null here means we cannot process self reference calls. will print error if we run into one
+            }
 
             /* Generate map point placements */
             Dictionary<string, List<Vector3>> mapPoints = new();
@@ -905,6 +1154,16 @@ namespace JortPob
             return null;
         }
 
+        public Chunk FindChunk(string name) // find a chunk that contains the named cell
+        {
+            return interiors.SelectMany(g => g.chunks).FirstOrDefault(chunk => string.Equals(chunk.cell.name, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public Tile FindTile(Vector3 position) // find a tile based on coords
+        {
+            return tiles.FirstOrDefault(tile => tile.PositionInside(position));
+        }
+
         /* Called by script compilers in DialogESD.cs and PapyrusEMEVD.cs */
         /* When a Papyrus script references an object by it's record name we need to find that object to do operations on it */
         /* Example is like "fargoth"->disable */
@@ -965,6 +1224,33 @@ namespace JortPob
             }
 
             return null; // not found anywhere!
+        }
+
+        /* Finds scripted position in exterior */
+        public ScriptedPosition FindScriptedPosition(Vector3 position)
+        {
+            foreach(Tile tile in tiles)
+            {
+                foreach(ScriptedPosition sp in tile.positions)
+                {
+                    if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
+                }
+            }
+            return null;
+        }
+
+        /* Finds scripted position in interior */
+        public ScriptedPosition FindScriptedPosition(string name, Vector3 position)
+        {
+            if (name == null) { return FindScriptedPosition(position); }  // if location = null then we assume its an exterior
+
+            InteriorGroup.Chunk chunk = FindChunk(name);
+            if (chunk == null) { return null; } // partial build case
+            foreach(ScriptedPosition sp in chunk.positions)
+            {
+                if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
+            }
+            return null;
         }
 
         public class MapPoint
@@ -1049,6 +1335,26 @@ namespace JortPob
                 this.position = position - new Vector3(0f, Const.NPC_ROOT_OFFSET, 0f);  // fix load door offset
                 this.rotation = rotation;
                 this.id = id;
+            }
+        }
+
+        public class ScriptedPosition
+        {
+            public readonly Vector3 position, relative, rotation;
+            public readonly uint region, player;  // entity ids
+            public int map, area, unk, block;     // for WarpPlayer if needed
+
+            public ScriptedPosition(Vector3 position, Vector3 relative, Vector3 rotation, uint region, uint player, int map, int area, int unk, int block)
+            {
+                this.position = position;
+                this.relative = relative - new Vector3(0f, Const.NPC_ROOT_OFFSET, 0f);  // fix offset
+                this.rotation = rotation;
+                this.region = region;
+                this.player = player;
+                this.map = map;
+                this.area = area;
+                this.unk = unk;
+                this.block = block;
             }
         }
     }

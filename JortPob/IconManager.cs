@@ -1,36 +1,27 @@
 ﻿using DirectXTexNet;
 using JortPob.Common;
-using SharpAssimp;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization.Metadata;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using TeximpNet.DDS;
-using static IronPython.Modules._ast;
-using static JortPob.IconManager.IconLayout;
 using static JortPob.SpeffManager.Speff.Effect;
 
 namespace JortPob
 {
     public class IconManager
     {
-        public readonly List<IconInfo> icons;
-        public readonly List<BuffInfo> buffs;
+        public List<IconInfo> icons { get; init; }
+        public List<BuffInfo> buffs { get; init; }
 
         public ushort nextIconId = 19000; // all ids after this are free to use
         public ushort nextBuffId = 20600; // all ids after this are free to use
 
         public IconManager(ESM esm)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return; }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return; }
 
             /* Item Icons */
             Lort.Log($"Loading icons...", Lort.Type.Main);
@@ -95,7 +86,7 @@ namespace JortPob
         /* This one is special, this is getting an icon based on a record that uses it. Multiple records can use the same icon so its a slow search */
         public IconInfo GetIconByRecord(string record)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return new IconInfo("Default", 0); }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return new IconInfo("Default", 0); }
 
             foreach (IconInfo icon in icons)
             {
@@ -109,7 +100,7 @@ namespace JortPob
 
         public BuffInfo GetBuffByType(SpeffManager.Speff.Effect.MagicEffect type)
         {
-            if (Const.DEBUG_SKIP_ICONS) { return null; }
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) { return null; }
 
             foreach (BuffInfo buff in buffs)
             {
@@ -121,10 +112,8 @@ namespace JortPob
             return null;
         }
 
-        public void Write()
+        public (BXF4 hiBxf, BXF4 lowBxf) Write()
         {
-            if (Const.DEBUG_SKIP_ICONS) { return; }
-
             /* Do regular icons for use in the inventory */
             const int WIDTH = 4096;
             const int HEIGHT = 2048;
@@ -278,7 +267,7 @@ namespace JortPob
             Lort.Log($"Generating {icons.Count()} previews...", Lort.Type.Main);
             Lort.NewTask("Generating Previews", icons.Count());
 
-            void AddIcons(string path)
+            BXF4 AddIcons(string path)
             {
                 /* Load BXF4 from elden ring directory (requires game unpacked!) */
                 BXF4 bxf = BXF4.Read($"{Const.ELDEN_PATH}Game\\{path}.tpfbhd", $"{Const.ELDEN_PATH}Game\\{path}.tpfbdt");
@@ -324,15 +313,17 @@ namespace JortPob
                 }
 
                 /* Write */
-                bxf.Write($"{Const.OUTPUT_PATH}{path}.tpfbhd", $"{Const.OUTPUT_PATH}{path}.tpfbdt");
+                return bxf;
             }
 
             Lort.Log($"Binding {icons.Count()} previews...", Lort.Type.Main);
             Lort.NewTask("Binding Previews", 2);
-            AddIcons(hiPath); Lort.TaskIterate();
-            AddIcons(lowPath); Lort.TaskIterate();
+            var hiBxf = AddIcons(hiPath); Lort.TaskIterate();
+            var lowBxf = AddIcons(lowPath); Lort.TaskIterate();
 
             Lort.TaskIterate();
+
+            return (hiBxf, lowBxf);
         }
 
         public class IconInfo

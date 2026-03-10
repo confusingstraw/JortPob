@@ -102,6 +102,7 @@ namespace JortPob
             public readonly List<ItemContent> items;
 
             public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
+            public readonly List<Layout.ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
 
             public Chunk(InteriorGroup group, Cell cell, Vector3 root)
             {
@@ -123,6 +124,7 @@ namespace JortPob
                 items = new();
 
                 warps = new();
+                positions = new();
 
                 /* Process cell data */
                 foreach(Content content in cell.contents)
@@ -160,6 +162,15 @@ namespace JortPob
             {
                 Layout.WarpDestination dest = new(warp.position + root - offset, warp.rotation, warp.entity);
                 warps.Add(dest);
+            }
+
+            public void AddScriptedPosition(Script script, Vector3 position, float rot)
+            {
+                Vector3 relative = position + root - offset;
+                Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
+                uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position.ToString()}");
+                uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position.ToString()}");
+                positions.Add(new(position, relative, rotation, region, player, group.map, group.area, group.unk, group.block));
             }
 
             public void AddContent(Content content)

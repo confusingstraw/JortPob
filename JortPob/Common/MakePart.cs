@@ -1,9 +1,6 @@
 ﻿using SoulsFormats;
-using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Numerics;
-using static SoulsIds.Events;
 using System.Threading;
 
 namespace JortPob.Common
@@ -688,6 +685,50 @@ namespace JortPob.Common
             asset.AssetUnk4.Unk02 = 255;
 
             return asset;
+        }
+
+        /* Creates a c1000 interactor part for use as a bed */
+        public static MSBE.Part.Enemy Bed()
+        {
+            MSBE.Part.Enemy enemy = new();
+
+            /* Instance */
+            const string character = "c1000"; // invisible interactor object used for graces and stuff
+            int inst = EnemyInstances.AddOrUpdate(character, 0, (_, oldVal) => oldVal + 1);
+            enemy.InstanceID = inst;
+
+            /* Model and Enemy Stuff */
+            enemy.Name = $"{character}_{inst.ToString("D4")}";
+            enemy.ModelName = character;
+            enemy.NPCParamID = 10000000;
+            enemy.EntityID = 0;
+            enemy.PlatoonID = 0;
+            enemy.ThinkParamID = 1;
+
+            /* In Alphabetical Order... */
+            /* Gparam */
+            enemy.Gparam.FogParamID = -1;
+            enemy.Gparam.LightSetID = -1;
+
+            /* Stuff */
+            enemy.IsShadowDest = true;
+            enemy.MapStudioLayer = 4294967295;
+
+            /* TileLoad */
+            enemy.TileLoad.MapID = new byte[] { 255, 255, 255, 255 };
+            enemy.TileLoad.CullingHeightBehavior = -1;
+            enemy.TileLoad.Unk0C = -1;
+
+            /* Display Groups */
+            enemy.Unk1.DisplayGroups[0] = 16;
+            enemy.Unk1.UnkC4 = -1;
+
+            /* Random Unks */
+            enemy.UnkE0F = 1;
+            enemy.UnkE3C = -1;
+            enemy.UnkT84 = 1;
+
+            return enemy;
         }
     }
 }

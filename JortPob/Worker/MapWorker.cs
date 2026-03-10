@@ -72,6 +72,8 @@ namespace JortPob.Worker
 
         public static void Go()
         {
+            if (Const.DEBUG_SKIP_CUSTOM_MAP) return;
+
             MapWorker worker = new();
 
             while (!worker.IsDone)
