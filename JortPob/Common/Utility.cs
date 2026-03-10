@@ -609,7 +609,7 @@ namespace JortPob.Common
 
             // set the up for Elden Ring
             snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 0f };
-            // IDK what this does but it was set in the 
+            // IDK what this does but it was set in the original code 12th gave me...
             snapshot.settings.precalculateClearanceSeedingData = true;
 
             // This snapshot can be loaded up in havok content tools, and I think modified and then ran through
