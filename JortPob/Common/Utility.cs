@@ -602,11 +602,14 @@ namespace JortPob.Common
     {
         public static void SaveNavmeshGenerationSettings(string outputPath)
         {
-            // Initialize the root snapshot struct
+            // Initialize the elden ring dll so we can construct the settings
+            ERNavmeshGen navma = new ERNavmeshGen();
+            // This takes care of all constructors for the snapshot and generation settings
             hkaiNavMeshGenerationSnapshot snapshot = new hkaiNavMeshGenerationSnapshot();
 
-            // Populate the settings
-            snapshot.settings = new hkaiNavMeshGenerationUtilsSettings();
+            // set the up for Elden Ring
+            snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 0f };
+            snapshot.settings.precalculateClearanceSeedingData = true;
 
             // --- Basic Primitives ---
             snapshot.settings.characterHeight = 1.75f;
@@ -620,7 +623,6 @@ namespace JortPob.Common
             snapshot.settings.edgeMatchingMetric = EdgeMatchingMetric.ORDER_BY_OVERLAP;
 
             // --- Nested Vectors ---
-            snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 1f };
 
             // --- Strings (Will safely marshal to char* in C++) --
             snapshot.settings.saveInputSnapshot = true;
@@ -628,13 +630,11 @@ namespace JortPob.Common
 
             // --- Nested Structs ---
             // Edge Matching Parameters
-            snapshot.settings.edgeMatchingParams = new hkaiNavMeshEdgeMatchingParameters();
             snapshot.settings.edgeMatchingParams.maxStepHeight = 0.5f;
             snapshot.settings.edgeMatchingParams.maxSeparation = 0.1f;
             snapshot.settings.edgeMatchingParams.edgeParallelTolerance = 0.1f;
 
             // Simplification Settings
-            snapshot.settings.simplificationSettings = new hkaiNavMeshSimplificationUtils_Settings();
             snapshot.settings.simplificationSettings.maxBorderSimplifyArea = 1.5f;
             snapshot.settings.simplificationSettings.useHeightPartitioning = true;
             snapshot.settings.simplificationSettings.saveInputSnapshot = true;
