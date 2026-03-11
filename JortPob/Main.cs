@@ -1,6 +1,5 @@
 ﻿using JortPob.Common;
 using JortPob.Worker;
-using NAudio.Utils;
 using PortJob;
 using SoulsFormats;
 using System;
@@ -20,6 +19,7 @@ namespace JortPob
             Lort.Initialize(); // startup logging
             Override.Initialize(); // load all override jsons
             Utility.InitSRGBCache();
+            Oodler.Initialize();
 
             /* Loading stuff */
             ScriptManager scriptManager = new();                                               // Manages EMEVD scripts

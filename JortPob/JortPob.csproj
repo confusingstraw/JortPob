@@ -133,9 +133,6 @@
     <None Update="DLL\ZstdNet.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
-    <None Update="oo2core_6_win64.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 	<Target Name="CopyFileToRoot" AfterTargets="AfterBuild">
