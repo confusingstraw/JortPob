@@ -9,14 +9,14 @@ namespace JortPob.Model
         public static void HKXtoNAV(string hkxPath, string navPath, string settingsPath)
         {
             string gamePath = @$"{Const.ELDEN_PATH}\Game\eldenring.exe";
-            ProcessStartInfo startInfo = new(@$"{AppDomain.CurrentDomain.BaseDirectory}\ERNavmeshGenerator.exe", $"-g \"{gamePath}\" -i \"{hkxPath}\" -o \"{navPath}\" -s \"{settingsPath}\"" )
+            ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Nav\ERNavmeshGenerator.exe"), $"-g \"{gamePath}\" -i \"{hkxPath}\" -o \"{navPath}\" -s \"{settingsPath}\"" )
             {
-                WorkingDirectory = @$"{AppDomain.CurrentDomain.BaseDirectory}\",
+                WorkingDirectory = Utility.ResourcePath(@"tools\Nav"),
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo, 30000);
+            Utility.ExecuteProcess(startInfo, 60000);
         }
     }
 }

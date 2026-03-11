@@ -113,7 +113,6 @@
 		<Copy SourceFiles="..\JortPob\DLL\ERNavmeshGen.dll" DestinationFolder="$(OutDir)" />
 		<Copy SourceFiles="..\JortPob\DLL\keystone.dll" DestinationFolder="$(OutDir)" />
       <Copy SourceFiles="..\JortPob\DLL\Zydis.dll" DestinationFolder="$(OutDir)" />
-      <Copy SourceFiles="..\JortPob\DLL\ERNavmeshGenerator.exe" DestinationFolder="$(OutDir)" />
 	</Target>
 
 </Project>
