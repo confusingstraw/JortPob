@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using ERNavmeshGenCS;
 
 namespace JortPob.Worker
 {
@@ -17,8 +18,9 @@ namespace JortPob.Worker
             Lort.NewTask("Converting NAVs", objs.Count());
 
             /* Write navmesh settings */
+            hkaiNavMeshGenerationSnapshot navmeshSettings = NavmeshUtilities.GetDefaultNavmeshGenerationSnapshot();
             string navmeshSettingsPath = $@"{Const.CACHE_PATH}\NavmeshSettings.json";
-            NavmeshUtilities.SaveNavmeshGenerationSettings(navmeshSettingsPath);
+            NavmeshUtilities.SaveNavmeshGenerationSettings(navmeshSettings, navmeshSettingsPath);
 
             var options = new ParallelOptions { MaxDegreeOfParallelism = Const.THREAD_COUNT }; // Crashes unless set to 1 ???
 
