@@ -242,6 +242,10 @@ namespace JortPob.Common
         [Setting(false)]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
 
+        /// skips navmeshes, will make enmey ai act really stupid
+        [Setting(false)]
+        public static bool DEBUG_SKIP_NAVMESH { get; private set; }
+
         /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
         [Setting(false)]
         public static bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS { get; private set; }

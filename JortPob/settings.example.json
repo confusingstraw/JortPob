@@ -21,6 +21,9 @@
   // Saves anywhere between 2 and 45 minutes on a build. Makes all dialog skip instantly though.
   "DEBUG_SKIP_SOUND": false,
 
+  // Saves a solid chunk of time on builds
+  "DEBUG_SKIP_NAVMESH": false,
+
   // Saves 3 to 5 minutes on a build
   "DEBUG_SKIP_MENU_TEXTURES": false,
 

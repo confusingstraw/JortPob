@@ -124,6 +124,8 @@ namespace JortPob
 
         public void AddNav(Cache cache, Cell cell, Content content)
         {
+            if (Const.DEBUG_SKIP_NAVMESH) { return; }
+
             /* Recalcualte relative for this tile because this content may be coming from a BigTile or HugeTile and the content.relative will not be valid in those cases */
             float x = (coordinate.x * Const.TILE_SIZE);
             float y = (coordinate.y * Const.TILE_SIZE);

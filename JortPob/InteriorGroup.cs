@@ -180,6 +180,7 @@ namespace JortPob
 
             public void AddNav(Cache cache, Content content)
             {
+                if (Const.DEBUG_SKIP_NAVMESH) { return; }
                 switch (content)
                 {
                     case AssetContent a:
