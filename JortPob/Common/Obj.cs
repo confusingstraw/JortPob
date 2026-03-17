@@ -215,26 +215,21 @@ namespace JortPob.Common
             int offsetVN = vns.Count();
             int offsetVT = vts.Count();
 
-            float d2r = (MathF.PI / 180f);
-
-            Matrix4x4 EulerXZYToMatrix(Vector3 euler)
-            {
-                Matrix4x4 rx = Matrix4x4.CreateRotationX(euler.X);
-                Matrix4x4 ry = Matrix4x4.CreateRotationY(euler.Y);
-                Matrix4x4 rz = Matrix4x4.CreateRotationZ(euler.Z);
-
-                Matrix4x4 result = rx * rz * ry;
-
-                return result;
-            }
+            /* Some fucked math to get correct transform */
+            Vector3 d2r = rotation * (MathF.PI / 180f);
+            Matrix4x4 rx = Matrix4x4.CreateRotationX(d2r.X);
+            Matrix4x4 ry = Matrix4x4.CreateRotationY(d2r.Y);
+            Matrix4x4 rz = Matrix4x4.CreateRotationZ(d2r.Z);
 
             Matrix4x4 mt = Matrix4x4.CreateTranslation(position);
-            Matrix4x4 mr = EulerXZYToMatrix(rotation * d2r);
+            Matrix4x4 mr = rx * rz * ry;
             Matrix4x4 ms = Matrix4x4.CreateScale(scale);
+            Matrix4x4 transform = ms * mr * mt;
 
+            /* copy vertices from source obj into this obj with the given transforms */
             foreach (Vector3 v in obj.vs)
             {
-                Vector3 transformed = Vector3.Transform(v, ms * mr * mt);
+                Vector3 transformed = Vector3.Transform(v, transform);
                 vs.Add(transformed);
             }
             foreach (Vector3 vn in obj.vns)
@@ -247,6 +242,7 @@ namespace JortPob.Common
                 vts.Add(vt);
             }
 
+            /* copy face indices */
             foreach(ObjG g in obj.gs)
             {
                 ObjG G = new();
@@ -267,12 +263,7 @@ namespace JortPob.Common
         /* Returns number of triangles in this obj */
         public int count()
         {
-            int c = 0;
-            foreach(ObjG g in gs)
-            {
-                c += g.fs.Count();
-            }
-            return c;
+            return gs.Sum(g => g.fs.Count());
         }
 
         /* return true if obj has nothing in it */

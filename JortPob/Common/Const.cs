@@ -115,6 +115,8 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_BOTTOM = 101;
         public static readonly short FLVER_DMY_TOP = 102;
 
+        public static readonly int NVA_NV_UNK00_MAGIC = 1726789910;
+
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
         public static readonly int ASSET_GROUP = 900;
 

@@ -1,6 +1,7 @@
 ﻿using JortPob.Common;
 using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace JortPob.Model
 {
@@ -8,7 +9,7 @@ namespace JortPob.Model
     {
         public static void HKXtoNAV(string hkxPath, string navPath, string settingsPath)
         {
-            string gamePath = @$"{Const.ELDEN_PATH}\Game\eldenring.exe";
+            string gamePath = Path.Combine(Const.ELDEN_PATH, @"game\eldenring.exe");
             ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Nav\ERNavmeshGenerator.exe"), $"-g \"{gamePath}\" -i \"{hkxPath}\" -o \"{navPath}\" -s \"{settingsPath}\"" )
             {
                 WorkingDirectory = Utility.ResourcePath(@"tools\Nav"),
