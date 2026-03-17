@@ -15,12 +15,12 @@ namespace JortPob.Worker
         public static void Go(List<string> objs)
         {
             /* Write navmesh settings */
-            hkaiNavMeshGenerationSnapshot nNavmeshSettings = NavmeshUtilities.GetDefaultNavmeshGenerationSnapshot();
-            hkaiNavMeshGenerationSnapshot oNavmeshSettings = NavmeshUtilities.GetLodNavmeshGenerationSnapshot();
+            hkaiNavMeshGenerationSnapshot nNavmeshSettings = HkxUtility.GetDefaultNavmeshGenerationSnapshot();
+            hkaiNavMeshGenerationSnapshot oNavmeshSettings = HkxUtility.GetLodNavmeshGenerationSnapshot();
             string nNvmSettingsPath = Path.Combine(Const.CACHE_PATH, "n_nav_settings.json");
             string oNvmSettingsPath = Path.Combine(Const.CACHE_PATH, "o_nav_settings.json");
-            NavmeshUtilities.SaveNavmeshGenerationSettings(nNavmeshSettings, nNvmSettingsPath);
-            NavmeshUtilities.SaveNavmeshGenerationSettings(oNavmeshSettings, oNvmSettingsPath);
+            HkxUtility.SaveNavmeshGenerationSettings(nNavmeshSettings, nNvmSettingsPath);
+            HkxUtility.SaveNavmeshGenerationSettings(oNavmeshSettings, oNvmSettingsPath);
 
             /* OBJ -> HKX conversion of navmeshes */
             Lort.Log($"Preprocessing {objs.Count} navmeshes...", Lort.Type.Main);     // Egregiously slow, multithreaded to make less terrible
