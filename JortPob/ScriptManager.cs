@@ -610,12 +610,25 @@ namespace JortPob
             }
             File.WriteAllLines(Path.Combine(Const.OUTPUT_PATH, "flag information.txt"), flagInfo.ToArray());
 
+            /* Write EMEVD scripts */
             Lort.Log($"Writing {scripts.Count + 1} EMEVDs...", Lort.Type.Main);
             common.Write();
             foreach(Script script in scripts)
             {
                 script.Write();
             }
+
+            /* Write lua ai logic binds */
+            BindLua();
+        }
+
+        /* Write ai logic luabnd */
+        public void BindLua()
+        {
+            // Handles 030000_logic specifically
+            BND4 bnd = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\script\030000_logic.luabnd.dcx"));
+            bnd.Files[0].Bytes = File.ReadAllBytes(Utility.ResourcePath(@"ai\030000_logic.lua"));
+            bnd.Write(Path.Combine(Const.OUTPUT_PATH, @"script\030000_logic.luabnd.dcx"));
         }
     }
 }

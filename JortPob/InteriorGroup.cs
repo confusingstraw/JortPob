@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Packaging;
 using System.Linq;
 using System.Numerics;
+using static JortPob.Layout;
 
 namespace JortPob
 {
@@ -49,7 +51,7 @@ namespace JortPob
         // Fugly code <3
         /* Process an interior cell into a chunk and add it to this group */
         /* This function is awful looking but it does an important bit of math to bound and align the chunk into a grid with other chunks in this group */
-        public void AddCell(Cache cache,Cell cell)
+        public void AddCell(ScriptManager scriptManager, Cache cache, Cell cell)
         {
             Vector3 root;
             Vector3 bounds = cell.boundsMax - cell.boundsMin;
@@ -80,8 +82,16 @@ namespace JortPob
             {
                 root = new(0, 0, 0);
             }
-            Chunk chunk = new(cache, this, cell, root);
+            Chunk chunk = new(scriptManager, cache, this, cell, root);
             chunks.Add(chunk);
+        }
+
+        public void ProcessTravelPositions(ScriptManager scriptManager)
+        {
+            for (int i = 0; i < chunks.Count(); i++)
+            {
+                chunks[i].ProcessTravelPoints(scriptManager);
+            }
         }
 
         public class Chunk
@@ -93,6 +103,7 @@ namespace JortPob
             public readonly Vector3 bounds, offset; // size from center
 
             public Obj nav;  // navmesh repersentation of this msb chunk
+            public List<PathGridPoint> paths; // mw uses these for nav. we are only using them for wander positions
 
             public readonly List<AssetContent> assets;
             public readonly List<DoorContent> doors;
@@ -106,8 +117,9 @@ namespace JortPob
 
             public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
             public readonly List<Layout.ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
+            public readonly List<TravelPoint> travels; // positions directly referenced in AiPackages
 
-            public Chunk(Cache cache, InteriorGroup group, Cell cell, Vector3 root)
+            public Chunk(ScriptManager scriptManager, Cache cache, InteriorGroup group, Cell cell, Vector3 root)
             {
                 this.group = group;
                 this.cell = cell;
@@ -117,6 +129,8 @@ namespace JortPob
                 offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
 
                 nav = new();
+                paths = new();
+                travels = new();
 
                 assets = new();
                 doors = new();
@@ -131,12 +145,22 @@ namespace JortPob
                 warps = new();
                 positions = new();
 
-                /* Process cell data */
-                foreach(Content content in cell.contents)
+                /* Add content */
+                foreach (Content content in cell.contents)
                 {
                     content.relative = content.position + root - offset;
-
                     AddContent(cache,content);
+                }
+
+                /* Add cells pathgrid to the tile */
+                Script script = scriptManager.GetScript(group);
+                for (int i=0;i<cell.paths.Count();i++)
+                {
+                    Vector3 path = cell.paths[i];
+                    string name = $"PathGrid_{group.map:D2}{group.area:D2}{group.unk:D2}_{group.chunks.Count():D2}_{i:D4}";
+                    Vector3 relative = path + root - offset;
+                    Layout.PathGridPoint point = new(name, relative, script.CreateEntity(Script.EntityType.Region, $"PathGridPoint"));
+                    paths.Add(point);
                 }
             }
 
@@ -219,6 +243,42 @@ namespace JortPob
                 }
 
                 AddNav(cache, content);
+            }
+
+            /* Add travelpoint */
+            public void AddTravelPoint(Script script, Vector3 point, float radius = -1f)
+            {
+                Vector3 relative = point + root - offset;
+                uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point.ToString()}");
+                TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travels.Count():D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
+                travels.Add(travel);
+            }
+
+            /* Converts all "Travel" positions to scriptedpositions */
+            public void ProcessTravelPoints(ScriptManager scriptManager)
+            {
+                Script script = scriptManager.GetScript(group);
+                void HandleCharacterContent(CharacterContent content)
+                {
+                    foreach (CharacterContent.AiPackage package in content.packages)
+                    {
+                        if (package.type == CharacterContent.AiPackage.Type.Travel)
+                        {
+                            Vector3 relative = package.position + root - offset;
+                            uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position.ToString()}");
+                            TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travels.Count():D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
+                            travels.Add(travel);
+                        }
+                    }
+                }
+
+                foreach (NpcContent c in npcs) { HandleCharacterContent(c); }
+                foreach (CreatureContent c in creatures) { HandleCharacterContent(c); }
+            }
+
+            private string SafeName()
+            {
+                return cell.name.Replace(" ", "").Replace(",", "").Replace("-", "").ToLower().Trim();
             }
         }
     }

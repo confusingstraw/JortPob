@@ -36,12 +36,12 @@ namespace JortPob
             return false;
         }
 
-        public override void AddCell(Cell cell)
+        public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
             cells.Add(cell);
             Tile tile = GetTile(cell.center);
             if (tile == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B00", Lort.Type.Debug); return; }
-            tile.AddCell(cell);
+            tile.AddCell(scriptManager, cell);
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using static JortPob.Dialog;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -43,6 +44,9 @@ namespace JortPob
             this.npcContent = npcContent;
 
             defs = new();
+
+            // Register a halt event for this npc
+            areaScript.RegisterHaltEvent(npcContent);
 
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
@@ -1327,8 +1331,9 @@ namespace JortPob
             }
 
             Script.Flag playerIsSneaking = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
-            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent);
             Script.Flag playerTalkingFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsTalking, "PlayerIsTalking");
+            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent);
+
             string s = $""""
                        def t{id:D9}_x{x:D2}():
                            ## occasionally do idle lines and if a player approaches us we hello them
@@ -1337,21 +1342,14 @@ namespace JortPob
                                    break
                                else:
                                    pass
-
-                               if GetDistanceToPlayer() > 10 and GetEventFlag({npcHelloFlag.id}):
-                                   SetEventFlag({npcHelloFlag.id}, FlagState.Off)
-                               else:
-                                   pass
                                
                                ShuffleRNGSeed(100)
                                SetRNGSeed()
-                               if (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < 3 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 40) and (not GetEventFlag({npcHelloFlag.id})):
+                               if (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < 3 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 15) and (not GetEventFlag({npcHelloFlag.id})):
                                    ShuffleRNGSeed(100)
                                    SetRNGSeed()
-                                   TurnCharacterToFaceEntity(-1, {npcContent.entity}, 10000, -1)
-                                   ##TurnToFacePlayer()
-                       {helloCode}
                                    SetEventFlag({npcHelloFlag.id}, FlagState.On)
+                       {helloCode}
                                    assert GetCurrentStateElapsedTime() > 15
                                elif GetDistanceToPlayer() > 4 and GetDistanceToPlayer() < 10 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 90) and GetCurrentStateElapsedTime() > 10:
                                    ShuffleRNGSeed(100)

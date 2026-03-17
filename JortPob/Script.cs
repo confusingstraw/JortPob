@@ -328,6 +328,26 @@ namespace JortPob
             }
         }
 
+        public void RegisterHaltEvent(CharacterContent npc)
+        {
+            Flag deadFlag = manager.GetFlag(Script.Flag.Designation.Dead, npc);
+            Flag hostileFlag = manager.GetFlag(Script.Flag.Designation.Hostile, npc);
+
+            List<string> parameters = new()
+            {
+                deadFlag.id.ToString(),
+                npc.entity.ToString(),
+                hostileFlag.id.ToString(),
+                npc.entity.ToString(),
+                npc.entity.ToString(),
+                npc.entity.ToString(),
+                hostileFlag.id.ToString(),
+                npc.entity.ToString(),
+
+            };
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.Halt]}, {string.Join(", ", parameters)});"));
+        }
+
         public Flag RegisterStaticDisable(StaticContent content)
         {
             Script.Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, content);
@@ -617,6 +637,10 @@ namespace JortPob
                 OnActivate, OnDeath, CellChanged, GetButtonPassBit, GetButtonFailBit, GetButtonPressedValue, // used by papyrus to emulate mw script behaviours
                 PermanentSpeff, NpcModStat,  // Used for maintaining speffs on the player/npcs permanently
                 NpcInfight,   // Used to make npcs fight each other. papyrus StartCombat/StopCombat calls
+                AiPackage,   // Index of what default aipacakge we are running
+                SwitchAiPackage, // Very special event flag that creates a function with a single parameter that kills all ai package events and starts a new one after
+                AiPackageDone,  // Set to 1 when "SwitchAiPackage" is called. Reading from this value in a script sets it back to 0
+                Wander,      // Index of wander position used by Wander AiPackage
                 RunSubscript, // Flag created for StartScript, StopScript, ScriptRunning papyrus calls. when true subscripts run, when false they stop
                 Phase,      // Used by phased npcs to determine what location they are at
                 Message,    // Flag to trigger a popmessage or notification

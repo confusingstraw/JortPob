@@ -318,7 +318,7 @@ namespace JortPob
                 GetDistance, Drop, GetDisabled, OnDeath, SetFlee, GetBlightDisease, OnActivate, HurtStandingActor,
                 GetPcRank, SetPos, GetAttacked, GetCommonDisease, GetEffect, SetFight, ShowMap, AddSpell, RemoveSpell, RaiseRank, StopCombat,
                 ModFactionReaction, ModFlee, SetAlarm, PlaceAtPc, ClearInfoActor, Cast, ForceGreeting, SetHello, GetJournalIndex, PayFineThief,
-                AiWander, AiFollow, AiFollowCell, AiEscort, GetAiPackageDone, GetCurrentAiPackage, AiTravel, AiFollowCellPlayer, PositionCell, ModFight,
+                AiWander, AiFollow, AiFollowCell, AiEscort, AiEscortCell, GetAiPackageDone, GetCurrentAiPackage, AiTravel, AiFollowCellPlayer, PositionCell, ModFight,
                 GetPcCell, MenuMode, OnPcSoulGemUse, GetLOS, GetLineOfSight, GetDeadCount, CellChanged, HitOnMe, OnPcHitMe, OnPcEquip, OnPcAdd, GetStandingPc,
                 GetPcCrimeLevel, GetCollidingPC, GetWaterLevel, GetPcInJail, GetPcTraveling, GetButtonPressed,
                 OnKnockout, GetSpellEffects, GetSoundPlaying, ScriptRunning, GetCurrentWeather, OnMurder, GetPcSleep, PcVampire, PcExpelled, GetLocked,

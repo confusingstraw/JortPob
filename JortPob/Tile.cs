@@ -1,11 +1,13 @@
 ﻿using JortPob.Common;
-using SharpAssimp.Unmanaged;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Packaging;
 using System.Linq;
 using System.Numerics;
+using static JortPob.Layout;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -17,10 +19,14 @@ namespace JortPob
         public BigTile big;
 
         public Obj nav;  // navmesh repersentation of this msb tile
+        public readonly List<PathGridPoint> paths; // mw uses these for nav. we are only using them for wander positions
+        public readonly List<TravelPoint> travels; // positions directly referenced in AiPackages
 
         public Tile(int m, int x, int y, int b) : base(m, x, y, b)
         {
             nav = new();
+            paths = new();
+            travels = new();
         }
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
@@ -97,9 +103,22 @@ namespace JortPob
             }
         }
 
-        public override void AddCell(Cell cell)
+        public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
             cells.Add(cell);
+
+            /* Add cells pathgrid to the tile */
+            Script script = scriptManager.GetScript(this);
+            for (int i = 0; i < cell.paths.Count(); i++)
+            {
+                Vector3 path = cell.paths[i];
+                string name = $"PathGrid_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{cell.coordinate.x:D2}{cell.coordinate.y:D2}_{i:D4}";
+                float x = (coordinate.x * Const.TILE_SIZE);
+                float y = (coordinate.y * Const.TILE_SIZE);
+                Vector3 relative = (path + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                Layout.PathGridPoint point = new(name,relative, script.CreateEntity(Script.EntityType.Region, $"PathGridPoint"));
+                paths.Add(point);
+            }
         }
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
@@ -171,6 +190,41 @@ namespace JortPob
             uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position.ToString()}");
             positions.Add(new(position, relative, rotation, region, player, map, coordinate.x, coordinate.y, block));
         }
+        
+        /* Add travelpoint */
+        public void AddTravelPoint(Script script, Vector3 point, float radius = -1f)
+        {
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
+            Vector3 relative = (point + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+            uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point.ToString()}");
+            TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count():D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
+            travels.Add(travel);
+        }
+
+        /* Converts all "Travel" positions to travelpoints */
+        public void ProcessTravelPoints(ScriptManager scriptManager)
+        {
+            Script script = scriptManager.GetScript(this);
+            void HandleCharacterContent(CharacterContent content)
+            {
+                foreach (CharacterContent.AiPackage package in content.packages)
+                {
+                    if (package.type == CharacterContent.AiPackage.Type.Travel)
+                    {
+                        float x = (coordinate.x * Const.TILE_SIZE);
+                        float y = (coordinate.y * Const.TILE_SIZE);
+                        Vector3 relative = (package.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position.ToString()}");
+                        TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count():D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
+                        travels.Add(travel);
+                    }
+                }
+            }
+
+            foreach (NpcContent c in npcs) { HandleCharacterContent(c); }
+            foreach (CreatureContent c in creatures) { HandleCharacterContent(c); }
+        }
     }
 
 
@@ -233,7 +287,7 @@ namespace JortPob
             return cells.Count() <= 0 && terrain.Count() <= 0 && assets.Count() <= 0;
         }
 
-        public abstract void AddCell(Cell cell);
+        public abstract void AddCell(ScriptManager scriptManager, Cell cell);
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
         public void AddContent(Cache cache, Cell cell, Content content)

@@ -115,6 +115,9 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_BOTTOM = 101;
         public static readonly short FLVER_DMY_TOP = 102;
 
+        /// when creating regions for patrol routes or travel points or whatever, use this size sphere
+        public static readonly float PATH_REGION_SIZE = 2f;
+
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
         public static readonly int ASSET_GROUP = 900;
 

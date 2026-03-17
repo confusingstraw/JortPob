@@ -143,6 +143,10 @@ namespace JortPob
         public readonly bool essential; // player gets called dumb if they kill this dood
         public bool hasWitness; // this value is set based on local npcs. defaults false. if true then crimes comitted against this npc will cause bounty
 
+        public Script.Flag packageDefaultFlag; // can be null. base ai package. if a script switches packages, it returns to this one when it's done.
+        public readonly List<Script.Flag> packageEventFlags; // all ai package flags for this content. used by switcher to clear all running events before a switch
+        public readonly List<AiPackage> packages; // defines some simple behaviours an npc can have like wandering around
+
         public readonly Stats stats; // skills and attributes
 
         public readonly List<Service> services;
@@ -326,6 +330,45 @@ namespace JortPob
             }
         }
 
+        /* Defines some values for ai packages */
+        public class AiPackage
+        {
+            public enum Type { Wander, Travel, Follow, Escort }   // escort seems unused. wander doubles as "nothing"
+
+            /* Not all values are used for every type. I decided against making each package type it's own class to make construction easier */
+            public readonly Type type;
+            public readonly float distance;
+            public readonly int duration;
+            public readonly string target;
+            public readonly Vector3 position;
+            public Vector3 relative;
+            public readonly string location;
+
+            public AiPackage(JsonNode json)
+            {
+                type = Enum.Parse<AiPackage.Type>(json["type"].GetValue<string>(), true);
+
+                distance = json["distance"]?.GetValue<float>() ?? 0f;
+                duration = json["duration"]?.GetValue<int>() ?? 0;
+
+                target = json["target"]?.GetValue<string>();
+                location = string.IsNullOrEmpty(json["cell"]?.GetValue<string>()) ? null : json["cell"]?.GetValue<string>();
+
+                if (json["location"] != null)
+                {
+                    JsonArray array = json["location"].AsArray();
+                    float x = array[0].GetValue<float>();
+                    float y = array[2].GetValue<float>();
+                    float z = array[1].GetValue<float>();
+
+                    if(x > 3e38) { return; }  // the "default" value for these is insane so this is a quick check
+
+                    Vector3 p = new(x, y, z);
+                    position = p * Const.GLOBAL_SCALE;
+                }
+            }
+        }
+
         /* Normal CharacterContent contructor */
         public CharacterContent(ESM esm, Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {
@@ -381,6 +424,13 @@ namespace JortPob
 
             hostile = fight >= 80; // @TODO: recalc with disposition mods based off UESP calc
             dead = record.json["data"]["stats"] != null && record.json["data"]["stats"]["health"] != null ? (int.Parse(record.json["data"]["stats"]["health"].ToString()) <= 0) : false;
+
+            packageEventFlags = new();
+            packages = new();
+            foreach(JsonNode jsonNode in record.json["ai_packages"].AsArray())
+            {
+                packages.Add(new AiPackage(jsonNode));
+            }
 
             string[] serviceFlags = record.json["ai_data"]["services"].ToString().Split("|");
             services = new();
@@ -444,6 +494,8 @@ namespace JortPob
             dead = content.dead;
             essential = content.essential;
             hasWitness = content.hasWitness;
+            packageEventFlags = new();       // we do not want to share a list reference between objects here. each phased copy of the character needs their own unique package event flags
+            packages = content.packages;
             stats = content.stats;
             treasure = content.treasure;
             services = content.services;

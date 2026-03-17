@@ -15,7 +15,8 @@ namespace JortPob
         // Special SPEFFs that are used for script functionality
         public enum Functional
         {
-            Alarming = 1000000      // 1 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+            Alarming = 1000000,      // 1 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+            NpcFollow = 1000001,     // speff used to switch npcs from normal logic to follower logic. lasts 1 second and is re-applied constantly during follower package
         }
 
         public enum Type
@@ -129,9 +130,14 @@ namespace JortPob
 
             /* Generate functional speffs */
             FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
+
             FsParam.Row funcSpeffAlarming = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: Alarming", (int)Functional.Alarming);
             funcSpeffAlarming["effectEndurance"].Value.SetValue((float)60f);
             paramanager.AddRow(speffParam, funcSpeffAlarming);
+
+            FsParam.Row funcSpeffFollow = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: NpcFollow", (int)Functional.NpcFollow);
+            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)1f);
+            paramanager.AddRow(speffParam, funcSpeffFollow);
         }
 
         // Temp buffs use 1642100 as a base which is the basic Heal incantation effect
@@ -153,7 +159,7 @@ namespace JortPob
                     row["spCategory"].Value.SetValue((ushort)0);           // behaviour when stacking or whatever (default is NONE)
                     row["stateInfo"].Value.SetValue((ushort)0);            // visual effect of spefff (i think??)
                     row["changeHpPoint"].Value.SetValue(0);
-                    row["bAdjustFaithAblity"].Value.SetValue((byte)0);
+                    row["bAdjustFaithAblity"].Value.SetValue((byte)0);   // SIC
                     row["vfxId"].Value.SetValue(-1);                     // also visual effect idk guh??
                     row["effectEndurance"].Value.SetValue((float)1f);
                     row["iconId"].Value.SetValue(-1);

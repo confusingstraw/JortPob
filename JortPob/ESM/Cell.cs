@@ -21,6 +21,8 @@ namespace JortPob
 
         public readonly List<Flag> flags;
 
+        public readonly List<Vector3> paths;
+
         public readonly List<Content> contents;            // All of this
         public readonly List<CreatureContent> creatures;
         public readonly List<NpcContent> npcs;
@@ -54,6 +56,26 @@ namespace JortPob
 
             float half = Const.CELL_SIZE / 2f;
             center = new Vector3(coordinate.x, 0.0f, coordinate.y) * Const.CELL_SIZE + new Vector3(half, 0f, half);
+
+            /* Cell Pathgrid Data */
+            paths = new();
+            JsonNode pathJson = esm.FindPathRecord(IsExterior()?null:name, coordinate);
+            if (pathJson != null)  // not all cells have pathgrids so it can be null
+            {
+                JsonArray pathPoints = pathJson["points"].AsArray();
+                foreach (JsonNode pathPoint in pathPoints)
+                {
+                    JsonArray location = pathPoint["location"].AsArray();
+                    float X = location[0].GetValue<float>();
+                    float Y = location[2].GetValue<float>();
+                    float Z = location[1].GetValue<float>();
+                    Vector3 point = new Vector3(X, Y, Z);
+                    Vector3 offset;
+                    if(IsExterior()) { offset = new(coordinate.x, 0f, coordinate.y); }
+                    else { offset = Vector3.Zero; }
+                    paths.Add((point * Const.GLOBAL_SCALE) + (offset * Const.CELL_SIZE));
+                }
+            }
 
             /* Cell Content Data */
             contents = new();

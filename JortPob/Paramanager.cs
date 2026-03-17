@@ -891,7 +891,7 @@ namespace JortPob
         public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
-            FsParam.Row row = CloneRow(thinkParam[523010000], npc.id, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(thinkParam[533250000], npc.id, id); // 533250000 is rogier followy
 
             // STUB:: do stuff to this param lol
 

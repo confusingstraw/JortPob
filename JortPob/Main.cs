@@ -22,17 +22,17 @@ namespace JortPob
             Oodler.Initialize();
 
             /* Loading stuff */
-            ScriptManager scriptManager = new();                                               // Manages EMEVD scripts
-            ESM esm = new ESM(scriptManager);                                               // Morrowind ESM parse and partial serialization
+            ScriptManager scriptManager = new();                                              // Manages EMEVD scripts
+            ESM esm = new ESM(scriptManager);                                                // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
-            TextManager text = new();                                                           // Manages FMG text files
-            MenuTextureManager texManager = new(esm);
-            Paramanager param = new(text);                                                        // Class for managing PARAM files
-            SpeffManager speff = new(esm, param, scriptManager, texManager, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
+            TextManager text = new();                                                      // Manages FMG text files
+            MenuTextureManager texManager = new(esm);                                     // Manages menu textures for things like inventory icons and loading screens
+            Paramanager param = new(text);                                               // Class for managing PARAM files
+            SpeffManager speff = new(esm, param, scriptManager, texManager, text);      // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, texManager, text);                         // Handles generation and reampping of items
-            Layout layout = new(cache, esm, param, text, scriptManager);                          // Subdivides all content data from ESM into a more elden ring friendly format
-            SoundManager sound = new();                                                         // Manages vcbanks
-            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);    // Manages dialog esd
+            Layout layout = new(cache, esm, param, text, scriptManager);                                       // Subdivides all content data from ESM into a more elden ring friendly format
+            SoundManager sound = new();                                                                       // Manages vcbanks
+            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);         // Manages dialog esd
 
 
             // Helpers/shared values
@@ -456,6 +456,58 @@ namespace JortPob
                         region.EntityID = sp.region;
                         region.MapStudioLayer = 4294967295;
                         msb.Regions.Add(region);
+                    }
+                }
+
+                /* Handle path grid points */
+                if(isTileType)
+                {
+                    Tile t = tile as Tile;
+                    for(int i=0;i<t.paths.Count();i++)
+                    {
+                        Layout.PathGridPoint point = t.paths[i];
+
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = point.name;
+                        region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
+                        region.Position = point.position + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = point.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
+                    /* Add TravelPoints */
+                    for (int j = 0; j < t.travels.Count(); j++)
+                    {
+                        Layout.TravelPoint travel = t.travels[j];
+
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = travel.name;
+                        region.Shape = new MSB.Shape.Sphere(travel.radius);
+                        region.Position = travel.relative + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = travel.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
                     }
                 }
 
@@ -894,6 +946,54 @@ namespace JortPob
                         msb.Regions.Add(region);
                     }
 
+                    /* Add PathGridPoints */
+                    for (int j = 0; j < chunk.paths.Count(); j++)
+                    {
+                        Layout.PathGridPoint point = chunk.paths[j];
+
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = point.name;
+                        region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
+                        region.Position = point.position + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = point.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
+                    /* Add TravelPoints */
+                    for (int j = 0; j < chunk.travels.Count(); j++)
+                    {
+                        Layout.TravelPoint travel = chunk.travels[j];
+
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = travel.name;
+                        region.Shape = new MSB.Shape.Sphere(travel.radius);
+                        region.Position = travel.relative + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = travel.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
                     /* Handle area name */
                     int paramId = int.Parse($"60{group.map:D2}{group.area:D2}{nextMPR:D2}");
 
@@ -1117,7 +1217,7 @@ namespace JortPob
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */
             Lort.Log($"Processing {contentToCompile.Count()+1} scripts...", Lort.Type.Main);
-            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*2);
+            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*3);
 
             /* Initialize local variables first */
             if (!Const.DEBUG_SKIP_SCRIPTS)
@@ -1132,6 +1232,8 @@ namespace JortPob
                     Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                     if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
 
+                    if (compile.content is CharacterContent cc) { character.SetupPackages(compile.msb, compile.script, cc); } // ai packages must be set up before emevd compile starts
+
                     Lort.TaskIterate();
                 }
 
@@ -1145,14 +1247,19 @@ namespace JortPob
                     Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                     if (papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
 
-                    if (compile.content is CharacterContent)
+                    if (compile.content is CharacterContent characterContent)
                     {
                         MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
-                        CharacterContent characterContent = compile.content as CharacterContent;
                         if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
                         else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
                     }
 
+                    Lort.TaskIterate();
+                }
+
+                foreach (PleaseCompile compile in contentToCompile)
+                {
+                    PapyrusEMEVD.Finalize(scriptManager, compile.script, compile.content);
                     Lort.TaskIterate();
                 }
             }

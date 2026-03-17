@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using static JortPob.Dialog;
 
 namespace JortPob
@@ -17,6 +18,8 @@ namespace JortPob
         /* Morrowind makes a distinction between these 2 types of characters but ER does not */
 
         /* Bonus soda: This class also handles Beds because the morrowind c1000 object is technically an enemy so guh gughhh */
+        
+        /* Extra Bonus soda: This calls also now resolves default AiPackages */
 
         private readonly ESM esm;
         private readonly Layout layout;
@@ -112,7 +115,6 @@ namespace JortPob
 
         /* Creates an ESD for the given instance of a npc */
         /* ESDs are generally 1 to 1 with characters but there are some exceptions like guards */
-        // @TODO: THIS SYSTEM USING AN ARRAY OF INTS IS FUCKING SHIT PLEASE GOD REFACTOR THIS TO JUST USE THE ACTUAL TILE OR INTERIOR GROUP
         public int GetESD(int[] msbIdList, MSBE msb, CharacterContent content)
         {
             if (content.race == CharacterContent.Race.Creature && !esm.HasDialog((CreatureContent)content)) { return 0; } // if this is a creature, verify it has dialog lines to build dialog for
@@ -128,7 +130,7 @@ namespace JortPob
             SoundManager.SoundBankInfo bankInfo = soundManager.GetBank(content);
 
             List<TopicData> data = [];
-            foreach ((DialogRecord dia, List<DialogInfoRecord> infos) in dialog)
+            foreach ((DialogRecord dia, List<Dialog.DialogInfoRecord> infos) in dialog)
             {
                 int topicId = 20000000; // generic "talk" as default, should never actually end up being used
                 if (dia.type == DialogRecord.Type.Topic)
@@ -201,7 +203,217 @@ namespace JortPob
             return esdId;
         }
 
-        /* Create a bed esd */
+        /* Setup a default ai package for an character */
+        // does not support time of day values for packages. they are basically unused so it shouldnt even matter
+        // does not support "Escort" package, literally unused in base game
+        // does not support follow endpoint goals, i have no idea why you would use those in a default package anyawys so yeah
+        // follow only supports player. i dont think its possible to do npcs following eachother in elden ring
+        public void SetupPackages(MSBE msb, Script script, CharacterContent content)
+        {
+            // Function for creating events for duration based timers
+            Script.Flag CreateDurationEvent(Script.Flag packageIndexFlag, int i, float duration)
+            {
+                Script.Flag timerEvtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackageTimer::{content.entity}::{i:D2}");
+                EMEVD.Event timerEvt = new();
+                timerEvt.ID = timerEvtFlag.id;
+                timerEvt.Instructions.Add(script.AUTO.ParseAdd($"WaitFixedTimeSeconds({duration});"));                                                    // wait for duration
+                timerEvt.Instructions.Add(script.AUTO.ParseAdd($"EventValueOperation({packageIndexFlag.id}, {packageIndexFlag.Bits()}, 1, 0, 1, 0);"));  // increment package index by 1
+                script.emevd.Events.Add(timerEvt);
+                content.packageEventFlags.Add(timerEvtFlag);
+                return timerEvtFlag;
+            }
+
+            // Quick check to make sure we should even...
+            if (content.dead) { return; } // get the fuck outttaaa heeeereeeee
+
+            // This is the "Do nothing forever" check. In this case we don't need to create a packageFlag or do any scripts. They will just stand there!
+            if(content.packages.Count() <= 0 || (content.packages[0].type == CharacterContent.AiPackage.Type.Wander && content.packages[0].distance == 0 && content.packages[0].duration == 0 )) { return; }
+
+            // Create flag for package index
+            Script.Flag packageFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.AiPackage, content.entity.ToString());  // purposefully avoid phased rerouting
+            List<string> code = new();
+
+            // Generate emevd code
+            for (int i=0;i<content.packages.Count()&&i<16;i++)  // max allowed packages is 16. we could expand this if needed but lmao, 99% of npcs have 1 package
+            {
+                CharacterContent.AiPackage package = content.packages[i];
+
+                if (package.type == CharacterContent.AiPackage.Type.Wander && package.distance <= 0)
+                {
+                    // This is the "DO NOTHING" package
+                    if (package.duration <= 0)
+                    {
+                        code.Add($"EndUnconditionally(EventEndType.End);");  // do nothing forever!
+                    }
+                    // If our DO NOTHING package has a duration we need some code to wait till its done
+                    else
+                    {
+                        List<string> scope = new();
+
+                        if (package.duration > 0)
+                        {
+                            // Initialize a timer event if this event has a duration set
+                            float duration = 2.5f * 60f * package.duration; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
+                            Script.Flag timerEvtFlag = CreateDurationEvent(packageFlag, i, duration);
+                            scope.Add($"InitializeEvent(0, {timerEvtFlag.id}, 0);");
+                        }
+
+                        code.Add($"IfElapsedSeconds(MAIN, 0);");                                              // reset conditions groups
+                        code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {i});");   // if package flag matches this particular packages index
+                        code.Add($"SkipIfConditionGroupStateUncompiled({scope.Count()}, FAIL, OR_01);");    // skip if fails, do if pass
+                        code.AddRange(scope);
+                    }
+                }
+                else if (package.type == CharacterContent.AiPackage.Type.Wander)
+                {
+                    List<string> scope = new();
+                    List<Layout.PathGridPoint> paths = layout.GetWanderable(content, package.distance);
+                    paths.Shuffle();                                            // randomize
+                    if (paths.Count() > 15) { paths = paths.GetRange(0, 15); } // truncate to max size of nibble
+                    Script.Flag wanderFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.Wander, content, 0, true);
+
+                    //const float MOVESPEED = 1.1f; // npc walking averages around 2~ units per second. we use this to estimate a worst case duration
+
+                    if(package.duration > 0)
+                    {
+                        // Initialize a timer event if this event has a duration set
+                        float duration = 2.5f * 60f * package.duration; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
+                        Script.Flag timerEvtFlag = CreateDurationEvent(packageFlag, i, duration);
+                        scope.Add($"InitializeEvent(0, {timerEvtFlag.id}, 0);");
+                    }
+
+                    scope.Add($"WaitRandomTimeSeconds(0, 3);");    // chill for a bit between wandering around
+
+                    // Regular wander but no pathgrid so just improvise with type 6 patrol "Randomly wander around"
+                    if (paths.Count() <= 0)
+                    {
+                        MSBE.Event.PatrolInfo patrol = MakePart.PatrolRandom();
+                        patrol.EntityID = script.CreateEntity(Script.EntityType.Event, $"Random->{patrol.Name}");
+                        msb.Events.Add(patrol);
+
+                        scope.Add($"ChangeCharacterPatrolBehavior({content.entity}, {patrol.EntityID});");          // set route to "wander randomly"
+                        scope.Add($"WaitFixedTimeSeconds(3);");                                                    // Little wait between loops
+                    }
+                    // Regular wander on pathgrid
+                    else
+                    {
+                        Vector3 last = content.relative;
+                        for (int j = 0; j < paths.Count(); j++)
+                        {
+                            Layout.PathGridPoint path = paths[j];
+                            float distance = Vector3.Distance(last, path.position);
+                            last = path.position;
+
+                            MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(path);
+                            patrol.EntityID = script.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");
+                            msb.Events.Add(patrol);
+
+                            scope.Add($"IfElapsedSeconds(MAIN, 0);");                                                                // reset conditions groups
+                            scope.Add($"IfEventValue(OR_01, {wanderFlag.id}, {wanderFlag.Bits()}, 0, {j});");                       // if wander flag equals the index of this path
+                            scope.Add($"SkipIfConditionGroupStateUncompiled(2, FAIL, OR_01);");                                    // ...
+                            scope.Add($"ChangeCharacterPatrolBehavior({content.entity}, {patrol.EntityID})");                     // move to new wander position
+                            scope.Add($"IfInoutsideArea(MAIN, InsideOutsideState.Inside, {content.entity}, {path.entity}, 1);"); // block until arrived at location
+                                                                                                                                 //scope.Add($"WaitFixedTimeSeconds({MOVESPEED * distance});");
+                        }
+
+                        scope.Add($"IfElapsedSeconds(MAIN, 0);");                                                                // reset conditions groups
+                        scope.Add($"IfEventValue(OR_01, {wanderFlag.id}, {wanderFlag.Bits()}, 4, {paths.Count() - 1});");         // if wander flag is great than the number of paths...
+                        scope.Add($"SkipIfConditionGroupStateUncompiled(2, PASS, OR_01);");                                    // ...
+                        scope.Add($"EventValueOperation({wanderFlag.id}, {wanderFlag.Bits()}, 1, 0, 1, 0);");                 // increment wander flag +1
+                        scope.Add($"SkipUnconditionally(1);");                                                               // else ...
+                        scope.Add($"EventValueOperation({wanderFlag.id}, {wanderFlag.Bits()}, 0, 0, 1, 5);");               // wander flag back to 0
+                        scope.Add($"WaitRandomTimeSeconds(1.5, 10);");                                                     // chill for a bit between wandering around again
+                    }
+
+                    code.Add($"IfElapsedSeconds(MAIN, 0);");                                              // reset conditions groups
+                    code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {i});");   // if package flag matches this particular packages index
+                    code.Add($"SkipIfConditionGroupStateUncompiled({scope.Count()}, FAIL, OR_01);");    // skip if fails, do if pass
+                    code.AddRange(scope);
+
+                    if (package.duration <= 0) { break; } // wander FOREVER
+                }
+                else if(package.type == CharacterContent.AiPackage.Type.Travel)
+                {
+                    List<string> scope = new();
+
+                    Layout.TravelPoint tp;
+                    if(script.IsInterior()) { tp = layout.FindTravelable(content.cell.name, package.position); }
+                    else { tp = layout.FindTravelable(package.position); }
+
+                    MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(tp);
+                    patrol.EntityID = script.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");
+                    msb.Events.Add(patrol);
+
+                    scope.Add($"ChangeCharacterPatrolBehavior({content.entity}, {patrol.EntityID})");                      // move to travel position
+                    scope.Add($"RequestCharacterAIReplan({content.entity});");                                            // replan request to make pathing not stupid
+                    scope.Add($"IfInoutsideArea(MAIN, InsideOutsideState.Inside, {content.entity}, {tp.entity}, 1);");   // block until arrived at location
+                    scope.Add($"EventValueOperation({packageFlag.id}, {packageFlag.Bits()}, 1, 0, 1, 0);");             // Increment package index +1
+
+                    code.Add($"IfElapsedSeconds(MAIN, 0);");                                              // reset conditions groups
+                    code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {i});");   // if package flag matches this particular packages index
+                    code.Add($"SkipIfConditionGroupStateUncompiled({scope.Count()}, FAIL, OR_01);");    // skip if fails, do if pass
+                    code.AddRange(scope);
+                }
+                else if(package.type == CharacterContent.AiPackage.Type.Follow)
+                {
+                    List<string> scope = new();
+
+                    if (package.duration > 0)
+                    {
+                        // Initialize a timer event if this event has a duration set
+                        float duration = 2.5f * 60f * package.duration; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
+                        Script.Flag timerEvtFlag = CreateDurationEvent(packageFlag, i, duration);
+                        scope.Add($"InitializeEvent(0, {timerEvtFlag.id}, 0);");
+                    }
+                    
+                    scope.Add($"SetSpEffect({content.entity}, {(int)SpeffManager.Functional.NpcFollow});");     // add follower SPEFF to character
+
+                    code.Add($"IfElapsedSeconds(MAIN, 0);");                                              // reset conditions groups
+                    code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {i});");   // if package flag matches this particular packages index
+                    code.Add($"SkipIfConditionGroupStateUncompiled({scope.Count()}, FAIL, OR_01);");    // skip if fails, do if pass
+                    code.AddRange(scope);
+
+                    if (package.duration <= 0) { break; } // wander FOREVER
+                }
+                else if (package.type == CharacterContent.AiPackage.Type.Escort)
+                {
+                    // not implemented for now. not used in morrowind.esm ever as an ai package. only ever used from script calls
+                }
+            }
+
+            if (code.Count() <= 0) { return; } // if we generated a nothing burger lets not bother compiling it
+
+            // Inject a few lines at the top for dead/disable/phase handling
+            Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, content);
+            Script.Flag disableFlag = scriptManager.GetFlag(Script.Flag.Designation.Disabled, content);
+            List<string> startup = [
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {deadFlag.id});",      // if dead...
+                $"EndUnconditionally(EventEndType.End);",                                      // kill event early
+            ];
+            if(disableFlag != null) { startup.Add($"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {disableFlag.id});"); }  // blocking wait until character is not disabled
+            if (content is PhasedNpcContent phased) {
+                Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, content);
+                startup.Add($"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {phased.phase});"); // blocking wait until phase matches this npcs phase
+            } 
+            code.InsertRange(0, startup);
+
+            // Restart ai packages if we reach the end
+            code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {content.packages.Count()});");     // if package flag = the last index + 1 (we dont use > because 15 is "scripted")
+            code.Add($"EventValueOperation({packageFlag.id}, {packageFlag.Bits()}, 0, 0, 1, 5);");                       // package flag back to 0
+
+            code.Add($"EndUnconditionally(EventEndType.Restart);");  // restart
+
+            // Compile code
+            Script.Flag evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackage::{content.entity}");
+            EMEVD.Event evt = new();
+            evt.ID = evtFlag.id;
+            foreach (string line in code) { evt.Instructions.Add(script.AUTO.ParseAdd(line)); }
+            script.emevd.Events.Add(evt);
+            script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {evtFlag.id}, 0);"));
+            content.packageEventFlags.Add(evtFlag);
+            content.packageDefaultFlag = evtFlag;
+        }
+
         public int GetESD(BaseTile tile, MSBE msb, BedContent content) { return GetESD(tile.IdList(), msb, content); }
         public int GetESD(InteriorGroup group, MSBE msb, BedContent content) { return GetESD(group.IdList(), msb, content); }
         public int GetESD(int[] msbIdList, MSBE msb, BedContent content)

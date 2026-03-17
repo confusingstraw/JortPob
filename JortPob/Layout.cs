@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using Microsoft.Windows.Themes;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -255,7 +256,7 @@ namespace JortPob
 
                 if (huge != null)
                 {
-                    huge.AddCell(cell);
+                    huge.AddCell(scriptManager, cell);
 
                     foreach (Content content in cell.contents)
                     {
@@ -321,7 +322,7 @@ namespace JortPob
 
                 foreach (Cell cell in cells)
                 {
-                    group.AddCell(cache,cell);
+                    group.AddCell(scriptManager, cache, cell);
                     scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
                 }
             }
@@ -850,8 +851,7 @@ namespace JortPob
                         case Papyrus.Call.Type.Position:
                             {
                                 // Find tile this position call is pointing too
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
-                                position *= Const.GLOBAL_SCALE;
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
                                 float rot = float.Parse(call.parameters[3]);
                                 Tile target = GetTile(position);
                                 if (target == null) { Lort.Log($"Failed to place region for preprocessed position call -> '{call.RAW}'", Lort.Type.Debug); break; }
@@ -871,8 +871,7 @@ namespace JortPob
                             }
                         case Papyrus.Call.Type.PositionCell:
                             {
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters);
-                                position *= Const.GLOBAL_SCALE;
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
                                 float rot = float.Parse(call.parameters[3]);
                                 string name = call.parameters[4];
                                 InteriorGroup.Chunk target = FindChunk(name);
@@ -888,6 +887,55 @@ namespace JortPob
                                 else
                                 {
                                     HandleNpcPhase(null, target, position, rot, content, call);
+                                }
+                                break;
+                            }
+                        case Papyrus.Call.Type.AiEscort:
+                        case Papyrus.Call.Type.AiFollow:
+                            {
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters, 2) * Const.GLOBAL_SCALE;
+                                Tile target = GetTile(position);
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollow call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                Script script = scriptManager.GetScript(target);
+                                target.AddTravelPoint(script, position, 5f);
+                                break;
+                            }
+                        case Papyrus.Call.Type.AiEscortCell:
+                        case Papyrus.Call.Type.AiFollowCell:
+                            {
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters, 3) * Const.GLOBAL_SCALE;
+                                string name = call.parameters[4];
+                                InteriorGroup.Chunk target = FindChunk(name);
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollowCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                Script script = scriptManager.GetScript(target.group);
+                                target.AddTravelPoint(script, position, 5f);
+                                break;
+                            }
+                        case Papyrus.Call.Type.AiTravel:
+                            {
+                                Content target;
+                                if(content == null) { target = FindScriptReference(null, call.target); } // attempt to resolve a dialog based call ref if possible, no guarantees though
+                                else { target = content; }
+
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
+                                if(target == null || target.cell.IsExterior()) // failed reference resolve defaults to overworld
+                                {
+                                    Tile t = GetTile(position);
+                                    if (t == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                    Script script = scriptManager.GetScript(t);
+                                    t.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
+                                }
+                                else
+                                {
+                                    string name = target.cell.name;
+                                    InteriorGroup.Chunk c = FindChunk(name);
+                                    if (c == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
+
+                                    Script script = scriptManager.GetScript(c.group);
+                                    c.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
                                 }
                                 break;
                             }
@@ -934,6 +982,10 @@ namespace JortPob
                 List<Papyrus.Call> calls = dialog.GetCalls();
                 PreProcessScriptedPositions(null, calls); // null here means we cannot process self reference calls. will print error if we run into one
             }
+
+            /* Process character aipackage positions */
+            foreach (Tile tile in tiles) { tile.ProcessTravelPoints(scriptManager); }
+            foreach (InteriorGroup group in interiors) { group.ProcessTravelPositions(scriptManager); }
 
             /* Generate map point placements */
             Dictionary<string, List<Vector3>> mapPoints = new();
@@ -1167,6 +1219,8 @@ namespace JortPob
         /* Source can also be null and we skip the local search. Reason for this is that global scripts coming from the papyrus 'Main' do not have a local object they are attached to so it's null */
         public Content FindScriptReference(Content source, string reference)
         {
+            if (reference == null) { return null; }
+
             if (source != null)
             {
                 IEnumerable<Content> local;
@@ -1244,6 +1298,49 @@ namespace JortPob
                 if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
             }
             return null;
+        }
+
+        /* Finds travel position for aipackage in an exterior */
+        public TravelPoint FindTravelable(Vector3 position)
+        {
+            foreach (Tile tile in tiles)
+            {
+                foreach (TravelPoint tp in tile.travels)
+                {
+                    if (Vector3.Distance(position, tp.position) < 0.1f) { return tp; }
+                }
+            }
+            return null;
+        }
+
+        /* Finds travel position for aipackage in an interior */
+        public TravelPoint FindTravelable(string name, Vector3 position)
+        {
+            if (name == null) { return FindTravelable(position); }  // if location = null then we assume its an exterior
+
+            InteriorGroup.Chunk chunk = FindChunk(name);
+            if (chunk == null) { return null; } // partial build case
+            foreach (TravelPoint tp in chunk.travels)
+            {
+                if (Vector3.Distance(position, tp.position) < 0.1f) { return tp; }
+            }
+            return null;
+        }
+
+        /* Find all pathgridpoints within the radius of the given content */
+        public List<PathGridPoint> GetWanderable(Content content, float radius)
+        {
+            List<PathGridPoint> source;
+            Tile tile = FindTile(content);
+            if (tile != null) { source = tile.paths; }
+            else { source = FindChunk(content).paths; }
+
+            List<PathGridPoint> result = new();
+            foreach (PathGridPoint p in source)
+            {
+                if (Vector3.Distance(content.relative, p.position) <= radius * Const.GLOBAL_SCALE) { result.Add(p); }
+            }
+            return result;
         }
 
         public class MapPoint
@@ -1331,6 +1428,8 @@ namespace JortPob
             }
         }
 
+        public record PathGridPoint(string name, Vector3 position, uint entity) { }
+
         public class ScriptedPosition
         {
             public readonly Vector3 position, relative, rotation;
@@ -1350,5 +1449,7 @@ namespace JortPob
                 this.block = block;
             }
         }
+
+        public record TravelPoint(string name, Vector3 position, Vector3 relative, float radius, uint entity) { }
     }
 }

@@ -21,7 +21,7 @@ namespace JortPob
 
         public enum Event
         {
-            SpawnHandler, SpawnHandlerDisableable, SpawnHandlerPhased, IntSpawnHandler, IntSpawnHandlerDisableable, IntSpawnHandlerPhased,
+            SpawnHandler, SpawnHandlerDisableable, SpawnHandlerPhased, IntSpawnHandler, IntSpawnHandlerDisableable, IntSpawnHandlerPhased, Halt,
             LoadDoor, NpcHostilityHandler, Message, Essential, DeadBody, 
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
             StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight, GetSecondsPassed
@@ -122,6 +122,41 @@ namespace JortPob
 
             func.Events.Add(spawnHandler);
             events.Add(Event.SpawnHandler, spawnEventFlag.id);
+
+            /* Create an event for handling npc halting */
+            Flag haltEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Halt");
+            EMEVD.Event haltEvent = new(haltEventFlag.id);
+
+            pc = 0;
+
+            string[] haltEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if npc is dead ...
+                $"EndUnconditionally(EventEndType.End);",                                           // kill event
+
+                $"IfEntityInoutsideRadiusOfEntity(AND_01, InsideOutsideState.Inside, 10000, {NextParameterName()}, 3, 1);",   // blocking wait distance check for player close enough AND ...
+                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                          // ... blocking wait until hostile flag is off
+                $"IfConditionGroup(MAIN, PASS, AND_01);",
+                $"SetCharacterAIState({NextParameterName()}, Disabled);",                                                   // disable ai
+                $"RotateCharacter({NextParameterName()}, 10000, -1, false)",                                               // rotate to face player
+
+                $"IfEntityInoutsideRadiusOfEntity(OR_01, InsideOutsideState.Outside, 10000, {NextParameterName()}, 4, 1);",  // blocking wait distance check for player far enough OR...
+                $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                           // ... blocking wait until hostile flag is on
+                $"IfConditionGroup(MAIN, PASS, OR_01);",
+                $"SetCharacterAIState({NextParameterName()}, Enabled);",                            // enable ai
+
+                $"EndUnconditionally(EventEndType.Restart);",     // restart event
+            };
+
+            for (int i = 0; i < haltEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(haltEventRaw[i], i);
+                haltEvent.Parameters.AddRange(newPs);
+                haltEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(haltEvent);
+            events.Add(Event.Halt, haltEventFlag.id);
 
             /* Create an event for handling creature/npc spawn/respawn and disable/enable */
             Flag spawnHandlerWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandlerDisableable");
