@@ -19,6 +19,7 @@ namespace JortPob
             Lort.Initialize(); // startup logging
             Override.Initialize(); // load all override jsons
             Utility.InitSRGBCache();
+            Oodler.Initialize();
 
             /* Loading stuff */
             ScriptManager scriptManager = new();                                               // Manages EMEVD scripts
@@ -55,7 +56,7 @@ namespace JortPob
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
-
+            
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.tiles.Count);
 
@@ -66,7 +67,7 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Compression.KRAK();
 
                 Script script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
@@ -85,7 +86,7 @@ namespace JortPob
                     // superoverworld msb is  handled by its own class -> OverworldManager
                     foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                     {
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC.ToString("D2")}";
 
                         MSBE.Part.Collision collision = MakePart.Collision();
                         collision.Name = $"h{collisionIndex}_0000";
@@ -94,6 +95,8 @@ namespace JortPob
 
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
+
+                        nextC++;
                     }
 
                     /* Add water collision if terrain 'hasWater' */
@@ -513,7 +516,7 @@ namespace JortPob
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
                 Script script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Compression.KRAK();
 
                 /* Handle chunks */
                 for (int i = 0; i < group.chunks.Count(); i++)
@@ -949,6 +952,169 @@ namespace JortPob
                 msbs.Add(pool);
                 Lort.TaskIterate(); // Progress bar update
             }
+
+            /* Generate navmeshes and then build nvas and nvbnds */
+            /* First start by grabbing all the nav scene representations and converting them OBJ -> HKX -> NAV */
+            if (!Const.DEBUG_SKIP_NAVMESH)
+            {
+                List<string> objs = new();
+                foreach (BaseTile bt in layout.tiles)
+                {
+                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
+                    tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
+                    objs.Add(objPath);
+                }
+                foreach (InteriorGroup group in layout.interiors)
+                {
+                    if (group.IsEmpty()) { continue; } // skip empty groups
+
+                    for (int i = 0; i < group.chunks.Count(); i++)
+                    {
+                        InteriorGroup.Chunk chunk = group.chunks[i];
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
+                        objs.Add(objPath);
+                    }
+                }
+
+                NavWorker.Go(objs);
+
+                /* After all the nav conversions are finshed we can now do nvas and nvbnds */
+                Lort.Log($"Binding {layout.tiles.Count() + layout.interiors.Count()} NVBNDs...", Lort.Type.Main);
+                Lort.NewTask("Binding NVBNDs", layout.tiles.Count() + layout.interiors.Count());
+                foreach (BaseTile bt in layout.tiles)
+                {
+                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
+
+                    /* Some vars */
+                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
+                    string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
+                    string onavPath = Path.ChangeExtension(objPath, ".o.nav");
+
+                    /* Create NVA */
+                    SoulsFormats.NVA nva = new();
+                    nva.Compression = Compression.KRAK();
+                    NVA.Entry11 entry11 = new();
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
+                    nva.Entries11.Add(entry11);
+                    nva.Navmeshes.Version = 4;
+
+                    /* Create NVBND */
+                    BND4 nvbnd = new();
+                    nvbnd.Compression = Compression.KRAK();
+                    nvbnd.Version = "07D7R6";
+
+                    /* Add navmesh entry to NVA */
+                    NVA.Navmesh navMesh = new();
+                    int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
+                    navMesh.NameID = nextNavId;
+                    navMesh.ModelID = nextN;
+                    navMesh.IsConnectedNavmeshesInline = true;
+                    navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                    navMesh.Rotation = new(0f);
+                    navMesh.Scale = new(1f, 1f, 1f, 0f);
+                    navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
+                    navMesh.Unk3C = 0;
+                    navMesh.Unk4C = 0;
+                    navMesh.Unk44 = 1075419545; // magic number used
+                    nva.Navmeshes.Add(navMesh);
+
+                    /* Add navmesh file to NVBND */
+                    BinderFile nbf = new();
+                    nbf.Bytes = File.ReadAllBytes(nnavPath);
+                    nbf.ID = 10000;
+                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(nbf);
+
+                    BinderFile obf = new();
+                    obf.Bytes = File.ReadAllBytes(onavPath);
+                    obf.ID = 20000;
+                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(obf);
+
+                    /* Write Files */
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    Lort.TaskIterate();
+                }
+                foreach (InteriorGroup group in layout.interiors)
+                {
+                    /* Some vars */
+                    int bid = 10000;
+                    int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
+                    string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
+
+                    /* Create NVA */
+                    SoulsFormats.NVA nva = new();
+                    nva.Compression = Compression.KRAK();
+                    NVA.Entry11 entry11 = new();
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
+                    nva.Entries11.Add(entry11);
+                    nva.Navmeshes.Version = 4;
+
+                    /* Create NVBND */
+                    BND4 nvbnd = new();
+                    nvbnd.Compression = Compression.KRAK();
+                    nvbnd.Version = "07D7R6";
+
+                    for (int i = 0; i < group.chunks.Count(); i++)
+                    {
+                        if (group.IsEmpty()) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
+
+                        InteriorGroup.Chunk chunk = group.chunks[i];
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
+                        string onavPath = Path.ChangeExtension(objPath, ".o.nav");
+
+                        /* Add navmesh entry to NVA */
+                        NVA.Navmesh navMesh = new();
+                        int nextN = int.Parse($"{group.map:D2}{group.area:D2}{i:D2}");
+                        navMesh.NameID = nextNavId;
+                        navMesh.ModelID = nextN;
+                        navMesh.IsConnectedNavmeshesInline = true;
+                        navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                        navMesh.Rotation = new(0f);
+                        navMesh.Scale = new(1f, 1f, 1f, 0f);
+                        navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
+                        navMesh.Unk3C = 0;
+                        navMesh.Unk4C = 0;
+                        navMesh.Unk44 = 1075419545; // magic number used
+                        nva.Navmeshes.Add(navMesh);
+
+                        /* Add navmesh file to NVBND */
+                        BinderFile nbf = new();
+                        nbf.Bytes = File.ReadAllBytes(nnavPath);
+                        nbf.ID = bid;
+                        nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
+                        nvbnd.Files.Add(nbf);
+
+                        BinderFile obf = new();
+                        obf.Bytes = File.ReadAllBytes(onavPath);
+                        obf.ID = 10000 + bid;
+                        obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
+                        nvbnd.Files.Add(obf);
+
+                        bid++;
+
+                        nextNavId += 10;
+                    }
+
+                    /* Write Files */
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    Lort.TaskIterate();
+                }
+            }
+
 
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */

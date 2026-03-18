@@ -49,7 +49,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             startInfo = new(@$"{toolsDir}\AssetCc2_fixed.exe", $"--strip \"{tempDir}\\{fName}.obj.o2f\" \"{tempDir}\\{fName}.1\"")
             {
@@ -58,7 +58,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             startInfo = new(@$"{toolsDir}\hknp2fsnp.exe", $"\"{tempDir}\\{fName}.1\"")
             {
@@ -67,7 +67,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             return File.ReadAllBytes($@"{tempDir}\{fName}.1.hkx");  
         }

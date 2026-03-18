@@ -84,7 +84,7 @@ namespace JortPob
                 texture.Bytes = ddsBytes;
                 texture.Format = (byte)Common.DDS.GetTpfFormatFromDdsBytes(ddsBytes);
 
-                tpf.Compression = DCX.Type.DCX_KRAK;
+                tpf.Compression = Compression.KRAK();
                 tpf.Textures.Add(texture);
 
                 file.Bytes = tpf.Write();

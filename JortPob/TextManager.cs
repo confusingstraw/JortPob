@@ -281,7 +281,7 @@ namespace JortPob
             void WriteBnd(string fileName, Dictionary<TextType, FMG> fmgs)
             {
                 BND4 bnd = new();
-                bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 foreach (KeyValuePair<TextType, FMG> kvp in fmgs)

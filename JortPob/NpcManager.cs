@@ -233,7 +233,7 @@ namespace JortPob
                 if(!bnds.ContainsKey((esd.map, esd.area)))
                 {
                     BND4 bnd = new();
-                    bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
                     bnds.Add((esd.map, esd.area), bnd);
                 }

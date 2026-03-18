@@ -46,44 +46,11 @@ namespace JortPob
             float j = float.Parse(json["rotation"][1].ToString());
             float k = float.Parse(json["rotation"][2].ToString());
 
-            /* The following unholy code converts morrowind (Z up) euler rotations into dark souls (Y up) euler rotations */
-            /* Big thanks to katalash, dropoff, and the TESUnity dudes for helping me sort this out */
-
-            /* Katalashes code from MapStudio */
-            Vector3 MatrixToEulerXZY(Matrix4x4 m)
-            {
-                const float Pi = (float)Math.PI;
-                const float Deg2Rad = Pi / 180.0f;
-                Vector3 ret;
-                ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
-
-                if (Math.Abs(m.M12) < 0.9999999)
-                {
-                    ret.X = MathF.Atan2(-m.M32, m.M22);
-                    ret.Y = MathF.Atan2(-m.M13, m.M11);
-                }
-                else
-                {
-                    ret.X = MathF.Atan2(m.M23, m.M33);
-                    ret.Y = 0;
-                }
-                ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
-                ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
-                ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
-                return ret;
-            }
-
-            /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
-            Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), i);
-            Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), k);
-            Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), j);
-            Quaternion q = xRot * zRot * yRot;
-
-            Vector3 eu = MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+            Vector3 r = Utility.ConvertRotation(new(i, j, k));
 
             relative = new();
             position = new Vector3(x, y, z) * Const.GLOBAL_SCALE;
-            rotation = eu * (float)(180 / Math.PI);
+            rotation = Utility.ToDegrees(r);
             scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
 
@@ -637,41 +604,10 @@ namespace JortPob
                 float j = float.Parse(json["rotation"][1].ToString());
                 float k = float.Parse(json["rotation"][2].ToString());
 
-                // Same rotation code as in content, just copy pasted because lol lmao
-                /* Katalashes code from MapStudio */
-                Vector3 MatrixToEulerXZY(Matrix4x4 m)
-                {
-                    const float Pi = (float)Math.PI;
-                    const float Deg2Rad = Pi / 180.0f;
-                    Vector3 ret;
-                    ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
-
-                    if (Math.Abs(m.M12) < 0.9999999)
-                    {
-                        ret.X = MathF.Atan2(-m.M32, m.M22);
-                        ret.Y = MathF.Atan2(-m.M13, m.M11);
-                    }
-                    else
-                    {
-                        ret.X = MathF.Atan2(m.M23, m.M33);
-                        ret.Y = 0;
-                    }
-                    ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
-                    ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
-                    ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
-                    return ret;
-                }
-
-                /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
-                Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), i);
-                Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), k);
-                Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), j);
-                Quaternion q = xRot * zRot * yRot;
-
-                Vector3 eu = MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+                Vector3 r = Utility.ConvertRotation(new(i, j, k));
 
                 position = new Vector3(x, y, z) * Const.GLOBAL_SCALE;
-                rotation = (eu * (float)(180 / Math.PI)) + new Vector3(0f, 180f, 0); // bonus rotation here, actual models get rotated 180 Y in the model itself, placements like this need it here
+                rotation = Utility.ToDegrees(r) + new Vector3(0f, 180f, 0); // bonus rotation here, actual models get rotated 180 Y in the model itself, placements like this need it here
                 cell = json["cell"].ToString().Trim();
                 if (cell == "") { cell = null; }
             }

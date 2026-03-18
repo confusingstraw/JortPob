@@ -21,6 +21,9 @@
   // Saves anywhere between 2 and 45 minutes on a build. Makes all dialog skip instantly though.
   "DEBUG_SKIP_SOUND": false,
 
+  // Saves a solid chunk of time on builds
+  "DEBUG_SKIP_NAVMESH": false,
+
   // Saves 3 to 5 minutes on a build
   "DEBUG_SKIP_MENU_TEXTURES": false,
 
@@ -50,6 +53,9 @@
 
   // Binary HKX has some issues that make it possibly less stable, but they also load faster and are visible in Smithbox so it's useful to have this set to true in debug.
   "DEBUG_HKX_FORCE_BINARY": true,
+
+  // If true we use DFLT in place of KRAK to save time on compression. Use KRAK in production!
+  "DEBUG_USE_DFLT_COMPRESSION": true,
 
   // Set to null to build entire map. 
   // format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates

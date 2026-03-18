@@ -146,14 +146,14 @@ namespace JortPob.Model
 
                         string[] scale = xmlTexture.GetAttribute("scale").Split(",");
 
-                        texture.Type = xmlTexture.GetAttribute("type");
+                        texture.ParamName = xmlTexture.GetAttribute("type");
                         texture.Path = xmlTexture.GetAttribute("path");
-                        texture.Unk10 = byte.Parse(unk10);
-                        texture.Unk11 = bool.Parse(unk11);
+                        texture.TilingTypeU = (FLVER2.Texture.TilingType)byte.Parse(unk10);
+                        texture.TilingTypeV = (FLVER2.Texture.TilingType)byte.Parse(unk11);
                         texture.Unk14 = float.Parse(unk14);
                         texture.Unk18 = float.Parse(unk18);
                         texture.Unk1C = float.Parse(unk1c);
-                        texture.Scale = new System.Numerics.Vector2(float.Parse(scale[0]), float.Parse(scale[1]));
+                        texture.TilingScale = new System.Numerics.Vector2(float.Parse(scale[0]), float.Parse(scale[1]));
 
                         material.Textures.Add(texture);
                     }
@@ -866,10 +866,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(data);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = DCX.Type.DCX_KRAK;
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -882,10 +880,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(dataLow);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = DCX.Type.DCX_KRAK;
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, dataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -903,10 +899,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(errorData);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = DCX.Type.DCX_KRAK;
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, errorData, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
@@ -919,10 +913,8 @@ namespace JortPob.Model
                         int format = JortPob.Common.DDS.GetTpfFormatFromDdsBytes(errorDataLow);
 
                         TPF tpf = new TPF();
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
                         tpf.Platform = TPF.TPFPlatform.PC;
-                        tpf.Compression = DCX.Type.DCX_KRAK;
+                        tpf.Compression = Compression.KRAK();
 
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, errorDataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);

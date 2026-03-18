@@ -95,8 +95,8 @@ namespace JortPob
             /* Transplant the PlayBinkVideo event and its resources from the opening cutscene into a blankish template cutscene that does nothing */
             mqb1050.Resources.Add(mqb1040.Resources[34]);
             MQB.Timeline playMovie = mqb1040.Cuts[0].Timelines[4];
-            playMovie.Dispositions[0].ResourceIndex = mqb1050.Resources.Count - 1;
-            playMovie.Dispositions[0].CustomData[0].Value = bk2;
+            playMovie.Events[0].ResourceIndex = mqb1050.Resources.Count - 1;
+            playMovie.Events[0].Parameters[0].Value = bk2;
             mqb1050.Cuts[0].Timelines.Add(playMovie);
 
             /* Set cutscene length to duration of movie */
@@ -104,7 +104,7 @@ namespace JortPob
 
             /* Create new BND */
             BND4 bnd = new();
-            bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+            bnd.Compression = Compression.KRAK();
             bnd.Version = "07D7R6";
 
             BinderFile hkx = new();

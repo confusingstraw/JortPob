@@ -78,6 +78,7 @@ namespace JortPob
                         if(tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                         content.load = tile.coordinate;
                         base.AddContent(cache, cell, content);
+                        tile.AddNav(cache, cell, content);
                         break;
                     }
                     goto default;

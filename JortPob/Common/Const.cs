@@ -115,6 +115,8 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_BOTTOM = 101;
         public static readonly short FLVER_DMY_TOP = 102;
 
+        public static readonly int NVA_NV_UNK00_MAGIC = 1726789910;
+
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
         public static readonly int ASSET_GROUP = 900;
 
@@ -234,12 +236,17 @@ namespace JortPob.Common
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
+
         [Setting(false)]
         public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         /// can make dialog unuseable
         [Setting(false)]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
+
+        /// skips navmeshes, will make enmey ai act really stupid
+        [Setting(false)]
+        public static bool DEBUG_SKIP_NAVMESH { get; private set; }
 
         /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
         [Setting(false)]
@@ -271,6 +278,18 @@ namespace JortPob.Common
         [Setting(true)]
         public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
 
+        /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
+        [Setting(true)]
+        public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
+
+        /// if true we use DFLT in place of KRAK to save time on compression. use KRAK in production!
+        [Setting(true)]
+        public static bool DEBUG_USE_DFLT_COMPRESSION { get; private set; }
+
+        /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
+        [Setting(true)]
+        public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
+
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         /// seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         /// seyda neen area (large) = new int[] { -5, -15, 5, -5 }
@@ -284,10 +303,6 @@ namespace JortPob.Common
         /// half the map = new int[] {-10, -15, 20, 0};
         [Setting(null)]
         public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
-
-        /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-        [Setting(true)]
-        public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
 
         /// set to "null" or remove from settings.json to build entire map.
         [Setting(null)]
@@ -316,10 +331,6 @@ namespace JortPob.Common
 
             return false;
         }
-
-        /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
-        [Setting(true)]
-        public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
 
         #endregion
 

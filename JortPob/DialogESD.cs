@@ -1333,7 +1333,7 @@ namespace JortPob
                        def t{id:D9}_x{x:D2}():
                            ## occasionally do idle lines and if a player approaches us we hello them
                            while True:
-                               if GetEventFlag(1041420100) or IsPlayerDead() or IsCharacterDisabled():
+                               if IsPlayerDead() or IsCharacterDisabled():
                                    break
                                else:
                                    pass

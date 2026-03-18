@@ -65,7 +65,7 @@ namespace JortPob
                     int size = levelPair.Value;
 
                     BND4 bnd = new();
-                    bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                    bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
                     List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, envId, timeId, size, weatherData.rem);
@@ -77,9 +77,7 @@ namespace JortPob
                         byte[] data = texture.Item2;
 
                         TPF tpf = new TPF();
-                        tpf.Compression = DCX.Type.None;
-                        tpf.Encoding = 1;
-                        tpf.Flag2 = 3;
+                        tpf.Compression = Compression.NONE();
 
                         TPF.Texture tex = new();
                         tex.Flags1 = 128;
@@ -92,7 +90,6 @@ namespace JortPob
                         tpf.Textures.Add(tex);
 
                         BinderFile file = new();
-                        file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                         file.ID = bndId++;
                         file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\{timeId:D2}\\{name}.tpf";
                         file.Bytes = tpf.Write();
@@ -109,7 +106,7 @@ namespace JortPob
                 string level = levelPair.Key;
 
                 BND4 ivBnd = new();
-                ivBnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                ivBnd.Compression = Compression.KRAK();
                 ivBnd.Version = "07D7R6";
 
                 for (int timeId = 0; timeId < 7; timeId++)
@@ -117,7 +114,6 @@ namespace JortPob
                     /* Also make IvInfo */
                     byte[] ivInfoData = System.IO.File.ReadAllBytes(Utility.ResourcePath($"env\\{timeId:D2}.ivInfo"));
                     BinderFile ivFile = new();
-                    ivFile.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     ivFile.Bytes = ivInfoData;
                     ivFile.ID = timeId;
                     ivFile.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\IvInfo\\m{mid}_GIIV{envId}_{timeId:D2}.ivInfo";
@@ -145,7 +141,7 @@ namespace JortPob
                 int size = levelPair.Value;
 
                 BND4 bnd = new();
-                bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(group.map, group.area, group.unk, group.block, envId, 0, size, weatherData.rem);
@@ -157,9 +153,7 @@ namespace JortPob
                     byte[] data = texture.Item2;
 
                     TPF tpf = new TPF();
-                    tpf.Compression = DCX.Type.None;
-                    tpf.Encoding = 1;
-                    tpf.Flag2 = 3;
+                    tpf.Compression = Compression.NONE();
 
                     TPF.Texture tex = new();
                     tex.Flags1 = 128;
@@ -172,7 +166,6 @@ namespace JortPob
                     tpf.Textures.Add(tex);
 
                     BinderFile file = new();
-                    file.CompressionType = SoulsFormats.DCX.Type.Zlib;
                     file.ID = bndId++;
                     file.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\{0:D2}\\{name}.tpf";
                     file.Bytes = tpf.Write();
@@ -189,13 +182,12 @@ namespace JortPob
                 string level = levelPair.Key;
 
                 BND4 ivBnd = new();
-                ivBnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                ivBnd.Compression = Compression.KRAK();
                 ivBnd.Version = "07D7R6";
 
                 /* Also make IvInfo */
                 byte[] ivInfoData = System.IO.File.ReadAllBytes(Utility.ResourcePath($"env\\{0:D2}.ivInfo"));
                 BinderFile ivFile = new();
-                ivFile.CompressionType = SoulsFormats.DCX.Type.Zlib;
                 ivFile.Bytes = ivInfoData;
                 ivFile.ID = 0;
                 ivFile.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\IvInfo\\m{mid}_GIIV{envId}_{0:D2}.ivInfo";
