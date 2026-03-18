@@ -1054,7 +1054,7 @@ namespace JortPob
             }
 
             /* Generate navmeshes and then build nvas and nvbnds */
-            /* First start by grabbing all the nav scene repersentations and converting them OBJ -> HKX -> NAV */
+            /* First start by grabbing all the nav scene representations and converting them OBJ -> HKX -> NAV */
             if (!Const.DEBUG_SKIP_NAVMESH)
             {
                 List<string> objs = new();
@@ -1062,7 +1062,7 @@ namespace JortPob
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
-                    tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(Path.Combine(Const.CACHE_PATH, objPath));
+                    tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
                 }
                 foreach (InteriorGroup group in layout.interiors)
@@ -1073,7 +1073,7 @@ namespace JortPob
                     {
                         InteriorGroup.Chunk chunk = group.chunks[i];
                         string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
-                        chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(Path.Combine(Const.CACHE_PATH, objPath));
+                        chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                         objs.Add(objPath);
                     }
                 }
@@ -1088,7 +1088,6 @@ namespace JortPob
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
 
                     /* Some vars */
-                    int bid = 10000;
                     int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
                     string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
@@ -1099,7 +1098,10 @@ namespace JortPob
                     SoulsFormats.NVA nva = new();
                     nva.Compression = Compression.KRAK();
                     NVA.Entry11 entry11 = new();
-                    entry11.Unk00 = 1726789910; entry11.Unk04 = 0; entry11.Unk08 = 0; entry11.Unk0C = 0;
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
                     nva.Entries11.Add(entry11);
                     nva.Navmeshes.Version = 4;
 
@@ -1109,35 +1111,32 @@ namespace JortPob
                     nvbnd.Version = "07D7R6";
 
                     /* Add navmesh entry to NVA */
-                    if (!tile.IsEmpty())
-                    {
-                        NVA.Navmesh navMesh = new();
-                        int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
-                        navMesh.NameID = nextNavId;
-                        navMesh.ModelID = nextN;
-                        navMesh.IsConnectedNavmeshesInline = true;
-                        navMesh.Position = new(Const.MSB_OFFSET, 1f);
-                        navMesh.Rotation = new(0f);
-                        navMesh.Scale = new(1f, 1f, 1f, 0f);
-                        navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
-                        navMesh.Unk3C = 0;
-                        navMesh.Unk4C = 0;
-                        navMesh.Unk44 = 1075419545; // magic number used
-                        nva.Navmeshes.Add(navMesh);
+                    NVA.Navmesh navMesh = new();
+                    int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
+                    navMesh.NameID = nextNavId;
+                    navMesh.ModelID = nextN;
+                    navMesh.IsConnectedNavmeshesInline = true;
+                    navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                    navMesh.Rotation = new(0f);
+                    navMesh.Scale = new(1f, 1f, 1f, 0f);
+                    navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
+                    navMesh.Unk3C = 0;
+                    navMesh.Unk4C = 0;
+                    navMesh.Unk44 = 1075419545; // magic number used
+                    nva.Navmeshes.Add(navMesh);
 
-                        /* Add navmesh file to NVBND */
-                        BinderFile nbf = new();
-                        nbf.Bytes = File.ReadAllBytes(nnavPath);
-                        nbf.ID = bid;
-                        nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
-                        nvbnd.Files.Add(nbf);
+                    /* Add navmesh file to NVBND */
+                    BinderFile nbf = new();
+                    nbf.Bytes = File.ReadAllBytes(nnavPath);
+                    nbf.ID = 10000;
+                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(nbf);
 
-                        BinderFile obf = new();
-                        obf.Bytes = File.ReadAllBytes(onavPath);
-                        obf.ID = 10000 + bid;
-                        obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
-                        nvbnd.Files.Add(obf);
-                    }
+                    BinderFile obf = new();
+                    obf.Bytes = File.ReadAllBytes(onavPath);
+                    obf.ID = 20000;
+                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(obf);
 
                     /* Write Files */
                     nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
@@ -1155,7 +1154,10 @@ namespace JortPob
                     SoulsFormats.NVA nva = new();
                     nva.Compression = Compression.KRAK();
                     NVA.Entry11 entry11 = new();
-                    entry11.Unk00 = 1726789910; entry11.Unk04 = 0; entry11.Unk08 = 0; entry11.Unk0C = 0;
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
                     nva.Entries11.Add(entry11);
                     nva.Navmeshes.Version = 4;
 

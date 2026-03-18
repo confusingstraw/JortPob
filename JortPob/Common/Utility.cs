@@ -9,11 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Text.Json;
-using ERNavmeshGenCS;
 using WitchyFormats;
 using Xbrz;
-using static Community.CsharpSqlite.Sqlite3;
 
 namespace JortPob.Common
 {
@@ -232,6 +229,59 @@ namespace JortPob.Common
             }
 
             return true;
+        }
+
+        /* Rotation conversion from Morrowind worldspace to Elden Ring worldspace. right hand XYZ to left hand XZY (afaik, it's very hard to pinpoint this and lots of guesswork) */
+        public static System.Numerics.Vector3 ConvertRotation(System.Numerics.Vector3 rotation)
+        {
+            /* The following unholy code converts morrowind (Z up) euler rotations into dark souls (Y up) euler rotations */
+            /* Big thanks to katalash, dropoff, and the TESUnity dudes for helping me sort this out */
+
+            /* Katalashes code from MapStudio */
+            Vector3 MatrixToEulerXZY(Matrix4x4 m)
+            {
+                const float Pi = (float)Math.PI;
+                const float Deg2Rad = Pi / 180.0f;
+                Vector3 ret;
+                ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
+
+                if (Math.Abs(m.M12) < 0.9999999)
+                {
+                    ret.X = MathF.Atan2(-m.M32, m.M22);
+                    ret.Y = MathF.Atan2(-m.M13, m.M11);
+                }
+                else
+                {
+                    ret.X = MathF.Atan2(m.M23, m.M33);
+                    ret.Y = 0;
+                }
+                ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
+                ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
+                ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
+                return ret;
+            }
+
+            /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
+            Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), rotation.X);
+            Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), rotation.Z);
+            Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), rotation.Y);
+            Quaternion q = xRot * zRot * yRot;
+
+            return MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+        }
+
+        public static System.Numerics.Vector3 ToRadians(System.Numerics.Vector3 rotation)
+        {
+            const float pi = (float)Math.PI;
+            const float d2r = pi / 180.0f;
+            return rotation * d2r;
+        }
+
+        public static System.Numerics.Vector3 ToDegrees(System.Numerics.Vector3 rotation)
+        {
+            const float pi = (float)Math.PI;
+            const float r2d = 180.0f / pi;
+            return rotation * r2d;
         }
 
         /* Convert parameters from papyrus call to a Vector 3. offset moves starting index away from 0. automatically converts xyz to xzy */
@@ -595,71 +645,6 @@ namespace JortPob.Common
             }
 
             return [ alpha, red, green, blue ];
-        }
-    }
-
-    public static class NavmeshUtilities
-    {
-        public static hkaiNavMeshGenerationSnapshot GetDefaultNavmeshGenerationSnapshot()
-        {
-            // Initialize the elden ring dll so we can construct the settings
-            ERNavmeshGen navma = new ERNavmeshGen();
-            // This takes care of all constructors for the snapshot and generation settings
-            hkaiNavMeshGenerationSnapshot snapshot = new hkaiNavMeshGenerationSnapshot();
-
-            // set the up for Elden Ring
-            snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 0f };
-            // IDK what this does but it was set in the original code 12th gave me...
-            snapshot.settings.precalculateClearanceSeedingData = true;
-
-            // This snapshot can be loaded up in havok content tools, and I think modified and then ran through
-            // another function I will have to add to generate from snapshot.
-            // snapshot.settings.saveInputSnapshot = true;
-            // snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
-            
-            // This snapshot didn't seem to do anything???? Does this mean the simplification isn't happening or maybe it
-            // needs to be turned on with a flag in the settings here?
-            // snapshot.settings.simplificationSettings.saveInputSnapshot = true;
-            // snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
-            
-            return snapshot;
-        }
-        public static hkaiNavMeshGenerationSnapshot GetLodNavmeshGenerationSnapshot()
-        {
-            // Initialize the elden ring dll so we can construct the settings
-            ERNavmeshGen navma = new ERNavmeshGen();
-            // This takes care of all constructors for the snapshot and generation settings
-            hkaiNavMeshGenerationSnapshot snapshot = new hkaiNavMeshGenerationSnapshot();
-
-            // set the up for Elden Ring
-            snapshot.settings.up = new hkVector4 { x = 0f, y = 1f, z = 0f, w = 0f };
-            // IDK what this does but it was set in the original code 12th gave me...
-            snapshot.settings.precalculateClearanceSeedingData = true;
-
-            // This snapshot can be loaded up in havok content tools, and I think modified and then ran through
-            // another function I will have to add to generate from snapshot.
-            // snapshot.settings.saveInputSnapshot = true;
-            // snapshot.settings.snapshotFilename = "C:\\Temp\\debug_input.hkx";
-            
-            // This snapshot didn't seem to do anything???? Does this mean the simplification isn't happening or maybe it
-            // needs to be turned on with a flag in the settings here?
-            // snapshot.settings.simplificationSettings.saveInputSnapshot = true;
-            // snapshot.settings.simplificationSettings.snapshotFilename = "C:\\Temp\\debug_simplified.hkx";
-            
-            return snapshot;
-        }
-        public static void SaveNavmeshGenerationSettings(hkaiNavMeshGenerationSnapshot snapshot, string outputPath)
-        {
-            // Configure the JSON Serializer
-            var jsonOptions = new JsonSerializerOptions
-            {
-                IncludeFields = true, // CRITICAL: Tells the serializer to look at our struct fields!
-                WriteIndented = true
-            };
-
-            // Serialize to a JSON string and write to disk  
-            string jsonOutput = JsonSerializer.Serialize(snapshot, jsonOptions);
-            File.WriteAllText(outputPath, jsonOutput);
         }
     }
 }

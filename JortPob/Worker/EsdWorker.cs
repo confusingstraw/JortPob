@@ -1,14 +1,11 @@
 ﻿using System;
 using JortPob.Common;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using SoulsFormats;
 using SoulsIds;
-using ESDLang;
 
 namespace JortPob.Worker
 {
