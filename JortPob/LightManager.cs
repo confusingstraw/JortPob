@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System.Linq;
 using System.Numerics;
+using System.IO;
 
 
 /* Quite literally copy pasted class from the DS3 portjob project. Adapating as I go but uhh blame DS3 if bugs */
@@ -98,7 +99,7 @@ namespace JortPob
 
         public void Write()
         {
-            string path = $"{Const.OUTPUT_PATH}map\\m{map:D2}\\m{map:D2}_{x:D2}_{y:D2}_{block:D2}\\m{map:D2}_{x:D2}_{y:D2}_{block:D2}_0000.btl.dcx";
+            string path = Path.Combine(Const.OUTPUT_PATH, $@"map\m{map:D2}\m{map:D2}_{x:D2}_{y:D2}_{block:D2}\m{map:D2}_{x:D2}_{y:D2}_{block:D2}_0000.btl.dcx");
             btl.Write(path);
         }
     }

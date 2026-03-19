@@ -57,7 +57,7 @@ namespace JortPob
         {
             Dictionary<uint, string> wemsToWrite = new();
 
-            string dir = @$"{Const.OUTPUT_PATH}sd\enus\";
+            string dir = Path.Combine(Const.OUTPUT_PATH, "sd", "enus");
 
             JsonNode json = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\bnk_template.json")));
             JsonArray sections = json["sections"].AsArray();
@@ -141,9 +141,9 @@ namespace JortPob
             master["body"]["ActorMixer"]["children"]["count"] = master["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
             mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
 
-            string bnkJsonPath = Path.Combine(dir, $"vc{id.ToString("D3")}", $"soundbank.json");
-            string bnkRebuiltPath = Path.Combine(dir, $"vc{id.ToString("D3")}.created.bnk");
-            string bnkPath = Path.Combine(dir, $"vc{id.ToString("D3")}.bnk");
+            string bnkJsonPath = Path.Combine(dir, $"vc{id:D3}", $"soundbank.json");
+            string bnkRebuiltPath = Path.Combine(dir, $"vc{id:D3}.created.bnk");
+            string bnkPath = Path.Combine(dir, $"vc{id:D3}.bnk");
             Directory.CreateDirectory(Path.GetDirectoryName(bnkJsonPath));
             File.WriteAllText(bnkJsonPath, json.ToJsonString());
 

@@ -961,7 +961,7 @@ namespace JortPob
         {
             int rowId = nextActionButtonId++;
 
-            FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{modelInfo.path}"); // load flver of this door so we can look at its bounding box
+            FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
             float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
             float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
             float width = x > z ? x : z;

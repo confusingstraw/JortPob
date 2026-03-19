@@ -1377,7 +1377,7 @@ namespace JortPob
                     case Call.Type.Say:
                         {
                             string id = call.parameters[0].ToLower().Replace("\\", "_").Replace("/", "_").Replace(".mp3", "");
-                            string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", call.parameters[0]);
+                            string file = Path.Combine(Const.MORROWIND_PATH, @"Data Files\sound", call.parameters[0]);
                             int playId = sound.AddSound(id, MainSoundBank.Sound.Type.Voice, false, true, 1f, 1f, file);
 
                             uint entityId;
@@ -1459,7 +1459,7 @@ namespace JortPob
 
                             bool loop = call.type == Call.Type.PlayLoopSound3D || call.type == Call.Type.PlayLoopSound3DVP;
                             bool spatialize = call.type == Call.Type.PlaySound3D || call.type == Call.Type.PlaySound3DVP || call.type == Call.Type.PlayLoopSound3D || call.type == Call.Type.PlayLoopSound3DVP;
-                            string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", info.path);
+                            string file = Path.Combine(Const.MORROWIND_PATH, @"Data Files\sound", info.path);
 
                             // find our target content
                             Content target;

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace JortPob.Worker
@@ -36,7 +37,7 @@ namespace JortPob.Worker
                 var obj = collisions[i].Item1;
                 var hkx = collisions[i].Item2;
 
-                ModelConverter.OBJtoHKX($"{Const.CACHE_PATH}{obj}", $"{Const.CACHE_PATH}{hkx}");
+                ModelConverter.OBJtoHKX(Path.Combine(Const.CACHE_PATH, obj), Path.Combine(Const.CACHE_PATH, hkx));
                 Lort.TaskIterate(); // Progress bar update
             }
         }

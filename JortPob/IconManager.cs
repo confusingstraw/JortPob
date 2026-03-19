@@ -130,9 +130,9 @@ namespace JortPob
             List<(IconInfo iconInfo, Bitmap bitmap)> bitmaps = new();
             foreach (IconInfo icon in icons)
             {
-                byte[] ddsBytes = System.IO.File.ReadAllBytes($"{Const.MORROWIND_PATH}Data Files\\icons\\{icon.path}");
+                byte[] ddsBytes = File.ReadAllBytes(Path.Combine(Const.MORROWIND_PATH, $@"Data Files\icons\{icon.path}"));
                 using Bitmap bitmap = Common.DDS.DDStoBitmap(ddsBytes);
-                Bitmap scaledBitmap = Common.Utility.XbrzUpscale(bitmap, 5);
+                Bitmap scaledBitmap = Utility.XbrzUpscale(bitmap, 5);
                 bitmaps.Add((icon, scaledBitmap));
             }
 
@@ -182,9 +182,9 @@ namespace JortPob
             List<(BuffInfo buffInfo, Bitmap bitmap)> buffBitmaps = new();
             foreach (BuffInfo buff in buffs)
             {
-                byte[] ddsBytes = System.IO.File.ReadAllBytes($"{Const.MORROWIND_PATH}Data Files\\icons\\{buff.path}");
+                byte[] ddsBytes = File.ReadAllBytes(Path.Combine(Const.MORROWIND_PATH, $@"Data Files\icons\{buff.path}"));
                 Bitmap buffBitmap = Common.DDS.DDStoBitmap(ddsBytes);
-                buffBitmap = Common.Utility.XbrzUpscale(buffBitmap, 4);
+                buffBitmap = Utility.XbrzUpscale(buffBitmap, 4);
                 buffBitmap = Utility.ResizeBitmap(buffBitmap, BUFF, BUFF);
                 buffBitmaps.Add((buff, buffBitmap));
             }
@@ -225,8 +225,8 @@ namespace JortPob
 
             void AddSheets(string layoutPath, string tpfPath, string hilow)
             {
-                TPF tpf = TPF.Read($"{Const.ELDEN_PATH}Game\\{tpfPath}");
-                BND4 bnd = BND4.Read($"{Const.ELDEN_PATH}Game\\{layoutPath}");
+                TPF tpf = TPF.Read(Path.Combine(Const.ELDEN_PATH, "Game", tpfPath));
+                BND4 bnd = BND4.Read(Path.Combine(Const.ELDEN_PATH, "Game", layoutPath));
 
                 foreach ((Layout layout, Bitmap bitmap) tuple in sheets)
                 {
@@ -247,8 +247,8 @@ namespace JortPob
                     bnd.Files.Add(bf);
                 }
 
-                tpf.Write($"{Const.OUTPUT_PATH}{tpfPath}");
-                bnd.Write($"{Const.OUTPUT_PATH}{layoutPath}");
+                tpf.Write(Path.Combine(Const.OUTPUT_PATH, tpfPath));
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, layoutPath));
             }
 
             Lort.Log($"Binding {sheets.Count()} sheets...", Lort.Type.Main);
@@ -270,17 +270,17 @@ namespace JortPob
             BXF4 AddIcons(string path)
             {
                 /* Load BXF4 from elden ring directory (requires game unpacked!) */
-                BXF4 bxf = BXF4.Read($"{Const.ELDEN_PATH}Game\\{path}.tpfbhd", $"{Const.ELDEN_PATH}Game\\{path}.tpfbdt");
+                BXF4 bxf = BXF4.Read(Path.Combine(Const.ELDEN_PATH, $@"Game\{path}.tpfbhd"), Path.Combine(Const.ELDEN_PATH, $@"Game\{path}.tpfbdt"));
                 List<BinderFile> filesToInsert = new();
 
                 /* Generate binder files to add from dds texture files */
                 foreach(IconInfo icon in icons)
                 {
-                    byte[] data = System.IO.File.ReadAllBytes($"{Const.MORROWIND_PATH}Data Files\\icons\\{icon.path}");
+                    byte[] data = File.ReadAllBytes(Path.Combine(Const.MORROWIND_PATH, $@"Data Files\icons\{icon.path}"));
 
                     Bitmap bitmap = Common.DDS.DDStoBitmap(data);
-                    Bitmap scaledBitmap = Common.Utility.XbrzUpscale(bitmap, 6); // 32x32x -> 192x192
-                    Bitmap linearScaledBitmap = Common.Utility.LinearToSRGB(scaledBitmap);
+                    Bitmap scaledBitmap = Utility.XbrzUpscale(bitmap, 6); // 32x32x -> 192x192
+                    Bitmap linearScaledBitmap = Utility.LinearToSRGB(scaledBitmap);
                     byte[] scaledDDS = Common.DDS.BitmapToDDS(linearScaledBitmap, DXGI_FORMAT.BC2_UNORM);
                     scaledBitmap.Dispose();
                     linearScaledBitmap.Dispose();

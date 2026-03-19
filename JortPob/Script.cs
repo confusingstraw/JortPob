@@ -3,6 +3,7 @@ using SoulsFormats;
 using SoulsIds;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using static JortPob.Script.Flag;
 
 /* Individual script for an msb. */
@@ -583,7 +584,7 @@ namespace JortPob
 
         public void Write()
         {
-            emevd.Write($"{Const.OUTPUT_PATH}\\event\\m{map:D2}_{x:D2}_{y:D2}_{block:D2}.emevd.dcx");
+            emevd.Write(Path.Combine(Const.OUTPUT_PATH, "event", $"m{map:D2}_{x:D2}_{y:D2}_{block:D2}.emevd.dcx"));
         }
 
         [DebuggerDisplay("Flag :: {category} {type} {designation} {name}")]

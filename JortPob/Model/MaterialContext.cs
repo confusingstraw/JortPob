@@ -205,11 +205,11 @@ namespace JortPob.Model
                 } 
                 else if (relpath.ToLower().StartsWith("textures\\"))
                 {
-                    abspath = $"{Const.MORROWIND_PATH}Data Files\\{relpath}";
+                    abspath = Path.Combine(Const.MORROWIND_PATH, $@"Data Files\{relpath}");
                 } 
                 else
                 {
-                    abspath = $"{Const.MORROWIND_PATH}Data Files\\Textures\\{relpath}";
+                    abspath = Path.Combine(Const.MORROWIND_PATH, $@"Data Files\Textures\{relpath}");
                 }
 
                 string fileName = Utility.PathToFileName(abspath);
@@ -235,11 +235,11 @@ namespace JortPob.Model
         {
             if (texturePath.ToLower().StartsWith("textures\\"))
             {
-                texturePath = $"{Const.MORROWIND_PATH}Data Files\\{texturePath}";
+                texturePath = Path.Combine(Const.MORROWIND_PATH, "Data Files", texturePath);
             }
             else
             {
-                texturePath = $"{Const.MORROWIND_PATH}Data Files\\Textures\\{texturePath}";
+                texturePath = Path.Combine(Const.MORROWIND_PATH, @"Data Files\Textures", texturePath);
             }
 
             if (Path.GetExtension(texturePath) == string.Empty)
@@ -771,7 +771,7 @@ namespace JortPob.Model
 
         public MaterialInfo GenerateMaterialSwamp(int index)
         {
-            string diffuseTextureSourcePathA = $"{Const.MORROWIND_PATH}Data Files\\textures\\tx_bc_scum.dds"; // hardcoded swamp texture
+            string diffuseTextureSourcePathA = Path.Combine(Const.MORROWIND_PATH, @"Data Files\textures\tx_bc_scum.dds"); // hardcoded swamp texture
             string diffuseTextureA;
             string AddTexture(string diffuseTextureSourcePath)
             {
@@ -827,8 +827,8 @@ namespace JortPob.Model
             Lort.NewTask("Writing matbins", genMATBINs.Count());
             foreach(KeyValuePair<string, MATBIN> kvp in genMATBINs)
             {
-                string outFileName = $"{Utility.PathToFileName(kvp.Value.SourcePath)}.matbin";
-                kvp.Value.Write($"{Const.CACHE_PATH}materials\\{outFileName}");
+                string outFileName = Path.ChangeExtension(kvp.Value.SourcePath, ".matbin");
+                kvp.Value.Write(Path.Combine(Const.CACHE_PATH, "materials", outFileName));
                 Lort.TaskIterate();
             }
 
@@ -869,10 +869,10 @@ namespace JortPob.Model
                         tpf.Platform = TPF.TPFPlatform.PC;
                         tpf.Compression = Compression.KRAK();
 
-                        TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, data, TPF.TPFPlatform.PC);
+                        TPF.Texture tex = new(kvp.Value, (byte)format, 0, data, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
 
-                        tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
+                        tpf.Write(Path.Combine(Const.CACHE_PATH, "textures", $"{kvp.Value}.tpf.dcx"));
                     }
 
                     /* And then, make a low detail texture for lods and bind that up */
@@ -886,7 +886,7 @@ namespace JortPob.Model
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, dataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
 
-                        tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}_l.tpf.dcx");
+                        tpf.Write(Path.Combine(Const.CACHE_PATH, "textures", $"{kvp.Value}_l.tpf.dcx"));
                     }
                 }
                 else
@@ -905,7 +905,7 @@ namespace JortPob.Model
                         TPF.Texture tex = new($"{kvp.Value}", (byte)format, 0, errorData, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
 
-                        tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}.tpf.dcx");
+                        tpf.Write(Path.Combine(Const.CACHE_PATH, "textures", $"{kvp.Value}.tpf.dcx"));
                     }
 
                     /* And then, make a low detail texture for lods and bind that up */
@@ -919,7 +919,7 @@ namespace JortPob.Model
                         TPF.Texture tex = new($"{kvp.Value}_l", (byte)format, 0, errorDataLow, TPF.TPFPlatform.PC);
                         tpf.Textures.Add(tex);
 
-                        tpf.Write($"{Const.CACHE_PATH}textures\\{kvp.Value}_l.tpf.dcx");
+                        tpf.Write(Path.Combine(Const.CACHE_PATH, "textures", $"{kvp.Value}_l.tpf.dcx"));
                     }
                 }
 

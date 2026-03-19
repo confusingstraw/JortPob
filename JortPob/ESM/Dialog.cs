@@ -1418,7 +1418,7 @@ namespace JortPob
 
                                 bool loop = call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
                                 bool spatialize = call.type == Papyrus.Call.Type.PlaySound3D || call.type == Papyrus.Call.Type.PlaySound3DVP || call.type == Papyrus.Call.Type.PlayLoopSound3D || call.type == Papyrus.Call.Type.PlayLoopSound3DVP;
-                                string file = Path.Combine($"{Const.MORROWIND_PATH}", @"Data Files\sound", info.path);
+                                string file = Path.Combine(Const.MORROWIND_PATH, @"Data Files\sound", info.path);
 
                                 // find our target content
                                 Content target;

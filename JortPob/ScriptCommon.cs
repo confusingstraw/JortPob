@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
 
@@ -1085,8 +1086,8 @@ namespace JortPob
 
         public void Write()
         {
-            emevd.Write($"{Const.OUTPUT_PATH}\\event\\common.emevd.dcx");
-            func.Write($"{Const.OUTPUT_PATH}\\event\\common_func.emevd.dcx");
+            emevd.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common.emevd.dcx"));
+            func.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common_func.emevd.dcx"));
         }
     }
 }
