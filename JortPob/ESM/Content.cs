@@ -99,16 +99,22 @@ namespace JortPob
             OffersRepairs, BartersLockpicks, BartersProbes, BartersLights
         };
 
+        // used for determining crime response type
+        public enum Witness
+        {
+            None, Citizen, Guard
+        }
+
         public readonly string job, faction; // class is job, cant used reserved word
         public readonly Race race;
         public readonly Sex sex;
 
         public readonly int level, disposition, reputation, rank, gold;
         public readonly int hello, fight, flee, alarm;
-        public readonly bool hostile, dead;
+        public readonly bool dead;
 
         public readonly bool essential; // player gets called dumb if they kill this dood
-        public bool hasWitness; // this value is set based on local npcs. defaults false. if true then crimes comitted against this npc will cause bounty
+        public Witness witness; // this value is set based on local npcs. defaults none. if guard or citizen then crimes comitted against this npc will cause bounty
 
         public Script.Flag packageDefaultFlag; // can be null. base ai package. if a script switches packages, it returns to this one when it's done.
         public readonly List<Script.Flag> packageEventFlags; // all ai package flags for this content. used by switcher to clear all running events before a switch
@@ -389,7 +395,7 @@ namespace JortPob
             flee = int.Parse(record.json["ai_data"]["flee"].ToString());
             alarm = int.Parse(record.json["ai_data"]["alarm"].ToString());
 
-            hostile = fight >= 80; // @TODO: recalc with disposition mods based off UESP calc
+            witness = Witness.None;
             dead = record.json["data"]["stats"] != null && record.json["data"]["stats"]["health"] != null ? (int.Parse(record.json["data"]["stats"]["health"].ToString()) <= 0) : false;
 
             packageEventFlags = new();
@@ -457,10 +463,9 @@ namespace JortPob
             fight = content.fight;
             flee = content.flee;
             alarm = content.alarm;
-            hostile = content.hostile;
             dead = content.dead;
             essential = content.essential;
-            hasWitness = content.hasWitness;
+            witness = content.witness;
             packageEventFlags = new();       // we do not want to share a list reference between objects here. each phased copy of the character needs their own unique package event flags
             packages = content.packages;
             stats = content.stats;
@@ -471,6 +476,9 @@ namespace JortPob
             travel = content.travel;
             barter = content.barter;
         }
+
+        /* Checks innate fight value to determine if npc is naturally hostile to the player or not */
+        public bool IsHostile() { return fight >= 80; } // @TODO: recalc with disposition mods based off UESP calc}
 
         /* Return true if this npc is a generic guard that can arrest the player for crimes */
         public bool IsGuard() { return job == "Guard" || job == "Ordinator Guard"; }

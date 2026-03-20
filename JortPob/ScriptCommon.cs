@@ -338,8 +338,10 @@ namespace JortPob
             {
                 $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", 
                 $"SetCharacterTeamType({NextParameterName()}, 27);",   // hostile flag on, hostile   >:(     // 27: TeamType.HostileNPC
+                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now enemies
                 $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"SetCharacterTeamType({NextParameterName()}, 26);",   // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now friends
                 $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
             };
 
@@ -469,6 +471,7 @@ namespace JortPob
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
+                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
 
             for (int i = 0; i < ownedItemAssetWithDisableEventRaw.Length; i++)
@@ -522,6 +525,7 @@ namespace JortPob
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
+                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
 
             for (int i = 0; i < ownedItemAssetEventRaw.Length; i++)

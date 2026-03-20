@@ -15,7 +15,7 @@ namespace JortPob
         // Special SPEFFs that are used for script functionality
         public enum Functional
         {
-            Alarming = 1000000,      // 1 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+            Alarming = 1000000,      // 5 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
             NpcFollow = 1000001,     // speff used to switch npcs from normal logic to follower logic. lasts 1 second and is re-applied constantly during follower package
         }
 
@@ -132,11 +132,11 @@ namespace JortPob
             FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
 
             FsParam.Row funcSpeffAlarming = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: Alarming", (int)Functional.Alarming);
-            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)60f);
+            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)300f);
             paramanager.AddRow(speffParam, funcSpeffAlarming);
 
             FsParam.Row funcSpeffFollow = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: NpcFollow", (int)Functional.NpcFollow);
-            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)1f);
+            funcSpeffFollow["effectEndurance"].Value.SetValue((float)1f);
             paramanager.AddRow(speffParam, funcSpeffFollow);
         }
 

@@ -467,14 +467,16 @@ namespace JortPob
             {
                 foreach (NpcContent npc in npcs)
                 {
-                    if (npc.alarm >= 50 || npc.IsGuard()) { npc.hasWitness = true; continue; } // will report crimes themselves
+                    if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; break; }   // if an npc is naturally hostile to the player they don't report crimes lmao
+                    if (npc.IsGuard()) { npc.witness = CharacterContent.Witness.Guard; continue; }
+                    if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }
                     foreach (NpcContent other in npcs)
                     {
                         if (npc == other) { continue; } // dont' self succ
 
                         // guards get bonus range because I said so
-                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 23) { npc.hasWitness = true; break; }
-                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 12) { npc.hasWitness = true; break; }
+                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 50) { npc.witness = CharacterContent.Witness.Guard; break; }
+                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 15) { npc.witness = CharacterContent.Witness.Citizen; }
                     }
                 }
             }

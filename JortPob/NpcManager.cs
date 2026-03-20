@@ -120,7 +120,7 @@ namespace JortPob
             if (content.race == CharacterContent.Race.Creature && !esm.HasDialog((CreatureContent)content)) { return 0; } // if this is a creature, verify it has dialog lines to build dialog for
 
             // First check if we even need one, hostile or dead npcs dont' get talk data for now
-            if (content.dead || content.hostile) { return 0; }
+            if (content.dead || content.IsHostile()) { return 0; }
 
             /* There used to be a check here that looked for an esd tied to the record id of the npc, i'm removing this */
             /* Every instance of an npc needs its own esd. Sharing esd's will only lead to horrible bugs long term */
@@ -227,7 +227,7 @@ namespace JortPob
             if (content.dead) { return; } // get the fuck outttaaa heeeereeeee
 
             // This is the "Do nothing forever" check. In this case we don't need to create a packageFlag or do any scripts. They will just stand there!
-            if(content.packages.Count() <= 0 || (content.packages[0].type == CharacterContent.AiPackage.Type.Wander && content.packages[0].distance == 0 && content.packages[0].duration == 0 )) { return; }
+            if(!content.IsGuard() && (content.packages.Count() <= 0 || (content.packages[0].type == CharacterContent.AiPackage.Type.Wander && content.packages[0].distance == 0 && content.packages[0].duration == 0 ))) { return; }
 
             // Create flag for package index
             Script.Flag packageFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.AiPackage, content.entity.ToString());  // purposefully avoid phased rerouting
@@ -381,7 +381,7 @@ namespace JortPob
                 }
             }
 
-            if (code.Count() <= 0) { return; } // if we generated a nothing burger lets not bother compiling it
+            if (code.Count() <= 0 && !content.IsGuard()) { return; } // if we generated a nothing burger lets not bother compiling it
 
             // Inject a few lines at the top for dead/disable/phase handling
             Script.Flag deadFlag = scriptManager.GetFlag(Script.Flag.Designation.Dead, content);
@@ -395,11 +395,30 @@ namespace JortPob
                 Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, content);
                 startup.Add($"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {phased.phase});"); // blocking wait until phase matches this npcs phase
             } 
+
+            // Inject a few more lines here for guard chase down
+            if(content.IsGuard())
+            {
+                Script.Flag crimeLevelFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
+                Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, content);
+                Script.Flag arrestFlag = scriptManager.GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+                startup.Add($"IfEventValue(AND_01, {crimeLevelFlag.id}, {crimeLevelFlag.Bits()}, 2, 0);");           // if player has a bounty AND...   (2 is Greater)
+                startup.Add($"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {hostileFlag.id});");         // we are not hostile
+                startup.Add($"SkipIfConditionGroupStateUncompiled(4, FAIL, AND_01);");
+                startup.Add($"SetSpEffect({content.entity}, {(int)SpeffManager.Functional.NpcFollow});");  // apply follow player speff
+                startup.Add($"RequestCharacterAIReplan({content.entity});");                              // make brain work
+                startup.Add($"WaitFixedTimeFrames(15);");                                                // wait a few frames
+                startup.Add($"EndUnconditionally(EventEndType.Restart);");                              // restart
+            }
+
             code.InsertRange(0, startup);
 
             // Restart ai packages if we reach the end
-            code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {content.packages.Count()});");     // if package flag = the last index + 1 (we dont use > because 15 is "scripted")
-            code.Add($"EventValueOperation({packageFlag.id}, {packageFlag.Bits()}, 0, 0, 1, 5);");                       // package flag back to 0
+            if (content.packages.Count() > 0)
+            {
+                code.Add($"IfEventValue(OR_01, {packageFlag.id}, {packageFlag.Bits()}, 0, {content.packages.Count()});");     // if package flag = the last index + 1 (we dont use > because 15 is "scripted")
+                code.Add($"EventValueOperation({packageFlag.id}, {packageFlag.Bits()}, 0, 0, 1, 5);");                       // package flag back to 0
+            }
 
             code.Add($"EndUnconditionally(EventEndType.Restart);");  // restart
 

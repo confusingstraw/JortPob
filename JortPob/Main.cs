@@ -1279,6 +1279,7 @@ namespace JortPob
             /* Generate some needed scripts after msb gen */
             scriptManager.GenerateAreaEvents();
             scriptManager.GenerateGlobalCrimeAbsolvedEvent();
+            scriptManager.GenerateGlobalResetHostilityEvent();
 
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);

@@ -171,7 +171,7 @@ namespace JortPob
                     item.treasure.id.ToString(),
                     item.entity.ToString(),
                     ownerDead.id.ToString(),
-                    crimeFlag.id.ToString(),
+                    owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
@@ -191,7 +191,7 @@ namespace JortPob
             }
         }
 
-        public void RegisterContainerAsset(ContainerContent container)
+        public void RegisterContainerAsset(ContainerContent container, int totalValue)
         {
             CharacterContent owner;
             if (container.ownerNpc != null) { owner = GetAreaNpcById(container.ownerNpc); }
@@ -209,11 +209,11 @@ namespace JortPob
                     container.treasure.id.ToString(),
                     container.treasure.id.ToString(),
                     ownerDead.id.ToString(),
-                    crimeFlag.id.ToString(),
+                    owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
-                    500.ToString() // @TODO: just setting a random value for this. we should calculate value of items in a container in the future and set that as the crimegold for stealing
+                    totalValue.ToString()
                 };
 
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.OwnedContainer]}, {string.Join(", ", parameters)});"));
@@ -224,12 +224,12 @@ namespace JortPob
         public void RegisterNpcHostility(CharacterContent npc)
         {
             GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Nibble, Flag.Designation.FriendHitCounter, npc); // setup friendly hit counter
-            Flag hostileFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc, npc.hostile ? 1u : 0u);
+            Flag hostileFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc, npc.IsHostile() ? 1u : 0u);
             Flag crimeFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeEvent, npc);
             Flag hostileQuipFlag = GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.HostileQuip, npc);
             Flag hasBeenAttackedFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.HasBeenAttacked, npc);
             Flag helloFlag = GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Hello, npc);
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {hostileFlag.id}, {npc.entity});"));
+            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {npc.entity}, {hostileFlag.id}, {npc.entity}, {npc.entity});"));
             npcs.Add(npc);
         }
 
@@ -632,7 +632,9 @@ namespace JortPob
                 GuardIsGreeting, PlayerIsTalking, PlayerIsSneaking, PlayerRuneCount, PlayerStat, PlayerItemCount,
                 ReturnValueRankReq, ReturnReactionHigh, ReturnReactionLow,          // these are temp values used by ESD to store variables
                 CurrentWeather,
+                Arrest,                // Flag for determining if guards have attempted an arrest or if they are just going to attack you
                 CrimeAbsolved,            // temp value, setting it to 1 triggers a common emevd event that clears all crime and hostility flags
+                ResetHostility,           // similar to above but doesnt clear crime, just resets hostility
                 HostileQuip, Hello,    // temp value that is flagged when a guard is gretting the player, if the player has a bounty and trys to leave dialog without paying they get dunked on
                 OnActivate, OnDeath, CellChanged, GetButtonPassBit, GetButtonFailBit, GetButtonPressedValue, // used by papyrus to emulate mw script behaviours
                 PermanentSpeff, NpcModStat,  // Used for maintaining speffs on the player/npcs permanently

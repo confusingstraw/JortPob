@@ -13,15 +13,7 @@ function npc30000_Logic(ai)
 			if f1_local7 == true and ai:HasSpecialEffectId(TARGET_ENE_0, 13945) == true then
 				f1_local7 = false
 			end
-			if eventRequest == 10 then
-				if distanceHost <= 3 then
-					ai:AddTopGoal(GOAL_COMMON_LeaveTarget, 2, TARGET_HOSTPLAYER, 999, TARGET_SELF, true, -1)
-				elseif ai:GetDist(POINT_EVENT) <= 0.3 then
-					ai:AddTopGoal(GOAL_COMMON_Wait, 0.5, TARGET_SELF)
-				else
-					ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, POINT_EVENT, 0.3, TARGET_SELF, false, -1)
-				end
-			elseif eventRequest == 80 then
+			if eventRequest == 80 then
 				ai:AddTopGoal(GOAL_COMMON_Wait, 0.5, TARGET_NONE)
 				ai:AddTopGoal(GOAL_COMMON_WaitWithAnime, 10, 1000 + eventRequest_2, TARGET_NONE)
 			elseif distanceHost >= 22 then
@@ -46,7 +38,7 @@ function npc30000_Logic(ai)
 					ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)
 					ai:SetStringIndexedNumber("IsApproachingHost", 1)
 				end
-			elseif distanceHost >= 5 then
+			elseif distanceHost >= 3 then
 				if f1_local7 == true then
 					if distanceEnemy >= 15 then
 						ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)

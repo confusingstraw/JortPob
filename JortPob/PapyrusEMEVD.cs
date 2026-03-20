@@ -7,7 +7,6 @@ using System.Linq;
 using System.Numerics;
 using static JortPob.Papyrus;
 using static JortPob.Script.Flag;
-using static SoulsFormats.MSBAC4.Region;
 
 namespace JortPob
 {

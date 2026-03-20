@@ -525,10 +525,16 @@ namespace JortPob
                                     case DialogFilter.Function.Global:
                                     case DialogFilter.Function.VariableCompare:
                                         {
-                                            // Random 100 handled by rng gen in the esd. Other globals are handled normally
-                                            if (filter.id == "random100")
+                                            /* Some global variables are sort of like special functions. We handle those here */
+                                            Script.Flag crimeLevelFlag = scriptManager.GetFlag(Flag.Designation.CrimeLevel, "CrimeLevel");
+                                            switch (filter.id.ToLower())
                                             {
-                                                return $"CompareRNGValue({filter.OperatorString()}, {filter.value}) == True";
+                                                case "random100":
+                                                    return $"CompareRNGValue({filter.OperatorString()}, {filter.value}) == True";
+
+                                                case "pchasturnin":
+                                                case "pchascrimegold":
+                                                    return $"ComparePlayerStat(PlayerStat.RunesCollected, CompareType.GreaterOrEqual, GetEventFlagValue({crimeLevelFlag.id}, {crimeLevelFlag.Bits()})) and GetEventFlagValue({crimeLevelFlag.id}, {crimeLevelFlag.Bits()}) >= 0"; // operator bug. >= is > in esd
                                             }
 
                                             Flag gvar = scriptManager.GetFlag(Script.Flag.Designation.Global, filter.id); // look for flag. if not found return a static 'False' as it's probably a float variable
