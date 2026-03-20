@@ -261,7 +261,7 @@ namespace JortPob
                 int area = kvp.Key.Item2;
                 BND4 bnd = kvp.Value;
 
-                bnd.Write($"{Const.OUTPUT_PATH}script\\talk\\m{map:D2}_{area:D2}_00_00.talkesdbnd.dcx");
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"script\talk\m{map:D2}_{area:D2}_00_00.talkesdbnd.dcx"));
                 Lort.TaskIterate();
             }
         }

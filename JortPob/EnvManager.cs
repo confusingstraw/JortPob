@@ -2,6 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using static JortPob.Paramanager;
 
 namespace JortPob
@@ -97,7 +98,7 @@ namespace JortPob
                         bnd.Files.Add(file);
                     }
 
-                    bnd.Write($"{Const.OUTPUT_PATH}map\\m{tile.map:D2}\\m{mid}\\m{mid}_envmap_{timeId:D2}_{level}_00.tpfbnd.dcx");
+                    bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.map:D2}\m{mid}\m{mid}_envmap_{timeId:D2}_{level}_00.tpfbnd.dcx"));
                 }
             }
 
@@ -120,7 +121,7 @@ namespace JortPob
                     ivBnd.Files.Add(ivFile);
                 }
 
-                ivBnd.Write($"{Const.OUTPUT_PATH}map\\m{tile.map.ToString("D2")}\\m{mid}\\m{mid}_{level}.ivinfobnd.dcx");
+                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.map:D2}\m{mid}\\m{mid}_{level}.ivinfobnd.dcx"));
             }
         }
 
@@ -173,7 +174,7 @@ namespace JortPob
                     bnd.Files.Add(file);
                 }
 
-                bnd.Write($"{Const.OUTPUT_PATH}map\\m{group.map:D2}\\m{mid}\\m{mid}_envmap_{0:D2}_{level}_00.tpfbnd.dcx");
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.map:D2}\m{mid}\m{mid}_envmap_{0:D2}_{level}_00.tpfbnd.dcx"));
             }
 
 
@@ -193,7 +194,7 @@ namespace JortPob
                 ivFile.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\IvInfo\\m{mid}_GIIV{envId}_{0:D2}.ivInfo";
                 ivBnd.Files.Add(ivFile);
 
-                ivBnd.Write($"{Const.OUTPUT_PATH}map\\m{group.map:D2}\\m{mid}\\m{mid}_{level}.ivinfobnd.dcx");
+                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.map:D2}\m{mid}\m{mid}_{level}.ivinfobnd.dcx"));
             }
         }
     }
