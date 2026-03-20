@@ -25,7 +25,7 @@ namespace JortPob.Common
                 MATBIN matbin = MATBIN.Read(file);
                 BinderFile bind = new();
                 bind.ID = ++i;
-                bind.Name = @$"N:\GR\data\INTERROOT_win64\material\matbin\Morrowind\matxml\{Utility.PathToFileName(file)}.matbin";
+                bind.Name = @$"N:\GR\data\INTERROOT_win64\material\matbin\Morrowind\matxml\{Path.GetFileNameWithoutExtension(file)}.matbin";
                 bind.Bytes = matbin.Write();
                 bnd.Files.Add(bind);
                 Lort.TaskIterate();

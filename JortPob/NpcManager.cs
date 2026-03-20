@@ -476,7 +476,7 @@ namespace JortPob
                 BND4 bnd = bnds[(esd.map, esd.area)];
                 BinderFile file = new();
                 file.Bytes = System.IO.File.ReadAllBytes(esd.esd);
-                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{esd.map:D2}_{esd.area:D2}_00_00\\{Utility.PathToFileName(esd.esd)}.esd";
+                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{esd.map:D2}_{esd.area:D2}_00_00\\{Path.GetFileNameWithoutExtension(esd.esd)}.esd";
                 file.ID = bnd.Files.Count();
 
                 bnd.Files.Add(file);
@@ -492,7 +492,7 @@ namespace JortPob
                 int area = kvp.Key.Item2;
                 BND4 bnd = kvp.Value;
 
-                bnd.Write($"{Const.OUTPUT_PATH}script\\talk\\m{map:D2}_{area:D2}_00_00.talkesdbnd.dcx");
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"script\talk\m{map:D2}_{area:D2}_00_00.talkesdbnd.dcx"));
                 Lort.TaskIterate();
             }
         }

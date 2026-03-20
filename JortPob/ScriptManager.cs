@@ -474,7 +474,7 @@ namespace JortPob
 
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE FUNCTION HERE $$ --", $"{hksJankStart}{hksJankGen}{hksJankEnd}{hksBitwiseShitCode}");
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksPlayerStatShitcode}{hksJankCall}");
-            string hksOutPath = $"{Const.OUTPUT_PATH}action\\script\\c0000.hks";
+            string hksOutPath = Path.Combine(Const.OUTPUT_PATH, @"action\script\c0000.hks");
             if (File.Exists(hksOutPath)) { File.Delete(hksOutPath); }
             System.IO.Directory.CreateDirectory(Path.GetDirectoryName(hksOutPath));
             File.WriteAllText(hksOutPath, hksFile);

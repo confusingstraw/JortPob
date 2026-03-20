@@ -143,7 +143,7 @@ namespace JortPob
             }
 
             /* Load extenedTalkParam and do the same thing as above */
-            foreach(BinderFile bf in paramBnd.Files) { if (Utility.PathToFileName(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
+            foreach(BinderFile bf in paramBnd.Files) { if (Path.GetFileNameWithoutExtension(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
             extendedTalkParam.ApplyParamdef(SoulsFormats.PARAMDEF.XmlDeserialize(Utility.ResourcePath(@"misc\paramdefs\TalkParam.xml")));
 
             List<LiveParam.Row> openingcustcenestuff2 = new();
@@ -961,7 +961,7 @@ namespace JortPob
         {
             int rowId = nextActionButtonId++;
 
-            FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{modelInfo.path}"); // load flver of this door so we can look at its bounding box
+            FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
             float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
             float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
             float width = x > z ? x : z;

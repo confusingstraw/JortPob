@@ -38,12 +38,6 @@ namespace JortPob.Common
             }
         }
 
-        /* Take a full file path and returns just a file name without directory or extensions */
-        public static string PathToFileName(string fileName)
-        {
-            return Path.GetFileNameWithoutExtension(fileName);
-        }
-
         public static string ResourcePath(string path)
         {
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", path);

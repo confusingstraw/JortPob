@@ -1296,14 +1296,14 @@ namespace JortPob
 
             /* Write FMGs */
             Lort.Log($"Binding FMGs...", Lort.Type.Main);
-            text.Write($"{Const.OUTPUT_PATH}msg\\engus\\");
+            text.Write();
 
             /* Write FXR files */
             Lort.Log($"Binding FXRs...", Lort.Type.Main);
             FxrManager.Write(layout);
 
             /* Bind and write all materials and textures */
-            Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
+            Bind.BindMaterials(Path.Combine(Const.OUTPUT_PATH, "material", "allmaterial.matbinbnd.dcx"));
             Bind.BindTPF(cache, layout.ListCommon());
             texManager.Write();
 
@@ -1315,7 +1315,7 @@ namespace JortPob
             Bind.BindPickables(cache);
             foreach (LiquidInfo water in cache.liquids)  // bind up them waters toooooo
             {
-                Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");
+                Bind.BindAsset(water, Path.Combine(Const.OUTPUT_PATH, $@"asset\aeg\{water.AssetPath()}.geombnd.dcx"));
             }
 
             /* Generate overworld */

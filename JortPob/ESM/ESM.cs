@@ -35,29 +35,30 @@ namespace JortPob
 
         public ESM(ScriptManager scriptManager)
         {
+            // Ensure the cache path exists
+            Directory.CreateDirectory(Const.CACHE_PATH);
             /* Check if a json has been generated from the esm, if not make one */
-            string jsonPath = $"{Const.CACHE_PATH}morrowind.json";
+            string jsonPath = Path.Combine(Const.CACHE_PATH, "morrowind.json");
             if (!File.Exists(jsonPath))
             {
                 /* Merge load order to a single file using merge_to_master */
                 string esmPath;
                 if (Const.LOAD_ORDER.Length == 1)
                 {
-                    esmPath = $"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[0]}";
+                    esmPath = Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[0]);
                 }
                 else
                 {
                     // Copy our master esm to the cache folder
-                    esmPath = $"{Const.CACHE_PATH}morrowind.esm";
+                    esmPath = Path.Combine(Const.CACHE_PATH, "morrowind.esm");
                     if(File.Exists(esmPath)) { File.Delete(esmPath); }
-                    if(!Directory.Exists(Const.CACHE_PATH)) { Directory.CreateDirectory(Const.CACHE_PATH); }
-                    File.Copy($"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[0]}", esmPath);
+                    File.Copy(Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[0]), esmPath);
 
                     // Merge the rest of the load order into that esm
                     for (int i=1;i<Const.LOAD_ORDER.Length;i++)
                     {
                         Lort.Log($"Merging '{Const.LOAD_ORDER[i]}' ...", Lort.Type.Main);
-                        string childPath = $"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[i]}";
+                        string childPath = Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[i]);
 
                         ProcessStartInfo mergeStartInfo = new(Utility.ResourcePath(@"tools\MergeToMaster\merge_to_master.exe"), $"-o \"{childPath}\" \"{esmPath}\"")
                         {
@@ -71,7 +72,6 @@ namespace JortPob
 
                 /* Convert esm to a json file using tes3conv */
                 Lort.Log($"Creating 'cache\\morrowind.json' ...", Lort.Type.Main);
-                if(!System.IO.Directory.Exists(Const.CACHE_PATH)) { System.IO.Directory.CreateDirectory(Const.CACHE_PATH); }
                 ProcessStartInfo convStartInfo = new(Utility.ResourcePath(@"tools\Tes3Conv\tes3conv.exe"), $"-c \"{esmPath}\" \"{jsonPath}\"")
                 {
                     WorkingDirectory = Utility.ResourcePath(@"tools\Tes3Conv"),

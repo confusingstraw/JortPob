@@ -287,7 +287,7 @@ namespace JortPob.Common
 
             /* Header */
             sb.Append($"## Triangle Count: {count()}\r\n");
-            sb.Append($"mtllib {Utility.PathToFileName(outPath)}.mtl\r\n");
+            sb.Append($"mtllib {Path.GetFileNameWithoutExtension(outPath)}.mtl\r\n");
 
             /* write vertices */
             sb.Append("## Vertices: "); sb.Append(vs.Count); sb.Append(" ##\r\n");
