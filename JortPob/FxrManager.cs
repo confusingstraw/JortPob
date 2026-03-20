@@ -128,7 +128,7 @@ namespace JortPob
                     BinderFile file = new();
                     file.Bytes = File.ReadAllBytes(Utility.ResourcePath($"fxr\\{tpf}"));
                     file.ID = texid++;
-                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\tex\\{Utility.PathToFileName(tpf)}.tpf";
+                    file.Name = $"N:\\GR\\data\\INTERROOT_win64\\sfx\\tex\\{Path.GetFileNameWithoutExtension(tpf)}.tpf";
                     ffxbnd.Files.Add(file);
                 }
             }

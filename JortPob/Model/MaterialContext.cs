@@ -212,7 +212,7 @@ namespace JortPob.Model
                     abspath = Path.Combine(Const.MORROWIND_PATH, $@"Data Files\Textures\{relpath}");
                 }
 
-                string fileName = Utility.PathToFileName(abspath);
+                string fileName = Path.GetFileNameWithoutExtension(abspath);
 
                 /* Decide what kind of material to generate based on texture name */
                 if (
@@ -247,7 +247,7 @@ namespace JortPob.Model
                 texturePath = Utility.ResourcePath(@"textures\tx_missing.dds");
             }
 
-            string fileName = Utility.PathToFileName(texturePath);
+            string fileName = Path.GetFileNameWithoutExtension(texturePath);
 
             /* Decide what kind of material to generate based on texture name */
             if (fileName.Contains("leave") || fileName.Contains("leaf") || fileName.Contains("plant")) // @TODO: rework this system with an override
@@ -269,7 +269,7 @@ namespace JortPob.Model
             foreach (SharpAssimp.Material sourceMaterial in sourceMaterials)
             {
                 string diffuseTextureSourcePath = sourceMaterial.TextureDiffuse.FilePath != null ? sourceMaterial.TextureDiffuse.FilePath : Utility.ResourcePath(@"textures\tx_missing.dds");
-                string diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
+                string diffuseTexture = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
 
                 /* Decide what kind of material to generate based on texture name */
                 if (diffuseTexture.Contains("leave") || diffuseTexture.Contains("leaf") || diffuseTexture.Contains("plant")) // @TODO: rework this system with an override
@@ -294,7 +294,7 @@ namespace JortPob.Model
             }
             else
             {
-                diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
+                diffuseTexture = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                 genTextures.TryAdd(diffuseTextureSourcePath, diffuseTexture);
             }
 
@@ -340,7 +340,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }
@@ -388,7 +388,7 @@ namespace JortPob.Model
             }
             else
             {
-                diffuseTexture = Utility.PathToFileName(diffuseTextureSourcePath);
+                diffuseTexture = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                 genTextures.TryAdd(diffuseTextureSourcePath, diffuseTexture);
             }
 
@@ -433,7 +433,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }
@@ -509,7 +509,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }
@@ -564,7 +564,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }
@@ -639,7 +639,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }
@@ -781,7 +781,7 @@ namespace JortPob.Model
                 }
                 else
                 {
-                    string n = Utility.PathToFileName(diffuseTextureSourcePath);
+                    string n = Path.GetFileNameWithoutExtension(diffuseTextureSourcePath);
                     genTextures.TryAdd(diffuseTextureSourcePath, n);
                     return n;
                 }

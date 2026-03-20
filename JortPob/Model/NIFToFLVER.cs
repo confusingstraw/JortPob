@@ -262,9 +262,9 @@ namespace JortPob.Model
                         string tex = nif.VisualMeshes[i].Texture.String.ToLower();
                         foreach (string key in keys)
                         {
-                            if (Utility.PathToFileName(modelInfo.name).ToLower().Contains(key)) { matguess = type; return; }
+                            if (Path.GetFileNameWithoutExtension(modelInfo.name).ToLower().Contains(key)) { matguess = type; return; }
                             if (tex.Contains(key)) { matguess = type; return; }
-                            if (Utility.PathToFileName(tex).ToLower().Contains(key)) { matguess = type; return; }
+                            if (Path.GetFileNameWithoutExtension(tex).ToLower().Contains(key)) { matguess = type; return; }
                         }
                     }
                     return;
@@ -289,7 +289,7 @@ namespace JortPob.Model
 
                 /* Make obj file for collision. These will be converted to HKX later */
                 string objPath = outputPath.Replace(".flver", ".obj");
-                CollisionInfo collisionInfo = new(modelInfo.name, $"meshes\\{Utility.PathToFileName(objPath)}.obj");
+                CollisionInfo collisionInfo = new(modelInfo.name, $"meshes\\{Path.GetFileNameWithoutExtension(objPath)}.obj");
                 modelInfo.collision = collisionInfo;
 
                 obj = obj.optimize();

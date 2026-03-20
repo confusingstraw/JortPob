@@ -143,7 +143,7 @@ namespace JortPob
             }
 
             /* Load extenedTalkParam and do the same thing as above */
-            foreach(BinderFile bf in paramBnd.Files) { if (Utility.PathToFileName(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
+            foreach(BinderFile bf in paramBnd.Files) { if (Path.GetFileNameWithoutExtension(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
             extendedTalkParam.ApplyParamdef(SoulsFormats.PARAMDEF.XmlDeserialize(Utility.ResourcePath(@"misc\paramdefs\TalkParam.xml")));
 
             List<LiveParam.Row> openingcustcenestuff2 = new();

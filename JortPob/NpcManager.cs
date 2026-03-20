@@ -245,7 +245,7 @@ namespace JortPob
                 BND4 bnd = bnds[(esd.map, esd.area)];
                 BinderFile file = new();
                 file.Bytes = System.IO.File.ReadAllBytes(esd.esd);
-                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{esd.map:D2}_{esd.area:D2}_00_00\\{Utility.PathToFileName(esd.esd)}.esd";
+                file.Name = $"N:\\GR\\data\\INTERROOT_win64\\script\\talk\\m{esd.map:D2}_{esd.area:D2}_00_00\\{Path.GetFileNameWithoutExtension(esd.esd)}.esd";
                 file.ID = bnd.Files.Count();
 
                 bnd.Files.Add(file);

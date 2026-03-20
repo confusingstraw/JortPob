@@ -512,7 +512,7 @@ namespace JortPob
 
             public SpeffDefinition(string jsonPath)
             {
-                id = Utility.PathToFileName(jsonPath);
+                id = Path.GetFileNameWithoutExtension(jsonPath);
 
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
@@ -553,7 +553,7 @@ namespace JortPob
 
             public ItemDefinition(string jsonPath)
             {
-                id = Utility.PathToFileName(jsonPath);
+                id = Path.GetFileNameWithoutExtension(jsonPath);
 
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 

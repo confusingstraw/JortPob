@@ -1188,7 +1188,7 @@ namespace JortPob
 
             /* Write FMGs */
             Lort.Log($"Binding FMGs...", Lort.Type.Main);
-            text.Write(Path.Combine(Const.OUTPUT_PATH, "msg", "engus"));
+            text.Write();
 
             /* Write FXR files */
             Lort.Log($"Binding FXRs...", Lort.Type.Main);
