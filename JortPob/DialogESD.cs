@@ -711,7 +711,22 @@ namespace JortPob
         /* On death talk */
         private string State_x41(uint id, NpcManager.TopicData topic)
         {
-            string s = $"def t{id:D9}_x41():\r\n    ## on death talk\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
+            string s = $""""
+                       def t{id:D9}_x41():
+                           ## on death talk##
+                           ShuffleRNGSeed(100)
+                           SetRNGSeed()
+
+                           ## handle crime of murder if applicable
+                           if not DoesSelfHaveSpEffect({(int)SpeffManager.Functional.VoidMurder}):    ## void murder speff means murder bounty is not awarded at this time. used by 'StartCombat'
+                               assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_MURDER},violent=True)
+                           else:
+                               pass
+
+                           ## Do death talk
+
+                       """";
+
             string ifop = "if";
             for (int i = 0; i < topic.talks.Count(); i++)
             {
@@ -723,7 +738,6 @@ namespace JortPob
                 s += $"    {ifop} {filters}:\r\n";
                 s += $"        # death: \"{Common.Utility.SanitizeTextForComment(talk.dialogInfo.text)}\"\r\n";
                 s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK}(combatText={talk.primaryTalkRow})\r\n";
-                s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_MURDER},violent=True)\r\n";
 
                 if (ifop == "if") { ifop = "elif"; }
             }

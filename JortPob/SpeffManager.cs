@@ -17,6 +17,7 @@ namespace JortPob
         {
             Alarming = 1000000,      // 5 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
             NpcFollow = 1000001,     // speff used to switch npcs from normal logic to follower logic. lasts 1 second and is re-applied constantly during follower package
+            VoidMurder = 1000002,    // speff applied to npcs when they 'StartCombat' so that if they die you are not given a bounty for "murdering" them. Does not persist between loadscreens though
         }
 
         public enum Type
@@ -138,6 +139,10 @@ namespace JortPob
             FsParam.Row funcSpeffFollow = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: NpcFollow", (int)Functional.NpcFollow);
             funcSpeffFollow["effectEndurance"].Value.SetValue((float)1f);
             paramanager.AddRow(speffParam, funcSpeffFollow);
+
+            FsParam.Row funcSpeffVoidMurder = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: VoidMurder", (int)Functional.VoidMurder);
+            funcSpeffVoidMurder["effectEndurance"].Value.SetValue((float)-1f);
+            paramanager.AddRow(speffParam, funcSpeffVoidMurder);
         }
 
         // Temp buffs use 1642100 as a base which is the basic Heal incantation effect

@@ -651,8 +651,10 @@ namespace JortPob
             {
                 $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
                 $"SetCharacterTeamType({NextParameterName()}, 29);",   // hostile flag on, hostile   >:(     // 29: TeamType.Indiscriminate
+                $"SetSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
                 $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
                 $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"ClearSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
                 $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
             };
 

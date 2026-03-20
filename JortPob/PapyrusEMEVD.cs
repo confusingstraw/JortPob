@@ -1969,6 +1969,7 @@ namespace JortPob
                                     if (hvar != null)
                                     {
                                         lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hvar.id}, ON);"); // simply set player hostility flag to true
+                                        lines.Add($"SetSpEffect({content.entity}, {(int)SpeffManager.Functional.VoidMurder});");
                                     }
                                     // Probably a wild creature
                                     else

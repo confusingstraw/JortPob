@@ -1352,6 +1352,7 @@ namespace JortPob
                                     else {
                                         Flag hvar = scriptManager.GetFlag(Flag.Designation.Hostile, targetA);
                                         lines.Add($"SetEventFlag({hvar.id}, FlagState.On)");
+                                        lines.Add($"GiveSpEffectToSelf({(int)SpeffManager.Functional.VoidMurder})");
                                     }
                                 }
                                 else
