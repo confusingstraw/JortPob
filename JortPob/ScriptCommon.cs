@@ -144,6 +144,7 @@ namespace JortPob
                 $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                           // ... blocking wait until hostile flag is on
                 $"IfConditionGroup(MAIN, PASS, OR_01);",
                 $"SetCharacterAIState({NextParameterName()}, Enabled);",                            // enable ai
+                $"RequestCharacterAIReplan({NextParameterName()});",                               // make brain work good
 
                 $"EndUnconditionally(EventEndType.Restart);",     // restart event
             };

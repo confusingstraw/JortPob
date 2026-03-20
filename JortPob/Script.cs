@@ -343,7 +343,7 @@ namespace JortPob
                 npc.entity.ToString(),
                 hostileFlag.id.ToString(),
                 npc.entity.ToString(),
-
+                npc.entity.ToString(),
             };
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.Halt]}, {string.Join(", ", parameters)});"));
         }
