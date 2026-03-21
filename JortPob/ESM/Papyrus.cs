@@ -347,6 +347,8 @@ namespace JortPob
                 DisablePlayerViewSwitch, DisableTeleporting, DisablePlayerFighting, DisablePlayerJumping, DisablePlayerControls, DisableVanityMode, DisablePlayerMagic,
                 PlaySound3D, PlaySound3DVP, StopSound, PlayLoopSound3D, PlayLoopSound3DVP, PlaySound, PlayLoopSoundD3DVP, PlaySoundVP,
 
+                GetPlayerControlsDisabled, GetPlayerFightingDisabled, GetPlayerJumpingDisabled, GetPlayerLookingDisabled, GetPlayerMagicDisabled, GetPlayerViewSwitch,
+
                 /* Papyrus calls we (probably) cannot implement and will discard */
                 Rotate, SetAngle, GetAngle,
 

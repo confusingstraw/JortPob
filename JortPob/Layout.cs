@@ -979,6 +979,18 @@ namespace JortPob
                 }
             }
 
+            foreach(Papyrus papyrus in esm.scripts)
+            {
+                foreach(Papyrus.Call call in papyrus.GetCalls(Papyrus.Call.Type.StartScript))
+                {
+                    Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
+                    if (papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = papyrus.GetCalls();
+                    PreProcessScriptedPositions(null, calls);
+                }
+            }
+
             foreach (Dialog.DialogRecord dialog in esm.dialog)
             {
                 List<Papyrus.Call> calls = dialog.GetCalls();
