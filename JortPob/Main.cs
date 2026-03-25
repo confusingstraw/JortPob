@@ -69,7 +69,7 @@ namespace JortPob
                 MSBE msb = new MSBE();
                 msb.Compression = Compression.KRAK();
 
-                Script script = scriptManager.GetScript(tile);
+                BaseScript script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
                 List<Tuple<Vector3, TerrainInfo>> terrains = isTileType ? tile.terrain : emptyTerrainList;
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
@@ -293,11 +293,18 @@ namespace JortPob
                     enemy.ThinkParamID = paramRows.think;
                     enemy.CharaInitID = paramRows.init;
 
+                    /* Asset tileload config */
+                    if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
+                    {
+                        enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)tile.map };
+                        //enemy.TileLoad.Unk04 = 13;
+                    }
+
                     /* Objects with script references added to PleaseCompile list */
                     if (npc.entity > 0)
                     {
                         enemy.EntityID = npc.entity;
-                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, npc, enemy));
+                        contentToCompile.Add(new PleaseCompileTile(tile, msb, script, npc, enemy));
                     }
 
                     /* Add to msb */
@@ -322,7 +329,7 @@ namespace JortPob
                     if (creature.entity > 0)
                     {
                         enemy.EntityID = creature.entity;
-                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, creature, enemy));
+                        contentToCompile.Add(new PleaseCompileTile(tile, msb, script, creature, enemy));
                     }
 
                     /* Add to msb */
@@ -566,7 +573,7 @@ namespace JortPob
                 /* Generate msb from group */
                 MSBE msb = new();
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
-                Script script = scriptManager.GetScript(group);
+                BaseScript script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
                 msb.Compression = Compression.KRAK();
 
@@ -1061,6 +1068,7 @@ namespace JortPob
                 foreach (BaseTile bt in layout.tiles)
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
+                    tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
@@ -1351,8 +1359,8 @@ namespace JortPob
             Lort.TaskIterate();
         }
 
-        public abstract record PleaseCompile(MSBE msb, Script script, Content content, MSBE.Part part) { }
-        public record PleaseCompileTile(Tile tile, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
-        public record PleaseCompileGroup(InteriorGroup group, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
+        public abstract record PleaseCompile(MSBE msb, BaseScript script, Content content, MSBE.Part part) { }
+        public record PleaseCompileTile(BaseTile tile, MSBE msb, BaseScript script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
+        public record PleaseCompileGroup(InteriorGroup group, MSBE msb, BaseScript script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
     }
 }

@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Script;
+using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -725,6 +727,21 @@ namespace JortPob
             private static List<String> debugUnsupportedPapyrusCallLogging = new();
             public string GenerateEsdSnippet(ESM esm, Layout layout, MSBE msb, MainSoundBank sound, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, ScriptManager scriptManager, CharacterContent npcContent, uint esdId, int indent)
             {
+                /* Used by AiFollow, AiFollowCell, AiWander, AiEscort, and AiEscortCell to have a time based cancel for their ai package */
+                Script.Flag CreateAiPackageDurationEvent(Papyrus.Call call, BaseScript script, CharacterContent content, float duration)
+                {
+                    Script.Flag switchFlag = script.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, content.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
+                    uint switchToId = switchFlag != null ? switchFlag.id : 0;
+                    Script.Flag timerEvtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackageTimer::{call.type}::{content.entity}");
+                    EMEVD.Event timerEvt = new();
+                    timerEvt.ID = timerEvtFlag.id;
+                    timerEvt.Instructions.Add(script.AUTO.ParseAdd($"WaitFixedTimeSeconds({duration});"));                       // wait for duration
+                    timerEvt.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {switchToId}, 1);"));  // run switcher event to switch back to default package
+                    script.emevd.Events.Add(timerEvt);
+                    content.packageEventFlags.Add(timerEvtFlag);
+                    return timerEvtFlag;
+                }
+
                 // Takes any mixed numeric parameter and converts it to an esd friendly format. for example  "1 + 2 + crimeGold + 7" or "crimeGold - valueValue" or just "5"
                 string ParseParameters(string[] parameters, int startIndex)
                 {
@@ -883,6 +900,189 @@ namespace JortPob
                                 }
                                 break;
                             }
+                        case Papyrus.Call.Type.AiEscort:
+                        case Papyrus.Call.Type.AiFollow:
+                        case Papyrus.Call.Type.AiEscortCell:
+                        case Papyrus.Call.Type.AiFollowCell:
+                            {
+                                // find our target content
+                                Content t;
+                                if (call.target == null) { t = npcContent; }
+                                else { t = layout.FindScriptReference(npcContent, call.target); }
+                                if (t == null || t is not CharacterContent target) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // Make sure this is following player
+                                if (call.parameters[0].ToLower().Trim() != "player") { Lort.Log($"AiFollow only works on the player -> {call.RAW}", Lort.Type.Debug); break; }
+
+                                // Parameters
+                                int offset = call.type.ToString().ToLower().Contains("cell") ? 1 : 0;
+                                int hours = int.Parse(call.parameters[1 + offset]);
+                                float duration = 2.5f * 60f * hours; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters, 2 + offset) * Const.GLOBAL_SCALE;
+                                string location = offset == 1 ? call.parameters[1] : null;
+
+                                // Grab area script
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
+                                Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
+                                Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString()); // purposefully avoid phased rerouting for this eventid flag
+
+                                // Create an event to act as this scripted AiPackage
+                                Script.Flag evtFlag = areaScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackage::{call.type}::{target.entity}");
+                                EMEVD.Event evt = new();
+                                evt.ID = evtFlag.id;
+
+                                // If we have a duration parameter then setup a timer to end the event
+                                if (hours != 0)
+                                {
+                                    Script.Flag timerFlag = CreateAiPackageDurationEvent(call, areaScript, target, duration);
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {timerFlag.id}, 0);"));  // start timer
+                                }
+
+                                // Destination goal stuff
+                                if (position != Vector3.Zero)
+                                {
+                                    Layout.TravelPoint goal = layout.FindTravelable(location, position);
+                                    uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
+                                }
+
+                                // Follow stuff
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SetSpEffect({target.entity}, {(int)SpeffManager.Functional.NpcFollow});"));   // apply speff for follower
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"WaitFixedTimeFrames(15);"));                                                 // wait half a second~
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);"));                               // repeat endlessly
+                                areaScript.emevd.Events.Add(evt);
+                                target.packageEventFlags.Add(evtFlag);
+
+                                // Initialize a trigger event for the ai package switch
+                                Script.Flag triggerFlag = areaScript.RegisterTriggerAiPackageSwitch(npcContent, switchFlag, evtFlag);
+
+                                // Trigger the 'SwitchAiPackage' event on our created event
+                                lines.Add($"SetEventFlag({triggerFlag.id}, FlagState.On)");
+                                break;
+                            }
+                        case Papyrus.Call.Type.AiTravel:
+                            {
+                                // find our target content
+                                Content t;
+                                if (call.target == null) { t = npcContent; }
+                                else { t = layout.FindScriptReference(npcContent, call.target); }
+                                if (t == null || t is not CharacterContent target) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // Parameters
+                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
+
+                                // Grab area script
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
+                                Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
+                                Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
+
+                                // Get patrol route
+                                Layout.TravelPoint tp;
+                                if (areaScript.IsInterior()) { tp = layout.FindTravelable(target.cell.name, position); }
+                                else { tp = layout.FindTravelable(position); }
+                                if (tp == null) { break; } // partial build result
+
+                                MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(tp);
+                                patrol.EntityID = areaScript.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");
+                                msb.Events.Add(patrol);
+
+                                // Create an event to act as this scripted AiPackage
+                                Script.Flag evtFlag = areaScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackage::{call.type}::{target.entity}");
+                                EMEVD.Event evt = new();
+                                evt.ID = evtFlag.id;
+                                uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"ChangeCharacterPatrolBehavior({target.entity}, {patrol.EntityID});"));                      // set route for them to travel
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"RequestCharacterAIReplan({target.entity});"));                                             // request replan to get their brain actually working
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"IfInoutsideArea(MAIN, InsideOutsideState.Inside, {target.entity}, {tp.entity}, 1);"));    // blocking wait till they reach the destination
+                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));                                 // switch back to our default normal package
+                                areaScript.emevd.Events.Add(evt);
+                                target.packageEventFlags.Add(evtFlag);
+
+                                // Initialize a trigger event for the ai package switch
+                                Script.Flag triggerFlag = areaScript.RegisterTriggerAiPackageSwitch(npcContent, switchFlag, evtFlag);
+
+                                // Trigger the 'SwitchAiPackage' event on our created event
+                                lines.Add($"SetEventFlag({triggerFlag.id}, FlagState.On)");
+                                break;
+                            }
+                        case Papyrus.Call.Type.AiWander:
+                            {
+                                // find our target content
+                                Content t;
+                                if (call.target == null) { t = npcContent; }
+                                else { t = layout.FindScriptReference(npcContent, call.target); }
+                                if (t == null || t is not CharacterContent target) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                                // Parameters
+                                float distance = float.Parse(call.parameters[0]) * Const.GLOBAL_SCALE;
+                                int hours = int.Parse(call.parameters[1]);
+                                float duration = 2.5f * 60f * hours; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
+
+                                // Grab area script
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
+                                Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
+
+                                // Get patrol route
+                                List<Layout.PathGridPoint> paths = layout.GetWanderable(target, distance);
+                                paths.Shuffle();                                            // randomize
+                                if (paths.Count() > 15) { paths = paths.GetRange(0, 15); } // truncate to max size of nibble (not strictly needed here but eh, we dont need more than this i swear)
+
+                                // Create an event to act as this scripted AiPackage
+                                Script.Flag evtFlag = areaScript.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AiPackage::{call.type}::{target.entity}");
+                                EMEVD.Event evt = new();
+                                evt.ID = evtFlag.id;
+
+                                // If we have a duration parameter then setup a timer to end the event
+                                if (duration > 0)
+                                {
+                                    Script.Flag timerFlag = CreateAiPackageDurationEvent(call, areaScript, target, duration);
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {timerFlag.id}, 0);"));  // start timer
+                                }
+
+                                // 'Do nothing' wander with 0 distance
+                                if (distance <= 0)
+                                {
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, 6000);"));               // Wait forever
+                                }
+                                // Regular wander but no pathgrid so just improvise with type 6 patrol "Randomly wander around"
+                                else if (paths.Count() <= 0)
+                                {
+                                    MSBE.Event.PatrolInfo patrol = MakePart.PatrolRandom();
+                                    patrol.EntityID = areaScript.CreateEntity(Script.EntityType.Event, $"Random->{patrol.Name}");
+                                    msb.Events.Add(patrol);
+
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"ChangeCharacterPatrolBehavior({target.entity}, {patrol.EntityID});"));          // set route to "wander randomly"
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"RequestCharacterAIReplan({target.entity});"));                                 // brain go boom
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, 6000);"));               // Wait forever                      
+                                }
+                                // Regular wander on pathgrid
+                                else
+                                {
+                                    foreach (Layout.PathGridPoint path in paths)
+                                    {
+                                        MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(path);
+                                        patrol.EntityID = areaScript.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");
+                                        msb.Events.Add(patrol);
+
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"WaitRandomTimeSeconds(1, 12);"));                                                                // wait around for a bit
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"ChangeCharacterPatrolBehavior({target.entity}, {patrol.EntityID});"));                          // set route to next wander position
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"RequestCharacterAIReplan({target.entity});"));                                                 // request replan to kickstart npcs brain
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"IfInoutsideArea(MAIN, InsideOutsideState.Inside, {target.entity}, {path.entity}, 1);"));      // blocking wait till they reach destination
+                                    }
+                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);"));                                // repeat endlessly
+                                }
+                                areaScript.emevd.Events.Add(evt);
+                                target.packageEventFlags.Add(evtFlag);
+
+                                // Initialize a trigger event for the ai package switch
+                                Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
+                                Script.Flag triggerFlag = areaScript.RegisterTriggerAiPackageSwitch(npcContent, switchFlag, evtFlag);
+
+                                // Trigger the 'SwitchAiPackage' event on our created event
+                                lines.Add($"SetEventFlag({triggerFlag.id}, FlagState.On)");
+                                break;
+                            }
                         case Papyrus.Call.Type.AddItem:
                             {
                                 // only supporting items/gold added to player rn. will eventually support other stuff
@@ -965,7 +1165,7 @@ namespace JortPob
                                 lines.Add($"SetEventFlag({disabledFlag.id}, FlagState.{toggle})");
 
                                 /* For enable/disable we also need to manually set the enable state but contextually based on the objects currrent status */
-                                Script script = scriptManager.FindScriptFor(layout, target); // grab area script of target
+                                BaseScript script = scriptManager.FindScriptFor(layout, target); // grab area script of target
 
                                 Script.Flag triggerFlag;
                                 if(call.type == Papyrus.Call.Type.Disable) { triggerFlag = script.GetOrRegisterTriggerDisable(target); }
@@ -1072,7 +1272,7 @@ namespace JortPob
                                 /* Not the player, modify stat via SPEFF */
                                 if (entityId != 10000)
                                 {
-                                    Script areaScript = scriptManager.FindScriptFor(layout, target);
+                                    BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
                                     int amount = int.Parse(call.parameters[0]);
                                     SpeffManager.StatMod statToMod;
@@ -1360,8 +1560,8 @@ namespace JortPob
                                     CharacterContent targetB = layout.FindScriptReference(npcContent, call.parameters[0].ToLower().Trim()) as CharacterContent;
                                     if (targetB == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                                    Script areaScriptA = scriptManager.FindScriptFor(layout, targetA);
-                                    Script areaScriptB = scriptManager.FindScriptFor(layout, targetB);
+                                    BaseScript areaScriptA = scriptManager.FindScriptFor(layout, targetA);
+                                    BaseScript areaScriptB = scriptManager.FindScriptFor(layout, targetB);
 
                                     Flag aFlag = areaScriptA.GetOrRegisterInfight(targetA);
                                     Flag bFlag = areaScriptB.GetOrRegisterInfight(targetB);
@@ -1379,7 +1579,7 @@ namespace JortPob
                                 else { target = layout.FindScriptReference(npcContent, call.target) as CharacterContent; }
                                 if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                                Script areaScript = scriptManager.FindScriptFor(layout, target);
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                                 Flag hostileFlag = scriptManager.GetFlag(Flag.Designation.Hostile, target);
                                 Flag fightFlag = areaScript.GetOrRegisterInfight(target);
                                 lines.Add($"SetEventFlag({hostileFlag.id}, FlagState.Off)");
@@ -1439,7 +1639,7 @@ namespace JortPob
                                 else { targetId = 10000; }
 
                                 // find area script for that target content
-                                Script script = scriptManager.FindScriptFor(layout, target);
+                                BaseScript script = scriptManager.FindScriptFor(layout, target);
 
                                 // Add sound to main bank and get playback id
                                 int seId = sound.AddSound(info.id, MainSoundBank.Sound.Type.SFX, loop, spatialize, volume, pitch, file);
@@ -1522,7 +1722,7 @@ namespace JortPob
                                 else if (call.target == "player") { throw new Exception("SetStat papyrus call targeting player not supported!"); }    // case 2: target is player. UNSUPPORTED!
                                 else { target = layout.FindScriptReference(npcContent, call.target) as CharacterContent; entityId = target.entity; } // case 3: target is a direct reference to an object record
 
-                                Script areaScript = scriptManager.FindScriptFor(layout, target);
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
                                 int amount = int.Parse(call.parameters[0]);
                                 SpeffManager.StatMod statToMod;

@@ -25,7 +25,7 @@ namespace JortPob
             }
 
             /* Used by AiFollow, AiFollowCell, AiWander, AiEscort, and AiEscortCell to have a time based cancel for their ai package */
-            Script.Flag CreateAiPackageDurationEvent(Papyrus.Call call, Script script, CharacterContent content, float duration)
+            Script.Flag CreateAiPackageDurationEvent(Papyrus.Call call, BaseScript script, CharacterContent content, float duration)
             {
                 Script.Flag switchFlag = script.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, content.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
                 uint switchToId = switchFlag != null ? switchFlag.id : 0;
@@ -103,6 +103,7 @@ namespace JortPob
                 {
                     case Call.Type.Variable:
                         Script.Flag vflag = GetFlagByVariable(call.left.parameters[0]);
+                        if(vflag == null) { Lort.Log($"Failed to resolve variable in '{call.RAW}'", Lort.Type.Debug); break; } // generally the result of partial builds but also sometimes subcripts launched by dialog
                         if (call.right.type == Call.Type.Literal)
                         {
                             lines.Add(ResetConditionGroups());
@@ -288,8 +289,6 @@ namespace JortPob
 
                     case Call.Type.GetDistance:
                         {
-                            if (script is ScriptCommon) { throw new Exception("GetDistance() not supported by global scripts"); } // i really hope this is unreachable
-
                             if (call.right.type == Call.Type.Literal)
                             {
                                 // parameters
@@ -781,7 +780,7 @@ namespace JortPob
                             string location = offset == 1 ? call.parameters[1] : null;
 
                             // Grab area script
-                            Script areaScript = scriptManager.FindScriptFor(layout, target);
+                            BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
                             Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString()); // purposefully avoid phased rerouting for this eventid flag
 
@@ -830,7 +829,7 @@ namespace JortPob
                             Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
 
                             // Grab area script
-                            Script areaScript = scriptManager.FindScriptFor(layout, target);
+                            BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
                             Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
 
@@ -875,7 +874,7 @@ namespace JortPob
                             float duration = 2.5f * 60f * hours; // mw uses hours, er uses seconds. 1 hour in morrowind is 2.5~ minutes
 
                             // Grab area script
-                            Script areaScript = scriptManager.FindScriptFor(layout, target);
+                            BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag doneFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.AiPackageDone, target, 0, true);
 
                             // Get patrol route
@@ -1328,7 +1327,7 @@ namespace JortPob
                             /* Not the player, modify stat via SPEFF */
                             if (entityId != 10000)
                             {
-                                Script areaScript = scriptManager.FindScriptFor(layout, target);
+                                BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
                                 int amount = int.Parse(call.parameters[0]);
                                 SpeffManager.StatMod statToMod;
@@ -1718,8 +1717,7 @@ namespace JortPob
 
                                 // set phase
                                 Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
-                                lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded
-                                lines.Add($"ChangeCharacterEnableState({phaseTo.entity}, 1);");   // enable phaseTo if loaded
+                                lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded. spawn handler will enable char at new location if conditions met and loaded
                                 lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
                             }
                             break;
@@ -1807,7 +1805,7 @@ namespace JortPob
                             else if (call.target == "player") { break; }                                                                       // case 2: target is player. UNSUPPORTED!
                             else { target = (CharacterContent)layout.FindScriptReference(content, call.target); entityId = target.entity; }   // case 3: target is a direct reference to an object record
 
-                            Script areaScript = scriptManager.FindScriptFor(layout, target);
+                            BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
                             int amount = int.Parse(call.parameters[0]);
                             SpeffManager.StatMod statToMod;
@@ -1984,8 +1982,8 @@ namespace JortPob
                                 CharacterContent targetB = (CharacterContent)layout.FindScriptReference(content, call.parameters[0].ToLower().Trim());
                                 if (targetB == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                                Script areaScriptA = scriptManager.FindScriptFor(layout, targetA);
-                                Script areaScriptB = scriptManager.FindScriptFor(layout, targetB);
+                                BaseScript areaScriptA = scriptManager.FindScriptFor(layout, targetA);
+                                BaseScript areaScriptB = scriptManager.FindScriptFor(layout, targetB);
 
                                 Script.Flag aFlag = areaScriptA.GetOrRegisterInfight(targetA);
                                 Script.Flag bFlag = areaScriptB.GetOrRegisterInfight(targetB);
@@ -2004,7 +2002,7 @@ namespace JortPob
                             else { target = (CharacterContent)layout.FindScriptReference(content, call.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
-                            Script areaScript = scriptManager.FindScriptFor(layout, target);
+                            BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target);
                             Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content);
                             if (hostileFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);"); }
@@ -2167,7 +2165,10 @@ namespace JortPob
             /* Compile papyrus */
             List<string> lines = HandleScope(papyrus.scope);
             lines.AddRange(post);
-            if(script is not ScriptCommon && ((Script)script).IsInterior())
+
+            if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
+
+            if (script is not ScriptCommon && script.IsInterior())
             {
                 lines.Insert(0, $"EndUnconditionally(EventEndType.End);"); // interior cell bounds check, halts execution of papyrus if player is not in the cell its from
                 lines.Insert(0, $"SkipIfInoutsideArea(1, InsideOutsideState.Inside, 10000, {scriptManager.areas[content.cell]}, 1);");  // SIC
@@ -2179,9 +2180,14 @@ namespace JortPob
                 Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, pnpc);
                 lines.Insert(0, $"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {pnpc.phase});"); // if phased npc then only run script when npc is phased in
             }
-            if (lines.Count() <= 0) { return; } // this is a minor optimization. some scripts like nolore end up just being blank as they are (effectively) statically resolved. so we discard empty events that would just do nothing but loop
+            if(content is CharacterContent cc && cc.follower == true && !script.IsInterior())
+            {
+                BaseTile tile = layout.FindTile(content);
+                lines.Insert(0, $"IfMapLoaded(MAIN, {tile.map}, {tile.coordinate.x}, {tile.coordinate.y}, {tile.block});"); // if msb promoted character then only run script when the msb is loaded
+            }
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart
+
             foreach (string line in lines) { evt.Instructions.Add(script.AUTO.ParseAdd(line)); }
             script.emevd.Events.Add(evt);
             script.init.Instructions.Add(script.AUTO.ParseAdd($"InitializeEvent(0, {evtFlag.id}, 0);"));
@@ -2222,7 +2228,7 @@ namespace JortPob
             DoStuff(papyrus);
         }
 
-        public static void Finalize(ScriptManager scriptManager, Script script, Content c)
+        public static void Finalize(ScriptManager scriptManager, BaseScript script, Content c)
         {
             if (c is not CharacterContent content || content.packageEventFlags.Count() <= 0) { return; }                         // not a character or has no ai pacakges
             Script.Flag switchFlag = scriptManager.GetFlag(Script.Flag.Designation.SwitchAiPackage, content.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag

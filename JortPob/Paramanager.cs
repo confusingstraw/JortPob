@@ -841,7 +841,7 @@ namespace JortPob
             AddRow(charInitParam, row);
         }
 
-        public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
+        public void GenerateNpcParam(ItemManager itemManager, BaseScript script, NpcContent npc, int id)
         {
             // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
             int rowToCopy;
@@ -866,7 +866,7 @@ namespace JortPob
             AddRow(npcParam, row);
         }
 
-        public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        public void GenerateNpcParam(ItemManager itemManager, BaseScript script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
             int rowToCopy = remap.npc.row;
 
@@ -888,17 +888,24 @@ namespace JortPob
             AddRow(npcParam, row);
         }
 
-        public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
+        public void GenerateThinkParam(ItemManager itemManager, BaseScript script, NpcContent npc, int id)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
             FsParam.Row row = CloneRow(thinkParam[533250000], npc.id, id); // 533250000 is rogier followy
 
             // STUB:: do stuff to this param lol
 
+            if (npc.follower) // remove back home distance if follower
+            {
+                row["maxBackhomeDist"].Value.SetValue(ushort.MaxValue);
+                row["backhomeDist"].Value.SetValue(ushort.MaxValue);
+                row["backhomeBattleDist"].Value.SetValue(ushort.MaxValue);
+            }
+
             AddRow(thinkParam, row);
         }
 
-        public void GenerateThinkParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        public void GenerateThinkParam(ItemManager itemManager, BaseScript script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
             FsParam.Row row = CloneRow(thinkParam[remap.think.row], creature.id, id);
@@ -1307,7 +1314,7 @@ namespace JortPob
         }
 
         /* Generates an itemlot with a single item with a flag. For item objects placed in the overworld that you can pick up as treasure. */
-        public int GenerateContentItemLot(Script script, ItemContent itemContent, ItemManager.ItemInfo itemInfo)
+        public int GenerateContentItemLot(BaseScript script, ItemContent itemContent, ItemManager.ItemInfo itemInfo)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             FsParam.Row row = CloneRow(itemLotParam[0], $"single, not repeatable, map treasure, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
@@ -1328,7 +1335,7 @@ namespace JortPob
         }
 
         /* Generates a map item lot from the inventory of an npccontent with a flag. This is for dead npcs that are just bodies that you loot NOT LIVING ONES! */
-        public int GenerateDeadBodyItemLot(Script script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateDeadBodyItemLot(BaseScript script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv
@@ -1357,7 +1364,7 @@ namespace JortPob
         }
 
         /* Generates a map item lot from the inventory of a container with a flag. Barrels, chests, boxes, etc... */
-        public int GenerateContainerItemLot(Script script, ContainerContent container, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateContainerItemLot(BaseScript script, ContainerContent container, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv
@@ -1390,7 +1397,7 @@ namespace JortPob
         }
 
         /* Generates an enemy item lot from the inventory of an npccontent with no flag. This is for LIVING npcs when the player kills them */
-        public int GenerateInventoryItemLot(Script script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateInventoryItemLot(BaseScript script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_enemy];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv

@@ -20,7 +20,7 @@ namespace JortPob
         private readonly TextManager textManager;
         private readonly ItemManager itemManager;
         private readonly SpeffManager speffManager;
-        private readonly Script areaScript;
+        private readonly BaseScript areaScript;
         private readonly CharacterContent npcContent;
 
         private readonly List<string> defs;
@@ -28,7 +28,7 @@ namespace JortPob
         private readonly Dictionary<NpcManager.TopicData.TalkData, int> choiceMap; // this is a fix for recursive choices. if we generate a choice and another dialog refs it we return the id of the alraedy gen'd one
         private int nxtGenStateId;
 
-        public DialogESD(ESM esm, Layout layout, SoulsFormats.MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
+        public DialogESD(ESM esm, Layout layout, SoulsFormats.MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, BaseScript areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
         {
             this.esm = esm;
             this.layout = layout;
@@ -1207,7 +1207,8 @@ namespace JortPob
                 case NpcContent.Witness.Citizen:
                     s = $""""
                         def t{id:D9}_x{x:D2}(crimeGold=_,violent=_):
-                            SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs, and turn us hostile
+                            SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs
+                            SetEventFlag({hostileFlag.id}, FlagState.On)   ## turn hostile to player
                             SetEventFlag({crimeNotif.id}, FlagState.On)    ## notify player crime was reported
                             SetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}, GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) + crimeGold)
                             GiveSpEffectToPlayer({(int)SpeffManager.Functional.Alarming})  ## add alarm speff to player since they did a crime

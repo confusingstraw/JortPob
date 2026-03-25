@@ -1,5 +1,4 @@
 ﻿using JortPob.Common;
-using Microsoft.Windows.Themes;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -226,6 +225,54 @@ namespace JortPob
             foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
             Lort.TaskIterate(); // Progress bar update
 
+            /* MSB promotion pre-process step */
+            /* Goal of this step is to identify all characters that have a "Follow" aipackage  or a "AiFollow" call that target them. */
+            void PreProcessFollow(Cell cell)
+            {
+                foreach (Content content in cell.contents)
+                {
+                    if (content is CharacterContent cc)
+                    {
+                        foreach (NpcContent.AiPackage package in cc.packages)
+                        {
+                            if (package.type == CharacterContent.AiPackage.Type.Follow && package.target == "player") { cc.follower = true; return; }
+                        }
+                    }
+                }
+            }
+            foreach (Cell cell in esm.exterior) { PreProcessFollow(cell); }  // handle ai packages part
+            foreach (Cell cell in esm.interior) { PreProcessFollow(cell); }
+
+            void SetFollowerFlagByRecordId(Cell cell, string id)
+            {
+                foreach (Content content in cell.contents)
+                {
+                    if (content is CharacterContent cc && content.id.Trim().ToLower() == id.Trim().ToLower())
+                    {
+                        cc.follower = true;
+                    }
+                }
+            }
+            foreach (Papyrus.Call call in allCalls) // Reusing "allCalls" list from above
+            {
+                // Grab record reference from target if exists
+                if (call.target != null && call.parameters.Count() > 0 && call.parameters[0].ToLower().Trim() == "player")
+                {
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.AiFollow:
+                        case Papyrus.Call.Type.AiFollowCell:
+                        case Papyrus.Call.Type.AiEscort:
+                        case Papyrus.Call.Type.AiEscortCell:
+                            foreach (Cell cell in esm.exterior) { SetFollowerFlagByRecordId(cell, call.target); }  // handle papyrus call part
+                            foreach (Cell cell in esm.interior) { SetFollowerFlagByRecordId(cell, call.target); }
+                            break;
+                        default: break;
+                    }
+                }
+            }
+
+
             /* Subdivide all cell content into tiles */
             Content EmitterConversionCheck(Content content)
             {
@@ -318,7 +365,7 @@ namespace JortPob
             {
                 InteriorGroup group = interiors[i];
                 List<Cell> cells = cellPreSort[i];
-                Script script = scriptManager.GetScript(group);
+                BaseScript script = scriptManager.GetScript(group);
 
                 foreach (Cell cell in cells)
                 {
@@ -597,8 +644,7 @@ namespace JortPob
             /* This assigns entity ids to objects that have scripts referencing them */
             /* It also in some cases creates flags and events for objects that require them. */
             /* Also notably we setup disable/enable flags here as well */
-            int debugCount = 0;
-            void PreprocessContent(Script areaScript, IEnumerable<Content> contents)
+            void PreprocessContent(BaseScript areaScript, IEnumerable<Content> contents)
             {
                 foreach (Content content in contents)
                 {
@@ -623,8 +669,6 @@ namespace JortPob
                             // Object disabled flag
                             Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
                         }
-
-                        debugCount++;
                     }
 
                     switch (content)
@@ -687,7 +731,7 @@ namespace JortPob
                 }
             }
 
-            foreach (Tile tile in tiles) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (BaseTile tile in all) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
@@ -701,7 +745,7 @@ namespace JortPob
             void ReplaceNpc(NpcContent original, PhasedNpcContent replacement)
             {
                 // Find any registration scripts pointing at the original content and murder them. This is kind of a bandaid fix for some unanticipated side effects. It gets the job done but ew.
-                void RemoveOriginalNpcRegistration(Script script)
+                void RemoveOriginalNpcRegistration(BaseScript script)
                 {
                     for(int i=0;i<script.init.Instructions.Count();i++)
                     {
@@ -731,7 +775,7 @@ namespace JortPob
                 }
 
                 // Find this content and replace it with a phased copy. Searches for matching reference, not by id or anything
-                bool DoReplacement(Script script, NpcContent original, List<NpcContent> npcs)
+                bool DoReplacement(BaseScript script, NpcContent original, List<NpcContent> npcs)
                 {
                     foreach (NpcContent c in npcs)
                     {
@@ -748,9 +792,9 @@ namespace JortPob
                     return false;
                 }
 
-                foreach(Tile t in tiles)
+                foreach(BaseTile t in all)
                 {
-                    Script script = scriptManager.GetScript(t);
+                    BaseScript script = scriptManager.GetScript(t);
                     if(DoReplacement(script, original, t.npcs)) { return; }
                 }
 
@@ -758,7 +802,7 @@ namespace JortPob
                 {
                     foreach (InteriorGroup.Chunk c in g.chunks)
                     {
-                        Script script = scriptManager.GetScript(g);
+                        BaseScript script = scriptManager.GetScript(g);
                         if (DoReplacement(script, original, c.npcs)) { return; }
                     }
                 }
@@ -766,7 +810,7 @@ namespace JortPob
                 throw new Exception("Failed to replace NPC during phased npc preprocess stage!"); // shouldn't happen in theory
             }
 
-            void HandleNpcPhase(Tile tile, InteriorGroup.Chunk chunk, Vector3 position, float rotation, Content content, Papyrus.Call call)
+            void HandleNpcPhase(BaseTile t, InteriorGroup.Chunk chunk, Vector3 position, float rotation, Content content, Papyrus.Call call)
             {
                 // Quick checks before we do anything
                 if (content == null && call.target == null) { Lort.Log($" ## Cannot handle self reference position call from empty context! '{call.RAW}' Bad!", Lort.Type.Debug); return; }
@@ -777,9 +821,9 @@ namespace JortPob
                 else
                 {
                     // See if our target is already phased
-                    foreach(var (t, _) in phases)
+                    foreach(var (n, _) in phases)
                     {
-                        if(t.id == call.target) { target = t; break; }
+                        if(n.id == call.target) { target = n; break; }
                     }
 
                     // Otherwise look for it
@@ -787,6 +831,14 @@ namespace JortPob
                 }
                 if (target == null) { return; } // Failed to find ref, likely a partial build where it doesn't exist
                 if (target is not NpcContent) { Lort.Log($" ## Position and PositionCell calls do not support '{target.type}' content. call = '{call.RAW}'", Lort.Type.Debug); return; }
+
+                // Determine if npc is msb promoted or not and set our target tile if so
+                BaseTile tile;
+                if (t != null && target is CharacterContent cc && cc.follower == true)
+                {
+                    tile = GetHugeTile(position);
+                }
+                else { tile = t; }
 
                 // See if there is already a phased npc for this content at the given location
                 PhasedNpcContent similar;
@@ -820,7 +872,7 @@ namespace JortPob
                 }
 
                 // Add a phased npc to the target location
-                Script script;
+                BaseScript script;
                 PhasedNpcContent pnpc;
                 if (tile != null)
                 {
@@ -861,7 +913,7 @@ namespace JortPob
                                 // Add a point at this position that will become a region we can use in scripts later to warp the player around
                                 if (call.target == "player")
                                 {
-                                    Script script = scriptManager.GetScript(target);
+                                    BaseScript script = scriptManager.GetScript(target);
                                     target.AddScriptedPosition(script, position, rot);
                                 }
                                 // Create a phased npc
@@ -882,7 +934,7 @@ namespace JortPob
                                 // Add a point at this position that will become a region we can use in scripts later to warp the player around
                                 if (call.target == "player")
                                 {
-                                    Script script = scriptManager.GetScript(target.group);
+                                    BaseScript script = scriptManager.GetScript(target.group);
                                     target.AddScriptedPosition(script, position, rot);
                                 }
                                 // Create a phased npc
@@ -899,7 +951,7 @@ namespace JortPob
                                 Tile target = GetTile(position);
                                 if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollow call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                Script script = scriptManager.GetScript(target);
+                                BaseScript script = scriptManager.GetScript(target);
                                 target.AddTravelPoint(script, position, 5f);
                                 break;
                             }
@@ -911,7 +963,7 @@ namespace JortPob
                                 InteriorGroup.Chunk target = FindChunk(name);
                                 if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollowCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                Script script = scriptManager.GetScript(target.group);
+                                BaseScript script = scriptManager.GetScript(target.group);
                                 target.AddTravelPoint(script, position, 5f);
                                 break;
                             }
@@ -927,7 +979,7 @@ namespace JortPob
                                     Tile t = GetTile(position);
                                     if (t == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                    Script script = scriptManager.GetScript(t);
+                                    BaseScript script = scriptManager.GetScript(t);
                                     t.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
                                 }
                                 else
@@ -936,7 +988,7 @@ namespace JortPob
                                     InteriorGroup.Chunk c = FindChunk(name);
                                     if (c == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                    Script script = scriptManager.GetScript(c.group);
+                                    BaseScript script = scriptManager.GetScript(c.group);
                                     c.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
                                 }
                                 break;
@@ -1168,9 +1220,9 @@ namespace JortPob
 
 
         /* These 2 funcs search by reference. It's finding where this specific content object is located */
-        public Tile FindTile(Content source)
+        public BaseTile FindTile(Content source)
         {
-            foreach(Tile tile in tiles)
+            foreach(BaseTile tile in all)
             {
                 foreach (Content content in tile.GetAllContent())
                 {
@@ -1226,7 +1278,7 @@ namespace JortPob
             if (source != null)
             {
                 IEnumerable<Content> local;
-                Tile tile = FindTile(source);
+                BaseTile tile = FindTile(source);
                 if (tile != null)
                 {
                     local = tile.GetAllContent();
@@ -1247,7 +1299,7 @@ namespace JortPob
             }
 
             // not found in local area, search whole world now
-            foreach(Tile t in tiles)
+            foreach(BaseTile t in all)
             {
                 foreach(Content c in t.GetAllContent())
                 {
@@ -1333,9 +1385,13 @@ namespace JortPob
         public List<PathGridPoint> GetWanderable(Content content, float radius)
         {
             List<PathGridPoint> source;
-            Tile tile = FindTile(content);
-            if (tile != null) { source = tile.paths; }
-            else { source = FindChunk(content).paths; }
+            BaseTile tile = FindTile(content);
+            if (tile != null && tile is Tile t) { source = t.paths; }
+            else {
+                InteriorGroup.Chunk chunk = FindChunk(content);
+                if(chunk != null) { source = chunk.paths; }
+                else { return new(); }  // @TODO: DEBUGGIN, PLEASE CHANGE TO PROPER LOOKUP
+            }
 
             List<PathGridPoint> result = new();
             foreach (PathGridPoint p in source)

@@ -14,12 +14,12 @@ namespace JortPob
         private readonly ScriptManager scriptManager;
         private readonly Paramanager paramanager;
         private readonly TextManager textManager;
-        private readonly Script areaScript;
+        private readonly BaseScript areaScript;
         private readonly Content content;
 
         private readonly string esd;
 
-        public PapyrusESD(ESM esm, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, Script areaScript, Content content, Papyrus papyrus, uint id)
+        public PapyrusESD(ESM esm, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, BaseScript areaScript, Content content, Papyrus papyrus, uint id)
         {
             this.esm = esm;
             this.scriptManager = scriptManager;

@@ -58,7 +58,7 @@ namespace JortPob
             nextBedId = 90000;
         }
 
-        public (int npc, int think, int init) GetParams(ItemManager itemManager, Script script, NpcContent content)
+        public (int npc, int think, int init) GetParams(ItemManager itemManager, BaseScript script, NpcContent content)
         {
             int npcRow = GetNpcParam(itemManager, script, content);
             int thinkRow = GetThinkParam(itemManager, script, content);
@@ -67,14 +67,14 @@ namespace JortPob
             return (npcRow, thinkRow, charInitRow);
         }
 
-        private int GetNpcParam(ItemManager itemManager, Script script, NpcContent content)
+        private int GetNpcParam(ItemManager itemManager, BaseScript script, NpcContent content)
         {
             int id = nextNpcParamId += 10;
             paramanager.GenerateNpcParam(itemManager, script, content, id);
             return id;
         }
 
-        private int GetThinkParam(ItemManager itemManager, Script script, NpcContent content)
+        private int GetThinkParam(ItemManager itemManager, BaseScript script, NpcContent content)
         {
             int id = nextNpcThinkParamId += 10;
             paramanager.GenerateThinkParam(itemManager, script, content, id);
@@ -88,7 +88,7 @@ namespace JortPob
             return id;
         }
 
-        public (int npc, int think, int init) GetParams(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        public (int npc, int think, int init) GetParams(ItemManager itemManager, BaseScript script, CreatureContent content, Override.EnemyRemap remap)
         {
             int npcRow = GetNpcParam(itemManager, script, content, remap);
             int thinkRow = GetThinkParam(itemManager, script, content, remap);
@@ -96,14 +96,14 @@ namespace JortPob
             return (npcRow, thinkRow, -1);
         }
 
-        private int GetNpcParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        private int GetNpcParam(ItemManager itemManager, BaseScript script, CreatureContent content, Override.EnemyRemap remap)
         {
             int id = nextNpcParamId += 10;
             paramanager.GenerateNpcParam(itemManager, script, content, id, remap);
             return id;
         }
 
-        private int GetThinkParam(ItemManager itemManager, Script script, CreatureContent content, Override.EnemyRemap remap)
+        private int GetThinkParam(ItemManager itemManager, BaseScript script, CreatureContent content, Override.EnemyRemap remap)
         {
             int id = nextNpcThinkParamId += 10;
             paramanager.GenerateThinkParam(itemManager, script, content, id, remap);
@@ -190,7 +190,7 @@ namespace JortPob
 
             int esdId = int.Parse($"{bankInfo.id.ToString("D3")}{bankInfo.uses++.ToString("D2")}{msbIdList[0]:D2}{(msbIdList[0]==60?0:msbIdList[1]):D2}");  // i know guh guhhhhh
 
-            Script areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
+            BaseScript areaScript = scriptManager.GetScript(msbIdList[0], msbIdList[1], msbIdList[2], msbIdList[3]); // get area script for this npc
 
             DialogESD dialogEsd = new(esm, layout, msb, soundManager.main, scriptManager, paramanager, textManager, itemManager, speffManager, areaScript, (uint)esdId, content, data);
             string pyPath = Path.Combine(Const.CACHE_PATH, "esd", $"t{esdId:D9}.py");
@@ -208,7 +208,7 @@ namespace JortPob
         // does not support "Escort" package, literally unused in base game
         // does not support follow endpoint goals, i have no idea why you would use those in a default package anyawys so yeah
         // follow only supports player. i dont think its possible to do npcs following eachother in elden ring
-        public void SetupPackages(MSBE msb, Script script, CharacterContent content)
+        public void SetupPackages(MSBE msb, BaseScript script, CharacterContent content)
         {
             // Function for creating events for duration based timers
             Script.Flag CreateDurationEvent(Script.Flag packageIndexFlag, int i, float duration)

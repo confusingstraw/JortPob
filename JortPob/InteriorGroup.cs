@@ -153,7 +153,7 @@ namespace JortPob
                 }
 
                 /* Add cells pathgrid to the tile */
-                Script script = scriptManager.GetScript(group);
+                BaseScript script = scriptManager.GetScript(group);
                 for (int i=0;i<cell.paths.Count();i++)
                 {
                     Vector3 path = cell.paths[i];
@@ -193,7 +193,7 @@ namespace JortPob
                 warps.Add(dest);
             }
 
-            public void AddScriptedPosition(Script script, Vector3 position, float rot)
+            public void AddScriptedPosition(BaseScript script, Vector3 position, float rot)
             {
                 Vector3 relative = position + root - offset;
                 Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
@@ -246,7 +246,7 @@ namespace JortPob
             }
 
             /* Add travelpoint */
-            public void AddTravelPoint(Script script, Vector3 point, float radius = -1f)
+            public void AddTravelPoint(BaseScript script, Vector3 point, float radius = -1f)
             {
                 Vector3 relative = point + root - offset;
                 uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point.ToString()}");
@@ -257,7 +257,7 @@ namespace JortPob
             /* Converts all "Travel" positions to scriptedpositions */
             public void ProcessTravelPoints(ScriptManager scriptManager)
             {
-                Script script = scriptManager.GetScript(group);
+                BaseScript script = scriptManager.GetScript(group);
                 void HandleCharacterContent(CharacterContent content)
                 {
                     foreach (CharacterContent.AiPackage package in content.packages)

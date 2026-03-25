@@ -60,14 +60,14 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
-        public new void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
+        public override void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
-            // Special case: if content has a papyrus script it needs to be put in the small tile. large tiles dont have attached EMEVD scripts so they cant live there
-            if(content.papyrus != null || forceFallThrough) { GetTile(cell.center).AddContent(cache, cell, content); return; }
-
             switch (content)
             {
                 case AssetContent a:
+                    // Special case: if content has a papyrus script it needs to be put in the small tile. large tiles dont have attached EMEVD scripts so they cant live there
+                    if (content.papyrus != null || forceFallThrough) { GetTile(cell.center).AddContent(cache, cell, content); return; }
+
                     ModelInfo modelInfo = cache.GetModel(a.mesh);
                     if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
                     {
@@ -79,6 +79,18 @@ namespace JortPob
                         content.load = tile.coordinate;
                         base.AddContent(cache, cell, content);
                         tile.AddNav(cache, cell, content);
+                        break;
+                    }
+                    goto default;
+                case CharacterContent c:
+                    if(c.follower)
+                    {
+                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
+                        Tile tile = GetTile(cell.center);
+                        content.load = tile.coordinate;
+                        base.AddContent(cache, cell, content);
                         break;
                     }
                     goto default;
