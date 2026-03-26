@@ -1,5 +1,6 @@
 ﻿using SoulsFormats;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
 
@@ -17,6 +18,7 @@ namespace JortPob.Common
         public static ConcurrentDictionary<LiquidInfo, int> WaterInstances { get; } = new();
         public static ConcurrentDictionary<string, int> VanillaAssetInstances { get; } = new();
         public static int PlayerInstances = 9000;
+        public static int NextPatrolEvent = 0;
 
         /* Makes simple collideable asset */
         /* Values for this generic asset generator are taken from a random stone ruin in the church of elleh area 'AEG007_077' */
@@ -729,6 +731,97 @@ namespace JortPob.Common
             enemy.UnkT84 = 1;
 
             return enemy;
+        }
+
+        /* Deprecated, not used */
+        public static MSBE.Event.PatrolInfo PatrolRandom(List<Layout.PathGridPoint> points)
+        {
+            MSBE.Event.PatrolInfo patrol = new();
+            patrol.Name = $"Patrol_{NextPatrolEvent:D4}";
+            patrol.EventID = NextPatrolEvent;
+            patrol.EntityID = 0;
+
+            patrol.PatrolType = 2;
+
+            patrol.MapID = -1;
+            patrol.Unk14 = 0;
+            patrol.UnkE0C = 255;
+            patrol.UnkS04 = 0;
+            patrol.UnkS08 = 0;
+            patrol.UnkS0C = -1;
+
+            for (int i=0;i<points.Count&&i<patrol.WalkRegionNames.Length;i++)
+            {
+                Layout.PathGridPoint point = points[i];
+                patrol.WalkRegionNames[i] = point.name;
+            }
+
+            NextPatrolEvent++;
+            return patrol;
+        }
+
+        public static MSBE.Event.PatrolInfo PatrolRandom()
+        {
+            MSBE.Event.PatrolInfo patrol = new();
+            patrol.Name = $"Patrol_{NextPatrolEvent:D4}";
+            patrol.EventID = NextPatrolEvent;
+            patrol.EntityID = 0;
+
+            patrol.PatrolType = 6;
+
+            patrol.MapID = -1;
+            patrol.Unk14 = 0;
+            patrol.UnkE0C = 255;
+            patrol.UnkS04 = 0;
+            patrol.UnkS08 = 0;
+            patrol.UnkS0C = -1;
+
+            NextPatrolEvent++;
+            return patrol;
+        }
+
+        public static MSBE.Event.PatrolInfo PatrolTo(Layout.PathGridPoint point)
+        {
+            MSBE.Event.PatrolInfo patrol = new();
+            patrol.Name = $"Patrol_{NextPatrolEvent:D4}";
+            patrol.EventID = NextPatrolEvent;
+            patrol.EntityID = 0;
+
+            patrol.PatrolType = 0;
+
+            patrol.MapID = -1;
+            patrol.Unk14 = 0;
+            patrol.UnkE0C = 255;
+            patrol.UnkS04 = 0;
+            patrol.UnkS08 = 0;
+            patrol.UnkS0C = -1;
+
+            patrol.WalkRegionNames[0] = point.name;
+
+            NextPatrolEvent++;
+            return patrol;
+        }
+
+        public static MSBE.Event.PatrolInfo PatrolTo(Layout.TravelPoint tp)
+        {
+            MSBE.Event.PatrolInfo patrol = new();
+            patrol.Name = $"Patrol_{NextPatrolEvent:D4}";
+            patrol.EventID = NextPatrolEvent;
+            patrol.EntityID = 0;
+
+            patrol.PatrolType = 0;
+
+            patrol.MapID = -1;
+            patrol.Unk14 = 0;
+            patrol.UnkE0C = 255;
+            patrol.UnkS04 = 0;
+            patrol.UnkS08 = 0;
+            patrol.UnkS0C = -1;
+
+            patrol.WalkRegionNames[0] = tp.name;
+
+            NextPatrolEvent++;
+            return patrol;
         }
     }
 }

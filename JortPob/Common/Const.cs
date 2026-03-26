@@ -115,7 +115,11 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_BOTTOM = 101;
         public static readonly short FLVER_DMY_TOP = 102;
 
+        /// Random magic number used in NVA.Navmesh 
         public static readonly int NVA_NV_UNK00_MAGIC = 1726789910;
+
+        /// when creating regions for patrol routes or travel points or whatever, use this size sphere
+        public static readonly float PATH_REGION_SIZE = 2f;
 
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
         public static readonly int ASSET_GROUP = 900;
@@ -210,6 +214,11 @@ namespace JortPob.Common
 
         /// distance in cells multiplied by this value
         public static readonly int TRAVEL_DISTANCE_COST = 10;
+
+        /// distance for hello trigger and hello untrigger
+        public static readonly float NPC_HELLO_DIST_IN = 3f;
+        public static readonly float NPC_HELLO_DIST_OUT = 4f;
+        public static readonly float NPC_IDLE_DIST_OUT = 12f;
 
         #endregion
 

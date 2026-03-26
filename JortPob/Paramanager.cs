@@ -880,7 +880,7 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(creature.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)(creature.hostile ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
+            row.Cells[105].SetValue((byte)(creature.IsHostile() ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
             // @TODO: apply data from json remap to param!
@@ -891,7 +891,7 @@ namespace JortPob
         public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
-            FsParam.Row row = CloneRow(thinkParam[523010000], npc.id, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(thinkParam[533250000], npc.id, id); // 533250000 is rogier followy
 
             // STUB:: do stuff to this param lol
 
@@ -1365,6 +1365,7 @@ namespace JortPob
 
             int i = 0;
             int baseRow = nextMapItemLotId;
+            int totalValue = 0;
             foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
             {
                 Script.Flag itemLotFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Item, $"Container::{container.id}:{0}");
@@ -1378,10 +1379,11 @@ namespace JortPob
                 row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
                 i++;
+                totalValue += entry.item.value;
                 AddRow(itemLotParam, row);
             }
 
-            script.RegisterContainerAsset(container);
+            script.RegisterContainerAsset(container, totalValue);
 
             nextMapItemLotId += 10;
             return baseRow;

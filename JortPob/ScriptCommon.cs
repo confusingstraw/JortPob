@@ -22,7 +22,7 @@ namespace JortPob
 
         public enum Event
         {
-            SpawnHandler, SpawnHandlerDisableable, SpawnHandlerPhased, IntSpawnHandler, IntSpawnHandlerDisableable, IntSpawnHandlerPhased,
+            SpawnHandler, SpawnHandlerDisableable, SpawnHandlerPhased, IntSpawnHandler, IntSpawnHandlerDisableable, IntSpawnHandlerPhased, Halt,
             LoadDoor, NpcHostilityHandler, Message, Essential, DeadBody, 
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
             StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight, GetSecondsPassed
@@ -123,6 +123,42 @@ namespace JortPob
 
             func.Events.Add(spawnHandler);
             events.Add(Event.SpawnHandler, spawnEventFlag.id);
+
+            /* Create an event for handling npc halting */
+            Flag haltEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Halt");
+            EMEVD.Event haltEvent = new(haltEventFlag.id);
+
+            pc = 0;
+
+            string[] haltEventRaw = new string[]
+            {
+                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if npc is dead ...
+                $"EndUnconditionally(EventEndType.End);",                                           // kill event
+
+                $"IfEntityInoutsideRadiusOfEntity(AND_01, InsideOutsideState.Inside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_IN}, 1);",   // blocking wait distance check for player close enough AND ...
+                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                  // ... blocking wait until hostile flag is off
+                $"IfConditionGroup(MAIN, PASS, AND_01);",
+                $"SetCharacterAIState({NextParameterName()}, Disabled);",                                                                          // disable ai
+                $"RotateCharacter({NextParameterName()}, 10000, -1, false)",                                                                      // rotate to face player
+
+                $"IfEntityInoutsideRadiusOfEntity(OR_01, InsideOutsideState.Outside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_OUT}, 1);",  // blocking wait distance check for player far enough OR...
+                $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                    // ... blocking wait until hostile flag is on
+                $"IfConditionGroup(MAIN, PASS, OR_01);",
+                $"SetCharacterAIState({NextParameterName()}, Enabled);",                            // enable ai
+                $"RequestCharacterAIReplan({NextParameterName()});",                               // make brain work good
+
+                $"EndUnconditionally(EventEndType.Restart);",     // restart event
+            };
+
+            for (int i = 0; i < haltEventRaw.Length; i++)
+            {
+                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(haltEventRaw[i], i);
+                haltEvent.Parameters.AddRange(newPs);
+                haltEvent.Instructions.Add(instr);
+            }
+
+            func.Events.Add(haltEvent);
+            events.Add(Event.Halt, haltEventFlag.id);
 
             /* Create an event for handling creature/npc spawn/respawn and disable/enable */
             Flag spawnHandlerWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandlerDisableable");
@@ -304,8 +340,10 @@ namespace JortPob
             {
                 $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", 
                 $"SetCharacterTeamType({NextParameterName()}, 27);",   // hostile flag on, hostile   >:(     // 27: TeamType.HostileNPC
+                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now enemies
                 $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"SetCharacterTeamType({NextParameterName()}, 26);",   // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now friends
                 $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
             };
 
@@ -435,6 +473,7 @@ namespace JortPob
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
+                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
 
             for (int i = 0; i < ownedItemAssetWithDisableEventRaw.Length; i++)
@@ -488,6 +527,7 @@ namespace JortPob
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
+                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
 
             for (int i = 0; i < ownedItemAssetEventRaw.Length; i++)
@@ -612,8 +652,10 @@ namespace JortPob
             {
                 $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
                 $"SetCharacterTeamType({NextParameterName()}, 29);",   // hostile flag on, hostile   >:(     // 29: TeamType.Indiscriminate
+                $"SetSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
                 $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
                 $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
+                $"ClearSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
                 $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
             };
 

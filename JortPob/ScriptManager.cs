@@ -3,6 +3,7 @@ using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Script;
@@ -150,8 +151,12 @@ namespace JortPob
             // Crime gold to be paid to guards
             common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.CrimeLevel, "CrimeLevel");
 
+            // Arrest flat, set to true when a guard attempts to arrest you. Resets on game load. Makes it so guards attempt arrest once then just kill you if you resist
+            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.Arrest, "Arrest");
+
             // Crime absolved flag
             common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeAbsolved, "CrimeAbsolved"); // not temp since load screen happens if going to jail
+            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.ResetHostility, "ResetHostility");
 
             // Temp flag that is set when a guard is talking to the player, used to control some guard aggro stuff
             common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
@@ -504,14 +509,22 @@ namespace JortPob
             Script.Flag crimeLevel = GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"EventValueOperation({crimeLevel.id}, {crimeLevel.Bits()}, 0, 0, 1, 5);")); // 5 is CalculationType.Assign
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            Script.Flag arrestFlag = GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {arrestFlag.id}, OFF);"));  // arrest attempt flag is set back to off
+
+            Script.Flag guardGreetFlag = GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {guardGreetFlag.id}, OFF);"));  // guard greet flag back off just incase it got stuck on
+
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
+
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
             foreach (Script.Flag flag in allFlags)
             {
                 if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
-                if (flag.value != 0) { continue; }                                      // don't reset hostility flags for npcs that are naturally hostile
-                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, OFF);"));
+                string onOff = flag.value == 0 ? "Off" : "On";
+                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
 
-                if(delayCounter++ > 512)
+                if(++delayCounter > 512)
                 {
                     absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;
@@ -524,6 +537,49 @@ namespace JortPob
             common.emevd.Events.Add(absolveEvent);
             common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {eventFlag.id})"));  // initialize in common
         }
+
+        /* This function is very similar to CrimeAbsolve above but only resets hostility. This is used when the player rests to make npcs that the player provoked return to neutral */
+        public void GenerateGlobalResetHostilityEvent()
+        {
+            List<Script.Flag> allFlags = [.. common.flags];
+            allFlags.AddRange(scripts.SelectMany(script => script.flags));
+
+            Script.Flag eventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "Global:ResetHostilityEvent");
+            EMEVD.Event resetEvent = new();
+            resetEvent.ID = eventFlag.id;
+
+            Script.Flag resetFlag = GetFlag(Script.Flag.Designation.ResetHostility, "ResetHostility");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {resetFlag.id});"));  // if absolve flag set
+
+            Script.Flag arrestFlag = GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {arrestFlag.id}, OFF);"));  // arrest attempt flag is set back to off
+
+            Script.Flag guardGreetFlag = GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {guardGreetFlag.id}, OFF);"));  // guard greet flag back off just incase it got stuck on
+
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
+
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
+            foreach (Script.Flag flag in allFlags)
+            {
+                if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
+                string onOff = flag.value == 0 ? "Off" : "On";
+                resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
+
+                if (++delayCounter > 512)
+                {
+                    resetEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
+                    delayCounter = 0;
+                }
+            }
+
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {resetFlag.id}, OFF);"));
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);")); // restart so its ready to go again when the player fucks up
+
+            common.emevd.Events.Add(resetEvent);
+            common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {eventFlag.id})"));  // initialize in common
+        }
+
 
         public void GenerateAreaEvents()
         {
@@ -610,12 +666,25 @@ namespace JortPob
             }
             File.WriteAllLines(Path.Combine(Const.OUTPUT_PATH, "flag information.txt"), flagInfo.ToArray());
 
+            /* Write EMEVD scripts */
             Lort.Log($"Writing {scripts.Count + 1} EMEVDs...", Lort.Type.Main);
             common.Write();
             foreach(Script script in scripts)
             {
                 script.Write();
             }
+
+            /* Write lua ai logic binds */
+            BindLua();
+        }
+
+        /* Write ai logic luabnd */
+        public void BindLua()
+        {
+            // Handles 030000_logic specifically
+            BND4 bnd = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\script\030000_logic.luabnd.dcx"));
+            bnd.Files[0].Bytes = File.ReadAllBytes(Utility.ResourcePath(@"ai\030000_logic.lua"));
+            bnd.Write(Path.Combine(Const.OUTPUT_PATH, @"script\030000_logic.luabnd.dcx"));
         }
     }
 }

@@ -17,6 +17,7 @@ namespace JortPob
             Script.Flag dayFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "day");
             Script.Flag daysPassedFlag = scriptManager.GetFlag(Script.Flag.Designation.Global, "dayspassed");
             Script.Flag messageFlag = scriptManager.common.GetOrRegisterNotification(paramanager, "This bed is owned by someone else!");
+            Script.Flag resetFlag = scriptManager.GetFlag(Script.Flag.Designation.ResetHostility, "ResetHostility");
 
             /* Find owner if exists */
             Script.Flag ownerFlag;
@@ -157,8 +158,6 @@ namespace JortPob
                          def ExitPause():
                              ClearPreviousMenuSelection()
                          assert t{id:D9}_x3()
-                         SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
-                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
                      # 2 - "Long Rest"
                      elif GetTalkListEntryResult() == 2:
                          SetCanOpenMap(False)
@@ -202,16 +201,27 @@ namespace JortPob
                          def ExitPause():
                              HideClock(0.5)
                          assert t{id:D9}_x45(val1=0)
+                         SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
+                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
+                         return 0
                      elif GetTalkListEntryResult() == 2:
                          def ExitPause():
                              HideClock(0.5)
                          assert t{id:D9}_x45(val1=1)
+                         SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
+                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
+                         return 0
                      elif GetTalkListEntryResult() == 3:
                          def ExitPause():
                              HideClock(0.5)
                          assert t{id:D9}_x45(val1=2)
+                         SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
+                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
+                         return 0
                      else:
                          assert t{id:D9}_x72()
+                         SetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}, GetEventFlagValue({dayFlag.id}, {dayFlag.Bits()}) + 1 )
+                         SetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}, GetEventFlagValue({daysPassedFlag.id}, {daysPassedFlag.Bits()}) + 1 )
                          return 0
 
              # Force Exit
@@ -273,6 +283,7 @@ namespace JortPob
                  GiveSpEffectToPlayer(109)
                  UpdatePlayerRespawnPoint()
                  ClearPlayerDamageInfo()
+                 SetEventFlag({resetFlag.id}, FlagState.On)   ## reset any npcs that the player made hostile
                  assert GetCurrentStateElapsedTime() > 2.5
                  return 0
 

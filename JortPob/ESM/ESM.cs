@@ -273,6 +273,29 @@ namespace JortPob
             return null; // Not found!
         }
 
+        /* Gets a pathgrid record for the given cell name/grid. cell name is used by interiors and grid is used by exteriors */
+        public JsonNode FindPathRecord(string cell)
+        {
+            foreach (JsonNode json in GetAllRecordsByType(Type.PathGrid))
+            {
+                string name = json["cell"].GetValue<string>().ToLower();
+                if (cell.ToLower() == name) { return json; }
+            }
+            return null;
+        }
+
+        public JsonNode FindPathRecord(Int2 coordinate)
+        {
+            foreach (JsonNode json in GetAllRecordsByType(Type.PathGrid))
+            {
+                int x = json["data"]["grid"].AsArray()[0].GetValue<int>();
+                int y = json["data"]["grid"].AsArray()[1].GetValue<int>();
+                Int2 grid = new(x, y);
+                if (grid == coordinate) { return json; }
+            }
+            return null;
+        }
+
         public IEnumerable<JsonNode> GetAllRecordsByType(Type type)
         {
             return recordsByType[type].Values.Concat(unidentifiedRecordsByType[type]);
