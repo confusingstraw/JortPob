@@ -1031,6 +1031,18 @@ namespace JortPob
                 }
             }
 
+            foreach(Papyrus papyrus in esm.scripts)
+            {
+                foreach(Papyrus.Call call in papyrus.GetCalls(Papyrus.Call.Type.StartScript))
+                {
+                    Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
+                    if (subscript == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = subscript.GetCalls();
+                    PreProcessScriptedPositions(null, calls);
+                }
+            }
+
             foreach (Dialog.DialogRecord dialog in esm.dialog)
             {
                 List<Papyrus.Call> calls = dialog.GetCalls();
@@ -1330,14 +1342,9 @@ namespace JortPob
         /* Finds scripted position in exterior */
         public ScriptedPosition FindScriptedPosition(Vector3 position)
         {
-            foreach(Tile tile in tiles)
-            {
-                foreach(ScriptedPosition sp in tile.positions)
-                {
-                    if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
-                }
-            }
-            return null;
+            return tiles
+                .SelectMany(tile => tile.positions)
+                .FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
         }
 
         /* Finds scripted position in interior */
@@ -1346,25 +1353,15 @@ namespace JortPob
             if (name == null) { return FindScriptedPosition(position); }  // if location = null then we assume its an exterior
 
             InteriorGroup.Chunk chunk = FindChunk(name);
-            if (chunk == null) { return null; } // partial build case
-            foreach(ScriptedPosition sp in chunk.positions)
-            {
-                if (Vector3.Distance(position, sp.position) < 0.1f) { return sp; }
-            }
-            return null;
+            return chunk?.positions.FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
         }
 
         /* Finds travel position for aipackage in an exterior */
         public TravelPoint FindTravelable(Vector3 position)
         {
-            foreach (Tile tile in tiles)
-            {
-                foreach (TravelPoint tp in tile.travels)
-                {
-                    if (Vector3.Distance(position, tp.position) < 0.1f) { return tp; }
-                }
-            }
-            return null;
+            return tiles
+                .SelectMany(tile => tile.travels)
+                .FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
         /* Finds travel position for aipackage in an interior */
@@ -1373,12 +1370,7 @@ namespace JortPob
             if (name == null) { return FindTravelable(position); }  // if location = null then we assume its an exterior
 
             InteriorGroup.Chunk chunk = FindChunk(name);
-            if (chunk == null) { return null; } // partial build case
-            foreach (TravelPoint tp in chunk.travels)
-            {
-                if (Vector3.Distance(position, tp.position) < 0.1f) { return tp; }
-            }
-            return null;
+            return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
         /* Find all pathgridpoints within the radius of the given content */

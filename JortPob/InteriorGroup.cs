@@ -88,9 +88,9 @@ namespace JortPob
 
         public void ProcessTravelPositions(ScriptManager scriptManager)
         {
-            for (int i = 0; i < chunks.Count(); i++)
+            foreach(InteriorGroup.Chunk chunk in chunks)
             {
-                chunks[i].ProcessTravelPoints(scriptManager);
+                chunk.ProcessTravelPoints(scriptManager);
             }
         }
 

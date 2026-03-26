@@ -215,6 +215,11 @@ namespace JortPob.Common
         /// distance in cells multiplied by this value
         public static readonly int TRAVEL_DISTANCE_COST = 10;
 
+        /// distance for hello trigger and hello untrigger
+        public static readonly float NPC_HELLO_DIST_IN = 3f;
+        public static readonly float NPC_HELLO_DIST_OUT = 4f;
+        public static readonly float NPC_IDLE_DIST_OUT = 12f;
+
         #endregion
 
         #region Dialog

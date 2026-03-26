@@ -470,10 +470,8 @@ namespace JortPob
                 if(isTileType)
                 {
                     Tile t = tile as Tile;
-                    for(int i=0;i<t.paths.Count();i++)
+                    foreach (Layout.PathGridPoint point in t.paths)
                     {
-                        Layout.PathGridPoint point = t.paths[i];
-
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = point.name;
                         region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
@@ -494,10 +492,8 @@ namespace JortPob
                     }
 
                     /* Add TravelPoints */
-                    for (int j = 0; j < t.travels.Count(); j++)
+                    foreach (Layout.TravelPoint travel in t.travels)
                     {
-                        Layout.TravelPoint travel = t.travels[j];
-
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = travel.name;
                         region.Shape = new MSB.Shape.Sphere(travel.radius);
@@ -954,10 +950,8 @@ namespace JortPob
                     }
 
                     /* Add PathGridPoints */
-                    for (int j = 0; j < chunk.paths.Count(); j++)
+                    foreach (Layout.PathGridPoint point in chunk.paths)
                     {
-                        Layout.PathGridPoint point = chunk.paths[j];
-
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = point.name;
                         region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
@@ -978,10 +972,8 @@ namespace JortPob
                     }
 
                     /* Add TravelPoints */
-                    for (int j = 0; j < chunk.travels.Count(); j++)
+                    foreach (Layout.TravelPoint travel in chunk.travels)
                     {
-                        Layout.TravelPoint travel = chunk.travels[j];
-
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = travel.name;
                         region.Shape = new MSB.Shape.Sphere(travel.radius);
