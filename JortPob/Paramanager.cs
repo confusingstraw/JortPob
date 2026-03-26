@@ -1327,7 +1327,7 @@ namespace JortPob
             row["lotItemNum01"].Value.SetValue((byte)1);
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
-            script.RegisterItemAsset(itemContent);
+            script.RegisterItemAsset(this, itemContent);
 
             AddRow(itemLotParam, row);
             nextMapItemLotId += 10;
@@ -1390,7 +1390,7 @@ namespace JortPob
                 AddRow(itemLotParam, row);
             }
 
-            script.RegisterContainerAsset(container, totalValue);
+            script.RegisterContainerAsset(this, container, totalValue);
 
             nextMapItemLotId += 10;
             return baseRow;

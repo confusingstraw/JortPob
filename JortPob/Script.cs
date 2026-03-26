@@ -91,7 +91,7 @@ namespace JortPob
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.LoadDoor]}, {actionParamId}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 
-        public override void RegisterItemAsset(ItemContent item)
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item)
         {
             CharacterContent owner;
             if(item.ownerNpc != null) { owner = GetAreaNpcById(item.ownerNpc); }
@@ -118,6 +118,7 @@ namespace JortPob
                 Flag crimeLevel = manager.GetFlag(Designation.CrimeLevel, "CrimeLevel");
                 Flag crimeFlag = manager.GetFlag(Designation.CrimeEvent, owner);
                 Flag thiefFlag = manager.GetFlag(Designation.ThiefCrime, owner);
+                Flag notifFlag = manager.common.GetOrRegisterNotification(paramanager, "Your crime was reported!");
 
                 List<string> parameters = new()
                 {
@@ -128,6 +129,7 @@ namespace JortPob
                     ownerDead.id.ToString(),
                     owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
+                    notifFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
                     item.value.ToString()
@@ -146,7 +148,7 @@ namespace JortPob
             }
         }
 
-        public override void RegisterContainerAsset(ContainerContent container, int totalValue)
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue)
         {
             CharacterContent owner;
             if (container.ownerNpc != null) { owner = GetAreaNpcById(container.ownerNpc); }
@@ -158,6 +160,7 @@ namespace JortPob
                 Flag crimeLevel = manager.GetFlag(Designation.CrimeLevel, "CrimeLevel");
                 Flag crimeFlag = manager.GetFlag(Designation.CrimeEvent, owner);
                 Flag thiefFlag = manager.GetFlag(Designation.ThiefCrime, owner);
+                Flag notifFlag = manager.common.GetOrRegisterNotification(paramanager, "Your crime was reported!");
 
                 List<string> parameters = new()
                 {
@@ -166,6 +169,7 @@ namespace JortPob
                     ownerDead.id.ToString(),
                     owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
+                    notifFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
                     totalValue.ToString()

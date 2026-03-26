@@ -468,6 +468,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
@@ -522,6 +523,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
@@ -550,6 +552,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
             };
 
@@ -1147,8 +1150,8 @@ namespace JortPob
         /* Abstracts scripts that ScriptCommon does not support */
         public override (uint bed, uint respawn) RegisterBed() { throw new System.Exception("Unsupported!"); }
         public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo) { throw new System.Exception("Unsupported!"); }
-        public override void RegisterItemAsset(ItemContent item) { throw new System.Exception("Unsupported!"); }
-        public override void RegisterContainerAsset(ContainerContent container, int totalValue) { throw new System.Exception("Unsupported!"); }
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.Exception("Unsupported!"); }
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.Exception("Unsupported!"); }
         public override Flag GetOrRegisterTriggerDisable(Content content) { throw new System.Exception("Unsupported!"); }
         public override Flag GetOrRegisterTriggerEnable(Content content) { throw new System.Exception("Unsupported!"); }
         public override Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.Exception("Unsupported!"); }
