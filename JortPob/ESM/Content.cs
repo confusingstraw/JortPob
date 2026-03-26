@@ -133,7 +133,7 @@ namespace JortPob
 
         public Script.Flag treasure; // only used if this is a dead body npc and it has treasure. otherwise null. NEVER SET THIS FOR A LIVING NPC!!!
 
-        public bool follower;       // Flagged for msb promoted followers. If true this character will be placed in a HugeTile with special scripts to keep it from falling out of the world
+        public bool follower;       // Flagged for msb promoted followers. If true this character will be placed in a HugeTile and its scripts will be compiled into ScriptCommon.
 
         public class Travel : DoorContent.Warp
         {

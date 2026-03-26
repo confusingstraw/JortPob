@@ -745,7 +745,7 @@ namespace JortPob
             void ReplaceNpc(NpcContent original, PhasedNpcContent replacement)
             {
                 // Find any registration scripts pointing at the original content and murder them. This is kind of a bandaid fix for some unanticipated side effects. It gets the job done but ew.
-                void RemoveOriginalNpcRegistration(BaseScript script)
+                void RemoveOriginalNpcRegistration(BaseScript script)  // @TODO: may be worth it to simply move this stage up a little bit in this constructor stack to avoid this even happening
                 {
                     for(int i=0;i<script.init.Instructions.Count();i++)
                     {

@@ -18,6 +18,9 @@ namespace JortPob
         {
             /* DEFINE SOME LOCAL FUNCTIONS FIRST */
 
+            /* Simple bool for no context main scripts. This only applies to specific case of scripts run from the Papyrus "Main" */
+            bool isNoContext = script is ScriptCommon && content == null;
+
             /* Returns a special EMEVD command that resets all condition groups by making a do-nothing call that checks MAIN */
             string ResetConditionGroups()
             {
@@ -47,7 +50,7 @@ namespace JortPob
                 // probably a local var of this object. ex: powerLevel or angryness
                 if (!varName.Contains("."))
                 {
-                    if (script is ScriptCommon)
+                    if (isNoContext)
                     {
                         retFlag = scriptManager.GetFlag(Script.Flag.Designation.Local, $"{papyrus.id}.{varName}");
                     }
@@ -621,22 +624,22 @@ namespace JortPob
                                 Content target;
                                 if (call.target == null) { target = content; }
                                 else { target = layout.FindScriptReference(content, call.target); }
-                                if (script is not ScriptCommon && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+                                if (!isNoContext && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                                 // find area script for this npc
                                 BaseScript targetScript;
-                                if (script is ScriptCommon) { targetScript = script; }
+                                if (isNoContext) { targetScript = script; }
                                 else { targetScript = scriptManager.FindScriptFor(layout, target); }
 
                                 // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
                                 Script.Flag subscriptRunFlag;
-                                if (targetScript is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                if (isNoContext) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                 else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
 
                                 // If the subscript does not exist yet, we create it
                                 if (subscriptRunFlag == null)
                                 {
-                                    if (targetScript is ScriptCommon) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                    if (isNoContext) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                     else { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
                                     PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, targetScript, subscript, target, subscriptRunFlag);
                                 }
@@ -2023,22 +2026,22 @@ namespace JortPob
                             Content target;
                             if (call.target == null) { target = content; }
                             else { target = layout.FindScriptReference(content, call.target); }
-                            if (script is not ScriptCommon && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+                            if (!isNoContext && target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
 
                             // find area script for this npc
                             BaseScript targetScript;
-                            if (script is ScriptCommon) { targetScript = script; }
+                            if (isNoContext) { targetScript = script; }
                             else { targetScript = scriptManager.FindScriptFor(layout, target); }
 
                             // See if the subscript is already created. this is needed as multiple scripts can potenitlaly start/stop the same subscript.
                             Script.Flag subscriptRunFlag;
-                            if(targetScript is ScriptCommon) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                            if(isNoContext) { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                             else { subscriptRunFlag = scriptManager.GetFlag(Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
 
                             // If the subscript does not exist yet, we create it
                             if (subscriptRunFlag == null)
                             {
-                                if (targetScript is ScriptCommon) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
+                                if (isNoContext) { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"Global->{subscript.id}"); }
                                 else { subscriptRunFlag = targetScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.RunSubscript, $"{target.entity}->{subscript.id}"); }
                                 PapyrusEMEVD.Compile(esm, layout, msb, sound, scriptManager, paramanager, itemManager, speffManager, targetScript, subscript, target, subscriptRunFlag);
                             }
@@ -2069,7 +2072,7 @@ namespace JortPob
             /* Setup some stuff */
             Script.Flag evtFlag;
             // papyrus script running from main (global)
-            if (script is ScriptCommon) { evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"Global->{papyrus.id}"); }
+            if (isNoContext) { evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"Global->{papyrus.id}"); }
             // papyrus script on an object (local)
             else { evtFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"{content.id}->{papyrus.id}->{content.entity}"); }
             EMEVD.Event evt = new();
@@ -2205,7 +2208,7 @@ namespace JortPob
                 {
                     switch (call.type) {
                         case Papyrus.Call.Type.Short:
-                            if (script is ScriptCommon)
+                            if (script is ScriptCommon && content == null)
                             {
                                 string flagId = $"{p.id}.{call.parameters[0]}";
                                 script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, flagId);
