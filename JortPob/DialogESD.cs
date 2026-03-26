@@ -1414,13 +1414,13 @@ namespace JortPob
                                    ## yell about a thievery crime
                                    assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_DOTHIEFTALK:D2}()
                                    SetEventFlag({thiefFlag.id}, FlagState.Off)
-                               elif (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < 3 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 15) and (not GetEventFlag({npcHelloFlag.id})):
+                               elif (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < {Const.NPC_HELLO_DIST_IN} and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 15) and (not GetEventFlag({npcHelloFlag.id})):
                                    ShuffleRNGSeed(100)
                                    SetRNGSeed()
                                    SetEventFlag({npcHelloFlag.id}, FlagState.On)
                        {helloCode}
                                    assert GetCurrentStateElapsedTime() > 15 or GetEventFlag({thiefFlag.id})
-                               elif GetDistanceToPlayer() > 4 and GetDistanceToPlayer() < 10 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 90) and GetCurrentStateElapsedTime() > 10:
+                               elif GetDistanceToPlayer() > {Const.NPC_HELLO_DIST_OUT} and GetDistanceToPlayer() < {Const.NPC_IDLE_DIST_OUT} and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 90) and GetCurrentStateElapsedTime() > 10:
                                    ShuffleRNGSeed(100)
                                    SetRNGSeed()
                        {idleCode}

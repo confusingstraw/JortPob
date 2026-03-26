@@ -59,7 +59,9 @@ namespace JortPob
 
             /* Cell Pathgrid Data */
             paths = new();
-            JsonNode pathJson = esm.FindPathRecord(IsExterior()?null:name, coordinate);
+            JsonNode pathJson;
+            if(IsExterior()) { pathJson = esm.FindPathRecord(coordinate); }
+            else { pathJson = esm.FindPathRecord(name); }
             if (pathJson != null)  // not all cells have pathgrids so it can be null
             {
                 JsonArray pathPoints = pathJson["points"].AsArray();
@@ -71,7 +73,7 @@ namespace JortPob
                     float Z = location[1].GetValue<float>();
                     Vector3 point = new Vector3(X, Y, Z);
                     Vector3 offset;
-                    if(IsExterior()) { offset = new(coordinate.x, 0f, coordinate.y); }
+                    if (IsExterior()) { offset = new(coordinate.x, 0f, coordinate.y); }
                     else { offset = Vector3.Zero; }
                     paths.Add((point * Const.GLOBAL_SCALE) + (offset * Const.CELL_SIZE));
                 }

@@ -3,6 +3,7 @@ using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Script;
@@ -516,14 +517,14 @@ namespace JortPob
 
             absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
             foreach (Script.Flag flag in allFlags)
             {
                 if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
-                if (flag.value != 0) { continue; }                                      // don't reset hostility flags for npcs that are naturally hostile
-                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, OFF);"));
+                string onOff = flag.value == 0 ? "Off" : "On";
+                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
 
-                if(delayCounter++ > 512)
+                if(++delayCounter > 512)
                 {
                     absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;
@@ -541,10 +542,7 @@ namespace JortPob
         public void GenerateGlobalResetHostilityEvent()
         {
             List<Script.Flag> allFlags = [.. common.flags];
-            foreach (Script script in scripts)
-            {
-                allFlags.AddRange(script.flags);
-            }
+            allFlags.AddRange(scripts.SelectMany(script => script.flags));
 
             Script.Flag eventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "Global:ResetHostilityEvent");
             EMEVD.Event resetEvent = new();
@@ -561,14 +559,14 @@ namespace JortPob
 
             resetEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
             foreach (Script.Flag flag in allFlags)
             {
                 if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
-                if (flag.value != 0) { continue; }                                      // don't reset hostility flags for npcs that are naturally hostile
-                resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, OFF);"));
+                string onOff = flag.value == 0 ? "Off" : "On";
+                resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
 
-                if (delayCounter++ > 512)
+                if (++delayCounter > 512)
                 {
                     resetEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;

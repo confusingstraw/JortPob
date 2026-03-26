@@ -135,14 +135,14 @@ namespace JortPob
                 $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if npc is dead ...
                 $"EndUnconditionally(EventEndType.End);",                                           // kill event
 
-                $"IfEntityInoutsideRadiusOfEntity(AND_01, InsideOutsideState.Inside, 10000, {NextParameterName()}, 3, 1);",   // blocking wait distance check for player close enough AND ...
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                          // ... blocking wait until hostile flag is off
+                $"IfEntityInoutsideRadiusOfEntity(AND_01, InsideOutsideState.Inside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_IN}, 1);",   // blocking wait distance check for player close enough AND ...
+                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                  // ... blocking wait until hostile flag is off
                 $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"SetCharacterAIState({NextParameterName()}, Disabled);",                                                   // disable ai
-                $"RotateCharacter({NextParameterName()}, 10000, -1, false)",                                               // rotate to face player
+                $"SetCharacterAIState({NextParameterName()}, Disabled);",                                                                          // disable ai
+                $"RotateCharacter({NextParameterName()}, 10000, -1, false)",                                                                      // rotate to face player
 
-                $"IfEntityInoutsideRadiusOfEntity(OR_01, InsideOutsideState.Outside, 10000, {NextParameterName()}, 4, 1);",  // blocking wait distance check for player far enough OR...
-                $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                           // ... blocking wait until hostile flag is on
+                $"IfEntityInoutsideRadiusOfEntity(OR_01, InsideOutsideState.Outside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_OUT}, 1);",  // blocking wait distance check for player far enough OR...
+                $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                    // ... blocking wait until hostile flag is on
                 $"IfConditionGroup(MAIN, PASS, OR_01);",
                 $"SetCharacterAIState({NextParameterName()}, Enabled);",                            // enable ai
                 $"RequestCharacterAIReplan({NextParameterName()});",                               // make brain work good
