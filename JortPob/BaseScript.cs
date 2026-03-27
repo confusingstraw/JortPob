@@ -271,13 +271,35 @@ namespace JortPob
             return triggerFlag;
         }
 
+        /* Used by ESD to disable an object via a flag */
+        public Flag GetOrRegisterTriggerDisable(Content content)
+        {
+            Flag triggerDisableFlag = manager.GetFlag(Script.Flag.Designation.TriggerDisable, content);
+            if (triggerDisableFlag == null)
+            {
+                triggerDisableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerDisable, content.id);
+                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerDisable]}, {triggerDisableFlag.id}, {content.entity}, {content.entity}, {triggerDisableFlag.id});"));
+            }
+            return triggerDisableFlag;
+        }
+
+        /* Used by ESD to enable an object via a flag */
+        public Flag GetOrRegisterTriggerEnable(Content content)
+        {
+            Flag triggerEnableFlag = manager.GetFlag(Script.Flag.Designation.TriggerEnable, content);
+            if (triggerEnableFlag == null)
+            {
+                triggerEnableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerEnable, content.id);
+                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerEnable]}, {triggerEnableFlag.id}, {content.entity}, {content.entity}, {triggerEnableFlag.id});"));
+            }
+            return triggerEnableFlag;
+        }
+
         /* Abstracts supported by only ScriptArea */
         public abstract  (uint bed, uint respawn) RegisterBed();
         public abstract void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo);
         public abstract void RegisterItemAsset(Paramanager paramanager, ItemContent item);
         public abstract void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue);
-        public abstract Flag GetOrRegisterTriggerDisable(Content content);
-        public abstract Flag GetOrRegisterTriggerEnable(Content content);
         public abstract Flag GetOrRegisterPlaySE(uint entity, int seId);
 
         /* Abstracts supported by both ScriptArea and ScriptCommon */

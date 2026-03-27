@@ -1152,8 +1152,6 @@ namespace JortPob
         public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo) { throw new System.Exception("Unsupported!"); }
         public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.Exception("Unsupported!"); }
         public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.Exception("Unsupported!"); }
-        public override Flag GetOrRegisterTriggerDisable(Content content) { throw new System.Exception("Unsupported!"); }
-        public override Flag GetOrRegisterTriggerEnable(Content content) { throw new System.Exception("Unsupported!"); }
         public override Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.Exception("Unsupported!"); }
     }
 }

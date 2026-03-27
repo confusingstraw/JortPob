@@ -180,30 +180,6 @@ namespace JortPob
             }
         }
 
-        /* Used by ESD to disable an object via a flag */
-        public override Flag GetOrRegisterTriggerDisable(Content content)
-        {
-            Flag triggerDisableFlag = manager.GetFlag(Script.Flag.Designation.TriggerDisable, content);
-            if (triggerDisableFlag == null)
-            {
-                triggerDisableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerDisable, content.id);
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerDisable]}, {triggerDisableFlag.id}, {content.entity}, {content.entity}, {triggerDisableFlag.id});"));
-            }
-            return triggerDisableFlag;
-        }
-
-        /* Used by ESD to enable an object via a flag */
-        public override Flag GetOrRegisterTriggerEnable(Content content)
-        {
-            Flag triggerEnableFlag = manager.GetFlag(Script.Flag.Designation.TriggerEnable, content);
-            if (triggerEnableFlag == null)
-            {
-                triggerEnableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerEnable, content.id);
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerEnable]}, {triggerEnableFlag.id}, {content.entity}, {content.entity}, {triggerEnableFlag.id});"));
-            }
-            return triggerEnableFlag;
-        }
-
         /* Can't call PlaySE from ESD so we are using an EMEVD event triggered by a flag to do it. Returned flag is the trigger for playing a sound. */
         public override Flag GetOrRegisterPlaySE(uint entity, int seId)
         {
