@@ -77,6 +77,7 @@ namespace JortPob
             public readonly List<DialogFilter> filters;
 
             public readonly string text; // actual dialog text
+            public readonly string mp3;  // path to mp3 file of dialog line (if it exists, only some specific types of lines have them)
 
             public readonly DialogPapyrus script; // parsed script snippet for this line to execute after playback
 
@@ -110,6 +111,7 @@ namespace JortPob
                 }
 
                 text = json["text"].ToString();
+                mp3 = NullEmpty(json["sound_path"].ToString());
 
                 if (json["script_text"].ToString() == null || json["script_text"].ToString() == "") { script = null; }
                 else

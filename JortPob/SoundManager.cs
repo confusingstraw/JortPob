@@ -28,10 +28,10 @@ namespace JortPob
         {
             public readonly Dialog.DialogRecord dialog;
             public readonly Dialog.DialogInfoRecord info;
-            public readonly string line;
+            public readonly string line, mp3;
             public readonly string hashName;
             public readonly CharacterContent npc;
-            public SAMData(Dialog.DialogRecord dialog, Dialog.DialogInfoRecord info, string line, string hashName, CharacterContent npc)
+            public SAMData(Dialog.DialogRecord dialog, Dialog.DialogInfoRecord info, string line, string mp3, string hashName, CharacterContent npc)
             {
                 this.dialog = dialog;
                 this.info = info;
@@ -111,7 +111,7 @@ namespace JortPob
             bool useCustom = Override.CheckCustomVoice(npc.id);
             bool isCreature = npc.race == CharacterContent.Race.Creature;
 
-            SAMData dat = new(dialog, info, line, hashName, npc);
+            SAMData dat = new(dialog, info, line, info.mp3, hashName, npc);
             samQueue.Add(dat);
 
             if (useCustom) { return Path.Combine(Const.CACHE_PATH, @$"dialog\{CharacterContent.Race.Custom}\{npc.id}\{dialog.id}\{hashName}\{hashName}.wem"); }
