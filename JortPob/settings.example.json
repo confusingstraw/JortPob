@@ -3,6 +3,7 @@
   "ELDEN_PATH": "P:\\ATH\\TO\\ELDENRING\\",
   "WWISE_PATH": "P:\\ATH\\TO\\WWISE\\",
   "OUTPUT_PATH": "P:\\ATH\\TO\\MOD\\FOLDER\\",
+  "RAD_PATH": "P:\\ATH\\TO\\RADVideo\\",
   "THREAD_COUNT": 16,
   "LOAD_ORDER": [
     "Morrowind.esm"
@@ -20,8 +21,14 @@
   // Saves anywhere between 2 and 45 minutes on a build. Makes all dialog skip instantly though.
   "DEBUG_SKIP_SOUND": false,
 
-  // Saves 2 or 3 minutes on a build
-  "DEBUG_SKIP_ICONS": false,
+  // Saves a solid chunk of time on builds
+  "DEBUG_SKIP_NAVMESH": false,
+
+  // Saves 3 to 5 minutes on a build
+  "DEBUG_SKIP_MENU_TEXTURES": false,
+
+  // Saves a little time on builds
+  "DEBUG_SKIP_CUTSCENES": false,
 
   // Saves anywhere between 1 and 15 minutes on a build. Disables all papyrus scripts and all NPC dialog.
   "DEBUG_SKIP_SCRIPTS": false,
@@ -47,6 +54,9 @@
   // Binary HKX has some issues that make it possibly less stable, but they also load faster and are visible in Smithbox so it's useful to have this set to true in debug.
   "DEBUG_HKX_FORCE_BINARY": true,
 
+  // If true we use DFLT in place of KRAK to save time on compression. Use KRAK in production!
+  "DEBUG_USE_DFLT_COMPRESSION": true,
+
   // Set to null to build entire map. 
   // format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
   // seyda neen area (small) = [-3, -10, -1, -8 ],
@@ -59,7 +69,7 @@
   // lava area near Galom Daeus = [8, -2, 12, 2],
   // lava and swamp areas combined = [-10, -10, 15, 5],
   // half the map = [-10, -15, 20, 0],
-  "DEBUG_EXCLUSIVE_BUILD_BY_BOX": null,
+  "DEBUG_EXCLUSIVE_BUILD_BY_BOX": [ -3, -10, -1, -8 ],
 
   // if a cell name contains any of the strings in this list (even partial matches) we build it, otherwise skip.
   // set MATCHES to null or remove from settings.json if for proper normal building

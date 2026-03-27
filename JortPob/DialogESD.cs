@@ -1,19 +1,10 @@
 ﻿using JortPob.Common;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
-using System.Security;
 using System.Text;
-using System.Xml.Linq;
 using static JortPob.Dialog;
-using static JortPob.FactionInfo;
-using static JortPob.NpcManager.TopicData;
-using static SoulsFormats.MSBS.Event;
 
 namespace JortPob
 {
@@ -52,6 +43,9 @@ namespace JortPob
             this.npcContent = npcContent;
 
             defs = new();
+
+            // Register a halt event for this npc
+            areaScript.RegisterHaltEvent(npcContent);
 
             // Split up talk data by type
             NpcManager.TopicData greeting = GetTalk(topicData, DialogRecord.Type.Greeting)[0];
@@ -201,13 +195,14 @@ namespace JortPob
         private string State_1(uint id, int talkActionButtonId)
         {
             string id_s = id.ToString("D9");
-            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent);
             return $"def t{id_s}_1():\r\n    \"\"\"State 0,1\"\"\"\r\n    # actionbutton:6000:\"Talk\"\r\n    t{id_s}_x5(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1={talkActionButtonId},\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1)\r\n    Quit()\r\n";
         }
 
         private string State_1000(uint id)
         {
             Script.Flag playerTalkingFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsTalking, "PlayerIsTalking");
+            Script.Flag guardGreetingFlag = scriptManager.GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
 
                 string s = $""""
                        def t{id:D9}_1000():
@@ -216,6 +211,7 @@ namespace JortPob
                            assert t{id:D9}_x37()
                            """State 1"""
                            SetEventFlag({playerTalkingFlag.id}, FlagState.Off)
+                           SetEventFlag({guardGreetingFlag.id}, FlagState.Off)
                            EndMachine(1000)
                            Quit()
 
@@ -238,7 +234,7 @@ namespace JortPob
         private string State_1102(uint id)
         {
             string id_s = id.ToString("D9");
-            Script.Flag hostileQuipFlag = scriptManager.GetFlag(Script.Flag.Designation.HostileQuip, npcContent.entity.ToString());
+            Script.Flag hostileQuipFlag = scriptManager.GetFlag(Script.Flag.Designation.HostileQuip, npcContent);
             return $"def t{id_s}_1102():\r\n    \"\"\"State 0,2\"\"\"\r\n    assert t{id_s}_x40(flag4={hostileQuipFlag.id})\r\n    t{id_s}_x{Const.ESD_STATE_HARDCODE_COMBATDIALOGSELECT:D2}()\r\n    Quit()\r\n";
         }
 
@@ -261,9 +257,10 @@ namespace JortPob
             int pickpocketActionId = paramanager.GenerateActionButtonInteractParam($"Pickpocket {npcContent.name}");
             Script.Flag crimeLevel = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             Script.Flag playerIsSneaking = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
-            Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent.entity.ToString());
+            Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent);
+            Script.Flag guardTalkingFlag = scriptManager.GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
             string actionButtonCheck;
-            if(npcContent.IsGuard()) { actionButtonCheck = $"CheckActionButtonArea(actionbutton1) or (GetDistanceToPlayer() < 3 and GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) >= 1)"; }
+            if(npcContent.IsGuard()) { actionButtonCheck = $"CheckActionButtonArea(actionbutton1) or (GetDistanceToPlayer() < 4 and GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) >= 1) and (not GetEventFlag({guardTalkingFlag.id}))"; }
             else { actionButtonCheck = $"CheckActionButtonArea(actionbutton1)"; }
             string forceGreetBypassSneak;
             if (npcContent.IsGuard()) { forceGreetBypassSneak = $" or GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) >= 1"; }
@@ -298,7 +295,7 @@ namespace JortPob
                                     elif CheckActionButtonArea({pickpocketActionId}):
                                         assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_PICKPOCKET:D2}()
                                         continue
-                                    elif not GetEventFlag({playerIsSneaking.id}):
+                                    elif not GetEventFlag({playerIsSneaking.id}){forceGreetBypassSneak}:
                                         continue
                             """State 5"""
                             return 0
@@ -334,7 +331,7 @@ namespace JortPob
         private string State_x5(uint id, int talkActionButtonId)
         {
             string id_s = id.ToString("D9");
-            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent);
             return $"def t{id_s}_x5(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1={talkActionButtonId},\r\n                  flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                  z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    assert GetCurrentStateElapsedTime() > 1.5\r\n    while True:\r\n        \"\"\"State 2\"\"\"\r\n        call = t{id_s}_x22(flag6=flag6, flag7=flag7, val1=val1, val2=val2, val3=val3, val4=val4,\r\n                              val5=val5, actionbutton1=actionbutton1, flag9=flag9, flag10=flag10, flag11=flag11,\r\n                              flag12=flag12, flag13=flag13, z1=z1, z2=z2, z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        assert IsClientPlayer()\r\n        \"\"\"State 1\"\"\"\r\n        call = t{id_s}_x21()\r\n        assert not IsClientPlayer()\r\n";
         }
 
@@ -385,11 +382,11 @@ namespace JortPob
             Script.Flag crimeLevelFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             Script.Flag guardGreetFlag = scriptManager.GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
             string fleeGuardForceGreet;
-            if (npcContent.IsGuard()) { fleeGuardForceGreet = $"    if GetEventFlag({guardGreetFlag.id}) and GetEventFlagValue({crimeLevelFlag.id}, {crimeLevelFlag.Bits()}) >= 1:\r\n        ## player tried to flee guard by walking away\r\n        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_PICKPOCKET})\r\n    else:\r\n        pass"; }
+            if (npcContent.IsGuard()) { fleeGuardForceGreet = $"    if GetEventFlag({guardGreetFlag.id}) and GetEventFlagValue({crimeLevelFlag.id}, {crimeLevelFlag.Bits()}) >= 1:\r\n        ## player tried to flee guard by walking away\r\n        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_PICKPOCKET},violent=True)\r\n    else:\r\n        pass"; }
             else { fleeGuardForceGreet = ""; }
 
             return $""""
-                   def t{id:D9}_x13(val1=5, z1=1):
+                   def t{id:D9}_x13(val1=5.5, z1=1):
                        """State 0,2"""
                        assert t{id:D9}_x23()
                        """State 1"""
@@ -457,7 +454,7 @@ namespace JortPob
         private string State_x22(uint id, int talkActionButtonId)
         {
             string id_s = id.ToString("D9");
-            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag hostile = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent);
             return $"def t{id_s}_x22(flag6=4743, flag7={hostile.id}, val1=5, val2=10, val3=12, val4=10, val5=12, actionbutton1={talkActionButtonId},\r\n                   flag9=6000, flag10=6001, flag11=6000, flag12=6000, flag13=6000, z1=1, z2=1000000, z3=1000000,\r\n                   z4=1000000, mode1=1, mode2=1):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        RemoveMyAggro()\r\n        call = t{id_s}_x6(val1=val1, val2=val2, val3=val3, val4=val4, val5=val5, actionbutton1=actionbutton1,\r\n                             flag9=flag9, flag10=flag10, flag11=flag11, flag12=flag12, flag13=flag13, z1=z1, z2=z2,\r\n                             z3=z3, z4=z4, mode1=mode1, mode2=mode2)\r\n        if CheckSelfDeath() or GetEventFlag(flag6):\r\n            \"\"\"State 3\"\"\"\r\n            Label('L0')\r\n            call = t{id_s}_x8(flag6=flag6, val2=val2, val3=val3)\r\n            if not CheckSelfDeath() and not GetEventFlag(flag6):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(flag7):\r\n            \"\"\"State 2\"\"\"\r\n            call = t{id_s}_x7(val2=val2, val3=val3)\r\n            if CheckSelfDeath() or GetEventFlag(flag6):\r\n                Goto('L0')\r\n            elif not GetEventFlag(flag7):\r\n                continue\r\n            elif GetEventFlag(9000):\r\n                pass\r\n        elif GetEventFlag(9000) or IsPlayerDead():\r\n            pass\r\n        \"\"\"State 4\"\"\"\r\n        assert t{id_s}_x35() and not GetEventFlag(9000)\r\n";
         }
 
@@ -502,6 +499,19 @@ namespace JortPob
             string id_s = id.ToString("D9");
             string s = $"def t{id_s}_x29(mode6=1):\r\n    \"\"\"State 0,4\"\"\"\r\n    assert t{id_s}_x2() and CheckSpecificPersonTalkHasEnded(0)\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
+            // set arrest flag if this is a crime related greet
+            if(npcContent.IsGuard())
+            {
+                Script.Flag crimeLevelFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
+                Script.Flag arrestFlag = scriptManager.GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+                
+                s += $"    if GetEventFlagValue({crimeLevelFlag.id}, {crimeLevelFlag.Bits()}) >= 1:\r\n"; // if player has crime gold
+                s += $"        SetEventFlag({arrestFlag.id}, FlagState.On)\r\n";                         // mark that an arrest attempt was made
+                s += $"    else:\r\n";
+                s += $"        pass\r\n";
+            }
+
+            // add rankreq call if npc hasa faction
             if (npcContent.faction != null)
             {
                 s += $"    # rankreq and reactioncalc call: \"{npcContent.faction}\"\r\n";
@@ -555,7 +565,7 @@ namespace JortPob
             }
             s += "    \"\"\"State 3\"\"\"\r\n    if mode6 == 0:\r\n        pass\r\n    else:\r\n        \"\"\"State 2\"\"\"\r\n        ReportConversationEndToHavokBehavior()\r\n    \"\"\"State 5\"\"\"\r\n";
             // Also make sure to flag the TalkedToPC flag as it should be marked true once the player has finished the greeting with an npc for the first time
-            s += $"    SetEventFlag({scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent.entity.ToString()).id}, FlagState.On)\r\n";
+            s += $"    SetEventFlag({scriptManager.GetFlag(Script.Flag.Designation.TalkedToPc, npcContent).id}, FlagState.On)\r\n";
             s += "    return 1\r\n";
             return s;
         }
@@ -605,7 +615,7 @@ namespace JortPob
         /* Greeting -> Dialog parent state */
         private string State_x37(uint id)
         {
-            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent.entity.ToString());
+            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent);
 
             string id_s = id.ToString("D9");
             string s = $"def t{id:D9}_x37():\r\n    \"\"\"State 0,1\"\"\"\r\n";
@@ -619,9 +629,8 @@ namespace JortPob
             if (npcContent.IsGuard())
             {
                 Script.Flag guardTalkingFlag = scriptManager.GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
-                Script.Flag crimeFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, npcContent.entity.ToString());
                 Script.Flag crimeLevel = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
-                s += $"        ## if player attempted to flee set crime\r\n        if GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) >= 1:\r\n            SetEventFlag({guardTalkingFlag.id}, FlagState.Off)\r\n            assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_RESIST})\r\n";
+                s += $"        ## if player attempted to flee set crime\r\n        if GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) >= 1:\r\n            SetEventFlag({guardTalkingFlag.id}, FlagState.Off)\r\n            assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_RESIST},violent=True)\r\n";
             }
             s += $"        return 0\r\n    elif call.Done():\r\n        pass\r\n    \"\"\"State 2\"\"\"\r\n";
             if (npcContent.IsGuard())
@@ -647,27 +656,27 @@ namespace JortPob
             string s = $"def t{id_s}_x39():\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
             /* lower disposition */
-            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
             s += $"    # lower disposition from being hit\r\n";
             s += $"    assert t{id_s}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dvar.id}, value={-25})\r\n\r\n";
 
             /* decide if we go hostile from being hit */  // doesn't actually set the hostile flag directly but sets the crime flag which will trigger it
-            Script.Flag friendHitCounter = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent.entity.ToString());
-            Script.Flag disposition = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
+            Script.Flag friendHitCounter = scriptManager.GetFlag(Script.Flag.Designation.FriendHitCounter, npcContent);
+            Script.Flag disposition = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
             s += $"    # decide if we are going hostile from this attack\r\n";
             s += $"    if GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 1 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 10:\r\n";
-            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT})\r\n";
+            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT},violent=True)\r\n";
             s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 2 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 15:\r\n";
-            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT})\r\n";
+            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT},violent=True)\r\n";
             s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) == 3 and GetEventFlagValue({disposition.id}, {disposition.Bits()}) < 20:\r\n";
-            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT})\r\n";
+            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT},violent=True)\r\n";
             s += $"    elif GetEventFlagValue({friendHitCounter.id}, {friendHitCounter.Bits()}) >= 4:\r\n";
-            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT})\r\n";
+            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT},violent=True)\r\n";
             s += $"    else:\r\n";
-            s += $"        pass\r\n\r\n";
+            s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_ASSAULT/2},violent=False)\r\n";
 
             /* set hasbeenattacked flag */
-            Script.Flag hasBeenAttacked = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent.entity.ToString());
+            Script.Flag hasBeenAttacked = scriptManager.GetFlag(Script.Flag.Designation.HasBeenAttacked, npcContent);
             s += $"    # set HasBeenAttacked flag\r\n";
             s += $"    SetEventFlag({hasBeenAttacked.id}, FlagState.On)\r\n";
 
@@ -683,7 +692,7 @@ namespace JortPob
         /* Hostile quip */
         private string State_x40(uint id)
         {
-            Script.Flag theifFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent.entity.ToString());
+            Script.Flag theifFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent);
             string s = $"def t{id:D9}_x40(flag4=_):\r\n    ## single angry quip triggered when a character becomes hostile\r\n";
             s += $"    if not GetEventFlag(flag4):\r\n";
             s += $"       if GetEventFlag({theifFlag.id}):\r\n";
@@ -702,7 +711,22 @@ namespace JortPob
         /* On death talk */
         private string State_x41(uint id, NpcManager.TopicData topic)
         {
-            string s = $"def t{id:D9}_x41():\r\n    ## on death talk\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
+            string s = $""""
+                       def t{id:D9}_x41():
+                           ## on death talk##
+                           ShuffleRNGSeed(100)
+                           SetRNGSeed()
+
+                           ## handle crime of murder if applicable
+                           if not DoesSelfHaveSpEffect({(int)SpeffManager.Functional.VoidMurder}):    ## void murder speff means murder bounty is not awarded at this time. used by 'StartCombat'
+                               assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_MURDER},violent=True)
+                           else:
+                               pass
+
+                           ## Do death talk
+
+                       """";
+
             string ifop = "if";
             for (int i = 0; i < topic.talks.Count(); i++)
             {
@@ -714,7 +738,6 @@ namespace JortPob
                 s += $"    {ifop} {filters}:\r\n";
                 s += $"        # death: \"{Common.Utility.SanitizeTextForComment(talk.dialogInfo.text)}\"\r\n";
                 s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK}(combatText={talk.primaryTalkRow})\r\n";
-                s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_MURDER})\r\n";
 
                 if (ifop == "if") { ifop = "elif"; }
             }
@@ -1008,8 +1031,8 @@ namespace JortPob
 
             int dispText0 = textManager.GetTopic("Disposition: 0");  // all 100 dispoition texts are sequential so we grab the first one
 
-            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
-            Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag dvar = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
+            Script.Flag hvar = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent);
             string s = $""""
                        def t{id:D9}_x{x:D2}():
                            while True:
@@ -1155,29 +1178,62 @@ namespace JortPob
             return s.ToString();
         }
 
-        /* Handles assault, resist arrest, and murder */
+        /* Handles crimes */
         private string GeneratedState_HandleCrime(uint id, int x)
         {
-            Script.Flag crimeFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, npcContent.entity.ToString()); // reports crime to nearby npcs if flagged and turns npcs hostile
-            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString()); // turns this npc hostile but does not flag as crime
+            Script.Flag crimeFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, npcContent); // reports crime to nearby npcs if flagged and turns npcs hostile
+            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent); // turns this npc hostile but does not flag as crime
             Script.Flag crimeLevel = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel"); // crime gold flag
             Script.Flag crimeNotif = scriptManager.common.GetOrRegisterNotification(paramanager, "Your crime was reported!");
-            string s = $"def t{id:D9}_x{x:D2}(crimeGold=_):\r\n";
-            s += $"    if {!npcContent.hasWitness}:\r\n"; // @TODO: could optimize this, this is a static check now
-            s += $"        SetEventFlag({hostileFlag.id}, FlagState.On)\r\n"; // make us hostile to the player but don't report crime at all
-            s += $"        return 0\r\n"; 
-            s += $"    else:\r\n";
-            s += $"        SetEventFlag({crimeFlag.id}, FlagState.On)\r\n";   // flag crime to all nearby npcs, and turn us hostile
-            s += $"        SetEventFlag({crimeNotif.id}, FlagState.On)\r\n";  // notify player crime was reported
-            s += $"        SetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}, crimeGold)\r\n"; // add bounty
-            s += $"        return 1\r\n";
+            Script.Flag arrestFlag = scriptManager.GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+
+            string s;
+            switch(npcContent.witness)
+            {
+                case NpcContent.Witness.Guard:
+                    s = $""""
+                        def t{id:D9}_x{x:D2}(crimeGold=_,violent=_):
+                            if violent or GetEventFlag({arrestFlag.id}):
+                                SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs, and turn us hostile
+                            else:
+                                pass
+                            SetEventFlag({crimeNotif.id}, FlagState.On)    ## notify player crime was reported
+                            SetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}, GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) + crimeGold)
+                            GiveSpEffectToPlayer({(int)SpeffManager.Functional.Alarming})  ## add alarm speff to player since they did a crime
+                            return 0
+
+                        """";
+                    break;
+                case NpcContent.Witness.Citizen:
+                    s = $""""
+                        def t{id:D9}_x{x:D2}(crimeGold=_,violent=_):
+                            SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs, and turn us hostile
+                            SetEventFlag({crimeNotif.id}, FlagState.On)    ## notify player crime was reported
+                            SetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}, GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) + crimeGold)
+                            GiveSpEffectToPlayer({(int)SpeffManager.Functional.Alarming})  ## add alarm speff to player since they did a crime
+                            return 0
+
+                        """";
+                    break;
+                default:
+                case NpcContent.Witness.None:
+                    s = $""""
+                        def t{id:D9}_x{x:D2}(crimeGold=_,violent=_):
+                            SetEventFlag({hostileFlag.id}, FlagState.On)   ## make us hostile to the player but don't report crime at all
+                            GiveSpEffectToPlayer({(int)SpeffManager.Functional.Alarming})  ## add alarm speff to player since they did a crime
+                            return 0
+
+                        """";
+                    break;
+            }
+
             return s;
         }
 
         /* State that randomly has npc use talk lines in combat */
         private string GeneratedState_CombatDialogSelection(uint id, int x)
         {
-            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent.entity.ToString());
+            Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, npcContent);
             string s = $""""
                        def t{id:D9}_x{x:D2}():
                            while True:
@@ -1271,6 +1327,8 @@ namespace JortPob
 
         private string GeneratedState_DoThiefTalk(uint id, int x, NpcManager.TopicData topic)
         {
+            Script.Flag thiefFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent);
+
             string s = $"def t{id:D9}_x{x:D2}():\r\n    ## pick a thief line and talk it\r\n    ShuffleRNGSeed(100)\r\n    SetRNGSeed()\r\n";
 
             if(topic.talks.Count() == 1) // special case. does happen.
@@ -1294,6 +1352,7 @@ namespace JortPob
                 s += $"        assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_COMBATTALK:D2}(combatText={talk.primaryTalkRow})\r\n";
                 ifop = "elif";
             }
+            s += $"    SetEventFlag({thiefFlag.id}, FlagState.Off)\r\n";  // turn off thiefcrime event once we do our thief line
             s += $"    return 0\r\n";
             return s;
         }
@@ -1336,41 +1395,40 @@ namespace JortPob
             }
 
             Script.Flag playerIsSneaking = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
-            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent.entity.ToString());
             Script.Flag playerTalkingFlag = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsTalking, "PlayerIsTalking");
+            Script.Flag npcHelloFlag = scriptManager.GetFlag(Script.Flag.Designation.Hello, npcContent);
+            Script.Flag thiefFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent);
+
             string s = $""""
                        def t{id:D9}_x{x:D2}():
                            ## occasionally do idle lines and if a player approaches us we hello them
                            while True:
-                               if GetEventFlag(1041420100) or IsPlayerDead() or IsCharacterDisabled():
+                               if IsPlayerDead() or IsCharacterDisabled():
                                    break
-                               else:
-                                   pass
-
-                               if GetDistanceToPlayer() > 10 and GetEventFlag({npcHelloFlag.id}):
-                                   SetEventFlag({npcHelloFlag.id}, FlagState.Off)
                                else:
                                    pass
                                
                                ShuffleRNGSeed(100)
                                SetRNGSeed()
-                               if (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < 3 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 40) and (not GetEventFlag({npcHelloFlag.id})):
+                               if GetEventFlag({thiefFlag.id}):
+                                   ## yell about a thievery crime
+                                   assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_DOTHIEFTALK:D2}()
+                                   SetEventFlag({thiefFlag.id}, FlagState.Off)
+                               elif (not GetEventFlag({playerIsSneaking.id})) and GetDistanceToPlayer() < {Const.NPC_HELLO_DIST_IN} and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 15) and (not GetEventFlag({npcHelloFlag.id})):
                                    ShuffleRNGSeed(100)
                                    SetRNGSeed()
-                                   TurnCharacterToFaceEntity(-1, {npcContent.entity}, 10000, -1)
-                                   ##TurnToFacePlayer()
-                       {helloCode}
                                    SetEventFlag({npcHelloFlag.id}, FlagState.On)
-                                   assert GetCurrentStateElapsedTime() > 15
-                               elif GetDistanceToPlayer() > 4 and GetDistanceToPlayer() < 10 and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 90) and GetCurrentStateElapsedTime() > 10:
+                       {helloCode}
+                                   assert GetCurrentStateElapsedTime() > 15 or GetEventFlag({thiefFlag.id})
+                               elif GetDistanceToPlayer() > {Const.NPC_HELLO_DIST_OUT} and GetDistanceToPlayer() < {Const.NPC_IDLE_DIST_OUT} and (not GetEventFlag({playerTalkingFlag.id})) and CompareRNGValue(CompareType.GreaterOrEqual, 90) and GetCurrentStateElapsedTime() > 10:
                                    ShuffleRNGSeed(100)
                                    SetRNGSeed()
                        {idleCode}
-                                   assert GetCurrentStateElapsedTime() > 25
+                                   assert GetCurrentStateElapsedTime() > 25 or GetEventFlag({thiefFlag.id})
                                elif GetCurrentStateElapsedTime() > 10:
                                    pass
 
-                               assert GetCurrentStateElapsedTime() > 0.25
+                               assert GetCurrentStateElapsedTime() > 0.25 or GetEventFlag({thiefFlag.id})
                            return 0
 
                        """";
@@ -1379,10 +1437,9 @@ namespace JortPob
 
         private string GeneratedState_Pickpocket(uint id, int x)
         {
-            Script.Flag dispositionFlag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent.entity.ToString());
-            Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent.entity.ToString());
-            Script.Flag crimeFlag = scriptManager.GetFlag(Script.Flag.Designation.CrimeEvent, npcContent.entity.ToString()); // reports crime to nearby npcs if flagged and turns npcs hostile
-            Script.Flag thiefFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent.entity.ToString());
+            Script.Flag dispositionFlag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, npcContent);
+            Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent);
+            Script.Flag thiefFlag = scriptManager.GetFlag(Script.Flag.Designation.ThiefCrime, npcContent);
             string s = $""""
                        def t{id:D9}_x{x:D2}():
                            ShuffleRNGSeed(100)
@@ -1395,9 +1452,8 @@ namespace JortPob
                            else:
                                ## pickpocket fail
                                assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_MODDISPOSITION}(dispositionflag={dispositionFlag.id}, value={-10})
-                               assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_PICKPOCKET})
+                               assert t{id:D9}_x{Const.ESD_STATE_HARDCODE_HANDLECRIME:D2}(crimeGold={Const.CRIME_GOLD_PICKPOCKET},violent=False)
                                SetEventFlag({thiefFlag.id}, FlagState.On)
-                               SetEventFlag({crimeFlag.id}, FlagState.On)
 
                            return 0
 
@@ -1414,7 +1470,7 @@ namespace JortPob
 
             Script.Flag repFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionReputation, npcContent.faction);
             Script.Flag rankFlag = scriptManager.GetFlag(Script.Flag.Designation.FactionRank, npcContent.faction);
-            Script.Flag returnValue = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnValueRankReq, npcContent.entity.ToString());
+            Script.Flag returnValue = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnValueRankReq, npcContent, 0, true);
             FactionInfo faction = esm.GetFaction(npcContent.faction);
 
             // First rank
@@ -1454,8 +1510,8 @@ namespace JortPob
             s += $"    #reactioncalc state: \"{npcContent.faction}\"\r\n";
 
             FactionInfo npcFaction = esm.GetFaction(npcContent.faction);
-            Script.Flag returnLow = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionLow, npcContent.entity.ToString());
-            Script.Flag returnHigh = areaScript.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionHigh, npcContent.entity.ToString());
+            Script.Flag returnLow = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionLow, npcContent, 0, true);
+            Script.Flag returnHigh = areaScript.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Nibble, Script.Flag.Designation.ReturnReactionHigh, npcContent, 0, true);
 
             // Special case where a faction has no reaction table (Talos Cult moment)
             if(!npcFaction.HasReactions())

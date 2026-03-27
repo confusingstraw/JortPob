@@ -7,6 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using WitchyFormats;
 using Xbrz;
@@ -35,12 +36,6 @@ namespace JortPob.Common
             {
                 LinSRGBLUT[i] = (byte)(Math.Min(1f, ConvertValue(i / 255f)) * 255);
             }
-        }
-
-        /* Take a full file path and returns just a file name without directory or extensions */
-        public static string PathToFileName(string fileName)
-        {
-            return Path.GetFileNameWithoutExtension(fileName);
         }
 
         public static string ResourcePath(string path)
@@ -228,6 +223,68 @@ namespace JortPob.Common
             }
 
             return true;
+        }
+
+        /* Rotation conversion from Morrowind worldspace to Elden Ring worldspace. right hand XYZ to left hand XZY (afaik, it's very hard to pinpoint this and lots of guesswork) */
+        public static System.Numerics.Vector3 ConvertRotation(System.Numerics.Vector3 rotation)
+        {
+            /* The following unholy code converts morrowind (Z up) euler rotations into dark souls (Y up) euler rotations */
+            /* Big thanks to katalash, dropoff, and the TESUnity dudes for helping me sort this out */
+
+            /* Katalashes code from MapStudio */
+            Vector3 MatrixToEulerXZY(Matrix4x4 m)
+            {
+                const float Pi = (float)Math.PI;
+                const float Deg2Rad = Pi / 180.0f;
+                Vector3 ret;
+                ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
+
+                if (Math.Abs(m.M12) < 0.9999999)
+                {
+                    ret.X = MathF.Atan2(-m.M32, m.M22);
+                    ret.Y = MathF.Atan2(-m.M13, m.M11);
+                }
+                else
+                {
+                    ret.X = MathF.Atan2(m.M23, m.M33);
+                    ret.Y = 0;
+                }
+                ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
+                ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
+                ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
+                return ret;
+            }
+
+            /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
+            Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), rotation.X);
+            Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), rotation.Z);
+            Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), rotation.Y);
+            Quaternion q = xRot * zRot * yRot;
+
+            return MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+        }
+
+        public static System.Numerics.Vector3 ToRadians(System.Numerics.Vector3 rotation)
+        {
+            const float pi = (float)Math.PI;
+            const float d2r = pi / 180.0f;
+            return rotation * d2r;
+        }
+
+        public static System.Numerics.Vector3 ToDegrees(System.Numerics.Vector3 rotation)
+        {
+            const float pi = (float)Math.PI;
+            const float r2d = 180.0f / pi;
+            return rotation * r2d;
+        }
+
+        /* Convert parameters from papyrus call to a Vector 3. offset moves starting index away from 0. automatically converts xyz to xzy */
+        public static System.Numerics.Vector3 Vector3FromParameters(string[] parameters, int offset = 0)
+        {
+            float x = float.Parse(parameters[0 + offset]);
+            float y = float.Parse(parameters[2 + offset]);
+            float z = float.Parse(parameters[1 + offset]);
+            return new(x, y, z);
         }
 
         private static Random random;
@@ -516,6 +573,16 @@ namespace JortPob.Common
                 var tmp = ts[i];
                 ts[i] = ts[r];
                 ts[r] = tmp;
+            }
+        }
+
+        /* copy pasted from example */
+        public static void Replace<T>(this IList<T> list, T oldItem, T newItem)
+        {
+            int index = list.IndexOf(oldItem);
+            if (index != -1)
+            {
+                list[index] = newItem;
             }
         }
     }

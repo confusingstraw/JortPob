@@ -49,7 +49,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             startInfo = new(@$"{toolsDir}\AssetCc2_fixed.exe", $"--strip \"{tempDir}\\{fName}.obj.o2f\" \"{tempDir}\\{fName}.1\"")
             {
@@ -58,7 +58,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             startInfo = new(@$"{toolsDir}\hknp2fsnp.exe", $"\"{tempDir}\\{fName}.1\"")
             {
@@ -67,7 +67,7 @@ namespace JortPob.Model
                 CreateNoWindow = true,
                 RedirectStandardError = true,
             };
-            Utility.ExecuteProcess(startInfo);
+            Utility.ExecuteProcess(startInfo, 60000);
 
             return File.ReadAllBytes($@"{tempDir}\{fName}.1.hkx");  
         }
@@ -86,7 +86,7 @@ namespace JortPob.Model
             List<Obj.CollisionMaterial> source = Obj.GetMaterials(objPath);  // grab source materials from obj file
             List<HKLib.hk2018.fsnpCustomMeshParameter.PrimitiveData> mats =
                 ((HKLib.hk2018.fsnpCustomParamCompressedMeshShape)((HKLib.hk2018.hknpPhysicsSceneData)hkx.m_namedVariants[0].m_variant).m_systemDatas[0].m_bodyCinfos[0].m_shape).m_pParam.m_primitiveDataArray;
-            if (mats.Count > source.Count) { Lort.Log($"Mismatch in HKX hitmrtl repair: {Utility.PathToFileName(objPath)}.obj", Lort.Type.Debug); }
+            if (mats.Count > source.Count) { Lort.Log($"Mismatch in HKX hitmrtl repair: {Path.GetFileNameWithoutExtension(objPath)}.obj", Lort.Type.Debug); }
             for(int i=0;i<mats.Count;i++)
             {
                 mats[i].m_materialNameData = ((uint)source[i]); // fixed i guess!

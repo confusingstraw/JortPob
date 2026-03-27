@@ -19,25 +19,27 @@ namespace JortPob
             Lort.Initialize(); // startup logging
             Override.Initialize(); // load all override jsons
             Utility.InitSRGBCache();
+            Oodler.Initialize();
 
             /* Loading stuff */
-            ScriptManager scriptManager = new();                                                // Manages EMEVD scripts
-            ESM esm = new ESM(scriptManager);                                               // Morrowind ESM parse and partial serialization
+            ScriptManager scriptManager = new();                                              // Manages EMEVD scripts
+            ESM esm = new ESM(scriptManager);                                                // Morrowind ESM parse and partial serialization
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
-            TextManager text = new();                                                           // Manages FMG text files
-            MenuTextureManager texManager = new(esm);
-            Paramanager param = new(text);                                                        // Class for managing PARAM files
-            SpeffManager speff = new(esm, param, scriptManager, texManager, text);                                             // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
+            TextManager text = new();                                                      // Manages FMG text files
+            MenuTextureManager texManager = new(esm);                                     // Manages menu textures for things like inventory icons and loading screens
+            Paramanager param = new(text);                                               // Class for managing PARAM files
+            SpeffManager speff = new(esm, param, scriptManager, texManager, text);      // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, texManager, text);                         // Handles generation and reampping of items
-            Layout layout = new(cache, esm, param, text, scriptManager);                          // Subdivides all content data from ESM into a more elden ring friendly format
-            SoundManager sound = new();                                                         // Manages vcbanks
-            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);    // Manages dialog esd
+            Layout layout = new(cache, esm, param, text, scriptManager);                                       // Subdivides all content data from ESM into a more elden ring friendly format
+            SoundManager sound = new();                                                                       // Manages vcbanks
+            NpcManager character = new(esm, layout, sound, param, text, item, speff, scriptManager);         // Manages dialog esd
 
 
             // Helpers/shared values
             List<Tuple<Vector3, TerrainInfo>> emptyTerrainList = [];
 
             /* Some quick setup stuff */
+            SAM.CreateProject(); // generate wwise project if it does not exist
             scriptManager.SetupSpecialFlags(esm);
 
             /* Create some needed text data that is ref'd later */
@@ -46,12 +48,15 @@ namespace JortPob
             /* Write custom map */
             if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
 
+            /* Replace openign cutscene */
+            if(!Const.DEBUG_SKIP_CUTSCENES) { Cutscener.Create(Path.Combine(Const.MORROWIND_PATH, @"Data Files\video\mw_intro.bik"), 0040); }
+
             /* Collect content that needs script compiling for post MSB generation */
             List<PleaseCompile> contentToCompile = new();
 
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
-
+            
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.tiles.Count);
 
@@ -62,7 +67,7 @@ namespace JortPob
 
                 /* Generate msb from tile */
                 MSBE msb = new MSBE();
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Compression.KRAK();
 
                 Script script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
@@ -81,7 +86,7 @@ namespace JortPob
                     // superoverworld msb is  handled by its own class -> OverworldManager
                     foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                     {
-                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC++.ToString("D2")}";
+                        string collisionIndex = $"{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}{nextC.ToString("D2")}";
 
                         MSBE.Part.Collision collision = MakePart.Collision();
                         collision.Name = $"h{collisionIndex}_0000";
@@ -90,6 +95,8 @@ namespace JortPob
 
                         msb.Parts.Collisions.Add(collision);
                         pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
+
+                        nextC++;
                     }
 
                     /* Add water collision if terrain 'hasWater' */
@@ -161,6 +168,25 @@ namespace JortPob
                     if (content.entity > 0) {
                         asset.EntityID = content.entity;
                         contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
+                    }
+
+
+                    /* If bed... */
+                    if (content is BedContent bedContent)
+                    {
+                        (uint bed, uint respawn) entityIds = script.RegisterBed();
+
+                        MSBE.Part.Enemy bed = MakePart.Bed();
+                        bed.Position = asset.Position;
+                        bed.Unk1.DisplayGroups[0] = 0;
+                        bed.EntityID = entityIds.bed;
+                        bed.TalkID = character.GetESD(tile, msb, bedContent);
+                        msb.Parts.Enemies.Add(bed);
+
+                        MSBE.Part.Player respawn = MakePart.Player();
+                        respawn.Position = asset.Position;
+                        respawn.EntityID = entityIds.respawn;
+                        msb.Parts.Players.Add(respawn);
                     }
 
                     /* Add to msb */
@@ -410,6 +436,77 @@ namespace JortPob
                     msb.Parts.Assets.Add(asset);
                 }
 
+                /* Add scripted positions */
+                if(isTileType)
+                {
+                    foreach(Layout.ScriptedPosition sp in tile.positions)
+                    {
+                        MSBE.Part.Player player = MakePart.Player();
+                        player.Position = sp.relative + Const.MSB_OFFSET;
+                        player.Rotation = sp.rotation;
+                        player.EntityID = sp.player;
+                        msb.Parts.Players.Add(player);
+
+                        MSBE.Region.Other region = new();
+                        region.Name = $"ScriptedPosition:{sp.position}";
+                        region.Shape = new MSB.Shape.Point();
+                        region.Position = sp.relative + Const.MSB_OFFSET;
+                        region.Rotation = sp.rotation;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = sp.region;
+                        region.MapStudioLayer = 4294967295;
+                        msb.Regions.Add(region);
+                    }
+                }
+
+                /* Handle path grid points */
+                if(isTileType)
+                {
+                    Tile t = tile as Tile;
+                    foreach (Layout.PathGridPoint point in t.paths)
+                    {
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = point.name;
+                        region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
+                        region.Position = point.position + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = point.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
+                    /* Add TravelPoints */
+                    foreach (Layout.TravelPoint travel in t.travels)
+                    {
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = travel.name;
+                        region.Shape = new MSB.Shape.Sphere(travel.radius);
+                        region.Position = travel.relative + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = travel.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+                }
+
                 /* Handle area names */
                 if (isTileType)
                 {
@@ -423,6 +520,7 @@ namespace JortPob
                         mpr.Position = point.relative + Const.MSB_OFFSET;
                         mpr.Rotation = Vector3.Zero;
                         mpr.RegionID = nextMPR++;
+                        mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
                         mpr.MapStudioLayer = 4294967295;
                         mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
 
@@ -438,6 +536,7 @@ namespace JortPob
                         mpr.UnkT18 = -1;
 
                         msb.Regions.MapPoints.Add(mpr);
+                        if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
                     }
                 }
 
@@ -465,7 +564,7 @@ namespace JortPob
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
                 Script script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
-                msb.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                msb.Compression = Compression.KRAK();
 
                 /* Handle chunks */
                 for (int i = 0; i < group.chunks.Count(); i++)
@@ -524,6 +623,25 @@ namespace JortPob
                         {
                             asset.EntityID = content.entity;
                             contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
+                        }
+
+                        /* If bed... */
+                        if(content is BedContent bedContent)
+                        {
+                            (uint bed, uint respawn) entityIds = script.RegisterBed();
+
+                            MSBE.Part.Enemy bed = MakePart.Bed();
+                            bed.Position = asset.Position;
+                            bed.Unk1.DisplayGroups[0] = 0;
+                            bed.CollisionPartName = rootCollision.Name;
+                            bed.EntityID = entityIds.bed;
+                            bed.TalkID = character.GetESD(group, msb, bedContent);
+                            msb.Parts.Enemies.Add(bed);
+
+                            MSBE.Part.Player respawn = MakePart.Player();
+                            respawn.Position = asset.Position;
+                            respawn.EntityID = entityIds.respawn;
+                            msb.Parts.Players.Add(respawn);
                         }
 
                         /* Add to msb */
@@ -804,9 +922,72 @@ namespace JortPob
                         msb.Parts.Assets.Add(asset);
                     }
 
+                    /* Add scripted positions */
+                    foreach (Layout.ScriptedPosition sp in chunk.positions)
+                    {
+                        MSBE.Part.Player player = MakePart.Player();
+                        player.Position = sp.relative + Const.MSB_OFFSET;
+                        player.Rotation = sp.rotation;
+                        player.EntityID = sp.player;
+                        msb.Parts.Players.Add(player);
+
+                        MSBE.Region.Other region = new();
+                        region.Name = $"ScriptedPosition:{sp.position}";
+                        region.Shape = new MSB.Shape.Point();
+                        region.Position = sp.relative + Const.MSB_OFFSET;
+                        region.Rotation = sp.rotation;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = sp.region;
+                        region.MapStudioLayer = 4294967295;
+                        msb.Regions.Add(region);
+                    }
+
+                    /* Add PathGridPoints */
+                    foreach (Layout.PathGridPoint point in chunk.paths)
+                    {
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = point.name;
+                        region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
+                        region.Position = point.position + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = point.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
+                    /* Add TravelPoints */
+                    foreach (Layout.TravelPoint travel in chunk.travels)
+                    {
+                        MSBE.Region.PatrolRoute region = new();
+                        region.Name = travel.name;
+                        region.Shape = new MSB.Shape.Sphere(travel.radius);
+                        region.Position = travel.relative + Const.MSB_OFFSET;
+                        region.Rotation = Vector3.Zero;
+                        region.RegionID = nextMPR++;
+                        region.EntityID = travel.entity;
+                        region.MapStudioLayer = 4294967295;
+
+                        region.MapID = -1;
+                        region.UnkE08 = 255;
+                        region.UnkS04 = 0;
+                        region.UnkS0C = -1;
+                        region.UnkT00 = -1;
+                        region.Unk40 = 0;
+
+                        msb.Regions.PatrolRoutes.Add(region);
+                    }
+
                     /* Handle area name */
                     int paramId = int.Parse($"60{group.map:D2}{group.area:D2}{nextMPR:D2}");
-
 
                     MSBE.Region.MapPoint mpr = new();
                     mpr.Name = $"{chunk.cell.name} placename";
@@ -814,6 +995,7 @@ namespace JortPob
                     mpr.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                     mpr.Rotation = Vector3.Zero;
                     mpr.RegionID = nextMPR++;
+                    mpr.EntityID = scriptManager.areas[chunk.cell]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
                     mpr.MapStudioLayer = 4294967295;
                     mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, chunk.cell, chunk.root, paramId);
 
@@ -829,6 +1011,7 @@ namespace JortPob
                     mpr.UnkT18 = -1;
 
                     msb.Regions.MapPoints.Add(mpr);
+                    scriptManager.AddLocation(chunk.cell.name, mpr.EntityID);
                 }
 
                 /* EnvMap & REM for interior */
@@ -862,10 +1045,173 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
+            /* Generate navmeshes and then build nvas and nvbnds */
+            /* First start by grabbing all the nav scene representations and converting them OBJ -> HKX -> NAV */
+            if (!Const.DEBUG_SKIP_NAVMESH)
+            {
+                List<string> objs = new();
+                foreach (BaseTile bt in layout.tiles)
+                {
+                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
+                    tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
+                    objs.Add(objPath);
+                }
+                foreach (InteriorGroup group in layout.interiors)
+                {
+                    if (group.IsEmpty()) { continue; } // skip empty groups
+
+                    for (int i = 0; i < group.chunks.Count(); i++)
+                    {
+                        InteriorGroup.Chunk chunk = group.chunks[i];
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
+                        objs.Add(objPath);
+                    }
+                }
+
+                NavWorker.Go(objs);
+
+                /* After all the nav conversions are finshed we can now do nvas and nvbnds */
+                Lort.Log($"Binding {layout.tiles.Count() + layout.interiors.Count()} NVBNDs...", Lort.Type.Main);
+                Lort.NewTask("Binding NVBNDs", layout.tiles.Count() + layout.interiors.Count());
+                foreach (BaseTile bt in layout.tiles)
+                {
+                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
+
+                    /* Some vars */
+                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
+                    string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
+                    string onavPath = Path.ChangeExtension(objPath, ".o.nav");
+
+                    /* Create NVA */
+                    SoulsFormats.NVA nva = new();
+                    nva.Compression = Compression.KRAK();
+                    NVA.Entry11 entry11 = new();
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
+                    nva.Entries11.Add(entry11);
+                    nva.Navmeshes.Version = 4;
+
+                    /* Create NVBND */
+                    BND4 nvbnd = new();
+                    nvbnd.Compression = Compression.KRAK();
+                    nvbnd.Version = "07D7R6";
+
+                    /* Add navmesh entry to NVA */
+                    NVA.Navmesh navMesh = new();
+                    int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
+                    navMesh.NameID = nextNavId;
+                    navMesh.ModelID = nextN;
+                    navMesh.IsConnectedNavmeshesInline = true;
+                    navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                    navMesh.Rotation = new(0f);
+                    navMesh.Scale = new(1f, 1f, 1f, 0f);
+                    navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
+                    navMesh.Unk3C = 0;
+                    navMesh.Unk4C = 0;
+                    navMesh.Unk44 = 1075419545; // magic number used
+                    nva.Navmeshes.Add(navMesh);
+
+                    /* Add navmesh file to NVBND */
+                    BinderFile nbf = new();
+                    nbf.Bytes = File.ReadAllBytes(nnavPath);
+                    nbf.ID = 10000;
+                    nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(nbf);
+
+                    BinderFile obf = new();
+                    obf.Bytes = File.ReadAllBytes(onavPath);
+                    obf.ID = 20000;
+                    obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
+                    nvbnd.Files.Add(obf);
+
+                    /* Write Files */
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    Lort.TaskIterate();
+                }
+                foreach (InteriorGroup group in layout.interiors)
+                {
+                    /* Some vars */
+                    int bid = 10000;
+                    int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
+                    string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
+
+                    /* Create NVA */
+                    SoulsFormats.NVA nva = new();
+                    nva.Compression = Compression.KRAK();
+                    NVA.Entry11 entry11 = new();
+                    entry11.Unk00 = Const.NVA_NV_UNK00_MAGIC;
+                    entry11.Unk04 = 0;
+                    entry11.Unk08 = 0;
+                    entry11.Unk0C = 0;
+                    nva.Entries11.Add(entry11);
+                    nva.Navmeshes.Version = 4;
+
+                    /* Create NVBND */
+                    BND4 nvbnd = new();
+                    nvbnd.Compression = Compression.KRAK();
+                    nvbnd.Version = "07D7R6";
+
+                    for (int i = 0; i < group.chunks.Count(); i++)
+                    {
+                        if (group.IsEmpty()) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
+
+                        InteriorGroup.Chunk chunk = group.chunks[i];
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
+                        string onavPath = Path.ChangeExtension(objPath, ".o.nav");
+
+                        /* Add navmesh entry to NVA */
+                        NVA.Navmesh navMesh = new();
+                        int nextN = int.Parse($"{group.map:D2}{group.area:D2}{i:D2}");
+                        navMesh.NameID = nextNavId;
+                        navMesh.ModelID = nextN;
+                        navMesh.IsConnectedNavmeshesInline = true;
+                        navMesh.Position = new(Const.MSB_OFFSET, 1f);
+                        navMesh.Rotation = new(0f);
+                        navMesh.Scale = new(1f, 1f, 1f, 0f);
+                        navMesh.FaceCount = Obj.GetFaceCount(objPath); // might be unnesscary? doesn't really seem to do anything?
+                        navMesh.Unk3C = 0;
+                        navMesh.Unk4C = 0;
+                        navMesh.Unk44 = 1075419545; // magic number used
+                        nva.Navmeshes.Add(navMesh);
+
+                        /* Add navmesh file to NVBND */
+                        BinderFile nbf = new();
+                        nbf.Bytes = File.ReadAllBytes(nnavPath);
+                        nbf.ID = bid;
+                        nbf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\n{mid}_{nextN:D6}.hkx";
+                        nvbnd.Files.Add(nbf);
+
+                        BinderFile obf = new();
+                        obf.Bytes = File.ReadAllBytes(onavPath);
+                        obf.ID = 10000 + bid;
+                        obf.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\navimesh\\bind6\\o{mid}_{nextN:D6}.hkx";
+                        nvbnd.Files.Add(obf);
+
+                        bid++;
+
+                        nextNavId += 10;
+                    }
+
+                    /* Write Files */
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    Lort.TaskIterate();
+                }
+            }
+
+
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */
             Lort.Log($"Processing {contentToCompile.Count()+1} scripts...", Lort.Type.Main);
-            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*2);
+            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*3);
 
             /* Initialize local variables first */
             if (!Const.DEBUG_SKIP_SCRIPTS)
@@ -875,8 +1221,12 @@ namespace JortPob
                 Lort.TaskIterate();
                 foreach (PleaseCompile compile in contentToCompile)
                 {
+                    if (compile.content is BedContent) { continue; } // bed scripts become ESD c1000's
+
                     Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                     if (papyrus != null) { PapyrusEMEVD.InitializeLocalVariables(esm, scriptManager, compile.script, papyrus, compile.content); }
+
+                    if (compile.content is CharacterContent cc) { character.SetupPackages(compile.msb, compile.script, cc); } // ai packages must be set up before emevd compile starts
 
                     Lort.TaskIterate();
                 }
@@ -886,17 +1236,24 @@ namespace JortPob
                 Lort.TaskIterate();
                 foreach (PleaseCompile compile in contentToCompile)
                 {
+                    if (compile.content is BedContent) { continue; } // bed scripts become ESD c1000's
+
                     Papyrus papyrus = esm.GetPapyrus(compile.content.papyrus);
                     if (papyrus != null) { PapyrusEMEVD.Compile(esm, layout, compile.msb, sound.main, scriptManager, param, item, speff, compile.script, papyrus, compile.content); }
 
-                    if (compile.content is CharacterContent)
+                    if (compile.content is CharacterContent characterContent)
                     {
                         MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
-                        CharacterContent characterContent = compile.content as CharacterContent;
                         if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
                         else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
                     }
 
+                    Lort.TaskIterate();
+                }
+
+                foreach (PleaseCompile compile in contentToCompile)
+                {
+                    PapyrusEMEVD.Finalize(scriptManager, compile.script, compile.content);
                     Lort.TaskIterate();
                 }
             }
@@ -914,6 +1271,7 @@ namespace JortPob
             /* Generate some needed scripts after msb gen */
             scriptManager.GenerateAreaEvents();
             scriptManager.GenerateGlobalCrimeAbsolvedEvent();
+            scriptManager.GenerateGlobalResetHostilityEvent();
 
             /* Generate some params and write to file */
             Lort.Log($"Creating PARAMs...", Lort.Type.Main);
@@ -930,14 +1288,14 @@ namespace JortPob
 
             /* Write FMGs */
             Lort.Log($"Binding FMGs...", Lort.Type.Main);
-            text.Write($"{Const.OUTPUT_PATH}msg\\engus\\");
+            text.Write();
 
             /* Write FXR files */
             Lort.Log($"Binding FXRs...", Lort.Type.Main);
             FxrManager.Write(layout);
 
             /* Bind and write all materials and textures */
-            Bind.BindMaterials($"{Const.OUTPUT_PATH}material\\allmaterial.matbinbnd.dcx");
+            Bind.BindMaterials(Path.Combine(Const.OUTPUT_PATH, "material", "allmaterial.matbinbnd.dcx"));
             Bind.BindTPF(cache, layout.ListCommon());
             texManager.Write();
 
@@ -949,7 +1307,7 @@ namespace JortPob
             Bind.BindPickables(cache);
             foreach (LiquidInfo water in cache.liquids)  // bind up them waters toooooo
             {
-                Bind.BindAsset(water, $"{Const.OUTPUT_PATH}asset\\aeg\\{water.AssetPath()}.geombnd.dcx");
+                Bind.BindAsset(water, Path.Combine(Const.OUTPUT_PATH, $@"asset\aeg\{water.AssetPath()}.geombnd.dcx"));
             }
 
             /* Generate overworld */

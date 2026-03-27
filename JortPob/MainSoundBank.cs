@@ -24,8 +24,10 @@ namespace JortPob
         // Returns the row id of the sound you add
         public int AddSound(string record, Sound.Type type, bool loop, bool spatialize, float volume, float pitch, string file)
         {
+            if (Const.DEBUG_SKIP_SOUND) { return 5; } // see below
+
             /* See if this sound has already been added to the bank with the same (or similar enough) settings */
-            foreach(Sound s in sounds)
+            foreach (Sound s in sounds)
             {
                 if(s.IsSame(record, type, loop, spatialize, volume, pitch))
                 {

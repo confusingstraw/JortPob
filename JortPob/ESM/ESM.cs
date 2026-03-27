@@ -1,7 +1,5 @@
 ﻿using JortPob.Common;
 using JortPob.Worker;
-using Microsoft.Scripting.Utils;
-using SoulsFormats;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,14 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using static HKLib.hk2018.hkbStateMachine;
-using static IronPython.Modules._ast;
 using static JortPob.Dialog;
-using static JortPob.NpcManager;
-using static JortPob.NpcManager.TopicData;
-using static JortPob.Papyrus;
-using static JortPob.Script;
 
 namespace JortPob
 {
@@ -44,29 +35,30 @@ namespace JortPob
 
         public ESM(ScriptManager scriptManager)
         {
+            // Ensure the cache path exists
+            Directory.CreateDirectory(Const.CACHE_PATH);
             /* Check if a json has been generated from the esm, if not make one */
-            string jsonPath = $"{Const.CACHE_PATH}morrowind.json";
+            string jsonPath = Path.Combine(Const.CACHE_PATH, "morrowind.json");
             if (!File.Exists(jsonPath))
             {
                 /* Merge load order to a single file using merge_to_master */
                 string esmPath;
                 if (Const.LOAD_ORDER.Length == 1)
                 {
-                    esmPath = $"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[0]}";
+                    esmPath = Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[0]);
                 }
                 else
                 {
                     // Copy our master esm to the cache folder
-                    esmPath = $"{Const.CACHE_PATH}morrowind.esm";
+                    esmPath = Path.Combine(Const.CACHE_PATH, "morrowind.esm");
                     if(File.Exists(esmPath)) { File.Delete(esmPath); }
-                    if(!Directory.Exists(Const.CACHE_PATH)) { Directory.CreateDirectory(Const.CACHE_PATH); }
-                    File.Copy($"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[0]}", esmPath);
+                    File.Copy(Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[0]), esmPath);
 
                     // Merge the rest of the load order into that esm
                     for (int i=1;i<Const.LOAD_ORDER.Length;i++)
                     {
                         Lort.Log($"Merging '{Const.LOAD_ORDER[i]}' ...", Lort.Type.Main);
-                        string childPath = $"{Const.MORROWIND_PATH}Data Files\\{Const.LOAD_ORDER[i]}";
+                        string childPath = Path.Combine(Const.MORROWIND_PATH, "Data Files", Const.LOAD_ORDER[i]);
 
                         ProcessStartInfo mergeStartInfo = new(Utility.ResourcePath(@"tools\MergeToMaster\merge_to_master.exe"), $"-o \"{childPath}\" \"{esmPath}\"")
                         {
@@ -80,7 +72,6 @@ namespace JortPob
 
                 /* Convert esm to a json file using tes3conv */
                 Lort.Log($"Creating 'cache\\morrowind.json' ...", Lort.Type.Main);
-                if(!System.IO.Directory.Exists(Const.CACHE_PATH)) { System.IO.Directory.CreateDirectory(Const.CACHE_PATH); }
                 ProcessStartInfo convStartInfo = new(Utility.ResourcePath(@"tools\Tes3Conv\tes3conv.exe"), $"-c \"{esmPath}\" \"{jsonPath}\"")
                 {
                     WorkingDirectory = Utility.ResourcePath(@"tools\Tes3Conv"),
@@ -282,6 +273,29 @@ namespace JortPob
             return null; // Not found!
         }
 
+        /* Gets a pathgrid record for the given cell name/grid. cell name is used by interiors and grid is used by exteriors */
+        public JsonNode FindPathRecord(string cell)
+        {
+            foreach (JsonNode json in GetAllRecordsByType(Type.PathGrid))
+            {
+                string name = json["cell"].GetValue<string>().ToLower();
+                if (cell.ToLower() == name) { return json; }
+            }
+            return null;
+        }
+
+        public JsonNode FindPathRecord(Int2 coordinate)
+        {
+            foreach (JsonNode json in GetAllRecordsByType(Type.PathGrid))
+            {
+                int x = json["data"]["grid"].AsArray()[0].GetValue<int>();
+                int y = json["data"]["grid"].AsArray()[1].GetValue<int>();
+                Int2 grid = new(x, y);
+                if (grid == coordinate) { return json; }
+            }
+            return null;
+        }
+
         public IEnumerable<JsonNode> GetAllRecordsByType(Type type)
         {
             return recordsByType[type].Values.Concat(unidentifiedRecordsByType[type]);
@@ -305,6 +319,16 @@ namespace JortPob
             foreach (Cell cell in interior)
             {
                 if (cell.name == name) { return cell; }
+            }
+            return null;
+        }
+
+        /* By Morrowind coordinates, not elden ring relative coordinates. Only exterior cells (obviously) */
+        public Cell GetCellByPosition(System.Numerics.Vector3 position)
+        {
+            foreach(Cell cell in exterior)
+            {
+                if (cell.IsPointInside(position)) { return cell; }
             }
             return null;
         }

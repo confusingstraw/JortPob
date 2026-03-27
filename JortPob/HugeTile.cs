@@ -38,12 +38,12 @@ namespace JortPob
             return false;
         }
 
-        public override void AddCell(Cell cell)
+        public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
             cells.Add(cell);
             BigTile big = GetBigTile(cell.center);
             if(big == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B01", Lort.Type.Debug); return; }
-            big.AddCell(cell);
+            big.AddCell(scriptManager, cell);
         }
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
@@ -78,6 +78,7 @@ namespace JortPob
                         if(tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
                         content.load = tile.coordinate;
                         base.AddContent(cache, cell, content);
+                        tile.AddNav(cache, cell, content);
                         break;
                     }
                     goto default;

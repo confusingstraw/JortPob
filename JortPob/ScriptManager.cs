@@ -2,18 +2,12 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -23,10 +17,16 @@ namespace JortPob
 
         public ScriptCommon common;
         public List<Script> scripts; // map scripts
+        public Dictionary<string, uint> locations;
+        public Dictionary<PhasedNpcContent, string> routing; // a routing dictionary for phased npcs to share flags
+        public Dictionary<Cell, uint> areas; // dictionary of region entity ids that cover the volume of an interior cell
         public ScriptManager()
         {
             common = new(this);
             scripts = new();
+            locations = new();
+            routing = new();
+            areas = new();
 
             // I wrote a little baby program to scan the common.emevd script and extract every number used in it.
             // I have these used numbers in a txt file and we parse that into a list
@@ -67,6 +67,27 @@ namespace JortPob
             return GetScript(group.map, group.area, group.unk, group.block);
         }
 
+        /* Supports phased routing */
+        public Flag GetFlag(Designation designation, Content content)
+        {
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(designation, route);
+            }
+            else { return GetFlag(designation, content.entity.ToString()); }
+        }
+
+        /* Supports phased routing */
+        public Flag GetFlagLocal(Content content, string name)
+        {
+            if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
+            {
+                return GetFlag(Designation.Local, $"{route}.{name}");
+            }
+            else { return GetFlag(Designation.Local, $"{content.entity.ToString()}.{name}"); }
+        }
+
+        /* Does not support phased routing */
         public Flag GetFlag(Designation designation, string name)
         {
             (Designation, string) lookupKey = FormatFlagLookupKey(designation, name.ToLower());
@@ -83,10 +104,19 @@ namespace JortPob
             return null;
         }
 
+        public void AddRoute(PhasedNpcContent phase, Content original)
+        {
+            routing.Add(phase, original.entity.ToString());
+        }
+
         /* Sets up race and faction flags that are used globally and interact with specific papyrus calls */
         /* Also some other globalish vars we need for scripts like Reputation and CrimeLevel */
         public void SetupSpecialFlags(ESM esm)
         {
+            /* Create some special common events */ // these have to wait until after ESM is loaded otherwise we'd just do it in the constructor
+            common.CreateWeatherTracker();
+            common.TimeHandler();
+
             // Create a one time event that sets some default flags at game startup + also moves player to debug area if they aren't there
             Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
             Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
@@ -96,6 +126,7 @@ namespace JortPob
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.End);"));                                       // end event
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6000, OFF);")); // Always off flag
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 6001, ON);")); // Always on flag
+            gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 60120, OFF);")); // Flag that enables crafting
             List<int> setFlagsOn = new()
             {
                 62010, 62011, 62012, 62020, 62021, 62022, 62030, 62031, 62032, 62040, 62041, 62050, 62051, 62052,  // Known world map pieces to unlock all major areas of map
@@ -120,8 +151,12 @@ namespace JortPob
             // Crime gold to be paid to guards
             common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.CrimeLevel, "CrimeLevel");
 
+            // Arrest flat, set to true when a guard attempts to arrest you. Resets on game load. Makes it so guards attempt arrest once then just kill you if you resist
+            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.Arrest, "Arrest");
+
             // Crime absolved flag
             common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeAbsolved, "CrimeAbsolved"); // not temp since load screen happens if going to jail
+            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.ResetHostility, "ResetHostility");
 
             // Temp flag that is set when a guard is talking to the player, used to control some guard aggro stuff
             common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
@@ -440,7 +475,7 @@ namespace JortPob
 
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE FUNCTION HERE $$ --", $"{hksJankStart}{hksJankGen}{hksJankEnd}{hksBitwiseShitCode}");
             hksFile = hksFile.Replace("-- $$ INJECT JANK UPDATE CALL HERE $$ --", $"{hksSneakShitcode}{hksSoulCounterShitCode}{hksPlayerStatShitcode}{hksJankCall}");
-            string hksOutPath = $"{Const.OUTPUT_PATH}action\\script\\c0000.hks";
+            string hksOutPath = Path.Combine(Const.OUTPUT_PATH, @"action\script\c0000.hks");
             if (File.Exists(hksOutPath)) { File.Delete(hksOutPath); }
             System.IO.Directory.CreateDirectory(Path.GetDirectoryName(hksOutPath));
             File.WriteAllText(hksOutPath, hksFile);
@@ -474,14 +509,22 @@ namespace JortPob
             Script.Flag crimeLevel = GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"EventValueOperation({crimeLevel.id}, {crimeLevel.Bits()}, 0, 0, 1, 5);")); // 5 is CalculationType.Assign
 
-            int delayCounter = 0; // if you do to much in a single frame the game crashes so every hundred flags we wait a frame
+            Script.Flag arrestFlag = GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {arrestFlag.id}, OFF);"));  // arrest attempt flag is set back to off
+
+            Script.Flag guardGreetFlag = GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {guardGreetFlag.id}, OFF);"));  // guard greet flag back off just incase it got stuck on
+
+            absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
+
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
             foreach (Script.Flag flag in allFlags)
             {
                 if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
-                if (flag.value != 0) { continue; }                                      // don't reset hostility flags for npcs that are naturally hostile
-                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, OFF);"));
+                string onOff = flag.value == 0 ? "Off" : "On";
+                absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
 
-                if(delayCounter++ > 512)
+                if(++delayCounter > 512)
                 {
                     absolveEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
                     delayCounter = 0;
@@ -494,6 +537,49 @@ namespace JortPob
             common.emevd.Events.Add(absolveEvent);
             common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {eventFlag.id})"));  // initialize in common
         }
+
+        /* This function is very similar to CrimeAbsolve above but only resets hostility. This is used when the player rests to make npcs that the player provoked return to neutral */
+        public void GenerateGlobalResetHostilityEvent()
+        {
+            List<Script.Flag> allFlags = [.. common.flags];
+            allFlags.AddRange(scripts.SelectMany(script => script.flags));
+
+            Script.Flag eventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "Global:ResetHostilityEvent");
+            EMEVD.Event resetEvent = new();
+            resetEvent.ID = eventFlag.id;
+
+            Script.Flag resetFlag = GetFlag(Script.Flag.Designation.ResetHostility, "ResetHostility");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {resetFlag.id});"));  // if absolve flag set
+
+            Script.Flag arrestFlag = GetFlag(Script.Flag.Designation.Arrest, "Arrest");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {arrestFlag.id}, OFF);"));  // arrest attempt flag is set back to off
+
+            Script.Flag guardGreetFlag = GetFlag(Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {guardGreetFlag.id}, OFF);"));  // guard greet flag back off just incase it got stuck on
+
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"ClearSpEffect(10000, {(int)SpeffManager.Functional.Alarming});")); // remove "alarming" speff from players
+
+            int delayCounter = 0; // if you do to much in a single frame the game crashes so every X~ flags we wait a frame
+            foreach (Script.Flag flag in allFlags)
+            {
+                if (flag.designation != Script.Flag.Designation.Hostile) { continue; }  // only reset hostility flags
+                string onOff = flag.value == 0 ? "Off" : "On";
+                resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {flag.id}, {onOff});"));
+
+                if (++delayCounter > 512)
+                {
+                    resetEvent.Instructions.Add(common.AUTO.ParseAdd($"WaitFixedTimeFrames(1);"));
+                    delayCounter = 0;
+                }
+            }
+
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {resetFlag.id}, OFF);"));
+            resetEvent.Instructions.Add(common.AUTO.ParseAdd($"EndUnconditionally(EventEndType.Restart);")); // restart so its ready to go again when the player fucks up
+
+            common.emevd.Events.Add(resetEvent);
+            common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {eventFlag.id})"));  // initialize in common
+        }
+
 
         public void GenerateAreaEvents()
         {
@@ -522,6 +608,38 @@ namespace JortPob
             throw new Exception("Could not find area script for a content object"); // should be unreacahable
         }
 
+        /* These 2 functions are used by PapyrusEMEVD for the GetPcCell check. This just indexes the regions of named locations for use by scripts */
+        public void AddLocation(string name, uint entity)
+        {
+            if (locations.ContainsKey(name.ToLower().Trim())) { return; }
+            locations.Add(name.ToLower().Trim(), entity);
+        }
+
+        public uint GetLocation(string name)
+        {
+            if (locations.TryGetValue(name.ToLower().Trim(), out var entity))
+                return entity;
+            return 0;
+        }
+
+        /* Retrieve info on a PhasedNpcContent based on a Papyrus call of Position or PositionCell */
+        public PhasedNpcContent FindPhase(PhasedNpcContent pnpc, string location, Vector3 position) { return FindPhase(pnpc.source, location, position); }
+        public PhasedNpcContent FindPhase(uint source, string location, Vector3 position)
+        {
+            foreach(var (pnpc, route) in routing)
+            {
+                if (
+                    pnpc.source == source &&                                                                                                // phase is of the same character
+                    ((pnpc.cell.IsExterior() && location == null) || (location?.ToLower().Trim() == pnpc.cell.name?.ToLower().Trim())) &&   // phase location matches the interior cell or is in the overworld
+                    Vector3.Distance(pnpc.position, position) < 1f                                                                          // phase position is a close enough match
+                )
+                {
+                    return pnpc;
+                }
+            }
+            return null;
+        }
+
         /* Write all EMEVD scripts this class has created */
         public void Write()
         {
@@ -548,12 +666,25 @@ namespace JortPob
             }
             File.WriteAllLines(Path.Combine(Const.OUTPUT_PATH, "flag information.txt"), flagInfo.ToArray());
 
+            /* Write EMEVD scripts */
             Lort.Log($"Writing {scripts.Count + 1} EMEVDs...", Lort.Type.Main);
             common.Write();
             foreach(Script script in scripts)
             {
                 script.Write();
             }
+
+            /* Write lua ai logic binds */
+            BindLua();
+        }
+
+        /* Write ai logic luabnd */
+        public void BindLua()
+        {
+            // Handles 030000_logic specifically
+            BND4 bnd = BND4.Read(Path.Combine(Const.ELDEN_PATH, @"game\script\030000_logic.luabnd.dcx"));
+            bnd.Files[0].Bytes = File.ReadAllBytes(Utility.ResourcePath(@"ai\030000_logic.lua"));
+            bnd.Write(Path.Combine(Const.OUTPUT_PATH, @"script\030000_logic.luabnd.dcx"));
         }
     }
 }

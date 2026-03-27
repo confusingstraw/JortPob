@@ -29,6 +29,8 @@ namespace JortPob.Common
         public static string OUTPUT_PATH { get; private set; }
         [Setting] 
         public static string WWISE_PATH { get; private set; }
+        [Setting]
+        public static string RAD_PATH { get; private set; }
         public static string CACHE_PATH => Path.Combine(OUTPUT_PATH, @"cache\");
         [Setting("Morrowind.esm")] 
         public static string[] LOAD_ORDER { get; private set; }
@@ -113,6 +115,12 @@ namespace JortPob.Common
         public static readonly short FLVER_DMY_BOTTOM = 101;
         public static readonly short FLVER_DMY_TOP = 102;
 
+        /// Random magic number used in NVA.Navmesh 
+        public static readonly int NVA_NV_UNK00_MAGIC = 1726789910;
+
+        /// when creating regions for patrol routes or travel points or whatever, use this size sphere
+        public static readonly float PATH_REGION_SIZE = 2f;
+
         /// asset folder starting id for generated assets EX: "aeg900_xxx"
         public static readonly int ASSET_GROUP = 900;
 
@@ -151,6 +159,9 @@ namespace JortPob.Common
 
         /// increase size of cutouts slightly so we dont get any clipping at the edges, only used by water visual mesh subtraction
         public static readonly float WATER_CUTOUT_SIZE_TWEAK = 1.25f;
+
+        /// an MSB can only support 19 "bonfires" due to entity ids being hardcoded to the range of 0950 to 0999 in the msb block
+        public static readonly int MAX_BEDS_PER_MSB = 19;
 
         #endregion
 
@@ -204,6 +215,11 @@ namespace JortPob.Common
         /// distance in cells multiplied by this value
         public static readonly int TRAVEL_DISTANCE_COST = 10;
 
+        /// distance for hello trigger and hello untrigger
+        public static readonly float NPC_HELLO_DIST_IN = 3f;
+        public static readonly float NPC_HELLO_DIST_OUT = 4f;
+        public static readonly float NPC_IDLE_DIST_OUT = 12f;
+
         #endregion
 
         #region Dialog
@@ -229,17 +245,17 @@ namespace JortPob.Common
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
-        [Setting(false)] public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         [Setting(false)]
-        public static bool DEBUG_SKIP_CUSTOM_LOADING_TEXT { get; private set; }
-
-        [Setting(false)]
-        public static bool DEBUG_SKIP_CUSTOM_LOADING_IMAGES { get; private set; } // same here
+        public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         /// can make dialog unuseable
         [Setting(false)]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
+
+        /// skips navmeshes, will make enmey ai act really stupid
+        [Setting(false)]
+        public static bool DEBUG_SKIP_NAVMESH { get; private set; }
 
         /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
         [Setting(false)]
@@ -247,7 +263,11 @@ namespace JortPob.Common
 
         /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
         [Setting(false)]
-        public static bool DEBUG_SKIP_ICONS { get; private set; }
+        public static bool DEBUG_SKIP_MENU_TEXTURES { get; private set; }
+
+        /// skip generating cutscene binds and BK2 videos.
+        [Setting(false)]
+        public static bool DEBUG_SKIP_CUTSCENES { get; private set; }
 
         /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
         [Setting(false)]
@@ -267,6 +287,18 @@ namespace JortPob.Common
         [Setting(true)]
         public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
 
+        /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
+        [Setting(true)]
+        public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
+
+        /// if true we use DFLT in place of KRAK to save time on compression. use KRAK in production!
+        [Setting(true)]
+        public static bool DEBUG_USE_DFLT_COMPRESSION { get; private set; }
+
+        /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
+        [Setting(true)]
+        public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
+
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
         /// seyda neen area (small) = new int[] {-3, -10, -1, -8 }
         /// seyda neen area (large) = new int[] { -5, -15, 5, -5 }
@@ -280,10 +312,6 @@ namespace JortPob.Common
         /// half the map = new int[] {-10, -15, 20, 0};
         [Setting(null)]
         public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
-
-        /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-        [Setting(true)]
-        public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
 
         /// set to "null" or remove from settings.json to build entire map.
         [Setting(null)]
@@ -312,10 +340,6 @@ namespace JortPob.Common
 
             return false;
         }
-
-        /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
-        [Setting(true)]
-        public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
 
         #endregion
 

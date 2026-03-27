@@ -2,6 +2,7 @@
 using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
+using SoulsFormats.Cryptography;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -104,7 +105,7 @@ namespace JortPob
             interactActionButtons = new();
             itemActionButtons = new();
 
-            SoulsFormats.BND4 paramBnd = SoulsFormats.SFUtil.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
+            SoulsFormats.BND4 paramBnd = RegulationDecryptor.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
             string[] files = Directory.GetFiles(Utility.ResourcePath(@"misc\paramdefs"));
 
             Dictionary<ParamDefType, WitchyFormats.PARAMDEF> paramdefs = new();
@@ -142,7 +143,7 @@ namespace JortPob
             }
 
             /* Load extenedTalkParam and do the same thing as above */
-            foreach(BinderFile bf in paramBnd.Files) { if (Utility.PathToFileName(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
+            foreach(BinderFile bf in paramBnd.Files) { if (Path.GetFileNameWithoutExtension(bf.Name) == ParamType.TalkParam.ToString()) { extendedTalkParam = LiveParam.Read(bf.Bytes); break; } }
             extendedTalkParam.ApplyParamdef(SoulsFormats.PARAMDEF.XmlDeserialize(Utility.ResourcePath(@"misc\paramdefs\TalkParam.xml")));
 
             List<LiveParam.Row> openingcustcenestuff2 = new();
@@ -274,7 +275,7 @@ namespace JortPob
             
             /* Write params */
             BND4 bnd = new();
-            bnd.Compression = SoulsFormats.DCX.Type.DCX_ZSTD;
+            bnd.Compression = Compression.ZSTD();
             bnd.Version = "11601000";
             int i = 0;
             foreach (KeyValuePair<ParamType, FsParam> kvp in param)
@@ -294,7 +295,7 @@ namespace JortPob
 
                 Lort.TaskIterate();
             }
-            SFUtil.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
+            RegulationDecryptor.EncryptERRegulation(Path.Combine(Const.OUTPUT_PATH, "regulation.bin"), bnd);
 
             /* Write LiveParam extended talk rows */
             extendedTalkParam.Write(Path.Combine(Const.OUTPUT_PATH, "ExtendedTalkParam.param"));
@@ -859,7 +860,7 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(npc.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)26); // team type (hostile=27, friendly=26)
+            row.Cells[105].SetValue((byte)26); // team type [friendlynpc=26]
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
             AddRow(npcParam, row);
@@ -879,7 +880,7 @@ namespace JortPob
 
             int textId = textManager.AddNpcName(creature.name);
             row.Cells[5].SetValue(textId); // nameId
-            row.Cells[105].SetValue((byte)(creature.hostile ? 27 : 26)); // team type (hostile=27, friendly=26)
+            row.Cells[105].SetValue((byte)(creature.IsHostile() ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
             // @TODO: apply data from json remap to param!
@@ -890,7 +891,7 @@ namespace JortPob
         public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
-            FsParam.Row row = CloneRow(thinkParam[523010000], npc.id, id); // 523010000 is white mask varre
+            FsParam.Row row = CloneRow(thinkParam[533250000], npc.id, id); // 533250000 is rogier followy
 
             // STUB:: do stuff to this param lol
 
@@ -960,7 +961,7 @@ namespace JortPob
         {
             int rowId = nextActionButtonId++;
 
-            FLVER2 flver = FLVER2.Read($"{Const.CACHE_PATH}{modelInfo.path}"); // load flver of this door so we can look at its bounding box
+            FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
             float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
             float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
             float width = x > z ? x : z;
@@ -1364,6 +1365,7 @@ namespace JortPob
 
             int i = 0;
             int baseRow = nextMapItemLotId;
+            int totalValue = 0;
             foreach ((ItemManager.ItemInfo item, int quantity) entry in inventory)
             {
                 Script.Flag itemLotFlag = script.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Item, $"Container::{container.id}:{0}");
@@ -1377,10 +1379,11 @@ namespace JortPob
                 row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
                 i++;
+                totalValue += entry.item.value;
                 AddRow(itemLotParam, row);
             }
 
-            script.RegisterContainerAsset(container);
+            script.RegisterContainerAsset(container, totalValue);
 
             nextMapItemLotId += 10;
             return baseRow;
@@ -1419,7 +1422,7 @@ namespace JortPob
             // quantity testing hasn't been done yet, but there can be more loading titles than the base game
             // just don't go crazy without telling one of the mods
 
-            if (Const.DEBUG_SKIP_CUSTOM_LOADING_TEXT) return;
+            if (Const.DEBUG_SKIP_MENU_TEXTURES) return;
 
             // Grab loading menu text override
             List<Override.LoadingTip> loadingTips = Override.GetLoadingTips();

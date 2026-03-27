@@ -1,12 +1,9 @@
 ﻿using JortPob.Common;
-using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
-using static JortPob.NpcContent;
 
 namespace JortPob
 {
@@ -49,47 +46,15 @@ namespace JortPob
             float j = float.Parse(json["rotation"][1].ToString());
             float k = float.Parse(json["rotation"][2].ToString());
 
-            /* The following unholy code converts morrowind (Z up) euler rotations into dark souls (Y up) euler rotations */
-            /* Big thanks to katalash, dropoff, and the TESUnity dudes for helping me sort this out */
-
-            /* Katalashes code from MapStudio */
-            Vector3 MatrixToEulerXZY(Matrix4x4 m)
-            {
-                const float Pi = (float)Math.PI;
-                const float Deg2Rad = Pi / 180.0f;
-                Vector3 ret;
-                ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
-
-                if (Math.Abs(m.M12) < 0.9999999)
-                {
-                    ret.X = MathF.Atan2(-m.M32, m.M22);
-                    ret.Y = MathF.Atan2(-m.M13, m.M11);
-                }
-                else
-                {
-                    ret.X = MathF.Atan2(m.M23, m.M33);
-                    ret.Y = 0;
-                }
-                ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
-                ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
-                ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
-                return ret;
-            }
-
-            /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
-            Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), i);
-            Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), k);
-            Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), j);
-            Quaternion q = xRot * zRot * yRot;
-
-            Vector3 eu = MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+            Vector3 r = Utility.ConvertRotation(new(i, j, k));
 
             relative = new();
             position = new Vector3(x, y, z) * Const.GLOBAL_SCALE;
-            rotation = eu * (float)(180 / Math.PI);
+            rotation = Utility.ToDegrees(r);
             scale = (int)((json["scale"] != null ? float.Parse(json["scale"].ToString()) : 1f) * 100);
         }
 
+        /* Copy constructor for emitters */
         public Content(Cell cell, string id, string name, ESM.Type type, Int2 load, string papyrus, Vector3 position, Vector3 rotation, int scale)
         {
             this.cell = cell;
@@ -101,6 +66,24 @@ namespace JortPob
             this.position = position;
             this.rotation = rotation;
             this.scale = scale;
+        }
+        
+        /* Copy constructor for Phasing */
+        public Content(Content content, Cell cell, Vector3 position, Vector3 rotation)
+        {
+            this.cell = cell;
+            this.position = position;
+            this.rotation = rotation;
+
+            this.id = content.id;
+            this.name = content.name;
+            this.type = content.type;
+            this.scale = content.scale;
+            this.entity = content.entity;
+            this.papyrus = content.papyrus;
+            this.relative = content.relative;
+            this.load = content.load;
+            this.mesh = content.mesh;
         }
     }
 
@@ -116,16 +99,26 @@ namespace JortPob
             OffersRepairs, BartersLockpicks, BartersProbes, BartersLights
         };
 
+        // used for determining crime response type
+        public enum Witness
+        {
+            None, Citizen, Guard
+        }
+
         public readonly string job, faction; // class is job, cant used reserved word
         public readonly Race race;
         public readonly Sex sex;
 
         public readonly int level, disposition, reputation, rank, gold;
         public readonly int hello, fight, flee, alarm;
-        public readonly bool hostile, dead;
+        public readonly bool dead;
 
         public readonly bool essential; // player gets called dumb if they kill this dood
-        public bool hasWitness; // this value is set based on local npcs. defaults false. if true then crimes comitted against this npc will cause bounty
+        public Witness witness; // this value is set based on local npcs. defaults none. if guard or citizen then crimes comitted against this npc will cause bounty
+
+        public Script.Flag packageDefaultFlag; // can be null. base ai package. if a script switches packages, it returns to this one when it's done.
+        public readonly List<Script.Flag> packageEventFlags; // all ai package flags for this content. used by switcher to clear all running events before a switch
+        public readonly List<AiPackage> packages; // defines some simple behaviours an npc can have like wandering around
 
         public readonly Stats stats; // skills and attributes
 
@@ -310,6 +303,45 @@ namespace JortPob
             }
         }
 
+        /* Defines some values for ai packages */
+        public class AiPackage
+        {
+            public enum Type { Wander, Travel, Follow, Escort }   // escort seems unused. wander doubles as "nothing"
+
+            /* Not all values are used for every type. I decided against making each package type it's own class to make construction easier */
+            public readonly Type type;
+            public readonly float distance;
+            public readonly int duration;
+            public readonly string target;
+            public readonly Vector3 position;
+            public Vector3 relative;
+            public readonly string location;
+
+            public AiPackage(JsonNode json)
+            {
+                type = Enum.Parse<AiPackage.Type>(json["type"].GetValue<string>(), true);
+
+                distance = json["distance"]?.GetValue<float>() ?? 0f;
+                duration = json["duration"]?.GetValue<int>() ?? 0;
+
+                target = json["target"]?.GetValue<string>();
+                location = string.IsNullOrEmpty(json["cell"]?.GetValue<string>()) ? null : json["cell"]?.GetValue<string>();
+
+                if (json["location"] != null)
+                {
+                    JsonArray array = json["location"].AsArray();
+                    float x = array[0].GetValue<float>();
+                    float y = array[2].GetValue<float>();
+                    float z = array[1].GetValue<float>();
+
+                    if(x > 3e38) { return; }  // the "default" value for these is insane so this is a quick check
+
+                    Vector3 p = new(x, y, z);
+                    position = p * Const.GLOBAL_SCALE;
+                }
+            }
+        }
+
         /* Normal CharacterContent contructor */
         public CharacterContent(ESM esm, Cell cell, JsonNode json, Record record) : base(cell, json, record)
         {
@@ -363,8 +395,15 @@ namespace JortPob
             flee = int.Parse(record.json["ai_data"]["flee"].ToString());
             alarm = int.Parse(record.json["ai_data"]["alarm"].ToString());
 
-            hostile = fight >= 80; // @TODO: recalc with disposition mods based off UESP calc
+            witness = Witness.None;
             dead = record.json["data"]["stats"] != null && record.json["data"]["stats"]["health"] != null ? (int.Parse(record.json["data"]["stats"]["health"].ToString()) <= 0) : false;
+
+            packageEventFlags = new();
+            packages = new();
+            foreach(JsonNode jsonNode in record.json["ai_packages"].AsArray())
+            {
+                packages.Add(new AiPackage(jsonNode));
+            }
 
             string[] serviceFlags = record.json["ai_data"]["services"].ToString().Split("|");
             services = new();
@@ -407,6 +446,39 @@ namespace JortPob
                 travel.Add(new Travel(t));
             }
         }
+
+        /* Copy constructor for phasing */
+        public CharacterContent(CharacterContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            job = content.job;
+            faction = content.faction;
+            race = content.race;
+            sex = content.sex;
+            level = content.level;
+            disposition = content.disposition;
+            reputation = content.reputation;
+            rank = content.rank;
+            gold = content.gold;
+            hello = content.hello;
+            fight = content.fight;
+            flee = content.flee;
+            alarm = content.alarm;
+            dead = content.dead;
+            essential = content.essential;
+            witness = content.witness;
+            packageEventFlags = new();       // we do not want to share a list reference between objects here. each phased copy of the character needs their own unique package event flags
+            packages = content.packages;
+            stats = content.stats;
+            treasure = content.treasure;
+            services = content.services;
+            inventory = content.inventory;
+            spells = content.spells;
+            travel = content.travel;
+            barter = content.barter;
+        }
+
+        /* Checks innate fight value to determine if npc is naturally hostile to the player or not */
+        public bool IsHostile() { return fight >= 80; } // @TODO: recalc with disposition mods based off UESP calc}
 
         /* Return true if this npc is a generic guard that can arrest the player for crimes */
         public bool IsGuard() { return job == "Guard" || job == "Ordinator Guard"; }
@@ -485,8 +557,41 @@ namespace JortPob
 
         public NpcContent(ESM esm, Cell cell, JsonNode json, Record record) : base(esm, cell, json, record)
         {
+            equipAcc = [];   // initialized with empty arrays because if a character has an empty inventory (barbarians) we will skip resolving equipment for them
+            equipGood = [];
+
             head = record.json["head"].GetValue<string>();
             hair = record.json["hair"].GetValue<string>();
+        }
+
+        public NpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation) : base(content, cell, position, rotation)
+        {
+            head = content.head;
+            hair = content.hair;
+
+            equipWeaponLeft = content.equipWeaponLeft;
+            equipWeaponRight = content.equipWeaponRight;
+            equipRange = content.equipRange;
+            equipHead = content.equipHead;
+            equipBody = content.equipBody;
+            equipHands = content.equipHands;
+            equipLegs = content.equipLegs;
+            equipArrow = content.equipArrow;
+            equipBolt = content.equipBolt;
+            equipAcc = content.equipAcc;
+            equipGood = content.equipGood;
+        }
+    }
+
+    public class PhasedNpcContent : NpcContent
+    {
+        public readonly uint source;  // source entity id. from original NpcContent that was converted to phased
+        public readonly int phase;   // index of which phase this is for the phased npc
+
+        public PhasedNpcContent(NpcContent content, Cell cell, Vector3 position, Vector3 rotation, uint source, int phase) : base(content, cell, position, rotation)
+        {
+            this.source = source;
+            this.phase = phase;
         }
     }
 
@@ -520,6 +625,21 @@ namespace JortPob
         }
     }
 
+    /* beds, which will have esd objects assocaitd with them */
+    public class BedContent : AssetContent
+    {
+        public readonly string ownerNpc; // npc record id of the owenr of this bed, can be null
+        public readonly string ownerFaction; // faction id that owns this bed, player can use it if they are in that faction. can be null
+        public readonly string ownerGlobal; // a global var is used to control ownership. used by rentable beds
+
+        public BedContent(Cell cell, JsonNode json, Record record) : base(cell, json, record)
+        {
+            ownerNpc = json["owner"]?.GetValue<string>();
+            ownerFaction = json["owner_faction"]?.GetValue<string>();
+            ownerGlobal = json["owner_global"]?.GetValue<string>();
+        }
+    }
+
     /* doors, both warp doors and activator doors */
     public class DoorContent : StaticContent
     {
@@ -544,41 +664,10 @@ namespace JortPob
                 float j = float.Parse(json["rotation"][1].ToString());
                 float k = float.Parse(json["rotation"][2].ToString());
 
-                // Same rotation code as in content, just copy pasted because lol lmao
-                /* Katalashes code from MapStudio */
-                Vector3 MatrixToEulerXZY(Matrix4x4 m)
-                {
-                    const float Pi = (float)Math.PI;
-                    const float Deg2Rad = Pi / 180.0f;
-                    Vector3 ret;
-                    ret.Z = MathF.Asin(-Math.Clamp(-m.M12, -1, 1));
-
-                    if (Math.Abs(m.M12) < 0.9999999)
-                    {
-                        ret.X = MathF.Atan2(-m.M32, m.M22);
-                        ret.Y = MathF.Atan2(-m.M13, m.M11);
-                    }
-                    else
-                    {
-                        ret.X = MathF.Atan2(m.M23, m.M33);
-                        ret.Y = 0;
-                    }
-                    ret.X = ret.X <= -180.0f * Deg2Rad ? ret.X + 360.0f * Deg2Rad : ret.X;
-                    ret.Y = ret.Y <= -180.0f * Deg2Rad ? ret.Y + 360.0f * Deg2Rad : ret.Y;
-                    ret.Z = ret.Z <= -180.0f * Deg2Rad ? ret.Z + 360.0f * Deg2Rad : ret.Z;
-                    return ret;
-                }
-
-                /* Adapted code from https://github.com/ColeDeanShepherd/TESUnity */
-                Quaternion xRot = Quaternion.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), i);
-                Quaternion yRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f), k);
-                Quaternion zRot = Quaternion.CreateFromAxisAngle(new Vector3(0.0f, 0.0f, 1.0f), j);
-                Quaternion q = xRot * zRot * yRot;
-
-                Vector3 eu = MatrixToEulerXZY(Matrix4x4.CreateFromQuaternion(q));
+                Vector3 r = Utility.ConvertRotation(new(i, j, k));
 
                 position = new Vector3(x, y, z) * Const.GLOBAL_SCALE;
-                rotation = (eu * (float)(180 / Math.PI)) + new Vector3(0f, 180f, 0); // bonus rotation here, actual models get rotated 180 Y in the model itself, placements like this need it here
+                rotation = Utility.ToDegrees(r) + new Vector3(0f, 180f, 0); // bonus rotation here, actual models get rotated 180 Y in the model itself, placements like this need it here
                 cell = json["cell"].ToString().Trim();
                 if (cell == "") { cell = null; }
             }

@@ -2,7 +2,7 @@
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.IO;
 
 namespace JortPob
 {
@@ -38,7 +38,7 @@ namespace JortPob
                 foreach (BinderFile file in bnd.Files)
                 {
                     FMG fmg = FMG.Read(file.Bytes);
-                    string name = Utility.PathToFileName(file.Name);
+                    string name = Path.GetFileNameWithoutExtension(file.Name);
 
                     TextType type = (TextType)Enum.Parse(typeof(TextType), name);
 
@@ -276,12 +276,12 @@ namespace JortPob
             return id;
         }
 
-        public void Write(string dir)
+        public void Write()
         {
             void WriteBnd(string fileName, Dictionary<TextType, FMG> fmgs)
             {
                 BND4 bnd = new();
-                bnd.Compression = SoulsFormats.DCX.Type.DCX_KRAK;
+                bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
                 foreach (KeyValuePair<TextType, FMG> kvp in fmgs)
@@ -300,7 +300,7 @@ namespace JortPob
                     bnd.Files.Add(file);
                 }
 
-                bnd.Write($"{dir}{fileName}");
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, @"msg\engus", fileName));
             }
 
             WriteBnd("menu_dlc02.msgbnd.dcx", menu);
