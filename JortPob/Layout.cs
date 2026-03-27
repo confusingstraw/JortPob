@@ -1356,7 +1356,22 @@ namespace JortPob
             return chunk?.positions.FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
         }
 
-        /* Finds travel position for aipackage in an exterior */
+        /* Finds travel position that is in the same msb as the given content (used for patrol routes, patrol routes require travel point regions to be in the same msb) */
+        public TravelPoint FindTravelable(Content content, Vector3 position)
+        {
+            BaseTile t = FindTile(content);
+            if(t != null && t is Tile tile)
+            {
+                return tile.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+            }
+            else
+            {
+                InteriorGroup.Chunk chunk = FindChunk(content);
+                return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+            }
+        }
+
+        /* Finds travel position in an exterior */
         public TravelPoint FindTravelable(Vector3 position)
         {
             return tiles
@@ -1364,7 +1379,7 @@ namespace JortPob
                 .FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
-        /* Finds travel position for aipackage in an interior */
+        /* Finds travel position in an interior */
         public TravelPoint FindTravelable(string name, Vector3 position)
         {
             if (name == null) { return FindTravelable(position); }  // if location = null then we assume its an exterior

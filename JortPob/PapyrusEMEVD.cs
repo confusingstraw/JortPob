@@ -803,6 +803,7 @@ namespace JortPob
                             if (position != Vector3.Zero) 
                             {
                                 Layout.TravelPoint goal = layout.FindTravelable(location, position);
+                                if (goal == null) { break; } // partial build can cause this
                                 uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
                                 evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
                                 evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
@@ -837,10 +838,8 @@ namespace JortPob
                             Script.Flag switchFlag = areaScript.GetOrCreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.SwitchAiPackage, target.entity.ToString());  // purposefully avoid phased rerouting for this eventid flag
 
                             // Get patrol route
-                            Layout.TravelPoint tp;
-                            if (areaScript.IsInterior()) { tp = layout.FindTravelable(target.cell.name, position); }
-                            else { tp = layout.FindTravelable(position); }
-                            if (tp == null) { break; } // partial build result
+                            Layout.TravelPoint tp = layout.FindTravelable(target, position);
+                            if (tp == null) { break; } // partial build result, or travel point was in a differnt msb so we can't ref it in a patrol
 
                             MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(tp);
                             patrol.EntityID = areaScript.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");

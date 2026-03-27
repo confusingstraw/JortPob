@@ -336,9 +336,8 @@ namespace JortPob
                 {
                     List<string> scope = new();
 
-                    Layout.TravelPoint tp;
-                    if(script.IsInterior()) { tp = layout.FindTravelable(content.cell.name, package.position); }
-                    else { tp = layout.FindTravelable(package.position); }
+                    Layout.TravelPoint tp = layout.FindTravelable(content, package.position);
+                    if (tp == null) { break; } // partial build result, or travel point was in a differnt msb so we can't ref it in a patrol
 
                     MSBE.Event.PatrolInfo patrol = MakePart.PatrolTo(tp);
                     patrol.EntityID = script.CreateEntity(Script.EntityType.Event, $"Goto->{patrol.Name}");
