@@ -39,7 +39,6 @@ namespace JortPob
             List<Tuple<Vector3, TerrainInfo>> emptyTerrainList = [];
 
             /* Some quick setup stuff */
-            SAM.CreateProject(); // generate wwise project if it does not exist
             scriptManager.SetupSpecialFlags(esm);
 
             /* Create some needed text data that is ref'd later */

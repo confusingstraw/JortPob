@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using WitchyFormats;
 using static IronPython.Modules._ast;
@@ -11,6 +12,16 @@ namespace JortPob.Common
 {
     public class SillyJsonUtils
     {
+        // For soundbank shit: Sorts a JsonArray of numbers
+        public static void SortUInt(JsonNode jsonNode)
+        {
+            JsonArray temp = jsonNode.AsArray();
+            List<uint> sorted = temp.Select(x => x.GetValue<uint>()).ToList();
+            sorted.Sort();
+            temp.Clear();
+            sorted.ForEach(temp.Add);
+        }
+
         // int32
         public static void SetField(Paramanager paramanager, Paramanager.ParamType paramType, int rowId, string fieldName, int value)
         {

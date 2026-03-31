@@ -661,8 +661,12 @@ namespace JortPob
 
                 int id = int.Parse($"60{tile.coordinate.x.ToString("D2")}{tile.coordinate.y.ToString("D2")}00");
 
-                /* MapInfoParam */ // controls sky and weather
+
+                /* MapInfoParam */ // controls sky and weather and bgm and other stuff
                 FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
+                rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
+                rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
+                rowA["MapAdditionalSoundBankId"].Value.SetValue(60000); // default (?)
                 AddRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam

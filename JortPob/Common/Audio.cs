@@ -93,7 +93,8 @@ namespace JortPob.Common
                         CreateNoWindow = true
                     };
 
-                    string xmlRelative = Path.Combine("..", "sound", file, xmlName);
+                    string topDir = fileWav.Contains("music") ? "music" : "sound";
+                    string xmlRelative = Path.Combine("..", topDir, file, xmlName);
                     convertInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{dir}\""]);
                     Utility.ExecuteProcess(convertInfo);
 

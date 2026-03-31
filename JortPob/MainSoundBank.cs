@@ -90,7 +90,7 @@ namespace JortPob
             /* Open the generated json of the cs_main bank and append our new sounds to it */
             /* I've decided to make this stuf embeded because I can't fucking make it work as streaming and I don't care anymore reeeeeee */
             JsonNode json = JsonNode.Parse(System.IO.File.ReadAllText(bnkJsonPath));
-            JsonArray templateJson = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\smain_template.json"))).AsArray();
+            JsonArray templateJson = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\main_template.json"))).AsArray();
             JsonArray sections = json["sections"].AsArray();
             JsonNode BKHD = sections[0]["body"]["BKHD"];
             JsonNode HIRC = sections[1]["body"]["HIRC"];
@@ -171,11 +171,7 @@ namespace JortPob
             foreach (JsonNode node in sources) { objects.Insert(0, node); } // must be added at top
             objects.AddRange(events);  // added at bottom
 
-            var temp = mixer["body"]["ActorMixer"]["children"]["items"].AsArray();
-            var sorted = temp.Select(x => x.GetValue<uint>()).ToList();
-            sorted.Sort();
-            temp.Clear();
-            sorted.ForEach(temp.Add);
+            SillyJsonUtils.SortUInt(mixer["body"]["ActorMixer"]["children"]["items"]);
 
             HIRC["object_count"] = objects.Count;
             mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;

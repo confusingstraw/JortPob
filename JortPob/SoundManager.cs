@@ -42,6 +42,8 @@ namespace JortPob
 
         public SoundManager()
         {
+            SAM.CreateProject(); // generate wwise project if it does not exist
+
             nextBankId = 100;
             banks = new();
             globals = new();
@@ -128,7 +130,8 @@ namespace JortPob
         {
             if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
 
-            music.Write();
+            music.Write(); // oh lawd
+            return; // debuggggg @TODO: REMOVE ME 
 
             SamWorker.Go(samQueue); // actually generate and convert wems
 
