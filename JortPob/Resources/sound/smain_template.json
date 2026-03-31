@@ -1,9 +1,193 @@
 [
   {
+    "body_type": 13,
+    "size": 207,
+    "id": {
+      "Hash": 0
+    },
+    "body": {
+      "MusicRandomSequenceContainer": {
+        "music_trans_node_params": {
+          "music_node_params": {
+            "flags": 0,
+            "node_base_params": {
+              "node_initial_fx_parameters": {
+                "is_override_parent_fx": 0,
+                "fx_chunk_count": 0,
+                "fx_bypass_bits": 0,
+                "fx_chunks": []
+              },
+              "override_attachment_params": 0,
+              "override_bus_id": 0,
+              "direct_parent_id": 618709466,
+              "unknown_flags": 0,
+              "node_initial_params": {
+                "prop_initial_values": [
+                  {
+                    "Volume": -2.0
+                  }
+                ],
+                "prop_ranged_modifiers": {
+                  "count": 0,
+                  "entries": []
+                }
+              },
+              "positioning_params": {
+                "unk1": false,
+                "three_dimensional_position_type": "Emitter",
+                "speaker_panning_type": "DirectSpeakerAssignment",
+                "listener_relative_routing": false,
+                "override_parent": false,
+                "unk2": false,
+                "enable_diffraction": false,
+                "hold_listener_orientation": false,
+                "hold_emitter_position_and_orientation": false,
+                "enable_attenuation": false,
+                "three_dimensional_spatialization_mode": "None",
+                "path_mode": "StepSequence",
+                "transition_time": 0,
+                "vertex_count": 0,
+                "vertices": [],
+                "path_list_item_count": 0,
+                "path_list_item_offsets": [],
+                "three_dimensional_automation_params": []
+              },
+              "aux_params": {
+                "unk1": false,
+                "unk2": false,
+                "unk3": false,
+                "override_reflections_aux_bus": false,
+                "has_aux": false,
+                "override_user_aux_sends": false,
+                "unk4": 0,
+                "aux1": 0,
+                "aux2": 0,
+                "aux3": 0,
+                "aux4": 0,
+                "reflections_aux_bus": 0
+              },
+              "adv_settings_params": {
+                "unk1": false,
+                "unk2": false,
+                "unk3": false,
+                "is_virtual_voices_opt_override_parent": false,
+                "ignore_parent_maximum_instances": false,
+                "unk4": false,
+                "use_virtual_behavior": false,
+                "kill_newest": false,
+                "virtual_queue_behavior": "PlayFromElapsedTime",
+                "max_instance_count": 0,
+                "below_threshold_behavior": "ContinueToPlay",
+                "unk5": false,
+                "unk6": false,
+                "unk7": false,
+                "unk8": false,
+                "enable_envelope": false,
+                "normalize_loudness": false,
+                "override_analysis": false,
+                "override_hdr_envelope": false
+              },
+              "state_chunk": {
+                "state_property_count": 0,
+                "state_property_info": [],
+                "state_group_count": 0,
+                "state_group_chunks": []
+              },
+              "initial_rtpc": {
+                "count": 0,
+                "rtpcs": []
+              }
+            },
+            "children": {
+              "count": 0,
+              "items": []
+            },
+            "meter_info": {
+              "grid_period": 1000.0,
+              "grid_offset": 0.0,
+              "tempo": 120.0,
+              "time_signature_beat_count": 4,
+              "time_signature_beat_value": 4,
+              "meter_info_flag": 0
+            },
+            "stinger_count": 0,
+            "stingers": []
+          },
+          "transition_rule_count": 1,
+          "transition_rules": [
+            {
+              "source_transition_rule_count": 1,
+              "source_ids": [
+                -1
+              ],
+              "destination_transition_rule_count": 1,
+              "destination_ids": [
+                -1
+              ],
+              "source_transition_rule": {
+                "transition_time": 1000,
+                "fade_curve": "Linear",
+                "fade_offet": 1000,
+                "sync_type": "ExitMarker",
+                "clue_filter_hash": 0,
+                "play_post_exit": 0
+              },
+              "destination_transition_rule": {
+                "transition_time": 500,
+                "fade_curve": "Sine",
+                "fade_offet": 0,
+                "clue_filter_hash": 0,
+                "jump_to_id": 0,
+                "jump_to_type": 0,
+                "entry_type": 0,
+                "play_pre_entry": 0,
+                "destination_match_source_cue_name": 0
+              },
+              "alloc_trans_object_flag": 0,
+              "transition_object": {
+                "segment_id": 0,
+                "fade_out": {
+                  "transition_time": 0,
+                  "curve": "Log3",
+                  "offset": 0
+                },
+                "fade_in": {
+                  "transition_time": 0,
+                  "curve": "Log3",
+                  "offset": 0
+                },
+                "play_pre_entry": 0,
+                "play_post_exit": 0
+              }
+            }
+          ]
+        },
+        "playlist_item_count": 1,
+        "playlist_items": [
+          {
+            "segment_id": 0,
+            "playlist_item_id": 388939200,
+            "child_count": 1,
+            "ers_type": 2,
+            "loop_base": 0,
+            "loop_min": 0,
+            "loop_max": 0,
+            "weight": 50000,
+            "avoid_repeat_count": 1,
+            "use_weight": 1,
+            "shuffle": 1
+          }
+        ]
+      }
+    }
+  },
+
+
+  {
     "body_type": 10,
     "size": 144,
     "id": {
-      "Hash": 0
+      "Hash": 1
     },
     "body": {
       "MusicSegment": {
@@ -94,9 +278,8 @@
             }
           },
           "children": {
-            "count": 2,
+            "count": 1,
             "items": [
-              1,
               2
             ]
           },
@@ -135,7 +318,7 @@
     "body_type": 11,
     "size": 191,
     "id": {
-      "Hash": 1
+      "Hash": 2
     },
     "body": {
       "MusicTrack": {
@@ -288,175 +471,61 @@
   },
 
   {
-    "body_type": 11,
-    "size": 229,
-    "id": {
-      "Hash": 2
-    },
-    "body": {
-      "MusicTrack": {
-        "flags": 0,
-        "source_count": 1,
-        "sources": [
+    "key": 0,
+    "node_id": 0,
+    "first_child_index": 1,
+    "child_count": 2,
+    "weight": 50,
+    "probability": 100,
+    "children": [
+      {
+        "key": 3488556250,
+        "node_id": 0,
+        "first_child_index": 3,
+        "child_count": 2,
+        "weight": 50,
+        "probability": 100,
+        "children": [
           {
-            "plugin": "VORBIS",
-            "source_type": "Streaming",
-            "media_information": {
-              "source_id": 860093920,
-              "in_memory_media_size": 11786,
-              "source_flags": 0
-            },
-            "params_size": 0,
-            "params": ""
-          }
-        ],
-        "playlist_item_count": 1,
-        "playlist": [
-          {
-            "track_id": 0,
-            "source_id": 860093920,
-            "event_id": 0,
-            "play_at": 0.0,
-            "begin_trim_offset": 0.0,
-            "end_trim_offset": -3994.8125,
-            "source_duration": 195428.58333333334
-          }
-        ],
-        "subtrack_count": 1,
-        "clip_item_count": 2,
-        "clip_items": [
-          {
-            "clip_index": 0,
-            "auto_type": "FadeIn",
-            "graph_point_count": 2,
-            "graph_points": [
-              {
-                "from": 0.0,
-                "to": 0.0,
-                "interpolation": "Sine"
-              },
-              {
-                "from": 0.007869325,
-                "to": 1.0,
-                "interpolation": "Constant"
-              }
-            ]
+            "key": 1738206610,
+            "node_id": 999999998,
+            "first_child_index": 0,
+            "child_count": 0,
+            "weight": 50,
+            "probability": 100,
+            "children": []
           },
           {
-            "clip_index": 0,
-            "auto_type": "FadeOut",
-            "graph_point_count": 3,
-            "graph_points": [
-              {
-                "from": 0.0,
-                "to": 1.0,
-                "interpolation": "Constant"
-              },
-              {
-                "from": 191.324,
-                "to": 1.0,
-                "interpolation": "SineRecip"
-              },
-              {
-                "from": 191.43378,
-                "to": 0.0,
-                "interpolation": "Constant"
-              }
-            ]
+            "key": 4206605382,
+            "node_id": 999999997,
+            "first_child_index": 0,
+            "child_count": 0,
+            "weight": 50,
+            "probability": 100,
+            "children": []
           }
-        ],
-        "node_base_params": {
-          "node_initial_fx_parameters": {
-            "is_override_parent_fx": 0,
-            "fx_chunk_count": 0,
-            "fx_bypass_bits": 0,
-            "fx_chunks": []
-          },
-          "override_attachment_params": 0,
-          "override_bus_id": 0,
-          "direct_parent_id": 398617814,
-          "unknown_flags": 0,
-          "node_initial_params": {
-            "prop_initial_values": [
-              {
-                "Volume": -7.0
-              }
-            ],
-            "prop_ranged_modifiers": {
-              "count": 0,
-              "entries": []
-            }
-          },
-          "positioning_params": {
-            "unk1": false,
-            "three_dimensional_position_type": "Emitter",
-            "speaker_panning_type": "DirectSpeakerAssignment",
-            "listener_relative_routing": false,
-            "override_parent": false,
-            "unk2": false,
-            "enable_diffraction": false,
-            "hold_listener_orientation": false,
-            "hold_emitter_position_and_orientation": false,
-            "enable_attenuation": false,
-            "three_dimensional_spatialization_mode": "None",
-            "path_mode": "StepSequence",
-            "transition_time": 0,
-            "vertex_count": 0,
-            "vertices": [],
-            "path_list_item_count": 0,
-            "path_list_item_offsets": [],
-            "three_dimensional_automation_params": []
-          },
-          "aux_params": {
-            "unk1": false,
-            "unk2": false,
-            "unk3": false,
-            "override_reflections_aux_bus": false,
-            "has_aux": false,
-            "override_user_aux_sends": false,
-            "unk4": 0,
-            "aux1": 0,
-            "aux2": 0,
-            "aux3": 0,
-            "aux4": 0,
-            "reflections_aux_bus": 0
-          },
-          "adv_settings_params": {
-            "unk1": false,
-            "unk2": false,
-            "unk3": false,
-            "is_virtual_voices_opt_override_parent": false,
-            "ignore_parent_maximum_instances": false,
-            "unk4": false,
-            "use_virtual_behavior": false,
-            "kill_newest": false,
-            "virtual_queue_behavior": "PlayFromElapsedTime",
-            "max_instance_count": 0,
-            "below_threshold_behavior": "ContinueToPlay",
-            "unk5": false,
-            "unk6": false,
-            "unk7": false,
-            "unk8": false,
-            "enable_envelope": false,
-            "normalize_loudness": false,
-            "override_analysis": false,
-            "override_hdr_envelope": false
-          },
-          "state_chunk": {
-            "state_property_count": 0,
-            "state_property_info": [],
-            "state_group_count": 0,
-            "state_group_chunks": []
-          },
-          "initial_rtpc": {
-            "count": 0,
-            "rtpcs": []
+        ]
+      },
+      {
+        "key": 3608943425,
+        "node_id": 0,
+        "first_child_index": 5,
+        "child_count": 1,
+        "weight": 50,
+        "probability": 100,
+        "children": [
+          {
+            "key": 0,
+            "node_id": 999999999,
+            "first_child_index": 0,
+            "child_count": 0,
+            "weight": 50,
+            "probability": 100,
+            "children": []
           }
-        },
-        "track_type": 0,
-        "look_ahead_time": 200
+        ]
       }
-    }
+    ]
   },
 
   {
