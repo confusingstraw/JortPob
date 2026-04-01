@@ -134,15 +134,15 @@ namespace JortPob
 
             FsParam.Row funcSpeffAlarming = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: Alarming", (int)Functional.Alarming);
             funcSpeffAlarming["effectEndurance"].Value.SetValue((float)300f);
-            paramanager.AddRow(speffParam, funcSpeffAlarming);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffAlarming);
 
             FsParam.Row funcSpeffFollow = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: NpcFollow", (int)Functional.NpcFollow);
             funcSpeffFollow["effectEndurance"].Value.SetValue((float)1f);
-            paramanager.AddRow(speffParam, funcSpeffFollow);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffFollow);
 
             FsParam.Row funcSpeffVoidMurder = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: VoidMurder", (int)Functional.VoidMurder);
             funcSpeffVoidMurder["effectEndurance"].Value.SetValue((float)-1f);
-            paramanager.AddRow(speffParam, funcSpeffVoidMurder);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffVoidMurder);
         }
 
         // Temp buffs use 1642100 as a base which is the basic Heal incantation effect
@@ -268,7 +268,7 @@ namespace JortPob
             }
 
             /* Plonk our new row into the param */
-            paramanager.AddRow(param, row);
+            paramanager.AddOrReplaceRow(param, row);
         }
 
         public Speff GetSpeff(string id, SpeffManager.Type type)

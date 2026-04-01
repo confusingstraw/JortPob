@@ -139,7 +139,7 @@ namespace JortPob.Common
                 }
             }
 
-            paramanager.AddRow(param, row);
+            paramanager.AddOrReplaceRow(param, row);
         }
     }
 }

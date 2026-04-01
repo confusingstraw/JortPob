@@ -44,7 +44,7 @@ namespace JortPob
 
                 row["rarity"].Value.SetValue((byte)0);
 
-                paramanager.AddRow(goodsParam, row);
+                paramanager.AddOrReplaceRow(goodsParam, row);
                 RecipeBookInfo recipeBook = new(scriptManager, row.ID, tuple.tier, tuple.value);
                 books.Add(tuple.tier, recipeBook);
 
@@ -67,7 +67,7 @@ namespace JortPob
                 row["eventFlag_forRelease"].Value.SetValue(book.visible.id);
                 row["eventFlag_forStock"].Value.SetValue(book.purchased.id);
 
-                paramanager.AddRow(shopParam, row);
+                paramanager.AddOrReplaceRow(shopParam, row);
 
                 j++;
             }
@@ -104,7 +104,7 @@ namespace JortPob
                     materialRow[$"materialCate{i+1:D2}"].Value.SetValue((byte)4); // good
                 }
 
-                paramanager.AddRow(materialParam, materialRow);
+                paramanager.AddOrReplaceRow(materialParam, materialRow);
 
                 /* Recipe param */
                 FsParam.Row recipeRow = paramanager.CloneRow(recipeParam[1], $"{recipe.tier}::{recipe.id}", baseRow); // 1 is another blankish row
@@ -115,7 +115,7 @@ namespace JortPob
                 recipeRow["value"].Value.SetValue(0);
                 recipeRow["eventFlag_forRelease"].Value.SetValue(books[recipe.tier].visible.id);
 
-                paramanager.AddRow(recipeParam, recipeRow);
+                paramanager.AddOrReplaceRow(recipeParam, recipeRow);
 
                 nextRecipeId += 10;
             }

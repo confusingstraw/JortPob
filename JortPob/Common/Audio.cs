@@ -23,12 +23,12 @@ namespace JortPob.Common
         {
             if (string.IsNullOrEmpty(fileMp3))
             {
-                throw new ArgumentNullException(nameof(fileMp3), "Input MP3 file path cannot be null or empty.");
+                throw new ArgumentNullException(nameof(fileMp3));
             }
 
             if (string.IsNullOrEmpty(fileWav))
             {
-                throw new ArgumentNullException(nameof(fileWav), "Output WAV file path cannot be null or empty.");
+                throw new ArgumentNullException(nameof(fileWav));
             }
 
             // NAudio uses the ACM MP3 decoder that comes with Windows to decompress the MP3 data.
@@ -44,7 +44,7 @@ namespace JortPob.Common
             }
         }
 
-        /* Converts wav file to wem, wem file is ouputted with same file name and locatino as wav */
+        /* Converts wav file to wem, wem file is outputted with same file name and location as wav */
         public static void WAVtoWEM(string fileWav)
         {
             string wemPath = Path.ChangeExtension(fileWav, ".wem");

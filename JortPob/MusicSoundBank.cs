@@ -32,23 +32,30 @@ namespace JortPob
                 string ext = Path.GetExtension(file).ToLower();
                 string name = Path.GetFileNameWithoutExtension(file).ToLower();
                 if (!(ext == ".mp3" || ext == ".wav")) { continue; }  // skip anything thats not a wav or mp3
-                if (name.Contains("mw battle")) { AddTrack(Track.Type.Battle, file); continue; } // is battle music, quick continue
 
-                // Predefined list of day and night tracks. MW does not define times for tracks so I'm just vibing it out
                 Track.Type trackType;
-                switch (name)
+                if (name.Contains("mw battle"))
                 {
-                    case "mx_explore_2":
-                    case "mx_explore_4":
-                    case "mx_explore_6":
-                        trackType = Track.Type.Night; break;
-                    case "mx_explore_1":
-                    case "mx_explore_3":
-                    case "mx_explore_5":
-                    case "mx_explore_7":
-                    case "morrowind title":
-                    default:
-                        trackType = Track.Type.Day; break;
+                    // is battle music
+                    trackType = Track.Type.Battle;
+                }
+                else
+                {
+                    // Predefined list of day and night tracks. MW does not define times for tracks so I'm just vibing it out
+                    switch (name)
+                    {
+                        case "mx_explore_2":
+                        case "mx_explore_4":
+                        case "mx_explore_6":
+                            trackType = Track.Type.Night; break;
+                        case "mx_explore_1":
+                        case "mx_explore_3":
+                        case "mx_explore_5":
+                        case "mx_explore_7":
+                        case "morrowind title":
+                        default:
+                            trackType = Track.Type.Day; break;
+                    }
                 }
                 AddTrack(trackType, file);                    // convert music track and add to list
             }
@@ -230,11 +237,11 @@ namespace JortPob
             SetupPlaylist(battleContainer);
 
             /* Dump our new nodes into the bnk */
-            foreach (JsonNode seg in musicSegments) { objects.Insert(0, seg); }
-            foreach (JsonNode trk in musicTracks) { objects.Insert(0, trk); }
             objects.Insert(containerInsertAt, dayContainer);
             objects.Insert(containerInsertAt, nightContainer);
             objects.Insert(containerInsertAt, battleContainer);
+            foreach (JsonNode seg in musicSegments) { objects.Insert(0, seg); }
+            foreach (JsonNode trk in musicTracks) { objects.Insert(0, trk); }
 
             /* Add new nodes to indirect parent containers */
             // @TODO: not required but we should fix this in the future for consistency

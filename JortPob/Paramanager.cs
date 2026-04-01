@@ -233,19 +233,19 @@ namespace JortPob
             worldMapPointParamTemplate.ID = 1;
             worldMapPointParamTemplate["eventFlagId"].Value.SetValue(6000u); // always off
             worldMapPointParam.ClearRows();
-            AddRow(worldMapPointParam, worldMapPointParamTemplate);
+            AddOrReplaceRow(worldMapPointParam, worldMapPointParamTemplate);
 
             /* Clear out WorldMapPlaceNaemParam. We don't need any of these from the base game. */
             FsParam worldMapPlaecNameParam = param[ParamType.WorldMapPlaceNameParam];
             FsParam.Row worldMapPlaecNameParamTemplate = GetRow(worldMapPlaecNameParam, 1);   // grab the blank one as a template
             worldMapPlaecNameParam.ClearRows();
-            AddRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
+            AddOrReplaceRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
 
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
-        /* Should actually be 'AddOrReplaceRow' but whatever, it works */
-        public void AddRow(FsParam param, FsParam.Row row)
+        /* Adds row or replaces an existing row with a matching ID */
+        public void AddOrReplaceRow(FsParam param, FsParam.Row row)
         {
             if (param.Rows.Count() >= ushort.MaxValue - 3) { throw new Exception($"{param.ParamType.ToString()} exceeded {ushort.MaxValue} rows!"); }
 
@@ -335,7 +335,7 @@ namespace JortPob
                     drawParamID.SetValue(row, AssetPartDrawParamBySize(asset));        // DrawParamID
                     hitType.SetValue(row, (sbyte)0);           // Hit type (LO ONLY)
                     behaviourType.SetValue(row, (byte)0);           // BehaviourType, affects HKX scaling and breakability
-                    AddRow(assetParam, row);
+                    AddOrReplaceRow(assetParam, row);
                 }
                 /* Static */
                 else
@@ -347,7 +347,7 @@ namespace JortPob
                     drawParamID.SetValue(row, AssetPartDrawParamBySize(asset));        // DrawParamID
                     hitType.SetValue(row, (sbyte)0);           // Hit type (LO ONLY)
                     behaviourType.SetValue(row, (byte)1);           // BehaviourType, affects HKX scaling and breakability
-                    AddRow(assetParam, row);
+                    AddOrReplaceRow(assetParam, row);
                 }
             }
         }
@@ -376,7 +376,7 @@ namespace JortPob
                     drawParamID.SetValue(row, AssetPartDrawParamBySize(asset.model));        // DrawParamID
                     hitType.SetValue(row, (sbyte)0);           // Hit type (LO ONLY)
                     behaviourType.SetValue(row, (byte)0);           // BehaviourType, affects HKX scaling and breakability
-                    AddRow(assetParam, row);
+                    AddOrReplaceRow(assetParam, row);
                 }
 
                 /* If the asset has some emitter or attachlight nodes we create an sfx param for it */
@@ -422,7 +422,7 @@ namespace JortPob
                         emitterParamCols[1 + (offset * 3)].SetValue(row, (int)asset.GetAttachLight()); //dmypolyId_X
                     }
 
-                    AddRow(emitterParam, row);
+                    AddOrReplaceRow(emitterParam, row);
                 }
             }
         }
@@ -475,7 +475,7 @@ namespace JortPob
                         lotRow[$"lotItemBasePoint{j+1:D2}"].Value.SetValue((ushort)(1000/tuple.max));
                     }
 
-                    AddRow(lotParam, lotRow);
+                    AddOrReplaceRow(lotParam, lotRow);
                 }
 
                 // Setup action param
@@ -494,7 +494,7 @@ namespace JortPob
                 actionRow["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
                 actionRow["execInvalidTime"].Value.SetValue(0f); // cooldown
 
-                AddRow(actionParam, actionRow);
+                AddOrReplaceRow(actionParam, actionRow);
 
                 // Setup asset param
                 FsParam.Row assetRow = CloneRow(assetParam[99680], $"Pickable->{pickable.name}", pickable.AssetRow()); // 99680 is an erdleaf flower
@@ -503,7 +503,7 @@ namespace JortPob
                 assetRow["pickUpActionButtonParamId"].Value.SetValue(actionRow.ID);
                 assetRow["pickUpItemLotParamId"].Value.SetValue(nextMapItemLotId);
 
-                AddRow(assetParam, assetRow);
+                AddOrReplaceRow(assetParam, assetRow);
 
                 nextMapItemLotId += 10;
             }
@@ -517,7 +517,7 @@ namespace JortPob
             {
                 // Clone a specific row as our baseline
                 FsParam.Row row = CloneRow(oceanwaterrow, $"water{asset.id}", asset.AssetRow()); // 097000 is the ocean water around limgrave
-                AddRow(assetParam, row);
+                AddOrReplaceRow(assetParam, row);
             }
         }
 
@@ -567,7 +567,7 @@ namespace JortPob
                 DistantViewModel_BorderDist.SetValue(row, NONE); // distant view model border dist [30]
                 DistantViewModel_PlayDist.SetValue(row, 0f);    // distant view model play dist [5]
                 lodPartDrawParamIDs.Add(i, drawParamId++);
-                AddRow(drawParam, row);
+                AddOrReplaceRow(drawParam, row);
             }
 
             // Clone a specific row as our baseline
@@ -592,7 +592,7 @@ namespace JortPob
 
                 row.Cells[30].SetValue(NONE); // distant view model border dist [30]
                 row.Cells[31].SetValue(0f);    // distant view model play dist [5]
-                AddRow(drawParam, row);
+                AddOrReplaceRow(drawParam, row);
                 terrainDrawParamID = drawParamId++;
             }
         }
@@ -668,11 +668,11 @@ namespace JortPob
                 rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
                 rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
                 rowA["MapAdditionalSoundBankId"].Value.SetValue(60000); // default (?)
-                AddRow(mapInfoParam, rowA);
+                AddOrReplaceRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
                 FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
-                AddRow(mapRegionParam, rowB);
+                AddOrReplaceRow(mapRegionParam, rowB);
             }
 
             // Interior msbs
@@ -688,11 +688,11 @@ namespace JortPob
                 FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
                 rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
                 rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
-                AddRow(mapInfoParam, rowA);
+                AddOrReplaceRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
                 FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
-                AddRow(mapRegionParam, rowB);
+                AddOrReplaceRow(mapRegionParam, rowB);
             }
         }
 
@@ -775,7 +775,7 @@ namespace JortPob
             row["body_hairColor_G"].Value.SetValue(color[1]);
             row["body_hairColor_B"].Value.SetValue(color[2]);
 
-            AddRow(faceParam, row);
+            AddOrReplaceRow(faceParam, row);
         }
 
         public void GenerateCharInitParam(ItemManager itemManager, NpcContent npc, int id)
@@ -845,7 +845,7 @@ namespace JortPob
             row["baseFai"].Value.SetValue((byte)fath);
             row["baseLuc"].Value.SetValue((byte)arcn);
 
-            AddRow(charInitParam, row);
+            AddOrReplaceRow(charInitParam, row);
         }
 
         public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
@@ -870,7 +870,7 @@ namespace JortPob
             row.Cells[105].SetValue((byte)26); // team type [friendlynpc=26]
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
-            AddRow(npcParam, row);
+            AddOrReplaceRow(npcParam, row);
         }
 
         public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
@@ -892,7 +892,7 @@ namespace JortPob
 
             // @TODO: apply data from json remap to param!
 
-            AddRow(npcParam, row);
+            AddOrReplaceRow(npcParam, row);
         }
 
         public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
@@ -902,7 +902,7 @@ namespace JortPob
 
             // STUB:: do stuff to this param lol
 
-            AddRow(thinkParam, row);
+            AddOrReplaceRow(thinkParam, row);
         }
 
         public void GenerateThinkParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
@@ -912,7 +912,7 @@ namespace JortPob
 
             // STUB:: do stuff to this param lol
 
-            AddRow(thinkParam, row);
+            AddOrReplaceRow(thinkParam, row);
         }
 
         public int GenerateActionButtonItemParam(string text)
@@ -938,7 +938,7 @@ namespace JortPob
             row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
             row["execInvalidTime"].Value.SetValue(0f); // cooldown
 
-            AddRow(actionParam, row);
+            AddOrReplaceRow(actionParam, row);
             itemActionButtons.Add(text, rowId);
 
             return rowId;
@@ -958,7 +958,7 @@ namespace JortPob
             row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
             row["execInvalidTime"].Value.SetValue(3f); // cooldown
 
-            AddRow(actionParam, row);
+            AddOrReplaceRow(actionParam, row);
             interactActionButtons.Add(text, rowId);
 
             return rowId;
@@ -995,7 +995,7 @@ namespace JortPob
             row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
             row["execInvalidTime"].Value.SetValue(3f); // cooldown
 
-            AddRow(actionParam, row);
+            AddOrReplaceRow(actionParam, row);
             return rowId;
         }
 
@@ -1049,7 +1049,7 @@ namespace JortPob
 
             row["entryFEType"].Value.SetValue((byte)(point.important?0:2));  // 0 shows a area title when you walk into it, 2 does not
 
-            AddRow(worldMapPointParam, row);
+            AddOrReplaceRow(worldMapPointParam, row);
 
             return id;
         }
@@ -1089,7 +1089,7 @@ namespace JortPob
 
             row["entryFEType"].Value.SetValue((byte)0);
 
-            AddRow(worldMapPointParam, row);
+            AddOrReplaceRow(worldMapPointParam, row);
 
             return id;
         }
@@ -1107,7 +1107,7 @@ namespace JortPob
             row["unlockEventFlagId"].Value.SetValue((uint)0);
             row["textId"].Value.SetValue(textId);
 
-            AddRow(messageParam, row);
+            AddOrReplaceRow(messageParam, row);
 
             nextMessageParam += 10;
             return row.ID;
@@ -1126,7 +1126,7 @@ namespace JortPob
             row["unlockEventFlagId"].Value.SetValue((uint)0);
             row["textId"].Value.SetValue(textId);
 
-            AddRow(messageParam, row);
+            AddOrReplaceRow(messageParam, row);
 
             nextMessageParam += 10;
             return row.ID;
@@ -1308,7 +1308,7 @@ namespace JortPob
             row["lotItemNum01"].Value.SetValue((byte)quantity);
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
-            AddRow(itemLotParam, row);
+            AddOrReplaceRow(itemLotParam, row);
             nextMapItemLotId += 10;
             return row.ID;
         }
@@ -1329,7 +1329,7 @@ namespace JortPob
 
             script.RegisterItemAsset(itemContent);
 
-            AddRow(itemLotParam, row);
+            AddOrReplaceRow(itemLotParam, row);
             nextMapItemLotId += 10;
             return row.ID;
         }
@@ -1356,7 +1356,7 @@ namespace JortPob
                 row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
                 i++;
-                AddRow(itemLotParam, row);
+                AddOrReplaceRow(itemLotParam, row);
             }
 
             nextMapItemLotId += 10;
@@ -1387,7 +1387,7 @@ namespace JortPob
 
                 i++;
                 totalValue += entry.item.value;
-                AddRow(itemLotParam, row);
+                AddOrReplaceRow(itemLotParam, row);
             }
 
             script.RegisterContainerAsset(container, totalValue);
@@ -1416,7 +1416,7 @@ namespace JortPob
                 row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
                 i++;
-                AddRow(itemLotParam, row);
+                AddOrReplaceRow(itemLotParam, row);
             }
 
             nextEnemyItemLotId += 10;
