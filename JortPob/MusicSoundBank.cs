@@ -81,6 +81,8 @@ namespace JortPob
 
         public void ImportSkyrimMusic()
         {
+            if (Const.DEBUG_SKIP_SKYRIM_MUSIC) { return; }  // yep
+
             string bsaPath = Path.Combine(Const.SKYRIM_PATH, "Data", "Skyrim - Sounds.bsa");
             string extractFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "extracted");
             string convertFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "converted");
