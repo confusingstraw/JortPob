@@ -8,6 +8,15 @@ namespace JortPob.Common
 {
     public class Audio
     {
+        /* Another example copy paste */
+        public static double GetDuration(string wavPath)
+        {
+            using (var reader = new WaveFileReader(wavPath))
+            {
+                return reader.TotalTime.TotalMilliseconds;
+            }
+        }
+
         /* Copy paste from example code */
         /* Doesn't seem like WWISE cares a whole lot about wav format so we are just converting it without changing anything there */
         public static void MP3toWAV(string fileMp3, string fileWav)

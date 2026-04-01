@@ -79,7 +79,8 @@ namespace JortPob
             /* Create play/stop ids and source id for bnk to use */
             uint[] ids = globals.GetEventBnkId("m");
 
-            Track track = new(type, ids[0], ids[1], ids[2], wem, 5000, globals.NextSourceId());
+            double duration = Audio.GetDuration(wav);
+            Track track = new(type, ids[0], ids[1], ids[2], wem, duration, globals.NextSourceId());
             tracks.Add(track);
         }
 
@@ -162,7 +163,7 @@ namespace JortPob
             musicSwitch["body"]["MusicSwitchContainer"]["music_trans_node_params"]["transition_rule_count"] = musicSwitch["body"]["MusicSwitchContainer"]["music_trans_node_params"]["transition_rules"].AsArray().Count;
 
             /* Delete orphaned nodes (?) */
-            // @TODO: we should probably do this but its such a huge pain i'm not touching it for now
+            // @TODO: we should probably do this but its such a huge pain i'm not touching it for now. deleting the orphaned nodes also requires deleting child references and whatever
 
             /* Create nodes for our custom music */
             foreach (Track track in tracks)
@@ -194,7 +195,7 @@ namespace JortPob
 
                 /* Fill out segment */
                 musicSegment["body"]["MusicSegment"]["music_node_params"]["children"]["items"][0] = musicTrack["id"]["Hash"].GetValue<uint>();
-                musicSegment["body"]["MusicSegment"]["markers"].AsArray()[1]["position"] = track.length; // length of track in millis
+                musicSegment["body"]["MusicSegment"]["markers"].AsArray()[1]["position"] = track.duration; // length of track in millis
                 musicSegment["body"]["MusicSegment"]["music_node_params"]["node_base_params"]["direct_parent_id"] = container["id"]["Hash"].GetValue<uint>();
                 musicSegments.Add(musicSegment);
 
@@ -261,7 +262,7 @@ namespace JortPob
             uint play,
             uint stop,
             string file,                // wem file
-            uint length,                // millis
+            double duration,            // millis
             uint source                 // source is wem id
         )
         {

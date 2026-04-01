@@ -244,6 +244,7 @@ namespace JortPob
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
 
+        /* Should actually be 'AddOrReplaceRow' but whatever, it works */
         public void AddRow(FsParam param, FsParam.Row row)
         {
             if (param.Rows.Count() >= ushort.MaxValue - 3) { throw new Exception($"{param.ParamType.ToString()} exceeded {ushort.MaxValue} rows!"); }
@@ -677,7 +678,7 @@ namespace JortPob
             // Interior msbs
             foreach (InteriorGroup group in layout.interiors)
             {
-                if (group.IsEmpty()) { continue; } // skip empty tiles
+                if (group.IsEmpty()) { continue; } // skip empty group
 
                 WeatherData weatherData = group.GetWeather();
 
@@ -685,6 +686,8 @@ namespace JortPob
 
                 /* MapInfoParam */ // controls sky and weather
                 FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
+                rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
+                rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
                 AddRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam

@@ -130,9 +130,6 @@ namespace JortPob
         {
             if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
 
-            music.Write(); // oh lawd
-            return; // debuggggg @TODO: REMOVE ME 
-
             SamWorker.Go(samQueue); // actually generate and convert wems
 
             Lort.Log($"Preprocessing {banks.Count()} BNKs...", Lort.Type.Main);
@@ -168,12 +165,18 @@ namespace JortPob
                 Lort.TaskIterate();
             }
 
-            Lort.Log($"Writing {banks.Count() + 1} BNKs...", Lort.Type.Main);
-            Lort.NewTask("Writing BNKs", banks.Count() + 1);
+            Lort.Log($"Writing {banks.Count() + 2} BNKs...", Lort.Type.Main);
+            Lort.NewTask("Writing BNKs", banks.Count() + 2);
 
             Task mainSoundBank = Task.Run(() =>
             {
                 main.Write();
+                Lort.TaskIterate();
+            });
+
+            Task musicSoundBank = Task.Run(() =>
+            {
+                music.Write();
                 Lort.TaskIterate();
             });
 
@@ -198,7 +201,7 @@ namespace JortPob
                 });
             });
 
-            Task.WhenAll(mainSoundBank, otherSoundBanks).Wait();
+            Task.WhenAll(mainSoundBank, musicSoundBank, otherSoundBanks).Wait();
         }
 
         public class SoundBankGlobals
