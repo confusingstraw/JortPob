@@ -9,9 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static IronPython.Modules._ast;
 using static JortPob.Dialog;
-using static SoulsFormats.DRB.Shape;
 
 namespace JortPob
 {
@@ -21,6 +19,7 @@ namespace JortPob
         private readonly List<SoundBankInfo> banks;
         private readonly SoundBankGlobals globals;
         public readonly MainSoundBank main;
+        public readonly MusicSoundBank music;
 
         private readonly List<SAMData> samQueue;
 
@@ -43,12 +42,15 @@ namespace JortPob
 
         public SoundManager()
         {
+            SAM.CreateProject(); // generate wwise project if it does not exist
+
             nextBankId = 100;
             banks = new();
             globals = new();
             samQueue = new();
 
             main = new(globals);
+            music = new(globals);
         }
 
         /* Either returns an existing bank meeting the requirements, or makes a new one */
@@ -163,12 +165,18 @@ namespace JortPob
                 Lort.TaskIterate();
             }
 
-            Lort.Log($"Writing {banks.Count() + 1} BNKs...", Lort.Type.Main);
-            Lort.NewTask("Writing BNKs", banks.Count() + 1);
+            Lort.Log($"Writing {banks.Count() + 2} BNKs...", Lort.Type.Main);
+            Lort.NewTask("Writing BNKs", banks.Count() + 2);
 
             Task mainSoundBank = Task.Run(() =>
             {
                 main.Write();
+                Lort.TaskIterate();
+            });
+
+            Task musicSoundBank = Task.Run(() =>
+            {
+                music.Write();
                 Lort.TaskIterate();
             });
 
@@ -193,7 +201,7 @@ namespace JortPob
                 });
             });
 
-            Task.WhenAll(mainSoundBank, otherSoundBanks).Wait();
+            Task.WhenAll(mainSoundBank, musicSoundBank, otherSoundBanks).Wait();
         }
 
         public class SoundBankGlobals

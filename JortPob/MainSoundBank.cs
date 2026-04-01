@@ -1,6 +1,5 @@
 ﻿using JortPob.Common;
 using Microsoft.Scripting.Utils;
-using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -48,11 +47,11 @@ namespace JortPob
             if (!File.Exists(wem))
             {
                 /* Some files are mp3 and some are wav. Convert if needed, otherwise just copy paste to cache to get ready for wem conversion */
-                if (Path.GetExtension(file).ToLower() == ".mp3") { MP3toWAV(file, wav); }
+                if (Path.GetExtension(file).ToLower() == ".mp3") { Audio.MP3toWAV(file, wav); }
                 else { File.Copy(file, wav); }
 
                 /* Convert wav to wem */
-                WAVtoWEM(wav);
+                Audio.WAVtoWEM(wav);
             }
 
             /* Create play/stop ids and source id for bnk to use */
@@ -62,118 +61,6 @@ namespace JortPob
             sounds.Add(sound);
 
             return (int)sound.id; // Return play id so script can trigger this sound effect
-        }
-
-        /* Copy paste from example code */
-        /* Doesn't seem like WWISE cares a whole lot about wav format so we are just converting it without changing anything there */
-        private void MP3toWAV(string fileMp3, string fileWav)
-        {
-            if (string.IsNullOrEmpty(fileMp3))
-            {
-                throw new ArgumentNullException(nameof(fileMp3), "Input MP3 file path cannot be null or empty.");
-            }
-
-            if (string.IsNullOrEmpty(fileWav))
-            {
-                throw new ArgumentNullException(nameof(fileWav), "Output WAV file path cannot be null or empty.");
-            }
-
-            // NAudio uses the ACM MP3 decoder that comes with Windows to decompress the MP3 data.
-            using (var mp3Reader = new Mp3FileReader(fileMp3))
-            {
-                // Create a PCM stream from the MP3 reader. 
-                // This converts the compressed audio to uncompressed PCM data.
-                using (var pcmStream = WaveFormatConversionStream.CreatePcmStream(mp3Reader))
-                {
-                    // Write the PCM data to the output WAV file.
-                    WaveFileWriter.CreateWaveFile(fileWav, pcmStream);
-                }
-            }
-        }
-
-        private void WAVtoWEM(string fileWav)
-        {
-            string wemPath = Path.ChangeExtension(fileWav, ".wem");
-            string dir = Path.GetDirectoryName(wemPath);
-            string file = Path.GetFileNameWithoutExtension(wemPath);
-
-            for (int retry = 0; retry < Const.SAM_MAX_RETRY; retry++)
-            {
-                if (File.Exists(wemPath))
-                {
-                    // Audio file already exists in cache, no need to retry
-                    return;
-                }
-
-                try
-                {
-                    // --- 3. Convert WAV to WEM (Wwise Console) ---
-
-                    string wwiseConsolePath = Path.Combine(Const.WWISE_PATH, "WwiseConsole.exe");
-                    string xmlName = $"{file}.wsources";
-                    string xmlPath = Path.Combine(dir, xmlName);
-                    string projectDir = Path.Combine(Const.CACHE_PATH, "wwise");
-                    string projectPath = Path.Combine(projectDir, "wwise.wproj");
-
-                    // Create XML file
-                    string xmlRaw = $"""
-                        <?xml version='1.0' encoding='UTF-8'?>
-                        <ExternalSourcesList SchemaVersion="1" Root="{dir}"><Source Path="{file}.wav" Conversion="Vorbis Quality High" /></ExternalSourcesList>
-                        """;
-                    File.WriteAllText(xmlPath, xmlRaw);
-
-                    // Create Wwise project if it doesn't exist
-                    if (!File.Exists(projectPath))
-                    {
-                        // Wwise requires the folder to not exist for project creation
-                        if (Directory.Exists(projectDir)) { Directory.Delete(projectDir, true); }
-
-                        ProcessStartInfo createProjectInfo = new(wwiseConsolePath)
-                        {
-                            WorkingDirectory = Const.CACHE_PATH,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        };
-                        createProjectInfo.ArgumentList.AddRange(["create-new-project", $"\"{projectPath}\"", "--platform", "Windows"]);
-                        Utility.ExecuteProcess(createProjectInfo);
-                    }
-
-                    // Convert wav to wem
-                    ProcessStartInfo convertInfo = new(wwiseConsolePath)
-                    {
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = dir,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-
-                    string xmlRelative = Path.Combine("..", "sound", file, xmlName);
-                    convertInfo.ArgumentList.AddRange(["convert-external-source", $"\"{projectPath}\"", "--source-file", xmlRelative, "--output", "Windows", $"\"{dir}\""]);
-                    Utility.ExecuteProcess(convertInfo);
-
-                    // If we reach here, both processes completed successfully (ExitCode 0)
-                    if (File.Exists(wemPath))
-                    {
-                        return;
-                    }
-
-                    // If processes succeeded but the file isn't there, something is wrong, we retry
-                    throw new FileNotFoundException($"WEM file was not found after successful conversion: {wemPath}");
-                }
-                catch (Exception ex)
-                {
-                    // Keep retrying. Don't spam log after every failed generation as it's bloat.
-                    // If we fail up to MAX_RETRY then we throw an exception and print log.
-                }
-            }
-
-            // Final check after all retries
-            if (!File.Exists(wemPath))
-            {
-                Lort.Log($"Failed to convert wav '{fileWav}' despite {Const.SAM_MAX_RETRY} retry attempts.", Lort.Type.Debug);
-                throw new($"Failed to convert wav '{fileWav}' despite {Const.SAM_MAX_RETRY} retry attempts.");
-            }
         }
 
         public void Write()
@@ -203,7 +90,7 @@ namespace JortPob
             /* Open the generated json of the cs_main bank and append our new sounds to it */
             /* I've decided to make this stuf embeded because I can't fucking make it work as streaming and I don't care anymore reeeeeee */
             JsonNode json = JsonNode.Parse(System.IO.File.ReadAllText(bnkJsonPath));
-            JsonArray templateJson = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\smain_template.json"))).AsArray();
+            JsonArray templateJson = JsonNode.Parse(System.IO.File.ReadAllText(Utility.ResourcePath(@"sound\main_template.json"))).AsArray();
             JsonArray sections = json["sections"].AsArray();
             JsonNode BKHD = sections[0]["body"]["BKHD"];
             JsonNode HIRC = sections[1]["body"]["HIRC"];
@@ -284,11 +171,7 @@ namespace JortPob
             foreach (JsonNode node in sources) { objects.Insert(0, node); } // must be added at top
             objects.AddRange(events);  // added at bottom
 
-            var temp = mixer["body"]["ActorMixer"]["children"]["items"].AsArray();
-            var sorted = temp.Select(x => x.GetValue<uint>()).ToList();
-            sorted.Sort();
-            temp.Clear();
-            sorted.ForEach(temp.Add);
+            SillyJsonUtils.SortUInt(mixer["body"]["ActorMixer"]["children"]["items"]);
 
             HIRC["object_count"] = objects.Count;
             mixer["body"]["ActorMixer"]["children"]["count"] = mixer["body"]["ActorMixer"]["children"]["items"].AsArray().Count;
