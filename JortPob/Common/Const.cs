@@ -1,3 +1,5 @@
+using Mutagen.Bethesda;
+using Mutagen.Bethesda.Skyrim;
 using SoulsFormats;
 using System.Collections.Generic;
 using System.IO;
@@ -26,8 +28,24 @@ namespace JortPob.Common
         [Setting] 
         public static string ELDEN_PATH { get; private set; }
         [Setting] 
-        public static string OUTPUT_PATH { get; private set; }
+        public static string SKYRIM_PATH { get; private set; }
+        [Setting]
+        private static string SKYRIM_EDITION { get; set; }
+        public static GameRelease SKYRIM_EDITION_ENUM
+        {   
+            get {
+                switch(SKYRIM_EDITION) {
+                    case "SE": return GameRelease.SkyrimSE;
+                    case "SEGOG": return GameRelease.SkyrimSEGog;
+                    case "LE": return GameRelease.SkyrimLE;
+                    case "VR": return GameRelease.SkyrimVR;
+                } 
+                return GameRelease.SkyrimLE; 
+            } 
+        }
         [Setting] 
+        public static string OUTPUT_PATH { get; private set; }
+        [Setting]
         public static string WWISE_PATH { get; private set; }
         [Setting]
         public static string RAD_PATH { get; private set; }

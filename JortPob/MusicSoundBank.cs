@@ -1,10 +1,23 @@
-﻿using JortPob.Common;
+using FFMpegCore;
+using JortPob.Common;
+using Mutagen.Bethesda;
+using Mutagen.Bethesda.Archives;
+using Mutagen.Bethesda.Environments;
+using NAudio;
+using NAudio.Wave;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
+using VGAudio.Containers.Wave;
 using static JortPob.SoundManager;
+using Mutagen.Bethesda.Skyrim;
+using Mutagen.Bethesda.Plugins;
+using System.Xml;
+using Newtonsoft.Json;
 
 namespace JortPob
 {
@@ -61,7 +74,163 @@ namespace JortPob
             }
 
             /* Handle Skyrim Music */
-            // @TODO:
+            // @TODO: assign each music track back into the the ER soundbanks
+
+            //ImportSkyrimMusic();
+        }
+
+        public void ImportSkyrimMusic()
+        {
+            string bsaPath = Path.Combine(Const.SKYRIM_PATH, "Data", "Skyrim - Sounds.bsa");
+            string extractFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "extracted");
+            string convertFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "converted");
+
+            if (!Path.Exists(extractFolder)) { Directory.CreateDirectory(extractFolder); }
+            if (!Path.Exists(convertFolder)) { Directory.CreateDirectory(convertFolder); }
+
+            var archive = Archive.CreateReader(Const.SKYRIM_EDITION_ENUM, bsaPath);
+            foreach (var file in archive.Files)
+            {
+                if (file.Path.StartsWith("music", StringComparison.OrdinalIgnoreCase))
+                {
+                    string input = Path.Combine(extractFolder, Path.GetFileName(file.Path));
+                    if (!File.Exists(input))
+                    {
+                        File.WriteAllBytes(input, file.GetBytes());
+                    }
+
+                    string output = Path.Combine(convertFolder, Path.GetFileNameWithoutExtension(file.Path) + ".wav");
+                    if (!File.Exists(output))
+                    {
+                        FFMpegArguments
+                            .FromFileInput(input)
+                            .OutputToFile(output, false, options => options
+                                .WithFastStart()
+                                .WithCustomArgument("-c:a adpcm_ms"))
+                            .ProcessSynchronously();
+                    }
+                }
+            }
+
+            using var env = GameEnvironment.Typical.Builder<ISkyrimMod, ISkyrimModGetter>(Const.SKYRIM_EDITION_ENUM)
+                .WithTargetDataFolder(Path.Combine(Const.SKYRIM_PATH, "Data"))
+                .Build();
+
+            // Build track -> playlists reverse lookup
+            var trackToPlaylists = new Dictionary<FormKey, List<IMusicTypeGetter>>();
+            foreach (var playlist in env.LoadOrder.PriorityOrder.MusicType().WinningOverrides())
+            {
+                foreach (var trackRef in playlist.Tracks)
+                {
+                    if (trackRef.TryResolve(env.LinkCache, out var track))
+                    {
+                        if (!trackToPlaylists.TryGetValue(track.FormKey, out var list))
+                        {
+                            list = new List<IMusicTypeGetter>();
+                            trackToPlaylists[track.FormKey] = list;
+                        }
+                        list.Add(playlist);
+                    }
+                }
+            }
+
+            var categorizedTracks = new List<CategorizedTrack>();
+            foreach (var track in env.LoadOrder.PriorityOrder.MusicTrack().WinningOverrides())
+            {
+                // We only care about single tracks (Type == 1859641416) that have an actual file
+                if ((uint)track.Type != 1859641416) continue;
+                if (string.IsNullOrEmpty(track.TrackFilename?.GivenPath)) continue;
+
+                // Determine category from playlists
+                SkyrimMusicCategory category = SkyrimMusicCategory.Unknown;
+                var playlistEditorIds = new List<string>();
+
+                if (trackToPlaylists.TryGetValue(track.FormKey, out var playlists))
+                {
+                    foreach (var p in playlists)
+                    {
+                        playlistEditorIds.Add(p.EditorID ?? "Unknown");
+                    }
+
+                    // Priority system for picking the main category
+                    category = DetermineCategory(track, playlists);
+                }
+
+                categorizedTracks.Add(new CategorizedTrack(
+                    EditorID: track.EditorID ?? "Unknown",
+                    FilePath: track.TrackFilename.GivenPath,
+                    Category: category,
+                    PlaylistEditorIds: playlistEditorIds,
+                    HasFinale: !string.IsNullOrEmpty(track.FinaleFilename?.GivenPath),
+                    HasCuePoints: track.CuePoints != null && track.CuePoints.Count > 0
+                ));
+            }
+
+            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "categorized_tracks.json"), JsonConvert.SerializeObject(categorizedTracks, Newtonsoft.Json.Formatting.Indented));
+            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "playlists.json"), JsonConvert.SerializeObject(env.LoadOrder.PriorityOrder.MusicType().WinningOverrides().ToList()));
+            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "tracks.json"), JsonConvert.SerializeObject(env.LoadOrder.PriorityOrder.MusicTrack().WinningOverrides().ToList()));
+        }
+
+        private static SkyrimMusicCategory DetermineCategory(IMusicTrackGetter track, List<IMusicTypeGetter> playlists)
+        {
+            // If it's in a Boss playlist, it's a boss track
+            if (playlists.Any(p => p.EditorID?.Contains("CombatBoss", StringComparison.OrdinalIgnoreCase) == true || p.EditorID?.Contains("CombatKarstaag", StringComparison.OrdinalIgnoreCase) == true))
+                return SkyrimMusicCategory.CombatBoss;
+
+            // Combat tracks
+            if (playlists.Any(p => p.EditorID?.Contains("Combat", StringComparison.OrdinalIgnoreCase) == true))
+                return SkyrimMusicCategory.CombatNormal;
+
+            // Dungeons
+            if (playlists.Any(p => p.EditorID?.Contains("Dungeon", StringComparison.OrdinalIgnoreCase) == true))
+                return (playlists.Any(p => p.EditorID?.StartsWith("DLC", StringComparison.OrdinalIgnoreCase) == true)) ? SkyrimMusicCategory.DungeonDLC : SkyrimMusicCategory.Dungeon;
+
+            // Town
+            if (playlists.Any(p => p.EditorID?.Contains("Town", StringComparison.OrdinalIgnoreCase) == true))
+                return SkyrimMusicCategory.Town;
+
+            // Cinematic/One-shots
+            if (playlists.Any(p => p.EditorID?.Contains("BoatArrival", StringComparison.OrdinalIgnoreCase) == true || p.EditorID?.Contains("Eclipse", StringComparison.OrdinalIgnoreCase) == true))
+                return SkyrimMusicCategory.Cinematic;
+
+            // Explore (+ Day/Night logic)
+            if (playlists.Any(p => p.EditorID?.Contains("Explore", StringComparison.OrdinalIgnoreCase) == true))
+            {
+                // Check conditions for time-of-day
+                if (track.Conditions == null || track.Conditions.Count == 0) return SkyrimMusicCategory.ExploreDay;
+
+                foreach (var condition in track.Conditions)
+                {
+                    // GameHour is often a Float condition with function index 20
+                    if (condition is IConditionFloatGetter floatCond)
+                    {
+                        try
+                        {
+                            dynamic funData = floatCond.Data;
+                            if (funData.Function.Index == 20) // GameHour
+                            {
+                                float val = floatCond.ComparisonValue;
+                                var op = floatCond.CompareOperator;
+
+                                // Night logic (often val == 5 and <=, or val == 22 and >= with OR flag)
+                                if ((val >= 22.0f && (op == CompareOperator.GreaterThan || op == CompareOperator.GreaterThanOrEqualTo)) ||
+                                    (val <= 5.0f && (op == CompareOperator.LessThan || op == CompareOperator.LessThanOrEqualTo)))
+                                    return SkyrimMusicCategory.ExploreNight;
+
+                                // Morning
+                                if (val >= 5.0f && val < 8.0f) return SkyrimMusicCategory.ExploreMorning;
+
+                                // Dusk
+                                if (val >= 18.0f && val < 22.0f) return SkyrimMusicCategory.ExploreDusk;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                return SkyrimMusicCategory.ExploreDay;
+            }
+
+            return SkyrimMusicCategory.Unknown;
         }
 
         private void AddTrack(Track.Type type, string file)
@@ -134,14 +303,14 @@ namespace JortPob
             /* Get main switch */
             int containerInsertAt = -1;
             JsonNode musicSwitch = null;
-            for (int i=0;i<objects.Count;i++)
+            for (int i = 0; i < objects.Count; i++)
             {
                 JsonNode jsonNode = objects[i];
 
                 uint id = jsonNode["id"]?["Hash"]?.GetValue<uint>() ?? 0;
 
                 if (id == 618709466) { musicSwitch = jsonNode; }
-                else if(id == 936896166) { containerInsertAt = i; }
+                else if (id == 936896166) { containerInsertAt = i; }
             }
 
             /* Create and id containers */
@@ -276,21 +445,30 @@ namespace JortPob
             public enum Type { Day, Night, Battle }
         }
 
-        /*  :: Original structure of BgmPlaceInfo=0 aka 'Env_000_Green'
-        
-            Play_m0 (2303085137)
-	            Action (542216895)
-		            MusicSwitchContainer (1001573296)
-			            MusicSwitchContiner (618709466)
-				            MusicRandomSequenceContainer (426838365) [ Limgrave Night ]
-					            Music Segment (490586048)
-						            Music Track (1019675082) [ Peaceful ]
-						            Music Track (957430173) [ Combat ]
-				            MusicRandomSequenceContainer (936896166) [ Limgrave Day ]
-					            Music Segment (398617814)
-						            Music Track (138805394) [ Peaceful ]
-						            Music Track (633064261) [ Combat ]
-         
-        */
+        public enum SkyrimMusicCategory
+        {
+            ExploreDay,
+            ExploreNight,
+            ExploreMorning,
+            ExploreDusk,
+            ExploreDLC,
+            Dungeon,
+            DungeonDLC,
+            CombatNormal,
+            CombatBoss,
+            Town,
+            Cinematic,
+            Silence,
+            Unknown
+        }
+
+        public record CategorizedTrack(
+            string EditorID,
+            string FilePath,
+            SkyrimMusicCategory Category,
+            IReadOnlyList<string> PlaylistEditorIds,
+            bool HasFinale,
+            bool HasCuePoints
+        );
     }
 }
