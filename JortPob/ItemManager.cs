@@ -239,7 +239,7 @@ namespace JortPob
                                     row["baseWepId"].Value.SetValue(nextWeaponId + ((int)def.infusion));
                                     row["gemId"].Value.SetValue(def.skill);
                                     row["reinforceLv"].Value.SetValue((byte)def.upgrade);
-                                    paramanager.AddRow(customWeaponParam, row);
+                                    paramanager.AddOrReplaceRow(customWeaponParam, row);
 
                                     ItemInfo custom = new(def.id, Type.CustomWeapon, nextCustomWeaponId, value, scriptItem, json);
                                     items.Add(custom);
@@ -407,7 +407,7 @@ namespace JortPob
             row["gemId"].Value.SetValue(remap.skill);
             row["reinforceLv"].Value.SetValue((byte)remap.upgrade);
 
-            paramanager.AddRow(customWeaponParam, row);
+            paramanager.AddOrReplaceRow(customWeaponParam, row);
             nextCustomWeaponId += 10000;
 
             return row.ID;
@@ -546,7 +546,7 @@ namespace JortPob
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
             if (speff != null) { row["residentSpEffectId"].Value.SetValue(speff.row); }
 
-            paramanager.AddRow(weaponParam, row);
+            paramanager.AddOrReplaceRow(weaponParam, row);
             items.Add(new(id, Type.Weapon, row.ID, value, hasScriptReference, json));
             nextWeaponId += 10000;
         }
@@ -570,7 +570,7 @@ namespace JortPob
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
             if (speff != null) { row["residentSpEffectId"].Value.SetValue(speff.row); }
 
-            paramanager.AddRow(weaponParam, row);
+            paramanager.AddOrReplaceRow(weaponParam, row);
             items.Add(new(id, Type.Weapon, row.ID, value, hasScriptReference, json));
             nextWeaponId += 10000;
         }
@@ -620,7 +620,7 @@ namespace JortPob
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
             if (speff != null) { row["residentSpEffectId"].Value.SetValue(speff.row); }
 
-            paramanager.AddRow(armorParam, row);
+            paramanager.AddOrReplaceRow(armorParam, row);
             items.Add(new(id, Type.Armor, row.ID, value, hasScriptReference, json));
             nextArmorId += 10000;
         }
@@ -667,7 +667,7 @@ namespace JortPob
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
             if (speff != null) { row["residentSpEffectId"].Value.SetValue(speff.row); }
 
-            paramanager.AddRow(armorParam, row);
+            paramanager.AddOrReplaceRow(armorParam, row);
             items.Add(new(id, Type.Armor, row.ID, value, hasScriptReference, json));
             nextArmorId += 10000;
         }
@@ -707,7 +707,7 @@ namespace JortPob
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
             if (speff != null) { row["refId"].Value.SetValue(speff.row); }
 
-            paramanager.AddRow(accessoryParam, row);
+            paramanager.AddOrReplaceRow(accessoryParam, row);
             items.Add(new(id, Type.Accessory, row.ID, value, hasScriptReference, json));
             nextAccessoryId += 10;
         }
@@ -727,7 +727,7 @@ namespace JortPob
             row["rarity"].Value.SetValue((byte)0);
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -751,7 +751,7 @@ namespace JortPob
             row["maxNum"].Value.SetValue((short)5);
             row["refId_default"].Value.SetValue(speff.row);
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -771,7 +771,7 @@ namespace JortPob
             row["rarity"].Value.SetValue((byte)0);
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -791,7 +791,7 @@ namespace JortPob
             row["rarity"].Value.SetValue((byte)0);
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -811,7 +811,7 @@ namespace JortPob
             row["rarity"].Value.SetValue((byte)0);
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -831,7 +831,7 @@ namespace JortPob
             row["rarity"].Value.SetValue((byte)0);
             row["sellValue"].Value.SetValue((int)Math.Max(1, value * Const.MERCANTILE_SELL_SCALE));
 
-            paramanager.AddRow(goodsParam, row);
+            paramanager.AddOrReplaceRow(goodsParam, row);
             items.Add(new(id, Type.Goods, row.ID, value, hasScriptReference, json));
             nextGoodsId += 10;
         }
@@ -1130,7 +1130,7 @@ namespace JortPob
                 row["equipType"].Value.SetValue((byte)item.EquipType());
                 row["value"].Value.SetValue((int)Math.Max(1, item.value * Const.MERCANTILE_BUY_SCALE));
 
-                paramanager.AddRow(shopParam, row);
+                paramanager.AddOrReplaceRow(shopParam, row);
 
                 j++;
             }
@@ -1172,7 +1172,7 @@ namespace JortPob
                 row["equipType"].Value.SetValue((byte)3);  // goods
                 row["value"].Value.SetValue((int)Math.Max(1, spell.value));
 
-                paramanager.AddRow(shopParam, row);
+                paramanager.AddOrReplaceRow(shopParam, row);
 
                 j++;
             }
@@ -1215,7 +1215,7 @@ namespace JortPob
                 row["equipType"].Value.SetValue((byte)4);  // gem
                 row["value"].Value.SetValue((int)Math.Max(1, skill.value));
 
-                paramanager.AddRow(shopParam, row);
+                paramanager.AddOrReplaceRow(shopParam, row);
 
                 j++;
             }

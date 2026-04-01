@@ -65,6 +65,23 @@ namespace JortPob
             Flag doorEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DoorLoad");
             EMEVD.Event loadDoor = new(doorEventFlag.id);
 
+            // Add preconstructor with a few specific calls from the base game common
+            EMEVD.Event precon = new(50);
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 6000, OFF);"));
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 6001, ON);"));
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 9000, OFF);"));
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 9001, OFF);"));
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 280, OFF);"));
+            precon.Instructions.Add(AUTO.ParseAdd("SetEventFlag(TargetEventFlagType.EventFlag, 909, OFF);"));
+            emevd.Events.Add(precon);
+
+            // Add the vanilla event 1020 for BGM to work correctly
+            EMEVD source = EMEVD.Read(Path.Combine(Const.ELDEN_PATH, @"game\event\common.emevd.dcx"));
+            EMEVD.Event source1020 = source.Events.First(e => e.ID == 1020);
+            emevd.Events.Add(source1020);
+            init.Instructions.Add(AUTO.ParseAdd("InitializeEvent(0, 1020);"));
+
+
             int pc = 0;
             string NextParameterName()
             {
