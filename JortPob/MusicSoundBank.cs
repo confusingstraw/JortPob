@@ -1,23 +1,12 @@
 using FFMpegCore;
 using JortPob.Common;
-using Mutagen.Bethesda;
 using Mutagen.Bethesda.Archives;
-using Mutagen.Bethesda.Environments;
-using NAudio;
-using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Text.Json.Nodes;
-using VGAudio.Containers.Wave;
 using static JortPob.SoundManager;
-using Mutagen.Bethesda.Skyrim;
-using Mutagen.Bethesda.Plugins;
-using System.Xml;
-using Newtonsoft.Json;
 
 namespace JortPob
 {
@@ -32,8 +21,13 @@ namespace JortPob
             tracks = new();
 
             if (Const.DEBUG_SKIP_SOUND) { return; }  // yep
+        }
 
-            /* Handle Morrowind Music */
+        /* Handle Morrowind Music */
+        public void ImportMorrowindMusic()
+        {
+            if(!Const.INCLUDE_MORROWIND_MUSIC) { return; }
+
             string[] exploreFiles = Directory.GetFiles(Path.Combine(Const.MORROWIND_PATH, "Data Files", "Music", "Explore"));
             string[] battleFiles = Directory.GetFiles(Path.Combine(Const.MORROWIND_PATH, "Data Files", "Music", "Battle"));
             List<string> files = new();
@@ -72,167 +66,57 @@ namespace JortPob
                 }
                 AddTrack(trackType, file);                    // convert music track and add to list
             }
-
-            /* Handle Skyrim Music */
-            // @TODO: assign each music track back into the the ER soundbanks
-
-            //ImportSkyrimMusic();
         }
 
+        /* Handle Skyrim Music */
         public void ImportSkyrimMusic()
         {
-            if (Const.DEBUG_SKIP_SKYRIM_MUSIC) { return; }  // yep
+            if (!Directory.Exists(Const.SKYRIM_PATH)) { return; }
+            if (!Const.INCLUDE_SKYRIM_MUSIC) { return; }
 
             string bsaPath = Path.Combine(Const.SKYRIM_PATH, "Data", "Skyrim - Sounds.bsa");
-            string extractFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "extracted");
-            string convertFolder = Path.Combine(Const.OUTPUT_PATH, "cache", "music", "converted");
+            string musicDir = Path.Combine(Const.OUTPUT_PATH, "cache", "music");
 
-            if (!Path.Exists(extractFolder)) { Directory.CreateDirectory(extractFolder); }
-            if (!Path.Exists(convertFolder)) { Directory.CreateDirectory(convertFolder); }
+            Directory.CreateDirectory(musicDir);
 
             var archive = Archive.CreateReader(Const.SKYRIM_EDITION_ENUM, bsaPath);
             foreach (var file in archive.Files)
             {
                 if (file.Path.StartsWith("music", StringComparison.OrdinalIgnoreCase))
                 {
-                    string input = Path.Combine(extractFolder, Path.GetFileName(file.Path));
-                    if (!File.Exists(input))
+                    string pathInfo = file.Path.ToLower();
+                    Track.Type trackType;
+                    if (pathInfo.Contains("mus_explore_dlc2solstheim")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_explore_day_0")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_explore_dusk_0")) { trackType = Track.Type.Night; }
+                    else if (pathInfo.Contains("mus_explore_night_0")) { trackType = Track.Type.Night; }
+                    else if (pathInfo.Contains("mus_explore_morning_0")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_combat_0") && !pathInfo.Contains("_finale") && !pathInfo.Contains("_cg")) { trackType = Track.Type.Battle; }
+                    else { continue; } // skip the rest
+
+                    string trackDir = Path.Combine(musicDir, Path.GetFileNameWithoutExtension(file.Path));
+                    Directory.CreateDirectory(trackDir);
+
+                    string xwmFile = Path.Combine(trackDir, Path.GetFileName(file.Path));
+                    if (!File.Exists(xwmFile))
                     {
-                        File.WriteAllBytes(input, file.GetBytes());
+                        File.WriteAllBytes(xwmFile, file.GetBytes());
                     }
 
-                    string output = Path.Combine(convertFolder, Path.GetFileNameWithoutExtension(file.Path) + ".wav");
-                    if (!File.Exists(output))
+                    string wavFile = Path.Combine(trackDir, Path.GetFileNameWithoutExtension(file.Path) + ".wav");
+                    if (!File.Exists(wavFile))
                     {
                         FFMpegArguments
-                            .FromFileInput(input)
-                            .OutputToFile(output, false, options => options
+                            .FromFileInput(xwmFile)
+                            .OutputToFile(wavFile, false, options => options
                                 .WithFastStart()
-                                .WithCustomArgument("-c:a adpcm_ms"))
+                                .WithCustomArgument("-c:a pcm_s32le"))
                             .ProcessSynchronously();
                     }
+
+                    AddTrack(trackType, wavFile);
                 }
             }
-
-            using var env = GameEnvironment.Typical.Builder<ISkyrimMod, ISkyrimModGetter>(Const.SKYRIM_EDITION_ENUM)
-                .WithTargetDataFolder(Path.Combine(Const.SKYRIM_PATH, "Data"))
-                .Build();
-
-            // Build track -> playlists reverse lookup
-            var trackToPlaylists = new Dictionary<FormKey, List<IMusicTypeGetter>>();
-            foreach (var playlist in env.LoadOrder.PriorityOrder.MusicType().WinningOverrides())
-            {
-                foreach (var trackRef in playlist.Tracks)
-                {
-                    if (trackRef.TryResolve(env.LinkCache, out var track))
-                    {
-                        if (!trackToPlaylists.TryGetValue(track.FormKey, out var list))
-                        {
-                            list = new List<IMusicTypeGetter>();
-                            trackToPlaylists[track.FormKey] = list;
-                        }
-                        list.Add(playlist);
-                    }
-                }
-            }
-
-            var categorizedTracks = new List<CategorizedTrack>();
-            foreach (var track in env.LoadOrder.PriorityOrder.MusicTrack().WinningOverrides())
-            {
-                // We only care about single tracks (Type == 1859641416) that have an actual file
-                if ((uint)track.Type != 1859641416) continue;
-                if (string.IsNullOrEmpty(track.TrackFilename?.GivenPath)) continue;
-
-                // Determine category from playlists
-                SkyrimMusicCategory category = SkyrimMusicCategory.Unknown;
-                var playlistEditorIds = new List<string>();
-
-                if (trackToPlaylists.TryGetValue(track.FormKey, out var playlists))
-                {
-                    foreach (var p in playlists)
-                    {
-                        playlistEditorIds.Add(p.EditorID ?? "Unknown");
-                    }
-
-                    // Priority system for picking the main category
-                    category = DetermineCategory(track, playlists);
-                }
-
-                categorizedTracks.Add(new CategorizedTrack(
-                    EditorID: track.EditorID ?? "Unknown",
-                    FilePath: track.TrackFilename.GivenPath,
-                    Category: category,
-                    PlaylistEditorIds: playlistEditorIds,
-                    HasFinale: !string.IsNullOrEmpty(track.FinaleFilename?.GivenPath),
-                    HasCuePoints: track.CuePoints != null && track.CuePoints.Count > 0
-                ));
-            }
-
-            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "categorized_tracks.json"), JsonConvert.SerializeObject(categorizedTracks, Newtonsoft.Json.Formatting.Indented));
-            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "playlists.json"), JsonConvert.SerializeObject(env.LoadOrder.PriorityOrder.MusicType().WinningOverrides().ToList()));
-            File.WriteAllText(Path.Combine(Const.CACHE_PATH, "music", "tracks.json"), JsonConvert.SerializeObject(env.LoadOrder.PriorityOrder.MusicTrack().WinningOverrides().ToList()));
-        }
-
-        private static SkyrimMusicCategory DetermineCategory(IMusicTrackGetter track, List<IMusicTypeGetter> playlists)
-        {
-            // If it's in a Boss playlist, it's a boss track
-            if (playlists.Any(p => p.EditorID?.Contains("CombatBoss", StringComparison.OrdinalIgnoreCase) == true || p.EditorID?.Contains("CombatKarstaag", StringComparison.OrdinalIgnoreCase) == true))
-                return SkyrimMusicCategory.CombatBoss;
-
-            // Combat tracks
-            if (playlists.Any(p => p.EditorID?.Contains("Combat", StringComparison.OrdinalIgnoreCase) == true))
-                return SkyrimMusicCategory.CombatNormal;
-
-            // Dungeons
-            if (playlists.Any(p => p.EditorID?.Contains("Dungeon", StringComparison.OrdinalIgnoreCase) == true))
-                return (playlists.Any(p => p.EditorID?.StartsWith("DLC", StringComparison.OrdinalIgnoreCase) == true)) ? SkyrimMusicCategory.DungeonDLC : SkyrimMusicCategory.Dungeon;
-
-            // Town
-            if (playlists.Any(p => p.EditorID?.Contains("Town", StringComparison.OrdinalIgnoreCase) == true))
-                return SkyrimMusicCategory.Town;
-
-            // Cinematic/One-shots
-            if (playlists.Any(p => p.EditorID?.Contains("BoatArrival", StringComparison.OrdinalIgnoreCase) == true || p.EditorID?.Contains("Eclipse", StringComparison.OrdinalIgnoreCase) == true))
-                return SkyrimMusicCategory.Cinematic;
-
-            // Explore (+ Day/Night logic)
-            if (playlists.Any(p => p.EditorID?.Contains("Explore", StringComparison.OrdinalIgnoreCase) == true))
-            {
-                // Check conditions for time-of-day
-                if (track.Conditions == null || track.Conditions.Count == 0) return SkyrimMusicCategory.ExploreDay;
-
-                foreach (var condition in track.Conditions)
-                {
-                    // GameHour is often a Float condition with function index 20
-                    if (condition is IConditionFloatGetter floatCond)
-                    {
-                        try
-                        {
-                            dynamic funData = floatCond.Data;
-                            if (funData.Function.Index == 20) // GameHour
-                            {
-                                float val = floatCond.ComparisonValue;
-                                var op = floatCond.CompareOperator;
-
-                                // Night logic (often val == 5 and <=, or val == 22 and >= with OR flag)
-                                if ((val >= 22.0f && (op == CompareOperator.GreaterThan || op == CompareOperator.GreaterThanOrEqualTo)) ||
-                                    (val <= 5.0f && (op == CompareOperator.LessThan || op == CompareOperator.LessThanOrEqualTo)))
-                                    return SkyrimMusicCategory.ExploreNight;
-
-                                // Morning
-                                if (val >= 5.0f && val < 8.0f) return SkyrimMusicCategory.ExploreMorning;
-
-                                // Dusk
-                                if (val >= 18.0f && val < 22.0f) return SkyrimMusicCategory.ExploreDusk;
-                            }
-                        }
-                        catch { }
-                    }
-                }
-                return SkyrimMusicCategory.ExploreDay;
-            }
-
-            return SkyrimMusicCategory.Unknown;
         }
 
         private void AddTrack(Track.Type type, string file)
@@ -247,7 +131,8 @@ namespace JortPob
             if (!File.Exists(wem))
             {
                 /* Some files are mp3 and some are wav. Convert if needed, otherwise just copy paste to cache to get ready for wem conversion */
-                if (Path.GetExtension(file).ToLower() == ".mp3") { Audio.MP3toWAV(file, wav); }
+                if (File.Exists(wav)) { } // file is already in the right location so whatever
+                else if (Path.GetExtension(file).ToLower() == ".mp3") { Audio.MP3toWAV(file, wav); }
                 else { File.Copy(file, wav); }
 
                 /* Convert wav to wem */
@@ -264,6 +149,10 @@ namespace JortPob
 
         public void Write()
         {
+            /* Convert music files and add the tracks to our track list*/
+            ImportMorrowindMusic();
+            ImportSkyrimMusic();
+
             /* Setup some paths */
             string dir = Path.Combine(Const.OUTPUT_PATH, "sd");
             string bnkPath = Path.Combine(dir, "cs_smain.bnk");

@@ -39,10 +39,10 @@ namespace JortPob.Common
                 {
                     case "SE": return GameRelease.SkyrimSE;
                     case "SEGOG": return GameRelease.SkyrimSEGog;
-                    case "LE": return GameRelease.SkyrimLE;
                     case "VR": return GameRelease.SkyrimVR;
+                    default:
+                    case "LE": return GameRelease.SkyrimLE;
                 }
-                return GameRelease.SkyrimLE;
             }
         }
         [Setting]
@@ -262,13 +262,19 @@ namespace JortPob.Common
 
         #endregion
 
+        #region Music
+        /// dont want or dont have set false
+        [Setting(true)]
+        public static bool INCLUDE_SKYRIM_MUSIC { get; private set; }
+
+        /// dont want set false. you can have both and it will combine the OSTs from both games if desired
+        [Setting(true)]
+        public static bool INCLUDE_MORROWIND_MUSIC { get; private set; }
+        #endregion
+
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
-
-        /// for those who don't own skyrim or just want mw music
-        [Setting(false)]
-        public static bool DEBUG_SKIP_SKYRIM_MUSIC { get; private set; }
 
         [Setting(false)]
         public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
