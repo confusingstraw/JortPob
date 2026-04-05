@@ -25,6 +25,7 @@ namespace JortPob
         private readonly Dictionary<Type, Dictionary<string, JsonNode>> recordsByType;
         private readonly ConcurrentDictionary<Int2, Landscape> landscapesByCoordinate;
         public List<DialogRecord> dialog;
+        public List<RegionInfo> regions;
         public List<RaceInfo> races;
         public List<JobInfo> jobs;  // classes, but we cant really use that word so 'job'
         public List<FactionInfo> factions;
@@ -194,6 +195,13 @@ namespace JortPob
                         }
                     }
                 }
+            }
+
+            /* Load regioninfo from esm */
+            regions = new();
+            foreach(JsonNode jsonNode in GetAllRecordsByType(ESM.Type.Region))
+            {
+                regions.Add(new(jsonNode));
             }
 
             /* Load raceinfo and jobinfo */
@@ -447,6 +455,67 @@ namespace JortPob
             hasDialogCache.Add(content.id, false);
             return false;
         }
+    }
+
+    public class RegionInfo
+    {
+        public readonly string id, name;
+        public readonly List<(ScriptCommon.WeatherEMEVD weather, float chance)> weathers;
+
+        public RegionInfo(JsonNode json)
+        {
+            id = json["id"].GetValue<string>().ToLower().Trim();
+            name = json["name"].GetValue<string>();
+
+            weathers = new();
+            foreach(var property in json["weather_chances"].AsObject())
+            {
+                ScriptCommon.WeatherPapyrus w = Enum.Parse<ScriptCommon.WeatherPapyrus>(property.Key, ignoreCase: true);
+                float chance = property.Value.GetValue<float>();
+                if (chance == 0) { continue; } // gtfo
+
+                switch(w)
+                {
+                    case ScriptCommon.WeatherPapyrus.Clear:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Default, chance));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Cloudy:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.PuffyClouds, chance / 2f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyPuffyClouds, chance / 2f));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Foggy:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Fog, chance / 3f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavyFog, chance / 3f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyFog, chance / 3f));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Overcast:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.FlatClouds, chance));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Rain:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Rain, chance / 3f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.RainyClouds, chance / 3f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.ScatteredRain, chance / 3f));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Ash:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown18, chance));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Blight:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown19, chance));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Snow:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.Snow, chance));
+                        break;
+                    case ScriptCommon.WeatherPapyrus.Blizzard:
+                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavySnow, chance / 2f));
+                        weathers.Add((ScriptCommon.WeatherEMEVD.SnowyHeavyFog, chance / 2f));
+                        break;
+                }
+
+
+            }
+        }
+
+        public float ChanceTotal() { return weathers.Sum(w => w.chance); }
     }
 
     public class RaceInfo

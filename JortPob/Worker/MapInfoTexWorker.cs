@@ -1,5 +1,4 @@
-﻿using HKLib.hk2018.hkaiWorldCommands;
-using JortPob.Common;
+﻿using JortPob.Common;
 using JortPob.Worker;
 using SoulsFormats;
 using System;
@@ -8,12 +7,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Speech.Synthesis;
-using System.Speech.Synthesis.TtsEngine;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Windows.Documents;
-using System.Windows.Media;
 
 public class MapInfoTexWorker : Worker
 {
@@ -37,7 +32,7 @@ public class MapInfoTexWorker : Worker
         var instance = new MapInfoTexWorker();
         var bmp = Stitch(Path.Combine(Const.ELDEN_PATH, "Game", "other", "mapinfotex"));
 
-        bmp.Save(Path.Combine(Const.CACHE_PATH, "mapinfotex.png"), ImageFormat.Png);
+        bmp.Save(Path.Combine(Const.CACHE_PATH, "mapinfotex.bmp"), ImageFormat.Bmp);
     }
 
     private void Replace()
@@ -45,7 +40,7 @@ public class MapInfoTexWorker : Worker
         Lort.Log("Replacing weather map... ", Lort.Type.Main);
         try
         {
-            var mapPath = Utility.ResourcePath(@"other\mapinfotex.png");
+            var mapPath = Utility.ResourcePath(@"other\mapinfotex.bmp");
             var map = Bitmap.FromFile(mapPath) as Bitmap;
             var output = Path.Combine(Const.OUTPUT_PATH, "other", "mapinfotex");
             SplitToBND(
@@ -200,7 +195,7 @@ public class MapInfoTexWorker : Worker
 
             var rect = new Rectangle(srcX, srcY, tileWidth, tileHeight);
 
-            using (var tile = source.Clone(rect, source.PixelFormat))
+            using (var tile = source.Clone(rect, PixelFormat.Format24bppRgb))  // convert to 24bit to match elden ring textures
             using (var ms = new MemoryStream())
             {
                 tile.Save(ms, ImageFormat.Bmp);

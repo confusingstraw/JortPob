@@ -31,6 +31,7 @@ namespace JortPob
         private static List<EnemyRemap> ENEMY_REMAPS;
         private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
         private static List<LoadingTip> LOADING_TIPS;
+        private static Dictionary<string, byte> REGION;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -138,6 +139,13 @@ namespace JortPob
         {
             if(FACE_REMAP.ContainsKey(name.ToLower().Trim())) { return FACE_REMAP[name.ToLower().Trim()]; }
             else { return FACE_REMAP["default"]; }
+        }
+
+        public static byte GetRegionByte(string id)
+        {
+            string ID = id.ToLower().Trim();
+            if(REGION.ContainsKey(ID)) { return REGION[ID]; }
+            else { return 255; }  // default
         }
 
         /* load all the override jsons into this class */
@@ -304,6 +312,16 @@ namespace JortPob
                 JsonNode jsonNode = property.Value;
                 LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
                 LOADING_TIPS.Add(loadingTip);
+            }
+
+            /* Loading region bytes */
+            REGION = new();
+            JsonNode jsonRegion = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\region.json")));
+            foreach(var property in jsonRegion.AsObject())
+            {
+                string id = property.Key.ToLower().Trim();
+                byte value = property.Value.GetValue<byte>();
+                REGION.Add(id, value);
             }
         }
 

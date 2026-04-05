@@ -1284,7 +1284,7 @@ namespace JortPob
             param.GeneratePickableAssetRows(item, cache.GetPickables());
             param.GenerateAssetRows(cache.liquids);
             param.GenerateMapInfoParam(layout);
-            param.SetAllMapLocation();
+            param.GenerateTexInfoParam(esm.regions);
             param.GenerateCustomCharacterCreation();
             param.GenerateLoadingMenuRows(text);
             param.Write();
