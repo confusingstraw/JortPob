@@ -1002,11 +1002,27 @@ namespace JortPob
             float width = x > z ? x : z;
             float top = Math.Max(0, flver.Nodes[0].BoundingBoxMax.Y);
             float bottom = Math.Abs(flver.Nodes[0].BoundingBoxMin.Y);
+            float height = top + bottom;
+            float offset = -bottom - 0.25f;
 
             FsParam actionParam = param[ParamType.ActionButtonParam];
             FsParam.Row row = CloneRow(actionParam[1000], text, rowId); // 1000 is pick up runes prompt
 
             int textId = textManager.AddActionButton(text);
+
+            // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
+            if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
+            {
+                height = 2.5f;
+
+                // If a door really appears to be a trapdoor extend the offset more so its reachable
+                string lname = modelInfo.name.ToLower();
+                if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
+                {
+                    height += 2f;
+                    offset -= 2f;
+                }
+            }
 
             row["regionType"].Value.SetValue((byte)0); // cylinder
             row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
@@ -1015,8 +1031,8 @@ namespace JortPob
             row["angle"].Value.SetValue(180); // angle from dmy
             row["depth"].Value.SetValue(0f);
             row["width"].Value.SetValue(0f);
-            row["height"].Value.SetValue(top + bottom);
-            row["baseHeightOffset"].Value.SetValue(-bottom - 0.25f);
+            row["height"].Value.SetValue(height);
+            row["baseHeightOffset"].Value.SetValue(offset);
             row["angleCheckType"].Value.SetValue((byte)0);
             row["allowAngle"].Value.SetValue(90);  // player look angle
             row["textId"].Value.SetValue(textId);
