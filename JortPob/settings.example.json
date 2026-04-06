@@ -1,6 +1,10 @@
 {
   "MORROWIND_PATH": "P:\\ATH\\TO\\MORROWIND\\",
   "ELDEN_PATH": "P:\\ATH\\TO\\ELDENRING\\",
+  "SKYRIM_PATH": "P:\\ATH\\TO\\SKYRIM", // only required if you set INCLUDE_SKYRIM_MUSIC to true!
+  "SKYRIM_EDITION": "SE",
+  // SE = Special Edition and Anniversary Edition, LE = Legendary Edition and Base game, VR = VR
+  // if you're bought SE from GOG set it to SEGOG
   "WWISE_PATH": "P:\\ATH\\TO\\WWISE\\",
   "OUTPUT_PATH": "P:\\ATH\\TO\\MOD\\FOLDER\\",
   "RAD_PATH": "P:\\ATH\\TO\\RADVideo\\",
@@ -14,6 +18,12 @@
 
   // When doing anything random we use this as our seed so results are consistent between builds
   "RANDOM_SEED": 42,
+
+  // Add skyrim OST to game music
+  "INCLUDE_SKYRIM_MUSIC": true,
+
+  // Add morrowind OST to game music (you can have both if you want!)
+  "INCLUDE_MORROWIND_MUSIC": true,
 
   // Saves a minute or 2 on a build
   "DEBUG_SKIP_CUSTOM_MAP": false,

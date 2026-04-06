@@ -1,7 +1,9 @@
-﻿using JortPob.Common;
+using FFMpegCore;
+using JortPob.Common;
+using Mutagen.Bethesda.Archives;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Text.Json.Nodes;
 using static JortPob.SoundManager;
@@ -19,8 +21,13 @@ namespace JortPob
             tracks = new();
 
             if (Const.DEBUG_SKIP_SOUND) { return; }  // yep
+        }
 
-            /* Handle Morrowind Music */
+        /* Handle Morrowind Music */
+        public void ImportMorrowindMusic()
+        {
+            if(!Const.INCLUDE_MORROWIND_MUSIC) { return; }
+
             string[] exploreFiles = Directory.GetFiles(Path.Combine(Const.MORROWIND_PATH, "Data Files", "Music", "Explore"));
             string[] battleFiles = Directory.GetFiles(Path.Combine(Const.MORROWIND_PATH, "Data Files", "Music", "Battle"));
             List<string> files = new();
@@ -59,9 +66,57 @@ namespace JortPob
                 }
                 AddTrack(trackType, file);                    // convert music track and add to list
             }
+        }
 
-            /* Handle Skyrim Music */
-            // @TODO:
+        /* Handle Skyrim Music */
+        public void ImportSkyrimMusic()
+        {
+            if (!Directory.Exists(Const.SKYRIM_PATH)) { return; }
+            if (!Const.INCLUDE_SKYRIM_MUSIC) { return; }
+
+            string bsaPath = Path.Combine(Const.SKYRIM_PATH, "Data", "Skyrim - Sounds.bsa");
+            string musicDir = Path.Combine(Const.OUTPUT_PATH, "cache", "music");
+
+            Directory.CreateDirectory(musicDir);
+
+            var archive = Archive.CreateReader(Const.SKYRIM_EDITION_ENUM, bsaPath);
+            foreach (var file in archive.Files)
+            {
+                if (file.Path.StartsWith("music", StringComparison.OrdinalIgnoreCase))
+                {
+                    string pathInfo = file.Path.ToLower();
+                    Track.Type trackType;
+                    if (pathInfo.Contains("mus_explore_dlc2solstheim")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_explore_day_0")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_explore_dusk_0")) { trackType = Track.Type.Night; }
+                    else if (pathInfo.Contains("mus_explore_night_0")) { trackType = Track.Type.Night; }
+                    else if (pathInfo.Contains("mus_explore_morning_0")) { trackType = Track.Type.Day; }
+                    else if (pathInfo.Contains("mus_combat_0") && !pathInfo.Contains("_finale") && !pathInfo.Contains("_cg")) { trackType = Track.Type.Battle; }
+                    else { continue; } // skip the rest
+
+                    string trackDir = Path.Combine(musicDir, Path.GetFileNameWithoutExtension(file.Path));
+                    Directory.CreateDirectory(trackDir);
+
+                    string xwmFile = Path.Combine(trackDir, Path.GetFileName(file.Path));
+                    if (!File.Exists(xwmFile))
+                    {
+                        File.WriteAllBytes(xwmFile, file.GetBytes());
+                    }
+
+                    string wavFile = Path.Combine(trackDir, Path.GetFileNameWithoutExtension(file.Path) + ".wav");
+                    if (!File.Exists(wavFile))
+                    {
+                        FFMpegArguments
+                            .FromFileInput(xwmFile)
+                            .OutputToFile(wavFile, false, options => options
+                                .WithFastStart()
+                                .WithCustomArgument("-c:a pcm_s32le"))
+                            .ProcessSynchronously();
+                    }
+
+                    AddTrack(trackType, wavFile);
+                }
+            }
         }
 
         private void AddTrack(Track.Type type, string file)
@@ -76,7 +131,8 @@ namespace JortPob
             if (!File.Exists(wem))
             {
                 /* Some files are mp3 and some are wav. Convert if needed, otherwise just copy paste to cache to get ready for wem conversion */
-                if (Path.GetExtension(file).ToLower() == ".mp3") { Audio.MP3toWAV(file, wav); }
+                if (File.Exists(wav)) { } // file is already in the right location so whatever
+                else if (Path.GetExtension(file).ToLower() == ".mp3") { Audio.MP3toWAV(file, wav); }
                 else { File.Copy(file, wav); }
 
                 /* Convert wav to wem */
@@ -93,6 +149,10 @@ namespace JortPob
 
         public void Write()
         {
+            /* Convert music files and add the tracks to our track list*/
+            ImportMorrowindMusic();
+            ImportSkyrimMusic();
+
             /* Setup some paths */
             string dir = Path.Combine(Const.OUTPUT_PATH, "sd");
             string bnkPath = Path.Combine(dir, "cs_smain.bnk");
@@ -134,14 +194,14 @@ namespace JortPob
             /* Get main switch */
             int containerInsertAt = -1;
             JsonNode musicSwitch = null;
-            for (int i=0;i<objects.Count;i++)
+            for (int i = 0; i < objects.Count; i++)
             {
                 JsonNode jsonNode = objects[i];
 
                 uint id = jsonNode["id"]?["Hash"]?.GetValue<uint>() ?? 0;
 
                 if (id == 618709466) { musicSwitch = jsonNode; }
-                else if(id == 936896166) { containerInsertAt = i; }
+                else if (id == 936896166) { containerInsertAt = i; }
             }
 
             /* Create and id containers */
@@ -276,21 +336,30 @@ namespace JortPob
             public enum Type { Day, Night, Battle }
         }
 
-        /*  :: Original structure of BgmPlaceInfo=0 aka 'Env_000_Green'
-        
-            Play_m0 (2303085137)
-	            Action (542216895)
-		            MusicSwitchContainer (1001573296)
-			            MusicSwitchContiner (618709466)
-				            MusicRandomSequenceContainer (426838365) [ Limgrave Night ]
-					            Music Segment (490586048)
-						            Music Track (1019675082) [ Peaceful ]
-						            Music Track (957430173) [ Combat ]
-				            MusicRandomSequenceContainer (936896166) [ Limgrave Day ]
-					            Music Segment (398617814)
-						            Music Track (138805394) [ Peaceful ]
-						            Music Track (633064261) [ Combat ]
-         
-        */
+        public enum SkyrimMusicCategory
+        {
+            ExploreDay,
+            ExploreNight,
+            ExploreMorning,
+            ExploreDusk,
+            ExploreDLC,
+            Dungeon,
+            DungeonDLC,
+            CombatNormal,
+            CombatBoss,
+            Town,
+            Cinematic,
+            Silence,
+            Unknown
+        }
+
+        public record CategorizedTrack(
+            string EditorID,
+            string FilePath,
+            SkyrimMusicCategory Category,
+            IReadOnlyList<string> PlaylistEditorIds,
+            bool HasFinale,
+            bool HasCuePoints
+        );
     }
 }

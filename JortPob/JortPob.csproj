@@ -9,13 +9,18 @@
 
   <ItemGroup>
     <PackageReference Include="DirectXTexNet" />
+    <PackageReference Include="FFMpegCore" />
     <PackageReference Include="gfoidl.Base64" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" />
+    <PackageReference Include="Mutagen.Bethesda.Core" />
+    <PackageReference Include="Mutagen.Bethesda.Kernel" />
+    <PackageReference Include="Mutagen.Bethesda.Skyrim" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="SharpAssimp" />
     <PackageReference Include="System.Drawing.Common" />
     <PackageReference Include="System.Speech" />
     <PackageReference Include="TeximpNet" />
+    <PackageReference Include="VGAudio" />
     <PackageReference Include="XbrzSharp" />
   </ItemGroup>
 
