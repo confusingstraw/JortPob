@@ -21,6 +21,7 @@ namespace JortPob
             Utility.InitSRGBCache();
             Oodler.Initialize();
 
+
             /* Loading stuff */
             ScriptManager scriptManager = new();                                              // Manages EMEVD scripts
             ESM esm = new ESM(scriptManager);                                                // Morrowind ESM parse and partial serialization
@@ -46,6 +47,9 @@ namespace JortPob
 
             /* Write custom map */
             if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+
+            /* replace the maptexinfo responsible for weather functions, sourced from Resources/other/mapinfotex.png */
+            MapInfoTexWorker.Go();
 
             /* Replace openign cutscene */
             if(!Const.DEBUG_SKIP_CUTSCENES) { Cutscener.Create(Path.Combine(Const.MORROWIND_PATH, @"Data Files\video\mw_intro.bik"), 0040); }
@@ -1280,7 +1284,7 @@ namespace JortPob
             param.GeneratePickableAssetRows(item, cache.GetPickables());
             param.GenerateAssetRows(cache.liquids);
             param.GenerateMapInfoParam(layout);
-            param.SetAllMapLocation();
+            param.GenerateTexInfoParam(esm.regions);
             param.GenerateCustomCharacterCreation();
             param.GenerateLoadingMenuRows(text);
             param.Write();

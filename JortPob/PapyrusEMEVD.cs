@@ -103,6 +103,7 @@ namespace JortPob
                 {
                     case Call.Type.Variable:
                         Script.Flag vflag = GetFlagByVariable(call.left.parameters[0]);
+                        if (vflag == null) { Lort.Log($"Failed to resolve variable in '{call.RAW}'", Lort.Type.Debug); break; } // generally the result of partial builds but also sometimes subcripts launched by dialog
                         if (call.right.type == Call.Type.Literal)
                         {
                             lines.Add(ResetConditionGroups());
