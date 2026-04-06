@@ -1072,8 +1072,17 @@ namespace JortPob
                 int weatherLotId = nextWeatherLotParamId;
                 nextWeatherLotParamId += 1000;
                 FsParam.Row weatherRow = CloneRow(weatherLotParam[600000000], region.name, weatherLotId); // 600000000 is just a regular overworld weather lot. nothing special
-                for(int i=0;i<16&&i<region.weathers.Count();i++)
+                for(int i=0;i<16;i++)
                 {
+                    // If we don't have 16 possible weathers just fill out rest of rows with nothing
+                    if(i >= region.weathers.Count())
+                    {
+                        weatherRow[$"weatherType{i}"].Value.SetValue((short)-1);
+                        weatherRow[$"lotteryWeight{i}"].Value.SetValue((ushort)0);
+                        continue;
+                    }
+
+                    // Fill out param rows for weather and chances
                     (ScriptCommon.WeatherEMEVD weather, float chance) entry = region.weathers[i];
                     ushort toPerThou = (ushort)(entry.chance * (1000f / region.ChanceTotal()));
                     weatherRow[$"weatherType{i}"].Value.SetValue(weatherIds[entry.weather]);
