@@ -335,31 +335,5 @@ namespace JortPob
         {
             public enum Type { Day, Night, Battle }
         }
-
-        public enum SkyrimMusicCategory
-        {
-            ExploreDay,
-            ExploreNight,
-            ExploreMorning,
-            ExploreDusk,
-            ExploreDLC,
-            Dungeon,
-            DungeonDLC,
-            CombatNormal,
-            CombatBoss,
-            Town,
-            Cinematic,
-            Silence,
-            Unknown
-        }
-
-        public record CategorizedTrack(
-            string EditorID,
-            string FilePath,
-            SkyrimMusicCategory Category,
-            IReadOnlyList<string> PlaylistEditorIds,
-            bool HasFinale,
-            bool HasCuePoints
-        );
     }
 }
