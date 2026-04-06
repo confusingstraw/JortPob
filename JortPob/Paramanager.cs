@@ -91,7 +91,7 @@ namespace JortPob
 
         public short terrainDrawParamID;
         private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
-        private int nextMessageParam, nextMapItemLotId, nextEnemyItemLotId, nextActionButtonId;
+        private int nextMessageParam, nextMapItemLotId, nextEnemyItemLotId, nextActionButtonId, nextWeatherLotParamId;
 
         public Paramanager(TextManager textManager)
         {
@@ -101,6 +101,7 @@ namespace JortPob
             nextMapItemLotId = 120000;
             nextEnemyItemLotId = 720000000;
             nextActionButtonId = 300000;
+            nextWeatherLotParamId = 500000000;
 
             interactActionButtons = new();
             itemActionButtons = new();
@@ -240,6 +241,26 @@ namespace JortPob
             FsParam.Row worldMapPlaecNameParamTemplate = GetRow(worldMapPlaecNameParam, 1);   // grab the blank one as a template
             worldMapPlaecNameParam.ClearRows();
             AddOrReplaceRow(worldMapPlaecNameParam, worldMapPlaecNameParamTemplate);
+
+            /* Claer out all but 255 from the 3 MapTexParams */
+            FsParam mapNameTexParam = param[ParamType.MapNameTexParam];
+            FsParam mapPieceTexParam = param[ParamType.MapPieceTexParam];
+            FsParam weatherTexParam = param[ParamType.WeatherLotTexParam];
+            void KillAllBut255(FsParam param)
+            {
+                for(int i = 0; i < param.Rows.Count(); i++)
+                {
+                    FsParam.Row row = param.Rows[i];
+                    if (row.ID != 255)
+                    {
+                        param.RemoveRow(row);
+                        i--;
+                    }
+                }
+            }
+            KillAllBut255(mapNameTexParam);
+            KillAllBut255(mapPieceTexParam);
+            KillAllBut255(weatherTexParam);
 
             GC.Collect(); // maybe fixes a bug with fsparam. 80% sure
         }
@@ -1006,19 +1027,86 @@ namespace JortPob
             return rowId;
         }
 
-        /* Set all map placenames to "Morrowind" for now. Later we can edit the map mask and setup the regions properly */
-        public void SetAllMapLocation()
+        /* Generate TexInfo stuff for the 'maptexinfo.bmp' file */
+        public void GenerateTexInfoParam(List<RegionInfo> regions)
         {
-            int textId = textManager.AddLocation("Morrowind");
-
-            FsParam.Column mapNameId = param[ParamType.MapNameTexParam]["mapNameId"];
-
-            foreach(FsParam.Row row in param[ParamType.MapNameTexParam].Rows)
+            // EMEVD enum values converted to param row ids
+            Dictionary<ScriptCommon.WeatherEMEVD, short> weatherIds = new()
             {
-               mapNameId.SetValue(row, textId);
-            }
+                { ScriptCommon.WeatherEMEVD.None, 0},
+                { ScriptCommon.WeatherEMEVD.Default, 0},
+                { ScriptCommon.WeatherEMEVD.Rain, 20},
+                { ScriptCommon.WeatherEMEVD.Snow, 40},
+                { ScriptCommon.WeatherEMEVD.WindyRain, 30},
+                { ScriptCommon.WeatherEMEVD.Fog, 50},
+                { ScriptCommon.WeatherEMEVD.Cloudless, 1},
+                { ScriptCommon.WeatherEMEVD.FlatClouds, 10},
+                { ScriptCommon.WeatherEMEVD.PuffyClouds, 11},
+                { ScriptCommon.WeatherEMEVD.RainyClouds, 21},
+                { ScriptCommon.WeatherEMEVD.WindyFog, 31},
+                { ScriptCommon.WeatherEMEVD.HeavySnow, 41},
+                { ScriptCommon.WeatherEMEVD.HeavyFog, 51},
+                { ScriptCommon.WeatherEMEVD.WindyPuffyClouds, 60},
+                { ScriptCommon.WeatherEMEVD.Default2, 0},
+                { ScriptCommon.WeatherEMEVD.Default3, 0},
+                { ScriptCommon.WeatherEMEVD.RainyHeavyFog, 52},
+                { ScriptCommon.WeatherEMEVD.SnowyHeavyFog, 81},
+                { ScriptCommon.WeatherEMEVD.ScatteredRain, 82},
+                { ScriptCommon.WeatherEMEVD.Unknown18, 83},
+                { ScriptCommon.WeatherEMEVD.Unknown19, 84},
+                { ScriptCommon.WeatherEMEVD.Unknown20, 85},
+                { ScriptCommon.WeatherEMEVD.Unknown21, 86},
+                { ScriptCommon.WeatherEMEVD.Unknown22, 97},
+                { ScriptCommon.WeatherEMEVD.Unknown23, 88}
+            };
 
-            textManager.SetLocation(10010, "Morrowind");  // it seems like chapel of anticiaption is the default when the game doesnt know where you are so making that a generic as well
+            FsParam mapNameTexParam = param[ParamType.MapNameTexParam];
+            FsParam mapPieceTexParam = param[ParamType.MapPieceTexParam];
+            FsParam lotTexParam = param[ParamType.WeatherLotTexParam];
+            FsParam weatherLotParam = param[ParamType.WeatherLotParam];
+
+            foreach (RegionInfo region in regions)
+            {
+                byte texByte = Override.GetRegionByte(region.id);
+                if (texByte == 255) { continue; } // skip if default byte is returned
+
+                /* Create map tex rows */
+                FsParam.Row nameRow = CloneRow(mapNameTexParam[255], region.name, texByte);
+                FsParam.Row pieceRow = CloneRow(mapPieceTexParam[255], region.name, texByte);
+                FsParam.Row lotRow = CloneRow(lotTexParam[255], region.name, texByte);
+
+                /* Create and setup weather lot row */
+                int weatherLotId = nextWeatherLotParamId;
+                nextWeatherLotParamId += 1000;
+                FsParam.Row weatherRow = CloneRow(weatherLotParam[600000000], region.name, weatherLotId); // 600000000 is just a regular overworld weather lot. nothing special
+                for(int i=0;i<16;i++)
+                {
+                    // If we don't have 16 possible weathers just fill out rest of rows with nothing
+                    if(i >= region.weathers.Count())
+                    {
+                        weatherRow[$"weatherType{i}"].Value.SetValue((short)-1);
+                        weatherRow[$"lotteryWeight{i}"].Value.SetValue((ushort)0);
+                        continue;
+                    }
+
+                    // Fill out param rows for weather and chances
+                    (ScriptCommon.WeatherEMEVD weather, float chance) entry = region.weathers[i];
+                    ushort toPerThou = (ushort)(entry.chance * (1000f / region.ChanceTotal()));
+                    weatherRow[$"weatherType{i}"].Value.SetValue(weatherIds[entry.weather]);
+                    weatherRow[$"lotteryWeight{i}"].Value.SetValue(toPerThou);
+                }
+
+                /* Setup map tex rows */
+                int textId = textManager.AddLocation(region.name);
+                nameRow["mapNameId"].Value.SetValue(textId);
+                lotRow["weatherLogId"].Value.SetValue(weatherLotId);  // SIC
+
+                /* Add em all */
+                AddOrReplaceRow(mapNameTexParam, nameRow);
+                AddOrReplaceRow(mapPieceTexParam, pieceRow);
+                AddOrReplaceRow(lotTexParam, lotRow);
+                AddOrReplaceRow(weatherLotParam, weatherRow);
+            }
         }
 
         /* Generate or get an already generated worldmappoint to be used as a placename. Not for actual map icons! */

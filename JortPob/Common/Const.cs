@@ -1,3 +1,4 @@
+using Mutagen.Bethesda;
 using SoulsFormats;
 using System.Collections.Generic;
 using System.IO;
@@ -21,18 +22,36 @@ namespace JortPob.Common
 
         #region Paths
 
-        [Setting] 
+        [Setting]
         public static string MORROWIND_PATH { get; private set; }
-        [Setting] 
+        [Setting]
         public static string ELDEN_PATH { get; private set; }
-        [Setting] 
+        [Setting]
+        public static string SKYRIM_PATH { get; private set; }
+        [Setting]
+        private static string SKYRIM_EDITION { get; set; }
+        public static GameRelease SKYRIM_EDITION_ENUM
+        {
+            get
+            {
+                switch (SKYRIM_EDITION)
+                {
+                    case "SE": return GameRelease.SkyrimSE;
+                    case "SEGOG": return GameRelease.SkyrimSEGog;
+                    case "VR": return GameRelease.SkyrimVR;
+                    default:
+                    case "LE": return GameRelease.SkyrimLE;
+                }
+            }
+        }
+        [Setting]
         public static string OUTPUT_PATH { get; private set; }
-        [Setting] 
+        [Setting]
         public static string WWISE_PATH { get; private set; }
         [Setting]
         public static string RAD_PATH { get; private set; }
         public static string CACHE_PATH => Path.Combine(OUTPUT_PATH, @"cache\");
-        [Setting("Morrowind.esm")] 
+        [Setting("Morrowind.esm")]
         public static string[] LOAD_ORDER { get; private set; }
 
         #endregion
@@ -98,7 +117,7 @@ namespace JortPob.Common
 
         /* Calculated... ESM lowest cell is [-20,-20]~ on the grid. MSB lowest value is [+33,+40]~. Offset so they overlap */
         /* Updated for bloodmoon: bloodmoons furthest cell to the left is -28, 28 so we need to shift a bit more to make that fit */
-        public static readonly Vector3 LAYOUT_COORDINATE_OFFSET = new((21*CELL_SIZE)+(35*TILE_SIZE), 0, (12*CELL_SIZE)+(38*TILE_SIZE));
+        public static readonly Vector3 LAYOUT_COORDINATE_OFFSET = new((21 * CELL_SIZE) + (35 * TILE_SIZE), 0, (12 * CELL_SIZE) + (38 * TILE_SIZE));
 
         public static readonly int CHUNK_PARTITION_SIZE = 6;
 
@@ -242,6 +261,16 @@ namespace JortPob.Common
 
         #endregion
 
+        #region Music
+        /// dont want or dont have set false
+        [Setting(true)]
+        public static bool INCLUDE_SKYRIM_MUSIC { get; private set; }
+
+        /// dont want set false. you can have both and it will combine the OSTs from both games if desired
+        [Setting(true)]
+        public static bool INCLUDE_MORROWIND_MUSIC { get; private set; }
+        #endregion
+
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
@@ -323,7 +352,7 @@ namespace JortPob.Common
             // set MATCHES to null if for proper normal building
             string[]
                 MATCHES =
-                    DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES; 
+                    DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES;
 
             if (MATCHES == null)
             {

@@ -5,14 +5,19 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="DirectXTexNet" Version="1.0.7" />
+    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
     <PackageVersion Include="gfoidl.Base64" Version="2.0.0" />
     <PackageVersion Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
     <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="Mutagen.Bethesda.Core" Version="0.53.1" />
+    <PackageVersion Include="Mutagen.Bethesda.Kernel" Version="0.53.1" />
+    <PackageVersion Include="Mutagen.Bethesda.Skyrim" Version="0.53.1" />
     <PackageVersion Include="NAudio" Version="2.2.1" />
     <PackageVersion Include="SharpAssimp" Version="6.0.5" />
     <PackageVersion Include="System.Drawing.Common" Version="9.0.5" />
     <PackageVersion Include="System.Speech" Version="9.0.9" />
     <PackageVersion Include="TeximpNet" Version="1.4.3" />
+    <PackageVersion Include="VGAudio" Version="2.2.1" />
     <PackageVersion Include="XbrzSharp" Version="1.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.12.6" />
