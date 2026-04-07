@@ -823,7 +823,7 @@ namespace JortPob
                     // See if our target is already phased
                     foreach(var (n, _) in phases)
                     {
-                        if(n.id == call.target) { target = n; break; }
+                        if(n.id.ToLower() == call.target) { target = n; break; }
                     }
 
                     // Otherwise look for it
@@ -908,7 +908,7 @@ namespace JortPob
                                 Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
                                 float rot = float.Parse(call.parameters[3]);
                                 Tile target = GetTile(position);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed position call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed Position call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
                                 // Add a point at this position that will become a region we can use in scripts later to warp the player around
                                 if (call.target == "player")
@@ -929,7 +929,7 @@ namespace JortPob
                                 float rot = float.Parse(call.parameters[3]);
                                 string name = call.parameters[4];
                                 InteriorGroup.Chunk target = FindChunk(name);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed positioncell call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                                if (target == null) { Lort.Log($"Failed to place region for preprocessed PositionCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
                                 // Add a point at this position that will become a region we can use in scripts later to warp the player around
                                 if (call.target == "player")
@@ -959,7 +959,7 @@ namespace JortPob
                         case Papyrus.Call.Type.AiFollowCell:
                             {
                                 Vector3 position = Utility.Vector3FromParameters(call.parameters, 3) * Const.GLOBAL_SCALE;
-                                string name = call.parameters[4];
+                                string name = call.parameters[1];
                                 InteriorGroup.Chunk target = FindChunk(name);
                                 if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollowCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
@@ -1315,7 +1315,7 @@ namespace JortPob
             {
                 foreach(Content c in t.GetAllContent())
                 {
-                    if(c.id.ToLower() == reference.ToLower())
+                    if (c.id.ToLower() == reference.ToLower())
                     {
                         return c;
                     }
@@ -1328,7 +1328,7 @@ namespace JortPob
                 {
                     foreach(Content c in chunk.GetAllContent())
                     {
-                        if(c.id.ToLower() == reference.ToLower())
+                        if (c.id.ToLower() == reference.ToLower())
                         {
                             return c;
                         }

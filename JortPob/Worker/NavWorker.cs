@@ -44,6 +44,7 @@ namespace JortPob.Worker
             {
                 string objPath = objs[i];
                 string hkxPath = Path.ChangeExtension(objPath, ".hkx");
+                if (Const.DEBUG_REUSE_FILES && File.Exists(hkxPath)) { Lort.TaskIterate(); continue; } // if debug_reuse is on, skip if file already created
                 Model.ModelConverter.OBJtoHKX(objPath, hkxPath);
                 Lort.TaskIterate(); // Progress bar update
             }
@@ -56,6 +57,7 @@ namespace JortPob.Worker
                 string hkxPath = Path.ChangeExtension(objPath, ".hkx");
                 string nnavPath = Path.ChangeExtension(hkxPath, ".n.nav");
                 string onavPath = Path.ChangeExtension(hkxPath, ".o.nav");
+                if (Const.DEBUG_REUSE_FILES && File.Exists(nnavPath) && File.Exists(onavPath)) { Lort.TaskIterate(); continue; } // if debug_reuse is on, skip if file already created
                 Model.ModelConverter.HKXtoNAV(hkxPath, nnavPath, nNvmSettings);
                 Model.ModelConverter.HKXtoNAV(hkxPath, onavPath, oNvmSettings);
                 Lort.TaskIterate(); // Progress bar update

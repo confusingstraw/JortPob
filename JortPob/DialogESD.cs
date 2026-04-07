@@ -99,7 +99,7 @@ namespace JortPob
             generatedStates.Add(GeneratedState_IdleTalk(id, Common.Const.ESD_STATE_HARDCODE_IDLETALK, idle, hello));
             generatedStates.Add(GeneratedState_Pickpocket(id, Common.Const.ESD_STATE_HARDCODE_PICKPOCKET));
 
-            int talkActionButtonId = paramanager.GenerateActionButtonInteractParam($"Talk to {npcContent.name}");
+            int talkActionButtonId = paramanager.GenerateActionButtonInteractParam(npcContent, $"Talk to {npcContent.name}");
 
             defs.Add($"# dialog esd : {npcContent.id}\r\n");
 
@@ -254,7 +254,7 @@ namespace JortPob
 
         private string State_x0(uint id, int talkActionButtonId)
         {
-            int pickpocketActionId = paramanager.GenerateActionButtonInteractParam($"Pickpocket {npcContent.name}");
+            int pickpocketActionId = paramanager.GenerateActionButtonInteractParam(npcContent, $"Pickpocket {npcContent.name}");
             Script.Flag crimeLevel = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             Script.Flag playerIsSneaking = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
             Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent);

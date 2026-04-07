@@ -1,6 +1,7 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
@@ -8,6 +9,7 @@ using System.Text.Json.Nodes;
 namespace JortPob
 {
     /* Content is effectively any physical object in the game world. Anything that has a physical position in a cell */
+    [DebuggerDisplay("{type} :: {id}")]
     public abstract class Content
     {
         public readonly Cell cell;

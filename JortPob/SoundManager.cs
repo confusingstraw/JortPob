@@ -130,7 +130,7 @@ namespace JortPob
         {
             if (Const.DEBUG_SKIP_SOUND) { return; } // worlds largest time save
 
-            SamWorker.Go(samQueue); // actually generate and convert wems
+            SamWorker.Go(samQueue); // actually generate tts and convert wems
 
             Lort.Log($"Preprocessing {banks.Count()} BNKs...", Lort.Type.Main);
             Lort.NewTask("Preprocessing BNKs", banks.Count());
@@ -187,6 +187,9 @@ namespace JortPob
                     string bnkDir = Path.Combine(Const.OUTPUT_PATH, "sd", "enus", $"vc{bankInfo.id:D3}");
                     string bnkPath = $@"{bnkDir}.bnk";
                     string bnkRebuiltPath = $@"{bnkDir}.created.bnk";
+
+                    if(Const.DEBUG_REUSE_FILES && File.Exists(bnkPath)) { Lort.TaskIterate(); return; } // if debug_reuse is on, skip if file already created
+
                     ProcessStartInfo startInfo = new(Utility.ResourcePath(@"tools\Bnk2Json\bnk2json.exe"), $"\"{bnkDir}\"")
                     {
                         WorkingDirectory = Utility.ResourcePath(@"tools\Bnk2Json"),

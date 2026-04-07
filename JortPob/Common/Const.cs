@@ -89,7 +89,8 @@ namespace JortPob.Common
         public static readonly float NPC_ROOT_OFFSET = 75f * GLOBAL_SCALE;
 
         /// If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
-        public static readonly float DOOR_MINIMUM_HEIGHT = 100f * GLOBAL_SCALE;
+        public static readonly float DOOR_MINIMUM_HEIGHT = 115f * GLOBAL_SCALE;
+        public static readonly float TRAPDOOR_HEIGHT_CORRECTION = 175f * GLOBAL_SCALE;
 
         /// uv scale for terrain textures
         public static readonly float TERRAIN_UV_SCALE = 20f;
@@ -277,6 +278,9 @@ namespace JortPob.Common
         #region Debug
 
         /* when building for release everything in this group should be FALSE or NULL */
+
+        [Setting(false)]
+        public static bool DEBUG_REUSE_FILES { get; private set; }
 
         [Setting(false)]
         public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }

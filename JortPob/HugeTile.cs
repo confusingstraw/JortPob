@@ -88,7 +88,7 @@ namespace JortPob
                         float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                        Tile tile = GetTile(cell.center);
+                        Tile tile = GetTile(c.position);
                         content.load = tile.coordinate;
                         base.AddContent(cache, cell, content);
                         break;

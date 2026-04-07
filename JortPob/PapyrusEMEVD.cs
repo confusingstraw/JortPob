@@ -2104,7 +2104,7 @@ namespace JortPob
                 /* We cannot simply do an onactionbutton check in the main papyrus script because it is blocking and can't be compared to false. This is the best way to emulate behaviour */
                 else
                 {
-                    int actionButtonId = paramanager.GenerateActionButtonInteractParam($"Interact with {content.name}");
+                    int actionButtonId = paramanager.GenerateActionButtonInteractParam(content, $"Interact with {content.name}");
                     Script.Flag onActivateFlag = script.GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.OnActivate, content, 0, true);
                     Script.Flag onActivateEventFlag = script.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"OnActivate->{content.entity.ToString()}");
                     EMEVD.Event onActivateEvent = new();

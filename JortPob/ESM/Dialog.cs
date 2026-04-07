@@ -7,7 +7,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Script;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -941,13 +940,21 @@ namespace JortPob
                                 }
 
                                 // Destination goal stuff
-                                if (position != Vector3.Zero)
-                                {
-                                    Layout.TravelPoint goal = layout.FindTravelable(location, position);
-                                    if (goal == null) { break; } // partial build can cause this
-                                    uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
-                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
-                                    evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
+                                if (
+                                    (location != null && target.cell.name.ToLower() == location.ToLower()) || // goal is valid as it is in the same interior cell
+                                    (location == null && !areaScript.IsInterior()) // goal is valid as it is an ext target and we are outside
+                                ) {
+                                    if (position != Vector3.Zero)
+                                    {
+                                        Layout.TravelPoint goal = layout.FindTravelable(location, position);
+                                        if (goal != null)
+                                        {
+                                            uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
+                                            evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
+                                            evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
+                                        }
+                                        else { Lort.Log($"AiFollow failed to resolve goal location: '{call.RAW}'", Lort.Type.Debug); }
+                                    }
                                 }
 
                                 // Follow stuff

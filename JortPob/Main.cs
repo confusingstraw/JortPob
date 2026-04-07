@@ -28,7 +28,7 @@ namespace JortPob
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             TextManager text = new();                                                      // Manages FMG text files
             MenuTextureManager texManager = new(esm);                                     // Manages menu textures for things like inventory icons and loading screens
-            Paramanager param = new(text);                                               // Class for managing PARAM files
+            Paramanager param = new(cache, text);                                        // Class for managing PARAM files
             SpeffManager speff = new(esm, param, scriptManager, texManager, text);      // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, texManager, text);                         // Handles generation and reampping of items
             Layout layout = new(cache, esm, param, text, scriptManager);                                       // Subdivides all content data from ESM into a more elden ring friendly format
@@ -1076,6 +1076,7 @@ namespace JortPob
                     {
                         InteriorGroup.Chunk chunk = group.chunks[i];
                         string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        if (Const.DEBUG_REUSE_FILES && File.Exists(objPath)) { objs.Add(objPath); continue; } // if debug_reuse is on, skip if file already created
                         chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                         objs.Add(objPath);
                     }

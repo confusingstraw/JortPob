@@ -82,19 +82,21 @@ namespace JortPob
             WORLD_MAP_PLACE_NAME_PARAM_ST, WORLD_MAP_POINT_PARAM_ST, WWISE_VALUE_TO_STR_CONVERT_PARAM_ST
         }
 
+        public readonly Cache cache;
         public readonly TextManager textManager;
 
         public readonly Dictionary<ParamType, FsParam> param;
         public readonly LiveParam extendedTalkParam;
 
-        public Dictionary<string, int> interactActionButtons, itemActionButtons; // string is the text of the button prompt, int is the row id
+        public Dictionary<string, int> itemActionButtons; // string is the text of the button prompt, int is the row id
 
         public short terrainDrawParamID;
         private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
         private int nextMessageParam, nextMapItemLotId, nextEnemyItemLotId, nextActionButtonId, nextWeatherLotParamId;
 
-        public Paramanager(TextManager textManager)
+        public Paramanager(Cache cache, TextManager textManager)
         {
+            this.cache = cache;
             this.textManager = textManager;
 
             nextMessageParam = 3000;
@@ -103,7 +105,6 @@ namespace JortPob
             nextActionButtonId = 300000;
             nextWeatherLotParamId = 500000000;
 
-            interactActionButtons = new();
             itemActionButtons = new();
 
             SoulsFormats.BND4 paramBnd = RegulationDecryptor.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
@@ -972,24 +973,76 @@ namespace JortPob
             return rowId;
         }
 
-        public int GenerateActionButtonInteractParam(string text)
+        // Refactor this @TODO: guh
+        public int GenerateActionButtonInteractParam(string text) { return GenerateActionButtonInteractParam(null, text); }
+
+        // Might be worth seperating this out into multiple smaller functions instead. idk just guh
+        public int GenerateActionButtonInteractParam(Content content, string text)
         {
-            if (interactActionButtons.ContainsKey(text)) { return interactActionButtons[text]; } // already exists, return row to it
-
-            int rowId = nextActionButtonId++;
-
             FsParam actionParam = param[ParamType.ActionButtonParam];
-            FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
-
+            int rowId = nextActionButtonId++;
             int textId = textManager.AddActionButton(text);
-            row["textId"].Value.SetValue(textId);
-            row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
-            row["execInvalidTime"].Value.SetValue(3f); // cooldown
 
-            AddOrReplaceRow(actionParam, row);
-            interactActionButtons.Add(text, rowId);
+            // Generating action button prompts for differetn types of objects can require very differnt parameters so usign a switch
+            switch (content)
+            {
+                case DoorContent:
+                    {
+                        ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
+                        FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
+                        float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
+                        float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
+                        float width = x > z ? x : z;
+                        float top = Math.Max(0, flver.Nodes[0].BoundingBoxMax.Y);
+                        float bottom = Math.Abs(flver.Nodes[0].BoundingBoxMin.Y);
+                        float height = top + bottom;
+                        float offset = -bottom - 0.25f;
 
-            return rowId;
+                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+
+                        // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
+                        if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
+                        {
+                            height = Const.DOOR_MINIMUM_HEIGHT; // makes sure that doors are at least about as tall as a player
+
+                            // If a door really appears to be a trapdoor extend the offset more so its reachable
+                            string lname = modelInfo.name.ToLower();
+                            if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
+                            {
+                                height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                                offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
+                            }
+                        }
+
+                        row["regionType"].Value.SetValue((byte)0); // cylinder
+                        row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
+                        row["dummyPoly2"].Value.SetValue(-1);
+                        row["radius"].Value.SetValue(width); // radius
+                        row["angle"].Value.SetValue(180); // angle from dmy
+                        row["depth"].Value.SetValue(0f);
+                        row["width"].Value.SetValue(0f);
+                        row["height"].Value.SetValue(height);
+                        row["baseHeightOffset"].Value.SetValue(offset);
+                        row["angleCheckType"].Value.SetValue((byte)0);
+                        row["allowAngle"].Value.SetValue(90);  // player look angle
+                        row["textId"].Value.SetValue(textId);
+                        row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+                        row["execInvalidTime"].Value.SetValue(3f); // cooldown
+
+                        AddOrReplaceRow(actionParam, row);
+                        return rowId;
+                    }
+                case null:
+                default:
+                    {
+                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+                        row["textId"].Value.SetValue(textId);
+                        row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+                        row["execInvalidTime"].Value.SetValue(3f); // cooldown
+                        AddOrReplaceRow(actionParam, row);
+                        return rowId;
+                    }
+            }
         }
 
         public int GenerateActionButtonDoorParam(ModelInfo modelInfo, string text)
@@ -1013,14 +1066,14 @@ namespace JortPob
             // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
             if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
             {
-                height = 2.5f;
+                height = Const.DOOR_MINIMUM_HEIGHT; // makes sure that doors are at least about as tall as a player
 
                 // If a door really appears to be a trapdoor extend the offset more so its reachable
                 string lname = modelInfo.name.ToLower();
                 if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
                 {
-                    height += 2f;
-                    offset -= 2f;
+                    height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                    offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
                 }
             }
 
