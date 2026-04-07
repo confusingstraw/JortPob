@@ -46,10 +46,10 @@ namespace JortPob
             for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
 
             /* Write custom map */
-            if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+            MapWorker.Go();
 
             /* replace the maptexinfo responsible for weather functions, sourced from Resources/other/mapinfotex.png */
-            MapInfoTexWorker.Go();
+            MapInfoTexWorker.Go(); // @TODO: this is like... designed as a worker but runs on 1 thread lol
 
             /* Replace openign cutscene */
             if(!Const.DEBUG_SKIP_CUTSCENES) { Cutscener.Create(Path.Combine(Const.MORROWIND_PATH, @"Data Files\video\mw_intro.bik"), 0040); }
@@ -215,7 +215,6 @@ namespace JortPob
                     {
                         asset.EntityID = content.entity;
                         contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
-                        if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
                     }
 
                     /* Add to msb */
@@ -682,7 +681,6 @@ namespace JortPob
                         {
                             asset.EntityID = content.entity;
                             contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
-                            if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
                         }
 
                         /* Add to msb */
@@ -1258,6 +1256,13 @@ namespace JortPob
                         MSBE.Part.Enemy enemyPart = compile.part as MSBE.Part.Enemy;
                         if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
                         else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
+                    }
+                    else if (compile.content is DoorContent dc && dc.warp != null)
+                    {
+                        if (!(papyrus != null && (papyrus.HasCall(Papyrus.Call.Type.OnActivate) || papyrus.HasCall(Papyrus.Call.Type.Activate))))
+                        {
+                            compile.script.RegisterLoadDoor(param, dc); // only register a basic load door script if door doesn't seem to have a custom script attached
+                        }
                     }
 
                     Lort.TaskIterate();

@@ -1166,7 +1166,7 @@ namespace JortPob
 
         /* Abstracts scripts that ScriptCommon does not support */
         public override (uint bed, uint respawn) RegisterBed() { throw new System.Exception("Unsupported!"); }
-        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo) { throw new System.Exception("Unsupported!"); }
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door) { throw new System.Exception("Unsupported!"); }
         public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.Exception("Unsupported!"); }
         public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.Exception("Unsupported!"); }
         public override Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.Exception("Unsupported!"); }

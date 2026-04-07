@@ -761,6 +761,27 @@ namespace JortPob
                             break;
                         }
 
+                    case Call.Type.Activate:
+                        {
+                            // find our target content
+                            Content target;
+                            if (call.target == null) { target = content; }
+                            else { target = layout.FindScriptReference(content, call.target); }
+                            if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
+
+                            switch(target)
+                            {
+                                case DoorContent door:
+                                    // activate on a door has the player enter that door so replicate that generic code here
+                                    lines.Add($"WarpPlayer({door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity}, -1);");
+                                    break;
+                                default:
+                                    break; // do nothing
+                            }
+
+                            break;
+                        }
+
                     case Call.Type.AiEscort:
                     case Call.Type.AiFollow:
                     case Call.Type.AiEscortCell:

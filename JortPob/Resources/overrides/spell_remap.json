@@ -1,16 +1,12 @@
 {
   "spark": {
     "row": 6900,
-    "comment": "Spark to lightning spear"
+    "comment": "Spark to lightning spear",
+      "text": {
+          "name": "Spark"
+      }
   },
-  "resist magicka": {
-    "row": 6460,
-    "comment": "Resist magicka to magic fortification"
-  },
-  "hearth heal": {
-    "row": 6421,
-    "comment": "Hearth heal to Heal"
-  },
+
   "fireball": {
     "row": 6010,
     "comment": "Fireball to Flame Sling",
@@ -22,6 +18,690 @@
   },
   "frostbite": {
     "row": 4420,
-    "comment": "Frostbite to freezing mist"
+    "comment": "Frostbite to freezing mist",
+      "text": {
+          "name": "Frostbite"
+      }
+  },
+  "fire bite": {
+      "row": 6000,
+      "comment": "Fire bite to catch flame",
+      "text": {
+          "name": "Fire Bite"
+      }
+  },
+
+  "alit bite": {
+    "row": 7220,
+    "comment": "alit bite to poison mist"
+  },
+
+  "almalexia's grace": {
+      "row": 6730,
+      "comment": "almalexia's grace to law of regression",
+      "text": {
+          "name": "Almalexia's Grace"
+      }
+  },
+
+  "evil eye": {
+    "row": 7320,
+    "comment": "evil eye to frenzied burst",
+    "text": {
+      "name": "Evil Eye"
+    }
+  },
+
+  "clench": {
+    "row": 2007420,
+    "comment": "clench to cherishing fingers",
+    "text": {
+      "name": "Clench"
+    }
+  },
+
+  "emasculate": {
+    "row": 7520,
+    "comment": "emasculate to aspect of the crucible: breath"
+  },
+
+  "stumble": {
+    "row": 7500,
+    "comment": "stumble to aspect of the crucible: tail",
+    "text": {
+      "name": "Stumble"
+    }
+  },
+
+  "armor eater": {
+    "row": 2006650,
+    "comment": "armor eater to aspect of the crucible: thorns"
+  },
+
+  "drain blood": {
+      "row": 2005000,
+      "comment": "drain blood to rings of spectral light"
+  },
+
+  "blood despair": {
+    "row": 4900,
+    "comment": "blood despair to briars of sin",
+    "text": {
+      "name": "Blood Despair"
+    }
+  },
+
+  "hornhand": {
+      "row": 7510,
+      "comment": "hornhand to aspect of the crucible: horns",
+      "text": {
+          "name": "Hornhand"
+      }
+  },
+
+  "balyna's antidote": {
+    "row": 6440,
+    "comment": "balyna's antidote to cure poison"
+  },
+
+  "cure poison": {
+      "row": 6440,
+      "comment": "cure poison to cure poison"
+  },
+ 
+  "spirit knife": {
+      "row": 4390,
+      "comment": "spirit knife to magic glintblade",
+      "text": {
+          "name": "Spirit Knife"
+      }
+  },
+  "stormhand": {
+      "row": 4431,
+      "comment": "stormhand to adula's moonblade",
+      "text": {
+          "name": "Stormhand"
+      }
+  },
+  "black hand": {
+      "row": 6230,
+      "comment": "black hand to scouring black flame",
+      "text": {
+          "name": "Black Hand"
+      }
+  },
+  "heartbite": {
+      "row": 6300,
+      "comment": "heartbite to bloodflame talons",
+      "text": {
+          "name": "Heartblade"
+      }
+  },
+  "daedric bite": {
+      "row": 6210,
+      "comment": "daedric bite to black flame",
+      "text": {
+          "name": "Daedric Bite"
+      }
+  },
+  "scourge blade": {
+      "row": 6950,
+      "comment": "scourge blade to lansseax's glaive",
+      "text": {
+          "name": "Scourge Blade"
+      }
+  },
+
+  "cruel firebloom": {
+      "row": 6020,
+      "comment": "cruel firebloom to flame fall upon them",
+      "text": {
+          "name": "Cruel Flamebloom"
+      }
+  },
+  "Fireball_large": {
+      "row": 4800,
+      "comment": "greater fireball to magma shot",
+      "text": {
+          "name": "Greater Fireball"
+      }
+  },
+  "god's fire": {
+      "row": 6100,
+      "comment": "god's fire to giantsflame take thee",
+      "text": {
+          "name": "God's Fire"
+      }
+  },
+  "fire storm": {
+      "row": 6120,
+      "comment": "fire storm to burn o flame",
+      "text": {
+          "name": "Fire Storm"
+      }
+  },
+  
+  "Frostball_large": {
+      "row": 4400,
+      "comment": "greater frostball to glintstone icecrag"
+  },
+  "frost storm": {
+      "row": 4410,
+      "comment": "frost storm to zamor ice storm",
+      "text": {
+          "name": "Frost Storm"
+      }
+  },
+  "god's frost": {
+      "row": 6921,
+      "comment": "god's frost to frozen lightning spear",
+      "text": {
+          "name": "God's Frost"
+      }
+  },
+
+  "poison": {
+      "row": 7220,
+      "comment": "poison to poison mist"
+  },
+  "viperbolt": {
+      "row": 7240,
+      "comment": "viperbolt to scarlet aeonia"
+  },
+  "poison_powerful": {
+      "row": 7210,
+      "comment": "toxic cloud to swarm of flies"
+  },
+  "potent poison": {
+      "row": 2006200,
+      "comment": "potent poison to vortex of putrescence"
+  },
+  "poisonbloom": {
+      "row": 2006210,
+      "comment": "poisonbloom to mass of putrescence"
+  },
+
+  "shock": {
+      "row": 6930,
+      "comment": "shock to honed bolt"
+  },
+  "shockball_large": {
+      "row": 6941,
+      "comment": "greater shockball to fortissax's lightning spear'",
+      "text": {
+          "name": "Greater Shocklance"
+      }
+  },
+  "shockball": {
+      "row": 6940,
+      "comment": "shockball to ancient dragon lightning spear",
+      "text": {
+          "name": "Shocklance"
+      }
+  },
+  "lightning bolt": {
+      "row": 6920,
+      "comment": "lightning bolt to lightning strike",
+      "text": {
+          "name": "Lightning Bolt"
+      }
+  },
+  "shockbloom": {
+    "row": 2006900,
+    "comment": "shockbloom to knight's lightning spear",
+    "text": {
+      "name": "Shockbloom"
+    }
+
+  },
+  "lightning storm": {
+      "row": 6910,
+      "comment": "lightning storm to ancient dragons' lightning strike"
+  },
+
+  "shadowmask": {
+      "row": 4660,
+      "comment": "shadowmask to unseen blade"
+  },
+  "shadow weave": {
+      "row": 4670,
+      "comment": "shadow weave to unseen form",
+      "text": {
+          "name": "Shadow Weave"
+      }
+  },
+  "hide": {
+      "row": 2004300,
+      "comment": "hide to miriam's vanishing"
+  },
+
+  "light": {
+      "row": 4140,
+      "comment": "light to starlight",
+      "text": {
+          "name": "Light"
+      }
+  },
+
+  "hearth heal": {
+    "row": 6421,
+    "comment": "Hearth heal to Heal",
+      "text": {
+          "name": "Hearth Heal"
+      }
+  },
+  "balyna's efficacious balm": {
+      "row": 6422,
+      "comment": "balyna's efficacious balm to great heal"
+  },
+  "balyna's perfect balm": {
+      "row": 6424,
+      "comment": "balyna's perfect balm to erdtree heal"
+  },
+  "balyna's soothing balm": {
+      "row": 6420,
+      "comment": "balyna's soothing balm to ugent heal"
+  },
+  "regenerate": {
+      "row": 6840,
+      "comment": "regenerate to bestial vitality",
+      "text": {
+          "name": "Regenerate"
+      }
+  },
+  "rapid regenerate": {
+      "row": 2006670,
+      "comment": "rapid regenerate to minor erdtree"
+  },
+  "veloth's benison": {
+      "row": 6431,
+      "comment": "veloth's benison' to blessing of the erdtree",
+      "text": {
+          "name": "Veloth's Benison"
+      }
+  },
+  "mother's kiss": {
+      "row": 6423,
+      "comment": "regenerate to bestial vitality"
+  },
+  "veloth's grace": {
+      "row": 6430,
+      "comment": "veloth's grace to blessing's boon"
+  },
+  "heal companion": {
+      "row": 2006400,
+      "comment": "heal companion to heal from afar"
+  },
+
+  "spell absorption": {
+      "row": 4650,
+      "comment": "spell absorption to eternal darkness",
+      "text": {
+          "name": "Spell Absorption"
+      }
+  },
+  "vivec's feast": {
+      "row": 4650,
+      "comment": "vivec's feast to eternal darkness"
+  },
+  "weak spelldrinker": {
+      "row": 4650,
+      "comment": "weak spelldrinker to eternal darkness"
+  },
+  "wild spelldrinker": {
+      "row": 4650,
+      "comment": "wild spelldrinker to eternal darkness"
+  },
+  "strong spelldrinker": {
+      "row": 4650,
+      "comment": "strong spelldrinker to eternal darkness"
+  },
+  "tranasa's spelltrap": {
+      "row": 4650,
+      "comment": "tranasa's spelltrap to eternal darkness"
+  },
+
+  "resist magicka": {
+      "row": 6460,
+      "comment": "resist magicka to magic fortification",
+      "text": {
+          "name": "Resist Magicka"
+      }
+  },
+  "variable resist magicka": {
+      "row": 6460,
+      "comment": "variable resist magicka to magic fortification"
+  },
+  "strong resist magicka": {
+      "row": 6330,
+      "comment": "strong resist magicka to barrier of gold",
+      "text": {
+          "name": "Great Resist Magicka"
+      }
+  },
+  "great resist magicka": {
+      "row": 6330,
+      "comment": "great resist magicka to barrier of gold"
+  },
+  "magickguard": {
+      "row": 6460,
+      "comment": "magickguard to magic fortification"
+  },
+
+  "wisdom": {
+      "row": 4130,
+      "comment": "wisdom to terra magica"
+  },
+
+  "resist fire": {
+      "row": 6450,
+      "comment": "resist fire to flame fortification"
+  },
+  "variable resist fire": {
+      "row": 6450,
+      "comment": "variable resist fire to flame fortification"
+  },
+  "strong resist fire": {
+      "row": 6060,
+      "comment": "strong resist fire to flame, protect me"
+  },
+  "great resist fire": {
+      "row": 6060,
+      "comment": "great resist fire to flame, protect me"
+  },
+  "flameguard": {
+      "row": 6450,
+      "comment": "flameguard to flame fortification"
+  },
+
+  "resist frost": {
+      "row": 6480,
+      "comment": "resist frost to divine fortification"
+  },
+  "variable resist frost": {
+      "row": 6480,
+      "comment": "variable resist frost to divine fortification"
+  },
+  "strong resist frost": {
+      "row": 6490,
+      "comment": "strong resist frost to lord's divine fortification"
+  },
+  "great resist frost": {
+      "row": 6490,
+      "comment": "great resist frost to lord's divine fortification"
+  },
+  "frostguard": {
+      "row": 6480,
+      "comment": "frostguard to divine fortification"
+  },
+
+  "resist shock": {
+      "row": 6470,
+      "comment": "resist shock to lightning fortification"
+  },
+  "variable resist shock": {
+      "row": 6470,
+      "comment": "variable resist shock to lightning fortification"
+  },
+  "strong resist shock": {
+      "row": 7903,
+      "comment": "strong resist shock to golden lightning fortification"
+  },
+  "great resist shock": {
+      "row": 7903,
+      "comment": "great resist shock to golden lightning fortification"
+  },
+  "shockguard": {
+      "row": 6470,
+      "comment": "shockguard to lightning fortification"
+  },
+
+  "reflect": {
+      "row": 4630,
+      "comment": "reflect to thops' barrier"
+  },
+  "sotha's mirror": {
+      "row": 4630,
+      "comment": "sotha's mirror to thops' barrier"
+  },
+  "strong reflect": {
+      "row": 6760,
+      "comment": "strong reflect to law of causality"
+  },
+  "shalidor's mirror": {
+      "row": 4630,
+      "comment": "shalidor's mirror to thops' barrier"
+  },
+  "wild reflect": {
+      "row": 4630,
+      "comment": "wild reflect to thops' barrier"
+  },
+  "llivam's reversal": {
+      "row": 4630,
+      "comment": "llivam's reveral to thops' barrier"
+  },
+
+  "rally beast": {
+      "row": 6600,
+      "comment": "rally beast to golden vow"
+  },
+  "rally creature": {
+      "row": 6600,
+      "comment": "rally creature to golden vow"
+  },
+  "rally humanoid": {
+      "row": 6600,
+      "comment": "rally humanoid to golden vow",
+      "text": {
+          "name": "Rally"
+      }
+  },
+  "rallying touch": {
+      "row": 6600,
+      "comment": "rallying touch to golden vow"
+  },
+
+  "shield": {
+      "row": 6260,
+      "comment": "shield to black flame's protection"
+  },
+  "sixth barrier": {
+      "row": 6340,
+      "comment": "sixth barrier to protection of the erdtree"
+  },
+
+  "Troll Strength": {
+      "row": 6050,
+      "comment": "troll strength to flame, grant me strength"
+  },
+
+  "righteousness": {
+      "row": 6500,
+      "comment": "righteousness to night maiden's mist"
+  },
+  "absorb health": {
+      "row": 5020,
+      "comment": "absorb health to Fia's Mist"
+  },
+
+  "silence": {
+      "row": 6510,
+      "comment": "silence to assassin's approach"
+  },
+  "far silence": {
+      "row": 6510,
+      "comment": "far silence to assassin's approach"
+  },
+
+  "earwig": {
+      "row": 6520,
+      "comment": "earwig to shadow bait"
+  },
+  "dire earwig": {
+      "row": 6520,
+      "comment": "dire earwig to shadow bait"
+  },
+  "wild earwig": {
+      "row": 6520,
+      "comment": "wild earwig to shadow bait"
+  },
+  "cruel noise": {
+      "row": 6520,
+      "comment": "cruel noise to shadow bait"
+  },
+  "dire noise": {
+      "row": 6520,
+      "comment": "dire noise to shadow bait"
+  },
+
+  "crying eye": {
+      "row": 6530,
+      "comment": "crying eye to darkness"
+  },
+  "erelvam's wild sty": {
+      "row": 6530,
+      "comment": "erelvam's wild sty to darkness"
+  },
+  "alad's caliginy": {
+      "row": 6530,
+      "comment": "alad's caliginy to darkness"
+  },
+
+  "frost shield": {
+      "row": 2004900,
+      "comment": "frost shield to mantle of thorns"
+  },
+  "frost barrier": {
+      "row": 2004900,
+      "comment": "frost barrier to mantle of thorns"
+  },
+  "frost_shield": {
+      "row": 2004900,
+      "comment": "frost_shield to mantle of thorns"
+  },
+  "strong frost shield": {
+      "row": 2004900,
+      "comment": "strong frost shield to mantle of thorns"
+  },
+
+  "fire shield": {
+      "row": 7900,
+      "comment": "frost shield to fire's deadly sin"
+  },
+  "fire barrier": {
+      "row": 7900,
+      "comment": "frost shield to fire's deadly sin"
+  },
+  "strong fire shield": {
+      "row": 7900,
+      "comment": "strong fire shield to fire's deadly sin"
+  },
+
+  "lightning shield": {
+      "row": 6971,
+      "comment": "lightning shield to dragonbolt blessing"
+  },
+  "shock barrier": {
+      "row": 6971,
+      "comment": "shock barrier to dragonbolt blessing"
+  },
+  "strong shock shield": {
+      "row": 6971,
+      "comment": "strong shock shield to dragonbolt blessing"
+  },
+
+  "burden": {
+      "row": 4720,
+      "comment": "burden to gravity well"
+  },
+  "weary": {
+      "row": 6800,
+      "comment": "weary to bestial sling"
+  },
+  "cruel weary": {
+      "row": 6810,
+      "comment": "cruel weary to stone of gurranq"
+  },
+  "heavy burden touch": {
+      "row": 4700,
+      "comment": "heavy burden touch to meteorite"
+  },
+  "crushing burden touch": {
+      "row": 4701,
+      "comment": "crushing burden touch to meteorite of astel"
+  },
+  "great burden of sin": {
+      "row": 2004700,
+      "comment": "great burden of sin to blades of stone"
+  },
+  "heavy burden": {
+      "row": 4721,
+      "comment": "heavy burden to collapsing stars"
+  },
+  "crushing burden": {
+      "row": 4710,
+      "comment": "crushing burden to rock sling"
+  },
+  "burden of sin": {
+      "row": 6820,
+      "comment": "burden of sin to beast claw"
+  },
+  "dire weary": {
+      "row": 2004710,
+      "comment": "dire weary to gravitational missile"
+  },
+  "crushing burden of sin": {
+      "row": 6830,
+      "comment": "crushing burden of sin to gurranq's beast claw"
+  },
+
+  "purge magic": {
+      "row": 4640,
+      "comment": "purge magic to carian retaliation",
+      "text": {
+          "name": "Purge Magic"
+      }
+  },
+
+  "saintly word": {
+      "row": 6720,
+      "comment": "saintly word to elden stars"
+  },
+  "holy word": {
+      "row": 6750,
+      "comment": "holy word to litany of proper death"
+  },
+  "saintly touch": {
+      "row": 6710,
+      "comment": "saintly touch to radagon's rings of light"
+  },
+  "turn undead": {
+      "row": 6700,
+      "comment": "turn undead to discus of light"
+  },
+  "holy touch": {
+      "row": 6701,
+      "comment": "holy touch to triple rings of light"
+  },
+  "blessed touch": {
+      "row": 2006680,
+      "comment": "blessed touch to land of shadow"
+  },
+
+  "bound dagger": {
+      "row": 4440,
+      "comment": "bound dagger to carian slicer"
+  },
+  "bound longsword": {
+      "row": 4450,
+      "comment": "bound longsword to carian piercer"
+  },
+  "bound battle-axe": {
+      "row": 4430,
+      "comment": "bound battle axe to carian greatsword"
+  },
+  "bound shield": {
+      "row": 4470,
+      "comment": "bound shield to scholar's shield"
   }
 }

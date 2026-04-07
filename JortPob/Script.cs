@@ -85,9 +85,9 @@ namespace JortPob
             return (bedEntity, respawnEntity);
         }
 
-        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo)
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door)
         {
-            int actionParamId = paramanager.GenerateActionButtonDoorParam(modelInfo, door.warp.prompt);
+            int actionParamId = paramanager.GenerateActionButtonDoorParam(door);
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.LoadDoor]}, {actionParamId}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 

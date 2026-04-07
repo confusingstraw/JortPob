@@ -297,7 +297,7 @@ namespace JortPob
 
         /* Abstracts supported by only ScriptArea */
         public abstract  (uint bed, uint respawn) RegisterBed();
-        public abstract void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo);
+        public abstract void RegisterLoadDoor(Paramanager paramanager, DoorContent door);
         public abstract void RegisterItemAsset(Paramanager paramanager, ItemContent item);
         public abstract void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue);
         public abstract Flag GetOrRegisterPlaySE(uint entity, int seId);

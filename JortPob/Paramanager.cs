@@ -1045,10 +1045,11 @@ namespace JortPob
             }
         }
 
-        public int GenerateActionButtonDoorParam(ModelInfo modelInfo, string text)
+        public int GenerateActionButtonDoorParam(DoorContent door)
         {
             int rowId = nextActionButtonId++;
 
+            ModelInfo modelInfo = cache.GetModel(door.mesh, door.scale);
             FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
             float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
             float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
@@ -1059,9 +1060,9 @@ namespace JortPob
             float offset = -bottom - 0.25f;
 
             FsParam actionParam = param[ParamType.ActionButtonParam];
-            FsParam.Row row = CloneRow(actionParam[1000], text, rowId); // 1000 is pick up runes prompt
+            FsParam.Row row = CloneRow(actionParam[1000], door.warp.prompt, rowId); // 1000 is pick up runes prompt
 
-            int textId = textManager.AddActionButton(text);
+            int textId = textManager.AddActionButton(door.warp.prompt);
 
             // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
             if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
