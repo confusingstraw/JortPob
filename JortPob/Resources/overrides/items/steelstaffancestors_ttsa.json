@@ -1,15 +1,16 @@
 ﻿{
-  "comment": "Steel Staff of the Ancestors as a copy of Demi Human Queen Staff +3",
+  "comment": "Steel Staff of the Ancestors as a copy of Demi Human Queen Staff +3 with spinning weapon skill",
   "type": "Weapon",
   "row": 33060000,
   "useIcon": true,
+  "skill": 12000,
   "upgrade": 3,
   "text": {
     "name": "Steel Staff of the Ancestors",
     "description": "A staff that summons a strong ancestral ghost",
-    "enchant": [ "Summons ancestral ghost", "Fortifie's conjuration", "" ]
+    "enchant": [ "Summons ancestral ghost", "Fortifies conjuration", "" ]
   },
   "data": {
-    "residentSpEffectId": "paralysis_en"
+    "residentSpEffectId": "paralysis_en" 
   }
 }

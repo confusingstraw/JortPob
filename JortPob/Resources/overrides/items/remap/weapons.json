@@ -379,13 +379,13 @@
   },
   "steel war axe": {
     "type": "CustomWeapon",
-    "row": 50100,
+    "row": 14000000,
     "upgrade": 2,
     "comment": "Remapping Steel War Axe to Battle Axe +2"
   },
   "steel war axe of deep biting": {
     "type": "CustomWeapon",
-    "row": 50100,
+    "row": 14000000,
     "infusion": "Heavy",
     "skill": 10700,
     "upgrade": 6,
@@ -457,19 +457,19 @@
     "upgrade": 8,
     "comment": "Remapping Illkurok to Bolt of Gransax +8"
   },
-  "we_shimsilk": {
+  "we_shimsil": {
     "type": "CustomWeapon",
     "row": 1030000,
     "infusion": "Occult",
     "upgrade": 8,
     "skill": 60200,
-    "comment": "Remapping Shimsilk to Misericorde +8 Occult Infusion with Assassin's Gambit skill"
+    "comment": "Remapping Shimsil to Misericorde +8 Occult Infusion with Assassin's Gambit skill"
   },
   "we_stormforge": {
     "type": "CustomWeapon",
-    "row": 18080000,
+    "row": 18140000,
     "upgrade": 8,
-    "comment": "Remapping Stormforge to Golden Halberd +8"
+    "comment": "Remapping Stormforge to Dragon Halberd +8"
   },
   "widowmaker_unique": {
     "type": "CustomWeapon",
@@ -543,7 +543,7 @@
   },
   "Wind of Ahaz": {
     "type": "CustomWeapon",
-    "row": 1060000,
+    "row": 1061200,
     "infusion": "Occult",
     "skill": 60200,
     "upgrade": 2,
@@ -553,5 +553,13 @@
     "type": "Weapon",
     "row": 33200000,
     "comment": "Remapping Wooden Staff as Academy Glintstone Staff"
+  },
+  "glass netch dagger": {
+    "type": "CustomWeapon",
+    "row": 1000000,
+    "infusion": "Blood",
+    "skill" : 10800,
+    "upgrade": 8,
+    "comment": "Remapping the glass netch dagger to a dagger with +8 blood infusion and the blood tax skill."
   }
 }
