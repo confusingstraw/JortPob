@@ -1,6 +1,8 @@
 ﻿using JortPob.Common;
+using SoulsFormats.Formats.Morpheme.NSA;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 
@@ -18,6 +20,8 @@ namespace JortPob
         public readonly Vector3 boundsMax;
 
         public readonly List<Flag> flags;
+
+        public readonly List<Vector3> paths;
 
         public readonly List<Content> contents;            // All of this
         public readonly List<CreatureContent> creatures;
@@ -53,6 +57,28 @@ namespace JortPob
             float half = Const.CELL_SIZE / 2f;
             center = new Vector3(coordinate.x, 0.0f, coordinate.y) * Const.CELL_SIZE + new Vector3(half, 0f, half);
 
+            /* Cell Pathgrid Data */
+            paths = new();
+            JsonNode pathJson;
+            if(IsExterior()) { pathJson = esm.FindPathRecord(coordinate); }
+            else { pathJson = esm.FindPathRecord(name); }
+            if (pathJson != null)  // not all cells have pathgrids so it can be null
+            {
+                JsonArray pathPoints = pathJson["points"].AsArray();
+                foreach (JsonNode pathPoint in pathPoints)
+                {
+                    JsonArray location = pathPoint["location"].AsArray();
+                    float X = location[0].GetValue<float>();
+                    float Y = location[2].GetValue<float>();
+                    float Z = location[1].GetValue<float>();
+                    Vector3 point = new Vector3(X, Y, Z);
+                    Vector3 offset;
+                    if (IsExterior()) { offset = new(coordinate.x, 0f, coordinate.y); }
+                    else { offset = Vector3.Zero; }
+                    paths.Add((point * Const.GLOBAL_SCALE) + (offset * Const.CELL_SIZE));
+                }
+            }
+
             /* Cell Content Data */
             contents = new();
             creatures = new();
@@ -78,7 +104,10 @@ namespace JortPob
                 {
                     case ESM.Type.Static:
                     case ESM.Type.Activator:
-                        if (!string.IsNullOrEmpty(mesh)) { assets.Add(new AssetContent(this, reference, record)); }
+                        if (string.IsNullOrEmpty(mesh)) { break; }
+                        string script = record.json["script"]?.GetValue<string>().ToLower().Trim();
+                        if (script == "bed_standard" || script == "chargenbed") { assets.Add(new BedContent(this, reference, record)); }
+                        else { assets.Add(new AssetContent(this, reference, record)); }
                         break;
                     case ESM.Type.Door:
                         if (!string.IsNullOrEmpty(mesh)) { doors.Add(new DoorContent(this, reference, record)); }
@@ -179,6 +208,17 @@ namespace JortPob
                 }
             }
             return false;
+        }
+
+        /* Returns number of BedContents in this cell */
+        public int BedCount()
+        {
+            return assets.Where(content => content is BedContent).Count();
+        }
+
+        public bool IsExterior()
+        {
+            return !flags.Contains(Flag.IsInterior);
         }
     }
 }

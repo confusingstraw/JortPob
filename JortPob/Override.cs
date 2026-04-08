@@ -1,18 +1,10 @@
-﻿using HKLib.hk2018.hke;
-using JortPob.Common;
-using Newtonsoft.Json.Converters;
+﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using static JortPob.NpcContent;
-using static JortPob.Override;
 
 namespace JortPob
 {
@@ -27,6 +19,9 @@ namespace JortPob
 
         private static List<PlayerClass> CHARACTER_CREATION_CLASS;
         private static List<PlayerRace> CHARACTER_CREATION_RACE;
+        private static List<Gift> CHARACTER_CREATION_GIFT;
+        private static Dictionary<string, FaceData> FACE_REMAP;
+        private static Dictionary<string, Hair> HAIR_REMAP;
         private static Dictionary<string, ItemRemap> ITEM_REMAPS_BY_ID;
         private static Dictionary<string, ItemDefinition> ITEM_DEFINITIONS_BY_ID;
         private static Dictionary<string, SpeffDefinition> SPEFF_DEFINITIONS_BY_ID;
@@ -35,6 +30,8 @@ namespace JortPob
         private static List<AlchemyInfo> ALCHEMY_INFOS;
         private static List<EnemyRemap> ENEMY_REMAPS;
         private static Dictionary<string, Layout.MapPoint.Icon> MAP_ICONS;
+        private static List<LoadingTip> LOADING_TIPS;
+        private static Dictionary<string, byte> REGION;
 
         public static bool CheckDoNotPlace(string id)
         {
@@ -64,6 +61,11 @@ namespace JortPob
         public static List<PlayerRace> GetCharacterCreationRaces()
         {
             return CHARACTER_CREATION_RACE;
+        }
+
+        public static List<Gift> GetCharacterCreationGifts()
+        {
+            return CHARACTER_CREATION_GIFT;
         }
 
         public static ItemRemap GetItemRemap(string id)
@@ -115,11 +117,35 @@ namespace JortPob
             return new();
         }
 
+        public static List<LoadingTip> GetLoadingTips()
+        {
+            return LOADING_TIPS;
+        }
+
         public static Layout.MapPoint.Icon GetMapIcon(string name)
         {
             string n = name.ToLower().ToString();
             if(MAP_ICONS.ContainsKey(n)) { return MAP_ICONS[n]; }
             else { return Layout.MapPoint.Icon.Auto; }
+        }
+
+        public static Hair GetHair(string name)
+        {
+            if(HAIR_REMAP.ContainsKey(name.ToLower().Trim())) { return HAIR_REMAP[name.ToLower().Trim()]; }
+            else { return new Hair(0, Hair.Color.Black); }  // BALD!
+        }
+
+        public static FaceData GetFace(string name)
+        {
+            if(FACE_REMAP.ContainsKey(name.ToLower().Trim())) { return FACE_REMAP[name.ToLower().Trim()]; }
+            else { return FACE_REMAP["default"]; }
+        }
+
+        public static byte GetRegionByte(string id)
+        {
+            string ID = id.ToLower().Trim();
+            if(REGION.ContainsKey(ID)) { return REGION[ID]; }
+            else { return 255; }  // default
         }
 
         /* load all the override jsons into this class */
@@ -150,7 +176,22 @@ namespace JortPob
                 : [];
 
             /* Load character creation class overrides */
-            CHARACTER_CREATION_CLASS = JsonSerializer.Deserialize<List<PlayerClass>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json")), new JsonSerializerOptions { IncludeFields = true });
+            CHARACTER_CREATION_CLASS = new();
+            JsonArray jsonCharCreaClass = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json"))).AsArray();
+            foreach(JsonNode node in jsonCharCreaClass)
+            {
+                PlayerClass pc = new(node);
+                CHARACTER_CREATION_CLASS.Add(pc);
+            }
+
+            /* Load character creation gift overrides */
+            CHARACTER_CREATION_GIFT = new();
+            JsonArray jsonCharCreaGift = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_gift.json"))).AsArray();
+            foreach (JsonNode node in jsonCharCreaGift)
+            {
+                Gift gift = new(node);
+                CHARACTER_CREATION_GIFT.Add(gift);
+            }
 
             /* Load character creation race overrides */
             CHARACTER_CREATION_RACE = JsonSerializer.Deserialize<List<PlayerRace>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_race.json")), new JsonSerializerOptions { IncludeFields = true });
@@ -234,14 +275,73 @@ namespace JortPob
                 string iconName = property.Value.GetValue<string>();
                 MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
             }
+
+            /* Load hair id remap to elden ring hair part ids */
+            HAIR_REMAP = new();
+            JsonNode jsonHairRemap = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\face\hair.json")));
+            foreach (var property in jsonHairRemap.AsObject())
+            {
+                JsonNode node = property.Value;
+
+                string id = property.Key.ToLower().Trim();
+                byte partId = node["part"].GetValue<byte>();
+                string colorName = node["color"].GetValue<string>().Replace(" ", "");
+                Hair.Color color = Enum.Parse<Hair.Color>(colorName, true);
+
+                HAIR_REMAP.Add(id, new(partId, color));
+            }
+
+            /* Load all json files in overrides/face and stick them in a dictionary for us to grab from */
+            FACE_REMAP = new();
+            string[] faceRemapFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\face"));
+            foreach (string faceRemapFile in faceRemapFiles)
+            {
+                string fileName = Path.GetFileNameWithoutExtension(faceRemapFile).ToLower().Trim();
+                if (fileName == "hair") { continue; } // skip hair json file
+
+                JsonNode faceRemapJson = JsonNode.Parse(File.ReadAllText(faceRemapFile));
+                FaceData faceData = new(fileName, faceRemapJson);
+                FACE_REMAP.Add(faceData.id, faceData);
+            }
+
+            /* Loading tips overrides */
+            LOADING_TIPS = new();
+            JsonNode jsonLoadingTips = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
+            foreach (var property in jsonLoadingTips.AsObject())
+            {
+                JsonNode jsonNode = property.Value;
+                LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
+                LOADING_TIPS.Add(loadingTip);
+            }
+
+            /* Loading region bytes */
+            REGION = new();
+            JsonNode jsonRegion = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\region.json")));
+            foreach(var property in jsonRegion.AsObject())
+            {
+                string id = property.Key.ToLower().Trim();
+                byte value = property.Value.GetValue<byte>();
+                REGION.Add(id, value);
+            }
         }
 
         /* Classes for serializing */
         public class PlayerClass
         {
             public string name, description;
+            public readonly Dictionary<string, int> data;
 
-            public PlayerClass() { }
+            public PlayerClass(JsonNode json)
+            {
+                name = json["name"].GetValue<string>();
+                description = json["description"].GetValue<string>();
+
+                data = new();
+                foreach (var property in json["data"].AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<int>());
+                }
+            }
         }
 
         public class PlayerRace
@@ -250,6 +350,24 @@ namespace JortPob
             public byte id;  // this id matches the values of the CharacterContent.Race enums
 
             public PlayerRace() { }
+        }
+
+        public class Gift
+        {
+            public string name, description;
+            public readonly Dictionary<string, int> data;
+
+            public Gift(JsonNode json)
+            {
+                name = json["name"].GetValue<string>();
+                description = json["description"].GetValue<string>();
+
+                data = new();
+                foreach (var property in json["data"].AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<int>());
+                }
+            }
         }
 
         public class AlchemyInfo
@@ -412,7 +530,7 @@ namespace JortPob
 
             public SpeffDefinition(string jsonPath)
             {
-                id = Utility.PathToFileName(jsonPath);
+                id = Path.GetFileNameWithoutExtension(jsonPath);
 
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
@@ -453,7 +571,7 @@ namespace JortPob
 
             public ItemDefinition(string jsonPath)
             {
-                id = Utility.PathToFileName(jsonPath);
+                id = Path.GetFileNameWithoutExtension(jsonPath);
 
                 JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
 
@@ -537,6 +655,60 @@ namespace JortPob
                     this.row = row;
                     data = new();
                 }
+            }
+        }
+
+        public class FaceData
+        {
+            public readonly string id;
+            public readonly Dictionary<string, byte> data;
+
+            public FaceData(string id, JsonNode json)
+            {
+                this.id = id.ToLower().Trim();
+
+                data = new();
+                foreach (var property in json.AsObject())
+                {
+                    data.Add(property.Key, property.Value.GetValue<byte>());
+                }
+            }
+        }
+
+        public record Hair(byte part, Hair.Color color)
+        {
+            public enum Color
+            {
+                Black, DarkBrown, Brown, LightBrown, DirtyBlonde, Blonde, White, Gray, Grey, Red
+            }
+
+            public byte[] GetColor()
+            {
+                switch (color)
+                {
+                    case Color.Black: return new byte[] { 0, 0, 0 };         // @TODO: ai autocomplete set these values and they are fine for testing but CHANGE THEM LATER
+                    case Color.DarkBrown: return new byte[] { 34, 17, 0 };
+                    case Color.Brown: return new byte[] { 85, 42, 0 };
+                    case Color.LightBrown: return new byte[] { 170, 85, 0 };
+                    case Color.DirtyBlonde: return new byte[] { 221, 170, 85 };
+                    case Color.Blonde: return new byte[] { 255, 255, 170 };
+                    case Color.White: return new byte[] { 255, 255, 255 };
+                    case Color.Grey:
+                    case Color.Gray: return new byte[] { 170, 170, 170 };
+                    case Color.Red: return new byte[] { 170, 0, 0 };
+                    default: return new byte[] { 0, 0, 0 };
+                }
+            }
+        }
+
+        public class LoadingTip
+        {
+            public readonly string title, text;
+
+            public LoadingTip(string title, string text)
+            {
+                this.title = title;
+                this.text = text;
             }
         }
     }

@@ -1,16 +1,10 @@
-﻿using HKLib.hk2018;
-using JortPob.Common;
+﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing.Imaging.Effects;
 using System.Linq;
-using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 using WitchyFormats;
-using static IronPython.Modules._ast;
-using static JortPob.SpeffManager;
 using static JortPob.SpeffManager.Speff.Effect;
 using static JortPob.SpeffManager.SpeffEnchant;
 
@@ -21,7 +15,9 @@ namespace JortPob
         // Special SPEFFs that are used for script functionality
         public enum Functional
         {
-            Alarming = 1000000      // 1 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+            Alarming = 1000000,      // 5 minute speff that is applied when you are caught committing a crime. triggers "Alarmed" filter in dialog
+            NpcFollow = 1000001,     // speff used to switch npcs from normal logic to follower logic. lasts 1 second and is re-applied constantly during follower package
+            VoidMurder = 1000002,    // speff applied to npcs when they 'StartCombat' so that if they die you are not given a bounty for "murdering" them. Does not persist between loadscreens though
         }
 
         public enum Type
@@ -35,15 +31,15 @@ namespace JortPob
         public readonly List<Speff> speffs;
 
         private Paramanager paramanager;
-        private IconManager iconManager;
+        private MenuTextureManager textureManager;
         private TextManager textManager;
 
         private int nextSpeffId = 1000100;
 
-        public SpeffManager(ESM esm, Paramanager paramanager, ScriptManager scriptManager, IconManager iconManager, TextManager textManager)
+        public SpeffManager(ESM esm, Paramanager paramanager, ScriptManager scriptManager, MenuTextureManager textureManager, TextManager textManager)
         {
             this.paramanager = paramanager;
-            this.iconManager = iconManager;
+            this.textureManager = textureManager;
             this.textManager = textManager;
 
             speffs = new();
@@ -106,9 +102,9 @@ namespace JortPob
                 {
                     Override.SpeffDefinition def = Override.GetSpeffDefinition(speff.id);
                     SillyJsonUtils.CopyRowAndModify(paramanager, this, Paramanager.ParamType.SpEffectParam, $"Custom :: {speff.id}", def.row, speff.row, def.data);
-                    if (def.icon != SpeffManager.Speff.Effect.MagicEffect.None && !Const.DEBUG_SKIP_ICONS)
+                    if (def.icon != SpeffManager.Speff.Effect.MagicEffect.None && !Const.DEBUG_SKIP_MENU_TEXTURES)
                     {
-                        SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.SpEffectParam, speff.row, "iconId", (int)(iconManager.GetBuffByType(def.icon).id));
+                        SillyJsonUtils.SetField(paramanager, Paramanager.ParamType.SpEffectParam, speff.row, "iconId", (int)(textureManager.icon.GetBuffByType(def.icon).id));
                     }
                 }
                 // Generate via data parsed from esm
@@ -135,9 +131,18 @@ namespace JortPob
 
             /* Generate functional speffs */
             FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
+
             FsParam.Row funcSpeffAlarming = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: Alarming", (int)Functional.Alarming);
-            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)60f);
-            paramanager.AddRow(speffParam, funcSpeffAlarming);
+            funcSpeffAlarming["effectEndurance"].Value.SetValue((float)300f);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffAlarming);
+
+            FsParam.Row funcSpeffFollow = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: NpcFollow", (int)Functional.NpcFollow);
+            funcSpeffFollow["effectEndurance"].Value.SetValue((float)1f);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffFollow);
+
+            FsParam.Row funcSpeffVoidMurder = CreateTemplateSpeff(TemplateType.TemporarySelf, $"Functional :: VoidMurder", (int)Functional.VoidMurder);
+            funcSpeffVoidMurder["effectEndurance"].Value.SetValue((float)-1f);
+            paramanager.AddOrReplaceRow(speffParam, funcSpeffVoidMurder);
         }
 
         // Temp buffs use 1642100 as a base which is the basic Heal incantation effect
@@ -159,7 +164,7 @@ namespace JortPob
                     row["spCategory"].Value.SetValue((ushort)0);           // behaviour when stacking or whatever (default is NONE)
                     row["stateInfo"].Value.SetValue((ushort)0);            // visual effect of spefff (i think??)
                     row["changeHpPoint"].Value.SetValue(0);
-                    row["bAdjustFaithAblity"].Value.SetValue((byte)0);
+                    row["bAdjustFaithAblity"].Value.SetValue((byte)0);   // SIC
                     row["vfxId"].Value.SetValue(-1);                     // also visual effect idk guh??
                     row["effectEndurance"].Value.SetValue((float)1f);
                     row["iconId"].Value.SetValue(-1);
@@ -184,19 +189,27 @@ namespace JortPob
         {
             /* Decide on a source row to copy as a template based on the type of magical effect */
             FsParam param = paramanager.param[Paramanager.ParamType.SpEffectParam];
-            FsParam.Row row;
-            if (speff.type == SpeffManager.Type.Alchemy) { row = CreateTemplateSpeff(TemplateType.TemporarySelf, $"{speff.type} :: {speff.id}", speff.row); }
-            else if (speff.type == SpeffManager.Type.Spell && ((SpeffSpell)speff).spellType == SpeffSpell.SpellType.Spell) { row = CreateTemplateSpeff(TemplateType.TemporarySelf, $"{speff.type} :: {speff.id}", speff.row); }
-            else if (speff.type == SpeffManager.Type.Spell) { row = CreateTemplateSpeff(TemplateType.PermanentSelf, $"{speff.type} :: {speff.id}", speff.row); }
-            else if (speff.type == SpeffManager.Type.Enchanting && ((SpeffEnchant)speff).enchantType != EnchantType.CastOnStrike) { row = CreateTemplateSpeff(TemplateType.PermanentSelf, $"{speff.type} :: {speff.id}", speff.row); }
-            else if (speff.type == SpeffManager.Type.Enchanting) { row = CreateTemplateSpeff(TemplateType.TemporaryOnHit, $"{speff.type} :: {speff.id}", speff.row); }
+            TemplateType templateType;
+            if (speff.type == SpeffManager.Type.Alchemy) { templateType = TemplateType.TemporarySelf; }
+            else if (speff.type == SpeffManager.Type.Spell && ((SpeffSpell)speff).spellType == SpeffSpell.SpellType.Spell) { templateType = TemplateType.TemporarySelf; }
+            else if (speff.type == SpeffManager.Type.Spell) { templateType = TemplateType.PermanentSelf; }
+            else if (speff.type == SpeffManager.Type.Enchanting && ((SpeffEnchant)speff).enchantType != EnchantType.CastOnStrike) { templateType = TemplateType.PermanentSelf; }
+            else if (speff.type == SpeffManager.Type.Enchanting) { templateType = TemplateType.TemporaryOnHit; }
             else { throw new Exception("Something weird happened!"); }
+
+            FsParam.Row row = CreateTemplateSpeff(templateType, $"{speff.type} :: {speff.id}", speff.row);
 
             /* Find and apply icon for buff */
             if (speff.effects.Count() > 0)
             {
-                IconManager.BuffInfo buffIcon = iconManager.GetBuffByType(speff.effects[0].effect);
+                IconManager.BuffInfo buffIcon = textureManager.icon.GetBuffByType(speff.effects[0].effect);
                 if (buffIcon != null) { row["iconId"].Value.SetValue((int)(buffIcon.id)); }
+            }
+
+            /* Set duration */
+            if(templateType == TemplateType.TemporarySelf || templateType == TemplateType.TemporaryOnHit)
+            {
+                row["effectEndurance"].Value.SetValue((float)speff.Duration());
             }
 
             /* Apply some values to our speffs based on what stuff its got in its magic effects */
@@ -255,7 +268,7 @@ namespace JortPob
             }
 
             /* Plonk our new row into the param */
-            paramanager.AddRow(param, row);
+            paramanager.AddOrReplaceRow(param, row);
         }
 
         public Speff GetSpeff(string id, SpeffManager.Type type)
@@ -314,14 +327,31 @@ namespace JortPob
         /* But in some cases like ModFatigue or ModMagicka we will use it on player to change their current stamina/mana values */
         /* Input is what we are changing and how much */
         /* Returns row id of created speff */
-        public enum StatMod { CurrentHP, CurrentMP, CurrentSP, Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane }
+        public enum StatMod
+        {
+            Runes,
+            MaxHP, MaxMP, MaxSP,
+            CurrentHP, CurrentMP, CurrentSP,
+            Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane
+        }
         public int CreateScriptedEffect(StatMod stat, int amount, string name)
         {
             FsParam speffParam = paramanager.param[Paramanager.ParamType.SpEffectParam];
             FsParam.Row row;
 
+            float ToScalar(int magnitude)
+            {
+                return 1f + (magnitude / 100f);
+            }
+
             switch (stat)
             {
+                case StatMod.Runes:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
+                        row["soul"].Value.SetValue(amount);
+                        break;
+                    }
                 case StatMod.CurrentHP:
                     {
                         row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
@@ -338,6 +368,25 @@ namespace JortPob
                     {
                         row = CreateTemplateSpeff(TemplateType.TemporarySelf, name, nextSpeffId += 10);
                         row["changeStaminaPoint"].Value.SetValue(-amount);  // this field is weirdly backwards so ye
+                        break;
+                    }
+                case StatMod.MaxHP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["maxHpRate"].Value.SetValue(ToScalar(amount));
+                        row["bCurrHPIndependeMaxHP"].Value.SetValue((byte)0); // sic
+                        break;
+                    }
+                case StatMod.MaxMP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["maxMpRate"].Value.SetValue(ToScalar(amount));
+                        break;
+                    }
+                case StatMod.MaxSP:
+                    {
+                        row = CreateTemplateSpeff(TemplateType.PermanentSelf, name, nextSpeffId += 10);
+                        row["maxStaminaRate"].Value.SetValue(ToScalar(amount));
                         break;
                     }
                 case StatMod.Vigor:
