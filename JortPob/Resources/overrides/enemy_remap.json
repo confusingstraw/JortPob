@@ -12,7 +12,111 @@
     "comment": "Regular size normal rat"
   },
 
+  "rat_blighted": {
+    "character": "c4080",
+    "npc": {
+      "row": 40800010,
+      "data": {}
+    },
+    "think": {
+      "row": 40800000,
+      "data": {}
+    },
+    "comment": "Regular size normal rat"
+  },
+
+  "rat_diseased": {
+    "character": "c4080",
+    "npc": {
+      "row": 40800010,
+      "data": {}
+    },
+    "think": {
+      "row": 40800000,
+      "data": {}
+    },
+    "comment": "Regular size normal rat"
+  },
+
+  "rat_cave_fgrh": {
+    "character": "c4080",
+    "npc": {
+      "row": 40800010,
+      "data": {}
+    },
+    "think": {
+      "row": 40800000,
+      "data": {}
+    },
+    "comment": "Regular size normal rat"
+  },
+
+  "rat_cave_fgt": {
+    "character": "c4080",
+    "npc": {
+      "row": 40800010,
+      "data": {}
+    },
+    "think": {
+      "row": 40800000,
+      "data": {}
+    },
+    "comment": "Regular size normal rat"
+  },
+
+  "kwama worker": {
+    "character": "c4140",
+    "npc": {
+      "row": 41404020,
+      "data": {}
+    },
+    "think": {
+      "row": 41404000,
+      "data": {}
+    },
+    "comment": "Kwama worker to crystal snaily boy"
+  },
+
+  "kwama worker entrance": {
+    "character": "c4140",
+    "npc": {
+      "row": 41404020,
+      "data": {}
+    },
+    "think": {
+      "row": 41404000,
+      "data": {}
+    },
+    "comment": "Kwama worker to crystal snaily boy"
+  },
+
+  "Kwama Queen": {
+    "character": "c4280",
+    "npc": {
+      "row": 42800060,
+      "data": {}
+    },
+    "think": {
+      "row": 42800000,
+      "data": {}
+    },
+    "comment": "Kwama queen to big ant"
+  },
+
   "mudcrab": {
+    "character": "c2271",
+    "npc": {
+      "row": 22710010,
+      "data": {}
+    },
+    "think": {
+      "row": 22710000,
+      "data": {}
+    },
+    "comment": "Small crab"
+  },
+
+  "mudcrab-Diseased": {
     "character": "c2271",
     "npc": {
       "row": 22710010,
@@ -38,7 +142,46 @@
     "comment": "Springhare"
   },
 
+  "scrib blighted": {
+    "character": "c5490",
+    "npc": {
+      "row": 54900080,
+      "data": {}
+    },
+    "think": {
+      "row": 54900000,
+      "data": {}
+    },
+    "comment": "Springhare"
+  },
+
+  "scrib diseased": {
+    "character": "c5490",
+    "npc": {
+      "row": 54900080,
+      "data": {}
+    },
+    "think": {
+      "row": 54900000,
+      "data": {}
+    },
+    "comment": "Springhare"
+  },
+
   "kwama forager": {
+    "character": "c4040",
+    "npc": {
+      "row": 40400031,
+      "data": {}
+    },
+    "think": {
+      "row": 40400000,
+      "data": {}
+    },
+    "comment": "Regular slug enemy"
+  },
+
+  "kwama forager blighted": {
     "character": "c4040",
     "npc": {
       "row": 40400031,
@@ -54,17 +197,68 @@
   "cliff racer": {
     "character": "c4210",
     "npc": {
-      "row": 42100000,
-      "data": {}
+      "row": 42101114,
+      "data": {
+        "spEffectID0": 5402,
+        "modelDispMask0": 0,
+        "modelDispMask1": 1
+      }
     },
     "think": {
-      "row": 42100000,
+      "row": 42100100,
       "data": {}
     },
-    "comment": "Warhawk"
+    "comment": "Warhawk to CliffRacer"
+  },
+
+  "cliff racer_blighted": {
+    "character": "c4210",
+    "npc": {
+      "row": 42101114,
+      "data": {
+        "spEffectID0": 5402,
+        "modelDispMask0": 0,
+        "modelDispMask1": 1
+      }
+    },
+    "think": {
+      "row": 42100100,
+      "data": {}
+    },
+    "comment": "Warhawk to CliffRacer"
+  },
+
+  "cliff racer_diseased": {
+    "character": "c4210",
+    "npc": {
+      "row": 42101114,
+      "data": {
+        "spEffectID0": 5402,
+        "modelDispMask0": 0,
+        "modelDispMask1": 1
+      }
+    },
+    "think": {
+      "row": 42100100,
+      "data": {}
+    },
+    "comment": "Warhawk to CliffRacer"
   },
 
   "netch_bull": {
+    "character": "c4180",
+    "npc": {
+      "row": 41800010,
+      "data": {}
+    },
+    "think": {
+      "row": 41800000,
+      "data": {}
+    },
+    "comment": "Spirit Jellyfish"
+  },
+
+  "netch_betty": {
     "character": "c4180",
     "npc": {
       "row": 41800010,

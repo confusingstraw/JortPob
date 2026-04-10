@@ -907,12 +907,12 @@ namespace JortPob
             if (inventory.Count() > 0) { itemLotRow = GenerateInventoryItemLot(script, creature, inventory); }    // @TODO: rework item lot generation for creatures to be non-fixed
             else { itemLotRow = -1; }
 
+            SillyJsonUtils.ModifyRow(row, remap.npc.data);
+
             int textId = textManager.AddNpcName(creature.name);
             row.Cells[5].SetValue(textId); // nameId
             row.Cells[105].SetValue((byte)(creature.IsHostile() ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
-
-            // @TODO: apply data from json remap to param!
 
             AddOrReplaceRow(npcParam, row);
         }
@@ -939,7 +939,7 @@ namespace JortPob
             FsParam thinkParam = param[ParamType.NpcThinkParam];
             FsParam.Row row = CloneRow(thinkParam[remap.think.row], creature.id, id);
 
-            // STUB:: do stuff to this param lol
+            SillyJsonUtils.ModifyRow(row, remap.think.data);
 
             AddOrReplaceRow(thinkParam, row);
         }

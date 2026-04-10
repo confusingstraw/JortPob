@@ -40,6 +40,48 @@ namespace JortPob.Common
             cell.SetValue(value);
         }
 
+        public static void ModifyRow(FsParam.Row row, Dictionary<string, string> data)
+        {
+            foreach (KeyValuePair<string, string> property in data)
+            {
+                string key = property.Key;
+                string value = property.Value;
+                FsParam.Cell cell = (FsParam.Cell)row[key];
+                switch (cell.Value.GetType())
+                {
+                    case Type t when t == typeof(int):
+                        cell.SetValue(int.Parse(value));
+                        break;
+                    case Type t when t == typeof(uint):
+                        cell.SetValue(uint.Parse(value));
+                        break;
+                    case Type t when t == typeof(ushort):
+                        cell.SetValue(ushort.Parse(value));
+                        break;
+                    case Type t when t == typeof(short):
+                        cell.SetValue(short.Parse(value));
+                        break;
+                    case Type t when t == typeof(byte):
+                        cell.SetValue(byte.Parse(value));
+                        break;
+                    case Type t when t == typeof(sbyte):
+                        cell.SetValue(sbyte.Parse(value));
+                        break;
+                    case Type t when t == typeof(float):
+                        cell.SetValue(float.Parse(value));
+                        break;
+                    case Type t when t == typeof(bool):
+                        cell.SetValue(bool.Parse(value));
+                        break;
+                    case Type t when t == typeof(string):
+                        cell.SetValue(value);
+                        break;
+                    default:
+                        throw new NotImplementedException($"Type {cell.Value.GetType()} not implemented in ModifyRow.");
+                }
+            }
+        }
+
         public static void CopyRowAndModify(Paramanager paramanager, SpeffManager speffManager, Paramanager.ParamType paramType, string name, int sourceRow, int destRow, Dictionary<string, string> data)
         {
             FsParam param = paramanager.param[paramType];
