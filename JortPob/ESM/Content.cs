@@ -684,6 +684,16 @@ namespace JortPob
                 warp = new(json["destination"]);
             }
         }
+
+        public void ApplyWarpParams(int map, int x, int y, int block, uint warpEntity, string prompt)
+        {
+            warp.map = map;
+            warp.x = x;
+            warp.y = y;
+            warp.block = block;
+            warp.entity = warpEntity;
+            warp.prompt = prompt;
+        }
     }
 
     /* static mesh of a container in the world that can **CAN** (but not always) be lootable */

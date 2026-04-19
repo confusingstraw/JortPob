@@ -333,42 +333,6 @@ namespace JortPob
                 return esm.GetCellByGrid(new Int2(x, y));
             }
 
-            void HandleDoor(DoorContent door)
-            {
-                if (door.warp != null)
-                {
-                    // Door goes to interior cell
-                    if (door.warp.cell != null)
-                    {
-                        InteriorGroup.Chunk to = FindChunk(door.warp.cell);
-                        if (to == null) { door.warp = null; return; }      // caused by debug sometimes
-                        door.warp.map = to.group.map;
-                        door.warp.x = to.group.area;
-                        door.warp.y = to.group.unk;
-                        door.warp.block = to.group.block;
-                        door.warp.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
-                        string areaName;
-                        if (to.cell.name.Contains(",")) { areaName = to.cell.name.Split(",")[^1].Trim(); }
-                        else { areaName = to.cell.name; }
-                        door.warp.prompt = $"Enter {areaName}";
-                        to.AddWarp(door.warp);
-                    }
-                    // Door goes to exterior cell
-                    else
-                    {
-                        Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
-                        if (to == null) { door.warp = null; return; }     // caused by debug sometimes
-                        door.warp.map = to.map;
-                        door.warp.x = to.coordinate.x;
-                        door.warp.y = to.coordinate.y;
-                        door.warp.block = to.block;
-                        door.warp.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]");
-                        door.warp.prompt = $"Exit";
-                        to.AddWarp(door.warp);
-                    }
-                }
-            }
-
             void HandleTravel(NpcContent npc, Tile from = null)
             {
                 if (npc.travel.Count() > 0)
@@ -423,7 +387,7 @@ namespace JortPob
                 {
                     foreach (DoorContent door in chunk.doors)
                     {
-                        HandleDoor(door);
+                        RegisterDoorWarp(door, scriptManager);
                         if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
                     }
 
@@ -438,7 +402,7 @@ namespace JortPob
             {
                 foreach (DoorContent door in tile.doors)
                 {
-                    HandleDoor(door);
+                    RegisterDoorWarp(door, scriptManager);
                     if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
                 }
 
@@ -1073,6 +1037,30 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
         }
 
+        private void RegisterDoorWarp(DoorContent door, ScriptManager scriptManager)
+        {
+            if (door.warp == null) { return; }
+
+            // Door goes to interior cell
+            if (door.warp.cell != null)
+            {
+                InteriorGroup.Chunk to = FindChunk(door.warp.cell);
+                if (to == null) { door.warp = null; return; }      // caused by debug sometimes
+                string areaName = to.cell.name.Contains(",") ? to.cell.name.Split(",")[^1].Trim() : to.cell.name;
+                uint entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
+                door.ApplyWarpParams(to.group.map, to.group.area, to.group.unk, to.group.block,  entity, $"Enter {areaName}");
+                to.AddWarp(door.warp);
+            }
+            // Door goes to exterior cell
+            else
+            {
+                Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
+                if (to == null) { door.warp = null; return; }     // caused by debug sometimes
+                uint entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); 
+                door.ApplyWarpParams(to.map, to.coordinate.x, to.coordinate.y,  to.block, entity,  $"Exit");
+                to.AddWarp(door.warp);
+            }
+        }
         public HugeTile GetHugeTile(Vector3 position)
         {
             foreach (HugeTile huge in huges)
