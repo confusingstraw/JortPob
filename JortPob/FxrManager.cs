@@ -162,7 +162,7 @@ namespace JortPob
             [
                 60, // for the overworld
             ];
-            foreach(InteriorGroup group in layout.interiors)
+            foreach(InteriorGroup group in layout.Interiors)
             {
                 if (group.IsEmpty()) { continue; }
                 if (maps.Contains(group.map)) { continue; }

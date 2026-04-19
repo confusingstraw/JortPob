@@ -2,6 +2,7 @@
 using Microsoft.Windows.Themes;
 using SoulsFormats;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,22 +14,23 @@ namespace JortPob
     /* Takes the Morrowind ESM cell grid and re-subdivides it into the Elden Ring tile grid */
     public class Layout
     {
-        public List<BaseTile> all;
-        public List<HugeTile> huges;
-        public List<BigTile> bigs;
-        public List<Tile> tiles;
+        private readonly List<HugeTile> huges = [];
+        private readonly List<BigTile> bigs = [];
+        private readonly List<Tile> tiles = [];
 
-        public List<InteriorGroup> interiors;
+        private readonly List<InteriorGroup> interiors = [];
+
+        // For now, we just expose IEnumerable in case we need to change the underlying implementation
+        public IEnumerable<BaseTile> AllTiles => new IEnumerable<BaseTile>[]{tiles, bigs, huges}.SelectMany(t => t);
+
+        public IEnumerable<Tile> Tiles => tiles;
+        public int TileCount => tiles.Count;
+
+        public IEnumerable<InteriorGroup> Interiors => interiors;
+        public int InteriorCount => interiors.Count;
 
         public Layout(Cache cache, ESM esm, Paramanager param, TextManager text, ScriptManager scriptManager)
         {
-            all = new();
-            huges = new();
-            bigs = new();
-            tiles = new();
-
-            interiors = new();
-
             Lort.Log("Generating layout...", Lort.Type.Main);
             Lort.NewTask("Generating Layout", 14);
 
@@ -47,7 +49,6 @@ namespace JortPob
                 {
                     Tile tile = new Tile(m, x, y, b);
                     tiles.Add(tile);
-                    all.Add(tile);
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -77,7 +78,6 @@ namespace JortPob
                     }
 
                     bigs.Add(big);
-                    all.Add(big);
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -119,7 +119,6 @@ namespace JortPob
                     }
 
                     huges.Add(huge);
-                    all.Add(huge);
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -1061,6 +1060,7 @@ namespace JortPob
                 to.AddWarp(door.warp);
             }
         }
+        
         public HugeTile GetHugeTile(Vector3 position)
         {
             foreach (HugeTile huge in huges)
