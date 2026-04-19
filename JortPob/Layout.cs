@@ -87,23 +87,6 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Subdivide all cell content into tiles */
-            Content EmitterConversionCheck(Content content)
-            {
-                if (content.GetType() != typeof(AssetContent)) { return content; }
-                AssetContent assetContent = content as AssetContent;
-
-                /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
-                /* We can't really do this earlier than this point sadly because we need both the ESM loaded an cache built to be able to catch this corner case */
-                /* So we do it here */
-                ModelInfo modelInfo = cache.GetModel(assetContent.mesh);
-                if (!modelInfo.HasEmitter()) { return content; }
-
-                EmitterContent emitterContent = assetContent.ConvertToEmitter();
-                cache.AddConvertedEmitter(emitterContent);
-
-                return emitterContent;
-            }
-
             foreach (Cell cell in esm.exterior)
             {
                 HugeTile huge = GetHugeTile(cell.center);
@@ -120,9 +103,18 @@ namespace JortPob
 
                     foreach (Content content in cell.contents)
                     {
-                        Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
+                        if (content is AssetContent assetContent)
+                        {
+                            /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
+                            /* We can't really do this earlier than this point sadly because we need both the ESM loaded and cache built to be able to catch this corner case */
+                            /* So we do it here */
+                            if (cache.GetModel(assetContent.mesh)?.HasEmitter() == true)
+                            {
+                                cache.AddConvertedEmitter(assetContent.ConvertToEmitter());
+                            }
+                        }
 
-                        huge.AddContent(cache, cell, c, allReferences.Contains(content.id.ToLower().Trim()));
+                        huge.AddContent(cache, cell, content, allReferences.Contains(content.id.ToLower().Trim()));
                     }
                 }
                 else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
@@ -186,65 +178,9 @@ namespace JortPob
                     scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
                 }
             }
-
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
-            Cell FindCell(Vector3 position)  // getting an ext cell by morrowind coordinates. used to find exterior cell name
-            {
-                int x = (int)Math.Floor(position.X / Const.CELL_SIZE);
-                int y = (int)Math.Floor(position.Z / Const.CELL_SIZE);
-                return esm.GetCellByGrid(new Int2(x, y));
-            }
-
-            void HandleTravel(NpcContent npc, Tile from = null)
-            {
-                if (npc.travel.Count() > 0)
-                {
-                    // Travel goes to interior cell
-                    for (int i = 0; i < npc.travel.Count; i++)
-                    {
-                        CharacterContent.Travel travel = npc.travel[i];
-                        if (travel.cell != null)
-                        {
-                            InteriorGroup.Chunk to = FindChunk(travel.cell);
-                            if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
-                            travel.map = to.group.map;
-                            travel.x = to.group.area;
-                            travel.y = to.group.unk;
-                            travel.block = to.group.block;
-                            travel.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
-                            travel.name = to.cell.name;
-                            travel.cost = Const.TRAVEL_DEFAULT_COST;
-
-                            to.AddWarp(travel);
-                        }
-                        // Travel goes to exterior cell
-                        else
-                        {
-                            Tile to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
-                            Cell cell = FindCell(travel.position);
-                            if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
-                            travel.map = to.map;
-                            travel.x = to.coordinate.x;
-                            travel.y = to.coordinate.y;
-                            travel.block = to.block;
-                            travel.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
-                            travel.name = cell.name;
-                            // calculate distance for cost of travel
-                            if (from != null)
-                            {
-                                Vector2 a = new(from.coordinate.x, from.coordinate.y);
-                                Vector2 b = new(to.coordinate.x, to.coordinate.y);
-                                travel.cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
-                            }
-                            else { travel.cost = Const.TRAVEL_DEFAULT_COST; }
-                            to.AddWarp(travel);
-                        }
-                    }
-                }
-            }
-
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks)
@@ -257,7 +193,7 @@ namespace JortPob
 
                     foreach (NpcContent npc in chunk.npcs)
                     {
-                        HandleTravel(npc);
+                        RegisterNpcWarp(esm, scriptManager, npc);
                     }
                 }
             }
@@ -272,7 +208,7 @@ namespace JortPob
 
                 foreach (NpcContent npc in tile.npcs)
                 {
-                    HandleTravel(npc, tile);
+                    RegisterNpcWarp(esm, scriptManager, npc, tile);
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -925,7 +861,45 @@ namespace JortPob
                 to.AddWarp(door.warp);
             }
         }
-        
+
+        private void RegisterNpcWarp(ESM esm, ScriptManager scriptManager, NpcContent npc, Tile from = null)
+        {
+            if (npc.travel.Count <= 0) return;
+
+            // Travel goes to interior cell
+            for (int i = 0; i < npc.travel.Count; i++)
+            {
+                var travel = npc.travel[i];
+                if (travel.cell != null)
+                {
+                    var to = FindChunk(travel.cell);
+                    if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
+                    var entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
+                    travel.ApplyParams(to.group.map, to.group.area, to.group.unk, to.group.block, entity, to.cell.name, Const.TRAVEL_DEFAULT_COST);
+                    to.AddWarp(travel);
+                }
+                // Travel goes to exterior cell
+                else
+                {
+                    var to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
+                    var cell = esm.GetCellByPosition(travel.position); // this should be safe, assuming travel.position is a Morrowind coordinate
+                    if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
+                    var entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
+                    int cost;
+                    // calculate distance for cost of travel
+                    if (from != null)
+                    {
+                        Vector2 a = new(from.coordinate.x, from.coordinate.y);
+                        Vector2 b = new(to.coordinate.x, to.coordinate.y);
+                        cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
+                    }
+                    else { cost = Const.TRAVEL_DEFAULT_COST; }
+                    travel.ApplyParams(to.map, to.coordinate.x, to.coordinate.y, to.block, entity, cell.name, cost);
+                    to.AddWarp(travel);
+                }
+            }
+        }
+
         public HugeTile GetHugeTile(Vector3 position)
         {
             foreach (HugeTile huge in huges)
