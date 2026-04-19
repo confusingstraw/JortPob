@@ -455,7 +455,71 @@ namespace JortPob
             hasDialogCache.Add(content.id, false);
             return false;
         }
+        
+        public ScriptReferenceMetadata GetScriptReferences()
+        {
+            /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
+            IEnumerable<Papyrus.Call> allCalls = scripts
+                .SelectMany(p => p.GetCalls())
+                .Concat(dialog.SelectMany(d => d.GetCalls()));
+
+            HashSet<string> allReferences = [], toggleableRefs = [];  // able refs is objects targeted by Enable, Disable, and GetDisabled
+
+            foreach (Papyrus.Call call in allCalls)
+            {
+                // Grab record reference from target if exists
+                if (call.target != null && call.target != "player")
+                {
+                    allReferences.Add(call.target);
+
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.Enable:
+                        case Papyrus.Call.Type.Disable:
+                        case Papyrus.Call.Type.GetDisabled:
+                            toggleableRefs.Add(call.target);
+                            break;
+                        default: break;
+                    }
+                }
+
+                // Grab record reference from arguments if they exist
+                switch (call.type)
+                {
+                    case Papyrus.Call.Type.Cast:
+                        {
+                            string reference = call.parameters[1].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    case Papyrus.Call.Type.GetDistance:
+                        {
+                            string reference = call.parameters[0].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    default: break;
+                }
+            }
+
+            toggleableRefs.UnionWith(
+                exterior.Concat(interior).SelectMany(cell => cell.contents)
+                    .Where(content => {
+                        var papyrus = GetPapyrus(content.papyrus);
+                        return papyrus != null && (papyrus.HasCall(Papyrus.Call.Type.Disable) ||
+                                                   papyrus.HasCall(Papyrus.Call.Type.Enable) ||
+                                                   papyrus.HasCall(Papyrus.Call.Type.GetDisabled));
+                    })
+                    .Select(content => content.id.ToLower().Trim())
+            );
+
+            return new ScriptReferenceMetadata(allReferences, toggleableRefs);
+        }
     }
+
+    public record ScriptReferenceMetadata(HashSet<string> AllReferences, HashSet<string> ToggleableReferences);
 
     public class RegionInfo
     {

@@ -82,80 +82,8 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Part 1 of papyrus pre-process */
-            /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
-            List<Papyrus.Call> allCalls = new();
-            foreach (Papyrus papyrus in esm.scripts)
-            {
-                allCalls.AddRange(papyrus.GetCalls());
-            }
-
-            foreach (Dialog.DialogRecord dialog in esm.dialog)
-            {
-                allCalls.AddRange(dialog.GetCalls());
-            }
-
-            List<string> allReferences = new(), ableReferences = new();  // able refs is objects targeted by Enable, Disable, and GetDisabled
-            foreach (Papyrus.Call call in allCalls)
-            {
-                // Grab record reference from target if exists
-                if (call.target != null && call.target != "player")
-                {
-                    if (!allReferences.Contains(call.target)) { allReferences.Add(call.target); }
-
-                    switch (call.type)
-                    {
-                        case Papyrus.Call.Type.Enable:
-                        case Papyrus.Call.Type.Disable:
-                        case Papyrus.Call.Type.GetDisabled:
-                            if (!ableReferences.Contains(call.target)) { ableReferences.Add(call.target); }
-                            break;
-                        default: break;
-                    }
-                }
-
-                // Grab record reference from arguments if they exist
-                switch (call.type)
-                {
-                    case Papyrus.Call.Type.Cast:
-                        {
-                            string reference = call.parameters[1].ToLower().Trim();
-                            if (reference == "player") { break; }
-                            allReferences.Add(reference);
-                            break;
-                        }
-                    case Papyrus.Call.Type.GetDistance:
-                        {
-                            string reference = call.parameters[0].ToLower().Trim();
-                            if (reference == "player") { break; }
-                            allReferences.Add(reference);
-                            break;
-                        }
-                    default: break;
-                }
-            }
-
-            void PreProcessSelfDisableCalls(Cell cell)
-            {
-                foreach (Content content in cell.contents)
-                {
-                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
-                    if (
-                        papyrus != null &&
-                        (
-                            papyrus.HasCall(Papyrus.Call.Type.Disable) ||
-                            papyrus.HasCall(Papyrus.Call.Type.Enable) ||
-                            papyrus.HasCall(Papyrus.Call.Type.GetDisabled)
-                        )
-                    )
-                    {
-                        string contentId = content.id.ToLower().Trim();
-                        if (!ableReferences.Contains(contentId)) { ableReferences.Add(contentId); }
-                    }
-                }
-            }
-
-            foreach (Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
-            foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
+            // able refs is objects targeted by Enable, Disable, and GetDisabled
+            var (allReferences, toggleableReferences) = esm.GetScriptReferences();
             Lort.TaskIterate(); // Progress bar update
 
             /* Subdivide all cell content into tiles */
@@ -514,7 +442,7 @@ namespace JortPob
                         content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");
 
                         // talkable characters always get disable flags for simplicity. statically resolving dialog triggered self-disable calls is slow as hell
-                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || ableReferences.Contains(contentId))
+                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || toggleableReferences.Contains(contentId))
                         {
                             // Object disabled flag
                             Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
