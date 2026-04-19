@@ -1727,14 +1727,14 @@ namespace JortPob
                         }
 
                     case Call.Type.PlayBink:
+                        if (!Const.DEBUG_SKIP_CUTSCENES)
                         {
-                            if (Const.DEBUG_SKIP_CUTSCENES) { break; }
                             string name = call.parameters[0].ToLower().Trim();
                             string path = Path.Combine(Const.MORROWIND_PATH, @"Data Files\video", name);
                             int cutscene = Cutscener.Create(path);
                             lines.Add($"PlayCutsceneToAll({cutscene}, 0);");
-                            break;
                         }
+                        break;
 
                     case Call.Type.SetHealth:
                     case Call.Type.SetMagicka:

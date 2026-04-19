@@ -24,7 +24,7 @@ namespace JortPob.Worker
             }
             else
             {
-                if (Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX != null)
+                if (Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX != null && Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX.Length >= 4)
                 {
                     if (
                         x < Const.DEBUG_EXCLUSIVE_BUILD_BY_BOX[0] ||

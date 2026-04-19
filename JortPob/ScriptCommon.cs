@@ -3,8 +3,8 @@ using SoulsFormats;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using static JortPob.Script;
-using static JortPob.Script.Flag;
+using JortPob.Scripts;
+using System;
 
 namespace JortPob
 {
@@ -16,9 +16,22 @@ namespace JortPob
     {
         public readonly EMEVD func;
 
-        public List<Flag> flags;
-        private Dictionary<Flag.Category, uint> flagUsedCounts;
-        private Dictionary<EntityType, uint> entityUsedCounts;
+        public List<Script.Flag> flags = new();
+        private Dictionary<Script.Flag.Category, uint> flagUsedCounts = new()
+            {
+                { Script.Flag.Category.Event, 0 },
+                { Script.Flag.Category.Saved, 0 },
+                { Script.Flag.Category.Temporary, 0 }
+            };
+        private Dictionary<Script.EntityType, uint> entityUsedCounts = new()
+            {
+                { Script.EntityType.Enemy, 0 },
+                { Script.EntityType.Asset, 0 },
+                { Script.EntityType.Region, 0 },
+                { Script.EntityType.Event, 0 },
+                { Script.EntityType.Collision, 0 },
+                { Script.EntityType.Group, 0 }
+            };
 
         public enum Event
         {
@@ -27,47 +40,19 @@ namespace JortPob
             ItemAsset, OwnedItemAsset, ItemAssetWithDisable, OwnedItemAssetWithDisable, OwnedContainer, TravelWarp, RemoveItem, PermanentSpeff,
             StaticDisable, PlaySE, TriggerEnable, TriggerDisable, NpcModStat, NpcInfight, GetSecondsPassed
         }
-        public readonly Dictionary<Event, uint> events;
-        public readonly Dictionary<int, Flag> messages;  // hash of message text as key, value is flag that when set to true triggers a message to display
+        public readonly Dictionary<Event, uint> events = new();
+        public readonly Dictionary<int, Script.Flag> messages = new();  // hash of message text as key, value is flag that when set to true triggers a message to display
 
         /**
          * This is just used to speed up searches for flags. It is a 1:1 mapping, so duplicate designated/named
          * flags will result in us just using the first one. This is okay (for now), because that is the same logic
          * that GetFlag already uses.
          */
-        private readonly Dictionary<ScriptFlagLookupKey, Flag> flagsByLookupKey;
+        private readonly Dictionary<ScriptFlagLookupKey, Script.Flag> flagsByLookupKey = new();
 
         public ScriptCommon(ScriptManager manager) : base(manager)
         {
             func = EMEVD.Read(Utility.ResourcePath(@"script\common_func.emevd.dcx"));
-
-            messages = new();
-
-            flags = new();
-            flagsByLookupKey = new();
-
-            flagUsedCounts = new()
-            {
-                { Flag.Category.Event, 0 },
-                { Flag.Category.Saved, 0 },
-                { Flag.Category.Temporary, 0 }
-            };
-
-            entityUsedCounts = new()
-            {
-                { EntityType.Enemy, 0 },
-                { EntityType.Asset, 0 },
-                { EntityType.Region, 0 },
-                { EntityType.Event, 0 },
-                { EntityType.Collision, 0 },
-                { EntityType.Group, 0 }
-            };
-
-            events = new();
-
-            /* Create an event for going through load doors */
-            Flag doorEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DoorLoad");
-            EMEVD.Event loadDoor = new(doorEventFlag.id);
 
             // Add preconstructor with a few specific calls from the base game common
             EMEVD.Event precon = new(50);
@@ -85,759 +70,127 @@ namespace JortPob
             emevd.Events.Add(source1020);
             init.Instructions.Add(AUTO.ParseAdd("InitializeEvent(0, 1020);"));
 
+            RegisterAllTemplateScripts();
+        }
 
-            int pc = 0;
-            string NextParameterName()
+        private struct ParamNameGen
+        {
+            private int pc = 0;
+
+            public ParamNameGen()
+            {
+            }
+
+            public string GetNextParamName()
             {
                 return $"X{pc++ * 4}_4";
             }
 
-            string[] loadDoorEventRaw = new string[]
-            {
-                $"IfActionButtonInArea(MAIN, {NextParameterName()}, {NextParameterName()});",
-                $"RotateCharacter(10000, {NextParameterName()}, 60000, false);",
-                $"WaitFixedTimeSeconds(0.25);",
-                $"PlaySE({NextParameterName()}, SoundType.Asset, 200);",
-                $"WaitFixedTimeSeconds(0.75);",
-                $"WarpPlayer({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, -1);",
-                $"EndUnconditionally(EventEndType.End);"
-            };
+            public static implicit operator Func<string>(ParamNameGen gen) => gen.GetNextParamName;
+        }
 
-            for (int i = 0; i < loadDoorEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(loadDoorEventRaw[i], i);
-                loadDoor.Parameters.AddRange(newPs);
-                loadDoor.Instructions.Add(instr);
-            }
+        private void RegisterTemplateEvent(Event eventId, string name, Func<Script.Flag, SoulsIds.Events, Func<string>, EMEVD.Event> createEventFunc)
+        {
+            var paramNameGen = new ParamNameGen();
+            var flag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, name);
+            var @event = createEventFunc(flag, AUTO, paramNameGen);
+            func.Events.Add(@event);
+            events.Add(eventId, flag.id);
+        }
 
-            func.Events.Add(loadDoor);
-            events.Add(Event.LoadDoor, doorEventFlag.id);
-
+        private void RegisterAllTemplateScripts()
+        {
             /* Create an event for handling creature/npc spawn/respawn*/
-            Flag spawnEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandler");
-            EMEVD.Event spawnHandler = new(spawnEventFlag.id);
+            RegisterTemplateEvent(Event.SpawnHandler, "CommonFunc:SpawnHandler", TemplateEMEVD.CreateSpawnHandlerEvent);
 
-            pc = 0;
-
-            string[] spawnHandlerEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // check dead flag
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < spawnHandlerEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(spawnHandlerEventRaw[i], i);
-                spawnHandler.Parameters.AddRange(newPs);
-                spawnHandler.Instructions.Add(instr);
-            }
-
-            func.Events.Add(spawnHandler);
-            events.Add(Event.SpawnHandler, spawnEventFlag.id);
+            /* Create an event for going through load doors */
+            RegisterTemplateEvent(Event.LoadDoor, "CommonFunc:DoorLoad", TemplateEMEVD.CreateLoadDoorEvent);
 
             /* Create an event for handling npc halting */
-            Flag haltEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Halt");
-            EMEVD.Event haltEvent = new(haltEventFlag.id);
-
-            pc = 0;
-
-            string[] haltEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if npc is dead ...
-                $"EndUnconditionally(EventEndType.End);",                                           // kill event
-
-                $"IfEntityInoutsideRadiusOfEntity(AND_01, InsideOutsideState.Inside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_IN}, 1);",   // blocking wait distance check for player close enough AND ...
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                  // ... blocking wait until hostile flag is off
-                $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"SetCharacterAIState({NextParameterName()}, Disabled);",                                                                          // disable ai
-                $"RotateCharacter({NextParameterName()}, 10000, -1, false)",                                                                      // rotate to face player
-
-                $"IfEntityInoutsideRadiusOfEntity(OR_01, InsideOutsideState.Outside, 10000, {NextParameterName()}, {Const.NPC_HELLO_DIST_OUT}, 1);",  // blocking wait distance check for player far enough OR...
-                $"IfEventFlag(OR_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",                                                    // ... blocking wait until hostile flag is on
-                $"IfConditionGroup(MAIN, PASS, OR_01);",
-                $"SetCharacterAIState({NextParameterName()}, Enabled);",                            // enable ai
-                $"RequestCharacterAIReplan({NextParameterName()});",                               // make brain work good
-
-                $"EndUnconditionally(EventEndType.Restart);",     // restart event
-            };
-
-            for (int i = 0; i < haltEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(haltEventRaw[i], i);
-                haltEvent.Parameters.AddRange(newPs);
-                haltEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(haltEvent);
-            events.Add(Event.Halt, haltEventFlag.id);
+            RegisterTemplateEvent(Event.Halt, "CommonFunc:Halt", TemplateEMEVD.CreateHaltEvent);
 
             /* Create an event for handling creature/npc spawn/respawn and disable/enable */
-            Flag spawnHandlerWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandlerDisableable");
-            EMEVD.Event spawnHandlerWithDisableEvent = new(spawnHandlerWithDisableEventFlag.id);
+            RegisterTemplateEvent(Event.SpawnHandlerDisableable, "CommonFunc:SpawnHandlerDisableable", TemplateEMEVD.CreateSpawnHandlerWithDisableEvent);
 
-            pc = 0;
-
-            string[] spawnHandlerWithDisableRaw = new string[]
-            {
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if dead flag is on disable and end event
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable character
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < spawnHandlerWithDisableRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(spawnHandlerWithDisableRaw[i], i);
-                spawnHandlerWithDisableEvent.Parameters.AddRange(newPs);
-                spawnHandlerWithDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(spawnHandlerWithDisableEvent);
-            events.Add(Event.SpawnHandlerDisableable, spawnHandlerWithDisableEventFlag.id);
-
-            /* Create an event for handling creature/npc spawn/respawn and disable/enable */
-            Flag spawnHandlerPhasedEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:SpawnHandlerPhased");
-            EMEVD.Event spawnHandlerPhasedEvent = new(spawnHandlerPhasedEventFlag.id);
-
-            pc = 0;
-
-            string[] spawnHandlerPhasedRaw = new string[]
-            {
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if dead flag is on disable and end event
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"ChangeCharacterEnableState({NextParameterName()}, 0);",                                                  // phased character starts disabled
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                       // not disabled AND...
-                $"IfEventValue(AND_01, {NextParameterName()}, {NextParameterName()}, 0, {NextParameterName()});",        // phase value matches this npcs phase
-                $"IfConditionGroup(MAIN, PASS, AND_01);",                                                               // blocking wait...
-                $"ChangeCharacterEnableState({NextParameterName()}, 1);",                                              // enable phased character
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < spawnHandlerPhasedRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(spawnHandlerPhasedRaw[i], i);
-                spawnHandlerPhasedEvent.Parameters.AddRange(newPs);
-                spawnHandlerPhasedEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(spawnHandlerPhasedEvent);
-            events.Add(Event.SpawnHandlerPhased, spawnHandlerPhasedEventFlag.id);
+            /* Create an event for handling phased creature/npc spawn/respawn and disable/enable */
+            RegisterTemplateEvent(Event.SpawnHandlerPhased, "CommonFunc:SpawnHandlerPhased", TemplateEMEVD.CreateSpawnHandlerPhasedEvent);
 
             /* Create an event for handling creature/npc spawn/respawn in interiors */
-            Flag intSpawnHandlerEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:IntSpawnHandler");
-            EMEVD.Event intSpawnHandlerEvent = new(intSpawnHandlerEventFlag.id);
-
-            pc = 0;
-
-            string[] intSpawnHandlerEventRaw = new string[]
-            {
-                $"SkipIfInoutsideArea(2, InsideOutsideState.Inside, 10000, {NextParameterName()}, 1);", // check if inside cell, disable and exit if not
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // check dead flag
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < intSpawnHandlerEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(intSpawnHandlerEventRaw[i], i);
-                intSpawnHandlerEvent.Parameters.AddRange(newPs);
-                intSpawnHandlerEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(intSpawnHandlerEvent);
-            events.Add(Event.IntSpawnHandler, intSpawnHandlerEventFlag.id);
+            RegisterTemplateEvent(Event.IntSpawnHandler, "CommonFunc:IntSpawnHandler", TemplateEMEVD.CreateInteriorSpawnHandlerEvent);
 
             /* Create an event for handling creature/npc spawn/respawn and disable/enable */
-            Flag intSpawnHandlerWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:IntSpawnHandlerDisableable");
-            EMEVD.Event intSpawnHandlerWithDisableEvent = new(intSpawnHandlerWithDisableEventFlag.id);
+            RegisterTemplateEvent(Event.IntSpawnHandlerDisableable, "CommonFunc:IntSpawnHandlerDisableable", TemplateEMEVD.CreateInteriorSpawnHandlerWithDisableEvent);
 
-            pc = 0;
-
-            string[] intSpawnHandlerWithDisableRaw = new string[]
-            {
-                $"SkipIfInoutsideArea(2, InsideOutsideState.Inside, 10000, {NextParameterName()}, 1);", // check if inside cell, disable and exit if not
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if dead flag is on disable and end event
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable character
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < intSpawnHandlerWithDisableRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(intSpawnHandlerWithDisableRaw[i], i);
-                intSpawnHandlerWithDisableEvent.Parameters.AddRange(newPs);
-                intSpawnHandlerWithDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(intSpawnHandlerWithDisableEvent);
-            events.Add(Event.IntSpawnHandlerDisableable, intSpawnHandlerWithDisableEventFlag.id);
-
-            /* Create an event for handling creature/npc spawn/respawn and disable/enable */
-            Flag intSpawnHandlerPhasedEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:IntSpawnHandlerPhased");
-            EMEVD.Event intSpawnHandlerPhasedEvent = new(intSpawnHandlerPhasedEventFlag.id);
-
-            pc = 0;
-
-            string[] intSpawnHandlerPhasedRaw = new string[]
-            {
-                $"SkipIfInoutsideArea(2, InsideOutsideState.Inside, 10000, {NextParameterName()}, 1);", // check if inside cell, disable and exit if not
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if dead flag is on disable and end event
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",
-                $"EndUnconditionally(EventEndType.End);",
-
-                $"ChangeCharacterEnableState({NextParameterName()}, 0);",                                                  // phased character starts disabled
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",                       // not disabled AND...
-                $"IfEventValue(AND_01, {NextParameterName()}, {NextParameterName()}, 0, {NextParameterName()});",        // phase value matches this npcs phase
-                $"IfConditionGroup(MAIN, PASS, AND_01);",                                                               // blocking wait...
-                $"ChangeCharacterEnableState({NextParameterName()}, 1);",                                              // enable phased character
-
-                $"IfCharacterHPValue(MAIN, {NextParameterName()}, 5, 0, 0, 1);", // check if hp is less or equal to 0. comparison values are in byte format so 5 is <= and 4 is >=
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);",  // set dead
-                $"IncrementEventValue({NextParameterName()}, {NextParameterName()}, {NextParameterName()});", // count on kill record id flag
-                $"EndUnconditionally(EventEndType.End);"
-            };
-
-            for (int i = 0; i < intSpawnHandlerPhasedRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(intSpawnHandlerPhasedRaw[i], i);
-                intSpawnHandlerPhasedEvent.Parameters.AddRange(newPs);
-                intSpawnHandlerPhasedEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(intSpawnHandlerPhasedEvent);
-            events.Add(Event.IntSpawnHandlerPhased, intSpawnHandlerPhasedEventFlag.id);
+            /* Create an event for handling phased creature/npc spawn/respawn and disable/enable */
+            RegisterTemplateEvent(Event.IntSpawnHandlerPhased, "CommonFunc:IntSpawnHandlerPhased", TemplateEMEVD.CreateInteriorSpawnHandlerPhasedEvent);
 
             /* Create an event for handling friendly npc hostility */
-            Flag hostileEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcHostilityHandler");
-            EMEVD.Event hostileEvent = new(hostileEventFlag.id);
-
-            pc = 0;
-
-            string[] hostileEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", 
-                $"SetCharacterTeamType({NextParameterName()}, 27);",   // hostile flag on, hostile   >:(     // 27: TeamType.HostileNPC
-                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now enemies
-                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"SetCharacterTeamType({NextParameterName()}, 26);",   // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
-                $"RequestCharacterAIReplan({NextParameterName()});",  // replan so we realize we are now friends
-                $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
-            };
-
-            for (int i = 0; i < hostileEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(hostileEventRaw[i], i);
-                hostileEvent.Parameters.AddRange(newPs);
-                hostileEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(hostileEvent);
-            events.Add(Event.NpcHostilityHandler, hostileEventFlag.id);
+            RegisterTemplateEvent(Event.NpcHostilityHandler, "CommonFunc:NpcHostilityHandler", TemplateEMEVD.CreateHostileEvent);
 
             /* Create an event for handling messages */
-            Flag messageEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Message");
-            EMEVD.Event messageEvent = new(messageEventFlag.id);
-
-            pc = 0;
-
-            string[] messageEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",  // wait for flag to trigger this popup to be set to true
-                $"ShowTutorialPopup({NextParameterName()}, true, true);",   // show popup
-                $"SetEventFlag(0, {NextParameterName()}, OFF)",              // set flag back to false
-                $"EndUnconditionally(EventEndType.Restart);",    // restart so it's ready to go again if needed
-            };
-
-            for (int i = 0; i < messageEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(messageEventRaw[i], i);
-                messageEvent.Parameters.AddRange(newPs);
-                messageEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(messageEvent);
-            events.Add(Event.Message, messageEventFlag.id);
+            RegisterTemplateEvent(Event.Message, "CommonFunc:Message", TemplateEMEVD.CreateMessageEvent);
 
             /* Create an event for displaying a message when the player kills an essential npc */
-            Flag essentialEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:Essential");
-            EMEVD.Event essentialEvent = new(essentialEventFlag.id);
-
-            pc = 0;
-
-            string[] essentialEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",    // if npc is already dead...
-                $"EndUnconditionally(EventEndType.End);",                                            // end event
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // otherwise blocking wait for the dead flag to change
-                $"ShowTutorialPopup({NextParameterName()}, true, true);",                          // then let the player know he's fucked
-            };
-
-            for (int i = 0; i < essentialEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(essentialEventRaw[i], i);
-                essentialEvent.Parameters.AddRange(newPs);
-                essentialEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(essentialEvent);
-            events.Add(Event.Essential, essentialEventFlag.id);
+            RegisterTemplateEvent(Event.Essential, "CommonFunc:Essential", TemplateEMEVD.CreateEssentialEvent);
 
             /* Create an event for intitializing dead bodys. To be specific, any NPC in morrowind that has the "dead" flag and is just a lootable body */
-            Flag deadBodyEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:DeadBody");
-            EMEVD.Event deadBodyEvent = new(deadBodyEventFlag.id);
-
-            pc = 0;
-
-            string[] deadBodyEventRaw = new string[]
-            {
-                $"ForceAnimationPlayback({NextParameterName()}, 90100, false, false, false, 0, 1);",    // laying on ground dead animation (0 is Equals)
-                $"ChangeCharacterCollisionState({NextParameterName()}, Disabled);",    // no-collide
-                $"SetCharacterTeamType({NextParameterName()}, 26);",               // friendly npc team = 26
-            };
-
-            for (int i = 0; i < deadBodyEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(deadBodyEventRaw[i], i);
-                deadBodyEvent.Parameters.AddRange(newPs);
-                deadBodyEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(deadBodyEvent);
-            events.Add(Event.DeadBody, deadBodyEventFlag.id);
+            RegisterTemplateEvent(Event.DeadBody, "CommonFunc:DeadBody", TemplateEMEVD.CreateDeadBodyEvent);
 
             /* Create an event for making itemcontent assets placed on the map dissapear when the item is actually taken by the player */
-            Flag itemAssetWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:ItemAssetWithDisable");
-            EMEVD.Event itemAssetWithDisableEvent = new(itemAssetWithDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] itemAssetWithDisableEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"ChangeAssetEnableState({NextParameterName()}, 0);"
-            };
-
-            for (int i = 0; i < itemAssetWithDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(itemAssetWithDisableEventRaw[i], i);
-                itemAssetWithDisableEvent.Parameters.AddRange(newPs);
-                itemAssetWithDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(itemAssetWithDisableEvent);
-            events.Add(Event.ItemAssetWithDisable, itemAssetWithDisableEventFlag.id);
+            RegisterTemplateEvent(Event.ItemAssetWithDisable, "CommonFunc:ItemAssetWithDisable", TemplateEMEVD.CreateItemAssetWithDisableEvent);
 
             /* Same as above but also triggers a crime on the player when the item is taken */
-            Flag ownedItemAssetWithDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:OwnedItemAssetWithDisable");
-            EMEVD.Event ownedItemAssetWithDisableEvent = new(ownedItemAssetWithDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] ownedItemAssetWithDisableEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
-
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if item is already taken
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                              // hide asset
-                $"EndUnconditionally(EventEndType.End);",                                      // end event early to preven crime retriggering
-
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // wait till item picked up
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                               // hide asset
-                $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
-                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
-                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
-            };
-
-            for (int i = 0; i < ownedItemAssetWithDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(ownedItemAssetWithDisableEventRaw[i], i);
-                ownedItemAssetWithDisableEvent.Parameters.AddRange(newPs);
-                ownedItemAssetWithDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(ownedItemAssetWithDisableEvent);
-            events.Add(Event.OwnedItemAssetWithDisable, ownedItemAssetWithDisableEventFlag.id);
-
+            RegisterTemplateEvent(Event.OwnedItemAssetWithDisable, "CommonFunc:OwnedItemAssetWithDisable", TemplateEMEVD.CreateOwnedItemAssetWithDisableEvent);
 
             /* Create an event for making itemcontent assets placed on the map dissapear when the item is actually taken by the player */
-            Flag itemAssetEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:ItemAsset");
-            EMEVD.Event itemAssetEvent = new(itemAssetEventFlag.id);
-
-            pc = 0;
-
-            string[] itemAssetEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"ChangeAssetEnableState({NextParameterName()}, 0);"
-            };
-
-            for (int i = 0; i < itemAssetEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(itemAssetEventRaw[i], i);
-                itemAssetEvent.Parameters.AddRange(newPs);
-                itemAssetEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(itemAssetEvent);
-            events.Add(Event.ItemAsset, itemAssetEventFlag.id);
+            RegisterTemplateEvent(Event.ItemAsset, "CommonFunc:ItemAsset", TemplateEMEVD.CreateItemAssetEvent);
 
             /* Same as above but also triggers a crime on the player when the item is taken */
-            Flag ownedItemAssetEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:OwnedItemAsset");
-            EMEVD.Event ownedItemAssetEvent = new(ownedItemAssetEventFlag.id);
-
-            pc = 0;
-
-            string[] ownedItemAssetEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(2, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if item is already taken
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                              // hide asset
-                $"EndUnconditionally(EventEndType.End);",                                      // end event early to preven crime retriggering
-
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // wait till item picked up
-                $"ChangeAssetEnableState({NextParameterName()}, 0);",                               // hide asset
-                $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
-                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
-                $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
-            };
-
-            for (int i = 0; i < ownedItemAssetEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(ownedItemAssetEventRaw[i], i);
-                ownedItemAssetEvent.Parameters.AddRange(newPs);
-                ownedItemAssetEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(ownedItemAssetEvent);
-            events.Add(Event.OwnedItemAsset, ownedItemAssetEventFlag.id);
+            RegisterTemplateEvent(Event.OwnedItemAsset, "CommonFunc:OwnedItemAsset", TemplateEMEVD.CreateOwnedItemAssetEvent);
 
             /* Same as above but for containers instead of items */
-            Flag ownedContainerEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:OwnedContainer");
-            EMEVD.Event ownedContainerEvent = new(ownedContainerEventFlag.id);
-
-            pc = 0;
-
-            string[] ownedContainerEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",  // if continer is already looted 
-                $"EndUnconditionally(EventEndType.End);",                                      // end event early to prevent crime retriggering
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // wait till container is looted
-                $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
-                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
-            };
-
-            for (int i = 0; i < ownedContainerEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(ownedContainerEventRaw[i], i);
-                ownedContainerEvent.Parameters.AddRange(newPs);
-                ownedContainerEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(ownedContainerEvent);
-            events.Add(Event.OwnedContainer, ownedContainerEventFlag.id);
+            RegisterTemplateEvent(Event.OwnedContainer, "CommonFunc:OwnedContainer", TemplateEMEVD.CreateOwnedContainerEvent);
 
             /* Create an event for travel npc warps */
-            Flag travelWarpEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:TravelWarp");
-            EMEVD.Event travelWarpEvent = new(travelWarpEventFlag.id);
-
-            pc = 0;
-
-            string[] travelWarpEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"WarpPlayer({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, {NextParameterName()}, -1);"
-            };
-
-            for (int i = 0; i < travelWarpEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(travelWarpEventRaw[i], i);
-                travelWarpEvent.Parameters.AddRange(newPs);
-                travelWarpEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(travelWarpEvent);
-            events.Add(Event.TravelWarp, travelWarpEventFlag.id);
+            RegisterTemplateEvent(Event.TravelWarp, "CommonFunc:TravelWarp", TemplateEMEVD.CreateTravelWarpEvent);
 
             /* Create an event for removing an item from the player (you cant do this from ESD so a trigger event like this is fine */
-            Flag removeItemEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:RemoveItem");
-            EMEVD.Event removeItemEvent = new(removeItemEventFlag.id);
-
-            pc = 0;
-
-            string[] removeItemEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"RemoveItemFromPlayer({NextParameterName()}, {NextParameterName()}, {NextParameterName()});",
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",
-                $"EndUnconditionally(EventEndType.Restart);",    // restart so it's ready to go again if needed
-            };
-
-            for (int i = 0; i < removeItemEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(removeItemEventRaw[i], i);
-                removeItemEvent.Parameters.AddRange(newPs);
-                removeItemEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(removeItemEvent);
-            events.Add(Event.RemoveItem, removeItemEventFlag.id);
+            RegisterTemplateEvent(Event.RemoveItem, "CommonFunc:RemoveItem", TemplateEMEVD.CreateRemoveItemEvent);
 
             /* Create an event for handling a permanent speff on the player */
-            Flag permanentSpeffEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:PermanentSpeff");
-            EMEVD.Event permanentSpeffEvent = new(permanentSpeffEventFlag.id);
-
-            pc = 0;
-
-            string[] permanentSpeffEventRaw = new string[]
-            {
-                $"IfEventFlag(AND_01, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",    // if flag is true
-                $"IfCharacterHasSpEffect(AND_01, 10000, {NextParameterName()}, false, 0, 1);",        // and player does not have the speff
-                $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"SetSpEffect(10000, {NextParameterName()});",   // add speff to player
-                $"IfEventFlag(AND_01, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",    // if flag is false
-                $"IfCharacterHasSpEffect(AND_01, 10000, {NextParameterName()}, true, 0, 1);",        // and player does have the speff
-                $"IfConditionGroup(MAIN, PASS, AND_01);",
-                $"ClearSpEffect(10000, {NextParameterName()});",   // remove speff from player
-                $"EndUnconditionally(EventEndType.Restart);",    // restart so it's ready to go again if needed
-            };
-
-            for (int i = 0; i < permanentSpeffEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(permanentSpeffEventRaw[i], i);
-                permanentSpeffEvent.Parameters.AddRange(newPs);
-                permanentSpeffEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(permanentSpeffEvent);
-            events.Add(Event.PermanentSpeff, permanentSpeffEventFlag.id);
+            RegisterTemplateEvent(Event.PermanentSpeff, "CommonFunc:PermanentSpeff", TemplateEMEVD.CreatePermanentSpeffEvent);
 
             /* Create an event for handling startcombat and stopcombat calls */
-            Flag npcInfightEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcInfight");
-            EMEVD.Event npcInfightEvent = new(npcInfightEventFlag.id);
-
-            pc = 0;
-
-            string[] npcInfightEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"SetCharacterTeamType({NextParameterName()}, 29);",   // hostile flag on, hostile   >:(     // 29: TeamType.Indiscriminate
-                $"SetSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
-                $"IfEventFlag(MAIN, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",
-                $"SetCharacterTeamType({NextParameterName()}, 26);",  // hostile flag off, friendly :D       //  26: TeamType.FriendlyNPC
-                $"ClearSpEffect({NextParameterName()}, {(int)SpeffManager.Functional.VoidMurder});",
-                $"EndUnconditionally(EventEndType.Restart);",    // restart because it's possible for this to happen more than once
-            };
-
-            for (int i = 0; i < npcInfightEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(npcInfightEventRaw[i], i);
-                npcInfightEvent.Parameters.AddRange(newPs);
-                npcInfightEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(npcInfightEvent);
-            events.Add(Event.NpcInfight, npcInfightEventFlag.id);
+            RegisterTemplateEvent(Event.NpcInfight, "CommonFunc:NpcInfight", TemplateEMEVD.CreateNpcInfightEvent);
 
             /* Create an event for handling a permanent mod stat on an npcs */
-            Flag npcModStatEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:NpcInFight");
-            EMEVD.Event npcModStatEvent = new(npcModStatEventFlag.id);
-
-            pc = 0;
-
-            string[] npcModStatEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});", // if flag is on...
-                $"SetSpEffect({NextParameterName()}, {NextParameterName()});",                    // apply speff to npc
-                $"EndUnconditionally(EventEndType.End);",                                        // and that's all!
-            };
-
-            for (int i = 0; i < npcModStatEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(npcModStatEventRaw[i], i);
-                npcModStatEvent.Parameters.AddRange(newPs);
-                npcModStatEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(npcModStatEvent);
-            events.Add(Event.NpcModStat, npcModStatEventFlag.id);
+            RegisterTemplateEvent(Event.NpcModStat, "CommonFunc:NpcModStat", TemplateEMEVD.CreateNpcModStatEvent);
 
             /* Create an event for handling disable/enable of statics */
-            Flag staticDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:StaticDisable");
-            EMEVD.Event staticDisableEvent = new(staticDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] staticDisableEventRaw = new string[]
-            {
-                $"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {NextParameterName()});",   // if disable flag is on ...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                     // disable static
-            };
-
-            for (int i = 0; i < staticDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(staticDisableEventRaw[i], i);
-                staticDisableEvent.Parameters.AddRange(newPs);
-                staticDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(staticDisableEvent);
-            events.Add(Event.StaticDisable, staticDisableEventFlag.id);
+            RegisterTemplateEvent(Event.StaticDisable, "CommonFunc:StaticDisable", TemplateEMEVD.CreateStaticDisableEvent);
 
             /* Create an event for playing an SE. Used by ESD to trigger sound effects */
-            Flag playSEEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:PlaySE");
-            EMEVD.Event playSEEvent = new(playSEEventFlag.id);
-
-            pc = 0;
-
-            string[] playSEEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",      // if play sound flag is set
-                $"PlaySE({NextParameterName()}, {NextParameterName()}, {NextParameterName()});",      // play sound
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",          // turn flag back off
-                $"EndUnconditionally(EventEndType.Restart);"     // restart!
-            };
-
-            for (int i = 0; i < playSEEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(playSEEventRaw[i], i);
-                playSEEvent.Parameters.AddRange(newPs);
-                playSEEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(playSEEvent);
-            events.Add(Event.PlaySE, playSEEventFlag.id);
+            RegisterTemplateEvent(Event.PlaySE, "CommonFunc:PlaySE", TemplateEMEVD.CreatePlaySEEvent);
 
             /* Create an event for esd to trigger an object enable*/
-            Flag triggerEnableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:TriggerEnable");
-            EMEVD.Event triggerEnableEvent = new(triggerEnableEventFlag.id);
-
-            pc = 0;
-
-            string[] triggerEnableEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",        // blocking wait until flag set...
-                $"ChangeCharacterEnableState({NextParameterName()}, Enabled);",                        // enable object
-                $"ChangeAssetEnableState({NextParameterName()}, Enabled);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",         // turn flag back off
-                $"EndUnconditionally(EventEndType.Restart);"     // restart!
-            };
-
-            for (int i = 0; i < triggerEnableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(triggerEnableEventRaw[i], i);
-                triggerEnableEvent.Parameters.AddRange(newPs);
-                triggerEnableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(triggerEnableEvent);
-            events.Add(Event.TriggerEnable, triggerEnableEventFlag.id);
+            RegisterTemplateEvent(Event.TriggerEnable, "CommonFunc:TriggerEnable", TemplateEMEVD.CreateTriggerEnableEvent);
 
             /* Create an event for esd to trigger an object disable*/
-            Flag triggerDisableEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:TriggerDisable");
-            EMEVD.Event triggerDisableEvent = new(triggerDisableEventFlag.id);
-
-            pc = 0;
-
-            string[] triggerDisableEventRaw = new string[]
-            {
-                $"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {NextParameterName()});",        // blocking wait until flag set...
-                $"ChangeCharacterEnableState({NextParameterName()}, Disabled);",                        // disable object
-                $"ChangeAssetEnableState({NextParameterName()}, Disabled);",                           // @TODO: Fuck ass hack. please seperate functions for character/asset
-                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, OFF);",         // turn flag back off
-                $"EndUnconditionally(EventEndType.Restart);"     // restart!
-            };
-
-            for (int i = 0; i < triggerDisableEventRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(triggerDisableEventRaw[i], i);
-                triggerDisableEvent.Parameters.AddRange(newPs);
-                triggerDisableEvent.Instructions.Add(instr);
-            }
-
-            func.Events.Add(triggerDisableEvent);
-            events.Add(Event.TriggerDisable, triggerDisableEventFlag.id);
+            RegisterTemplateEvent(Event.TriggerDisable, "CommonFunc:TriggerDisable", TemplateEMEVD.CreateTriggerDisableEvent);
 
             /* Create event for emulating the GetSecondsPassed papyrus call */
-            Flag getSecondsPassedFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"CommonFunc:GetSecondsPassed");
-            EMEVD.Event getSecondsPassed = new(getSecondsPassedFlag.id);
-
-            pc = 0;
-
-            string[] getSecondsPassedRaw = new string[]
-            {
-                $"WaitFixedTimeSeconds(1);", // wait 1 second
-                $"EventValueOperation({NextParameterName()}, {NextParameterName()}, 1, 0, 1, 0);", // increment timer by 1
-                $"EndUnconditionally(EventEndType.Restart);"     // restart!
-            };
-
-            for (int i = 0; i < getSecondsPassedRaw.Length; i++)
-            {
-                (EMEVD.Instruction instr, List<EMEVD.Parameter> newPs) = AUTO.ParseAddArg(getSecondsPassedRaw[i], i);
-                getSecondsPassed.Parameters.AddRange(newPs);
-                getSecondsPassed.Instructions.Add(instr);
-            }
-
-            func.Events.Add(getSecondsPassed);
-            events.Add(Event.GetSecondsPassed, getSecondsPassedFlag.id);
+            RegisterTemplateEvent(Event.GetSecondsPassed, "CommonFunc:GetSecondsPassed", TemplateEMEVD.CreateGetSecondsPassedEvent);
         }
 
         /* Register a tutorial popup message with given text */
         /* Returns a flag that when set to true shows the message */
         /* Stores a mapping of texthashes to prevent duplicates. */
-        public Flag GetOrRegisterMessage(Paramanager paramanager, string title, string text)
+        public Script.Flag GetOrRegisterMessage(Paramanager paramanager, string title, string text)
         {
             int textHash = (title+text).GetHashCode();
             if (messages.ContainsKey(textHash)) { return messages[textHash]; }
 
-            Flag messageFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.Message, text);
+            Script.Flag messageFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Message, text);
             int param = paramanager.GenerateMessage(title, text);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
             messages.Add(textHash, messageFlag);
@@ -847,12 +200,12 @@ namespace JortPob
         /* Register a right side of the screen non pausing message with given text */
         /* Returns a flag that when set to true shows the notification */
         /* Stores a mapping of texthashes to prevent duplicates. */
-        public Flag GetOrRegisterNotification(Paramanager paramanager, string text)
+        public Script.Flag GetOrRegisterNotification(Paramanager paramanager, string text)
         {
             int textHash = text.GetHashCode();
             if (messages.ContainsKey(textHash)) { return messages[textHash]; }
 
-            Flag messageFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.Message, text);
+            Script.Flag messageFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Message, text);
             int param = paramanager.GenerateNotification(text);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
             messages.Add(textHash, messageFlag);
@@ -860,31 +213,31 @@ namespace JortPob
         }
 
         /* Create an event for travel npcs to warp the player to a specific location. Returns the flag that when set to ON will trigger this event */
-        public Flag GetOrRegisterTravelWarp(CharacterContent.Travel travel)
+        public Script.Flag GetOrRegisterTravelWarp(CharacterContent.Travel travel)
         {
             string flagName = $"{travel.name}:{(int)travel.position.X},{(int)travel.position.X}";
-            Flag warpToFlag = manager.GetFlag(Designation.TravelWarp, flagName);
+            Script.Flag warpToFlag = manager.GetFlag(Script.Flag.Designation.TravelWarp, flagName);
             if (warpToFlag != null) { return warpToFlag; }
 
-            warpToFlag = CreateFlag(Category.Temporary, Flag.Type.Bit, Designation.TravelWarp, flagName);
+            warpToFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.TravelWarp, flagName);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.TravelWarp]}, {warpToFlag.id}, {travel.map}, {travel.x}, {travel.y}, {travel.block}, {travel.entity});"));
             return warpToFlag;
         }
 
         /* Create an event for removing an item from the player */
-        public Flag GetOrRegisterRemoveItem(ItemManager.ItemInfo itemInfo, int quantity)
+        public Script.Flag GetOrRegisterRemoveItem(ItemManager.ItemInfo itemInfo, int quantity)
         {
             string flagName = $"{itemInfo.type}:{itemInfo.row}:{quantity}";
-            Flag removeItemFlag = manager.GetFlag(Designation.RemoveItem, flagName);
+            Script.Flag removeItemFlag = manager.GetFlag(Script.Flag.Designation.RemoveItem, flagName);
             if (removeItemFlag != null) { return removeItemFlag; }
 
-            removeItemFlag = CreateFlag(Category.Temporary, Flag.Type.Bit, Designation.RemoveItem, flagName);
+            removeItemFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.RemoveItem, flagName);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.RemoveItem]}, {removeItemFlag.id}, {(int)itemInfo.type}, {(int)itemInfo.row}, {quantity}, {removeItemFlag.id});"));
             return removeItemFlag;
         }
 
         /* Handler that maintains a permanent SPEFF on the player. Used for things that persist like Diseases or Abilities */
-        public Flag CreatePermanentSpeff(SpeffManager.SpeffSpell spell)
+        public Script.Flag CreatePermanentSpeff(SpeffManager.SpeffSpell spell)
         {
             Script.Flag speffFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.PermanentSpeff, spell.id);
             init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.PermanentSpeff]}, {speffFlag.id}, {spell.row}, {spell.row}, {speffFlag.id}, {spell.row}, {spell.row});"));
@@ -892,14 +245,14 @@ namespace JortPob
         }
 
         /* Return a Random papyrus call handler */
-        public Flag GetOrRegisterRandom(int max)
+        public Script.Flag GetOrRegisterRandom(int max)
         {
-            Script.Flag randomFlag = manager.GetFlag(Designation.Random, max.ToString());
+            Script.Flag randomFlag = manager.GetFlag(Script.Flag.Designation.Random, max.ToString());
             if (randomFlag != null) { return randomFlag; }
-            randomFlag = CreateFlag(Category.Temporary, Type.Short, Designation.Random, max.ToString());
+            randomFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.Random, max.ToString());
 
             EMEVD.Event randomEvent = new();
-            Flag randomEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"RandomHandlerEvent");
+            Script.Flag randomEventFlag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"RandomHandlerEvent");
             randomEvent.ID = randomEventFlag.id;
 
             List<int> randomValues = Enumerable.Range(0, max).ToList();
@@ -921,7 +274,7 @@ namespace JortPob
         public void CreateAlchemyHandler(List<ItemManager.ItemInfo> items)
         {
             EMEVD.Event alchemyEvent = new();
-            Flag alchemyEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"AlchemyHandlerEvent");
+            Script.Flag alchemyEventFlag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"AlchemyHandlerEvent");
             alchemyEvent.ID = alchemyEventFlag.id;
 
             alchemyEvent.Instructions.Add(AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, 60120, OFF);"));  // initialize as crafting disabled
@@ -945,15 +298,15 @@ namespace JortPob
         /* In order to simplify coding I'm making all months have 30 days */
         public void TimeHandler()
         {
-            Flag hour = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "GameHour");
-            Flag day = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Day");
-            Flag month = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Month");
-            Flag year = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "Year");
-            Flag daysPassedFlag = GetOrCreateFlag(Category.Saved, Type.Short, Designation.Global, "DaysPassed");
+            Script.Flag hour = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, "GameHour");
+            Script.Flag day = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, "Day");
+            Script.Flag month = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, "Month");
+            Script.Flag year = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, "Year");
+            Script.Flag daysPassedFlag = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Global, "DaysPassed");
 
             /* Hour handler */
             EMEVD.Event hourEvent = new();
-            Flag hourEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"TimeHourEvent");
+            Script.Flag hourEventFlag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"TimeHourEvent");
             hourEvent.ID = hourEventFlag.id;
 
             for (int i = 0; i < 24; i++)
@@ -972,7 +325,7 @@ namespace JortPob
 
             /* Day, month, year handler */
             EMEVD.Event dateEvent = new();
-            Flag dateEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"TimeDateEvent");
+            Script.Flag dateEventFlag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"TimeDateEvent");
             dateEvent.ID = dateEventFlag.id;
 
             dateEvent.Instructions.Add(AUTO.ParseAdd($"IfTimeOfDayInRange(MAIN, 12, 0, 0, 23, 59, 59);"));  // if we are in the latter half of a day
@@ -1012,10 +365,10 @@ namespace JortPob
         public void CreateWeatherTracker()
         {
             EMEVD.Event weatherEvent = new();
-            Flag weatherEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"WeatherTracker");
+            Script.Flag weatherEventFlag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, $"WeatherTracker");
             weatherEvent.ID = weatherEventFlag.id;
 
-            Flag weatherValue = CreateFlag(Category.Temporary, Flag.Type.Byte, Designation.CurrentWeather, "CurrentWeather");
+            Script.Flag weatherValue = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.CurrentWeather, "CurrentWeather");
 
             List<(WeatherEMEVD emevd, WeatherPapyrus papyrus)> weatherRemaps = [
                 (WeatherEMEVD.None, WeatherPapyrus.Clear),
@@ -1061,16 +414,16 @@ namespace JortPob
         }
 
 
-        public override Flag GetOrCreateFlag(Category category, Type type, Designation designation, Content content, uint value = 0, bool allowPhased = false)
+        public override Script.Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
-            Flag flag = manager.GetFlag(designation, content);
+            Script.Flag flag = manager.GetFlag(designation, content);
             if (flag != null) { return flag; }
             return CreateFlag(category, type, designation, content, value, allowPhased);
         }
 
-        public override Flag GetOrCreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        public override Script.Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0)
         {
-            Flag flag = manager.GetFlag(designation, name);
+            Script.Flag flag = manager.GetFlag(designation, name);
             if (flag != null) { return flag; }
             return CreateFlag(category, type, designation, name, value);
         }
@@ -1080,25 +433,25 @@ namespace JortPob
         {
             1030290000, 1031290000, 1032290000, 1033290000, 1034290000, 1035290000, 1036290000, 1037290000, 1038290000, 1039290000 // if we run out of flag space it will throw an exception. adding more is easy tho
         };
-        private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
+        private static readonly Dictionary<Script.Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
         {
-            { Flag.Category.Event, new uint[] { 1000, 3000, 6000 } },
-            { Flag.Category.Saved, new uint[] { 0, 4000, 7000, 8000, 9000 } },
-            { Flag.Category.Temporary, new uint[] { 2000, 5000 } }
+            { Script.Flag.Category.Event, new uint[] { 1000, 3000, 6000 } },
+            { Script.Flag.Category.Saved, new uint[] { 0, 4000, 7000, 8000, 9000 } },
+            { Script.Flag.Category.Temporary, new uint[] { 2000, 5000 } }
         };
 
-        public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
+        public override Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
             if (content is PhasedNpcContent) { throw new System.Exception("Cannot create flags for phased content in ScriptCommon!"); }
             return CreateFlag(category, type, designation, content.entity.ToString(), value);
         }
 
-        public override Flag CreateFlagLocal(Content content, string name, uint value = 0)
+        public override Script.Flag CreateFlagLocal(Content content, string name, uint value = 0)
         {
             throw new System.Exception("CreateFlagLocal cannot be called from ScriptCommon.cs! Please use Script.CreateFlagLocal()");
         }
 
-        public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        public override Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0)
         {
             /* Cap off a group of 1000 flags if it's near full. For example: This is to prevent us adding a multi bit flag like a byte when there is only 3 flags left */
             uint rawCount = flagUsedCounts[category];
@@ -1119,23 +472,23 @@ namespace JortPob
             // Check for a collision with a common event flag, if we find a collision we recursviely try making another flag
             if (ScriptManager.DO_NOT_USE_FLAGS.Contains(id))
             {
-                Lort.Log($" ## WARNING ## Flag collision with commonevent found: {id}", Lort.Type.Debug);
+                Lort.Log($" ## WARNING ## Script.Flag collision with commonevent found: {id}", Lort.Type.Debug);
                 return CreateFlag(category, type, designation, name, value);
             }
 
-            Flag flag = new(category, type, designation, name, id, value);
+            Script.Flag flag = new(category, type, designation, name, id, value);
             flags.Add(flag);
-            flagsByLookupKey.TryAdd(GetLookupKeyForFlag(flag), flag);
+            flagsByLookupKey.TryAdd(Script.GetLookupKeyForFlag(flag), flag);
             return flag;
         }
 
-        public Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
+        public Script.Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
         {
             return flagsByLookupKey.GetValueOrDefault(key);
         }
 
         /* Create a unique entity id, this is primarily used as an overflow for other msbs when they run out of room. */
-        public uint CreateEntity(EntityType type, string name)
+        public uint CreateEntity(Script.EntityType type, string name)
         {
             uint rawCount = entityUsedCounts[type]++;
             uint newid = COMMON_FLAG_BASES[(rawCount / 1000)] + ((uint)type) + rawCount;

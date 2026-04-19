@@ -1,5 +1,6 @@
 using Mutagen.Bethesda;
 using SoulsFormats;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -22,45 +23,60 @@ namespace JortPob.Common
 
         #region Paths
 
-        [Setting]
+        [Setting(IsRequired = true)]
         public static string MORROWIND_PATH { get; private set; }
-        [Setting]
+
+        [Setting(IsRequired = true)]
         public static string ELDEN_PATH { get; private set; }
+
         [Setting]
         public static string SKYRIM_PATH { get; private set; }
+
         [Setting]
         private static string SKYRIM_EDITION { get; set; }
+
         public static GameRelease SKYRIM_EDITION_ENUM
         {
             get
             {
                 switch (SKYRIM_EDITION)
                 {
-                    case "SE": return GameRelease.SkyrimSE;
-                    case "SEGOG": return GameRelease.SkyrimSEGog;
-                    case "VR": return GameRelease.SkyrimVR;
+                    case "SE": 
+                        return GameRelease.SkyrimSE;
+                    case "SEGOG": 
+                        return GameRelease.SkyrimSEGog;
+                    case "VR": 
+                        return GameRelease.SkyrimVR;
+                    case "LE":
                     default:
-                    case "LE": return GameRelease.SkyrimLE;
+                        return GameRelease.SkyrimLE;
                 }
             }
         }
-        [Setting]
+
+        [Setting(IsRequired = true)]
         public static string OUTPUT_PATH { get; private set; }
-        [Setting]
+
+        [Setting(IsRequired = true)]
         public static string WWISE_PATH { get; private set; }
+
+        // Not required if DEBUG_SKIP_CUTSCENES is true
         [Setting]
         public static string RAD_PATH { get; private set; }
+
         public static string CACHE_PATH => Path.Combine(OUTPUT_PATH, @"cache\");
-        [Setting("Morrowind.esm")]
+
+        [Setting(DefaultValue = new string[] { "Morrowind.esm" })]
         public static string[] LOAD_ORDER { get; private set; }
 
         #endregion
 
         #region Optimization
 
-        [Setting(16)] public static int THREAD_COUNT { get; private set; }
+        [Setting(DefaultValue = 16)]
+        public static int THREAD_COUNT { get; private set; }
 
-        [Setting(15000)]
+        [Setting(DefaultValue = 15000)]
         /// when running a subprocess this is the default timeout time in millis.
         public static int DEFAULT_PROCESS_TIMEOUT { get; private set; }
 
@@ -69,7 +85,7 @@ namespace JortPob.Common
         #region General
 
         /// When doing anything random we use this as our seed so results are consistent between builds
-        [Setting(42)]
+        [Setting(DefaultValue = 42)]
         public static int RANDOM_SEED { get; private set; }
 
         /// new global scale calculated from approx measurements of player height in both games
@@ -244,30 +260,31 @@ namespace JortPob.Common
         #region Dialog
 
         /// very ultra mega hyper slow, only for stress testing dialog
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool USE_SAM { get; private set; }
 
         /// generating voice synth is slightly inconsistent. it occasionally fails for no real reason.
-        [Setting(10)]
+        [Setting(DefaultValue = 10)]
         public static int SAM_MAX_RETRY { get; private set; }
 
         public static readonly string DEFAULT_DIALOG_WEM = Utility.ResourcePath(@"sound\page_turn.wem");
 
         /// character limit in a line of dialog. prevents subtitle cutting off
-        [Setting(160)]
+        [Setting(DefaultValue = 160)]
         public static int MAX_CHAR_PER_TALK { get; private set; }
 
-        [Setting(10)] public static int MAX_ESD_PER_VCBNK { get; private set; }
+        [Setting(DefaultValue = 10)]
+        public static int MAX_ESD_PER_VCBNK { get; private set; }
 
         #endregion
 
         #region Music
         /// dont want or dont have set false
-        [Setting(true)]
+        [Setting(DefaultValue = false)]
         public static bool INCLUDE_SKYRIM_MUSIC { get; private set; }
 
         /// dont want set false. you can have both and it will combine the OSTs from both games if desired
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool INCLUDE_MORROWIND_MUSIC { get; private set; }
         #endregion
 
@@ -275,57 +292,58 @@ namespace JortPob.Common
 
         /* when building for release everything in this group should be FALSE or NULL */
 
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         /// can make dialog unuseable
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
 
         /// skips navmeshes, will make enmey ai act really stupid
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_NAVMESH { get; private set; }
 
         /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS { get; private set; }
 
         /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_MENU_TEXTURES { get; private set; }
 
         /// skip generating cutscene binds and BK2 videos.
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_CUTSCENES { get; private set; }
 
         /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_DONT_WRITE_BLANK_MSBS { get; private set; }
 
         /// disables all doors that are NOT load doors
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool DEBUG_DISCARD_ANIMATED_DOORS { get; private set; }
 
-        [Setting(false)] public static bool DEBUG_SKIP_FMG_PARAM_SORTING { get; private set; }
+        [Setting(DefaultValue = false)] 
+        public static bool DEBUG_SKIP_FMG_PARAM_SORTING { get; private set; }
 
         /// skip building dialog AND scripts
-        [Setting(false)]
+        [Setting(DefaultValue = false)]
         public static bool DEBUG_SKIP_SCRIPTS { get; private set; }
 
         /// slow as shit, skipping this saves about a minute per build
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool DEBUG_SKIP_NICE_WATER_CIRCLIFICATION { get; private set; }
 
         /// big speedup on builds, allows multithreading of landscape processing, but makes terrain borders very ugly
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool DEBUG_SKIP_TERRAIN_BORDER_BLENDING { get; private set; }
 
         /// if true we use DFLT in place of KRAK to save time on compression. use KRAK in production!
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool DEBUG_USE_DFLT_COMPRESSION { get; private set; }
 
         /// if true we build hkx to binary instead of xml. binary is worse inengine but smithbox cant read xml so guuh
-        [Setting(true)]
+        [Setting(DefaultValue = true)]
         public static bool DEBUG_HKX_FORCE_BINARY { get; private set; }
 
         /// also set to null or remove from settings.json to build entire map. format x1, y1, x2, y2. smaller values first, 1 = 1 cell, use cell coordinates
@@ -339,11 +357,11 @@ namespace JortPob.Common
         /// lava area near Galom Daeus = new int[] {8, -2, 12, 2}
         /// lava and swamp areas combined = new int[] {-10, -10, 15, 5};
         /// half the map = new int[] {-10, -15, 20, 0};
-        [Setting(null)]
+        [Setting(DefaultValue = new int[] { })]
         public static int[] DEBUG_EXCLUSIVE_BUILD_BY_BOX { get; private set; }
 
         /// set to "null" or remove from settings.json to build entire map.
-        [Setting(null)]
+        [Setting(DefaultValue = new string[] { })]
         public static string[] DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME_MATCHES { get; private set; }
 
         public static bool DEBUG_EXCLUSIVE_INTERIOR_BUILD_NAME(string name)
