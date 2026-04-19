@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using HKLib.hk2018.hkcdStaticMeshTree;
 
 namespace JortPob
 {
@@ -118,6 +119,35 @@ namespace JortPob
         {
             bigs.Add(big);
             big.huge = this;
+        }
+        
+        public void AddMatchingTiles(IEnumerable<Tile> tilesToAdd)
+        {
+            foreach (var tile in FilterTilesToAdd(tilesToAdd, 4, 4))
+            {
+                tiles.Add(tile);
+                tile.huge = this;
+            }
+        }
+
+        public void AddMatchingTiles(IEnumerable<BigTile> tilesToAdd)
+        {
+            foreach (var tile in FilterTilesToAdd(tilesToAdd, 2, 2))
+            {
+                bigs.Add(tile);
+                tile.huge = this;
+            }
+        }
+
+        private IEnumerable<T> FilterTilesToAdd<T>(IEnumerable<T> tilesToAdd, int scaleFactor, int padding) where T: BaseTile
+        {
+            var x1 = coordinate.x * scaleFactor;
+            var y1 = coordinate.y * scaleFactor;
+            var x2 = x1 + padding;
+            var y2 = y1 + padding;
+
+            return tilesToAdd.Where(t =>
+                t.coordinate.x >= x1 && t.coordinate.x < x2 && t.coordinate.y >= y1 && t.coordinate.y < y2);
         }
 
         public void AddTile(Tile tile)

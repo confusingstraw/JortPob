@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Microsoft.Scripting.Utils;
 using static JortPob.InteriorGroup;
 
 namespace JortPob
@@ -14,9 +15,11 @@ namespace JortPob
     /* Takes the Morrowind ESM cell grid and re-subdivides it into the Elden Ring tile grid */
     public class Layout
     {
+        private static readonly int MapId = 60;
+
         private readonly List<HugeTile> huges = [];
         private readonly List<BigTile> bigs = [];
-        private readonly List<Tile> tiles = [];
+        private readonly List<Tile> tiles;
 
         private readonly List<InteriorGroup> interiors = [];
 
@@ -38,110 +41,44 @@ namespace JortPob
             string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
             string[][] msblist = msbdata.Split(";").Select(msb => msb.Split(",")).ToArray();
 
-            foreach (string[] split in msblist)
-            {
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
+            tiles = ProcessMsbList(msblist)
+                .Where(t => t.b == 0 && t.m == MapId)
+                .Select(t => new Tile(t.m, t.x, t.y, t.b))
+                .ToList();
 
-                if (m == 60 && b == 0)
-                {
-                    Tile tile = new Tile(m, x, y, b);
-                    tiles.Add(tile);
-                }
-            }
             Lort.TaskIterate(); // Progress bar update
-
+            
             /* Generate BigTiles... */
-            foreach (string[] split in msblist)
+            foreach (var (m, x, y, b) in ProcessMsbList(msblist))
             {
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                if (m == 60 && b == 1)
-                {
-                    BigTile big = new BigTile(m, x, y, b);
-
-                    foreach (Tile tile in tiles)
-                    {
-                        int x1 = x * 2;
-                        int y1 = y * 2;
-                        int x2 = x1 + 2;
-                        int y2 = y1 + 2;
-                        if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
-                        {
-                            big.AddTile(tile);
-                        }
-                    }
-
-                    bigs.Add(big);
-                }
+                if (m != MapId || b != 1) continue;
+                BigTile big = new(m, x, y, b);
+                big.AddMatchingTiles(tiles);
+                bigs.Add(big);
             }
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate HugeTiles... */
-            foreach (string[] split in msblist)
+            foreach (var (m, x, y, b) in ProcessMsbList(msblist))
             {
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                if (m == 60 && b == 2)
-                {
-                    HugeTile huge = new HugeTile(m, x, y, b);
-
-                    foreach (BigTile big in bigs)
-                    {
-                        int x1 = x * 2;
-                        int y1 = y * 2;
-                        int x2 = x1 + 2;
-                        int y2 = y1 + 2;
-                        if (big.coordinate.x >= x1 && big.coordinate.x < x2 && big.coordinate.y >= y1 && big.coordinate.y < y2)
-                        {
-                            huge.AddBig(big);
-                        }
-                    }
-
-                    foreach (Tile tile in tiles)
-                    {
-                        int x1 = x * 4;
-                        int y1 = y * 4;
-                        int x2 = x1 + 4;
-                        int y2 = y1 + 4;
-                        if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
-                        {
-                            huge.AddTile(tile);
-                        }
-                    }
-
-                    huges.Add(huge);
-                }
+                if (m != MapId || b != 2) continue;
+                HugeTile huge = new(m, x, y, b);
+                huge.AddMatchingTiles(bigs);
+                huge.AddMatchingTiles(tiles);
+                huges.Add(huge);
             }
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate Interior Groups */
-            foreach (string[] split in msblist)
-            {
-                int m = int.Parse(split[0]);
-                int a = int.Parse(split[1]);
-                int u = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                int[] validMaps = new int[]
-                {
-                    12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43
-                };
-
-                if (validMaps.Contains(m) && u == 0 && b == 0)
-                {
-                    InteriorGroup group = new InteriorGroup(m, a, u, b);
-                    interiors.Add(group);
-                }
-            }
+            HashSet<int> validMaps =
+                [12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43];
+            interiors = ProcessMsbList(msblist)
+                .Where(t => t is { y: 0, b: 0 } && validMaps.Contains(t.m))
+                .Select(t => {
+                    var (m, a, u, b) = t;
+                    return new InteriorGroup(m, a, u, b);
+                })
+                .ToList();
             Lort.TaskIterate(); // Progress bar update
 
             /* Part 1 of papyrus pre-process */
@@ -1308,6 +1245,18 @@ namespace JortPob
                 if (Vector3.Distance(content.relative, p.position) <= radius * Const.GLOBAL_SCALE) { result.Add(p); }
             }
             return result;
+        }
+
+        private static IEnumerable<(int m, int x, int y, int b)> ProcessMsbList(string[][] msblist)
+        {
+            foreach (var split in msblist)
+            {
+                var m = int.Parse(split[0]);
+                var x = int.Parse(split[1]);
+                var y = int.Parse(split[2]);
+                var b = int.Parse(split[3]);
+                yield return (m, x, y, b);
+            }
         }
 
         public class MapPoint

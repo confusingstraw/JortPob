@@ -1,5 +1,4 @@
 ﻿using JortPob.Common;
-using SoulsFormats.Formats.Morpheme.MorphemeBundle;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
@@ -82,11 +81,22 @@ namespace JortPob
             }
             return null;
         }
-
-        public void AddTile(Tile tile)
+        
+        public void AddMatchingTiles(IEnumerable<Tile> tilesToAdd)
         {
-            tiles.Add(tile);
-            tile.big = this;
+            var x1 = coordinate.x * 2;
+            var y1 = coordinate.y * 2;
+            var x2 = x1 + 2;
+            var y2 = y1 + 2;
+
+            foreach (var tile in tilesToAdd)
+            {
+                if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
+                {
+                    tiles.Add(tile);
+                    tile.big = this;
+                }
+            }
         }
     }
 }
