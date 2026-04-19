@@ -73,27 +73,11 @@ namespace JortPob
             RegisterAllTemplateScripts();
         }
 
-        private struct ParamNameGen
-        {
-            private int pc = 0;
-
-            public ParamNameGen()
-            {
-            }
-
-            public string GetNextParamName()
-            {
-                return $"X{pc++ * 4}_4";
-            }
-
-            public static implicit operator Func<string>(ParamNameGen gen) => gen.GetNextParamName;
-        }
-
         private void RegisterTemplateEvent(Event eventId, string name, Func<Script.Flag, SoulsIds.Events, Func<string>, EMEVD.Event> createEventFunc)
         {
-            var paramNameGen = new ParamNameGen();
+            var pc = 0;
             var flag = CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, name);
-            var @event = createEventFunc(flag, AUTO, paramNameGen);
+            var @event = createEventFunc(flag, AUTO, () => $"X{pc++ * 4}_4");
             func.Events.Add(@event);
             events.Add(eventId, flag.id);
         }
