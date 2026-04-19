@@ -1016,7 +1016,7 @@ namespace JortPob
             }
 
             // merge similar
-            List<string> pointNames = new();
+            HashSet<string> pointNames = new();
             List<MapPoint> importants = new();
             foreach(var kvp in mapPoints)
             {
@@ -1031,7 +1031,7 @@ namespace JortPob
                     center += pos;
                 }
 
-                center = center * (1f / kvp.Value.Count());
+                center *= (1f / kvp.Value.Count());
 
                 MapPoint.Icon icon = Override.GetMapIcon(name);
                 if (icon == MapPoint.Icon.None) { continue; }  // skip these
@@ -1041,23 +1041,6 @@ namespace JortPob
                 tile.AddMapPoint(mapPoint);
                 importants.Add(mapPoint);
                 pointNames.Add(name.ToLower().Trim());
-            }
-
-            // Search for interior doors to add markers for
-            bool IsInsideImportant(Vector3 position)  // checks if a position is inside of one of the important map points we created above. returns true if it is
-            {
-                foreach(MapPoint important in importants)
-                {
-                    if (Vector3.Distance(position, important.position) <= important.radius) { return true; }
-                }
-                return false;
-            }
-
-            bool AlreadyExists(string name)  // see if map point has already been made. some areas have multiple entrances or exits
-            {
-                if(pointNames.Contains(name.ToLower().Trim())) { return true; }
-                pointNames.Add(name.ToLower().Trim());
-                return false;
             }
 
             foreach(Tile tile in tiles)
@@ -1071,8 +1054,14 @@ namespace JortPob
                         MapPoint.Icon icon = Override.GetMapIcon(name);
 
                         if (icon == MapPoint.Icon.None) { continue; }  // skip these
-                        if (IsInsideImportant(door.position)) { continue; } // skip these too!
-                        if (AlreadyExists(name)) { continue; }    // skip this one as well!
+
+                        // checks if a position is inside of one of the important map points we created above. skip these too!
+                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
+
+                        // see if map point has already been made. some areas have multiple entrances or exits
+                        var lowerName = name.ToLower().Trim();
+                        if(pointNames.Contains(lowerName)) { continue; }
+                        pointNames.Add(lowerName);
 
                         const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
                         Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
