@@ -34,11 +34,10 @@ namespace JortPob
 
             /* Generate tiles based off base game msb info... */
             string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
-            string[] msblist = msbdata.Split(";");
+            string[][] msblist = msbdata.Split(";").Select(msb => msb.Split(",")).ToArray();
 
-            foreach (string msb in msblist)
+            foreach (string[] split in msblist)
             {
-                string[] split = msb.Split(",");
                 int m = int.Parse(split[0]);
                 int x = int.Parse(split[1]);
                 int y = int.Parse(split[2]);
@@ -54,9 +53,8 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate BigTiles... */
-            foreach (string msb in msblist)
+            foreach (string[] split in msblist)
             {
-                string[] split = msb.Split(",");
                 int m = int.Parse(split[0]);
                 int x = int.Parse(split[1]);
                 int y = int.Parse(split[2]);
@@ -85,9 +83,8 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate HugeTiles... */
-            foreach (string msb in msblist)
+            foreach (string[] split in msblist)
             {
-                string[] split = msb.Split(",");
                 int m = int.Parse(split[0]);
                 int x = int.Parse(split[1]);
                 int y = int.Parse(split[2]);
@@ -128,9 +125,8 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate Interior Groups */
-            foreach (string msb in msblist)
+            foreach (string[] split in msblist)
             {
-                string[] split = msb.Split(",");
                 int m = int.Parse(split[0]);
                 int a = int.Parse(split[1]);
                 int u = int.Parse(split[2]);
