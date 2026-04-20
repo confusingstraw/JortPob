@@ -3,7 +3,7 @@ using SoulsFormats;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using static JortPob.Script.Flag;
+using static JortPob.Scripts.Script.Flag;
 
 /* Individual script for an msb. */
 /* managed by ScriptManager 
@@ -11,9 +11,9 @@ using static JortPob.Script.Flag;
 
 /* Using this research as a base for conventions here https://docs.google.com/spreadsheets/d/17sE1a1h87BhpiUwKUyJ9ZjKTeehXA4OuLwmQvTfwo_M/edit?gid=1770617590#gid=1770617590 */
 
-namespace JortPob
+namespace JortPob.Scripts
 {
-    using ScriptFlagLookupKey = (Script.Flag.Designation, string);
+    using ScriptFlagLookupKey = (Designation, string);
 
     public class Script : BaseScript
     {
@@ -26,7 +26,7 @@ namespace JortPob
             Enemy = 0, Asset = 1000, Region = 2000, Event = 3000, Collision = 4000, Group = 5000
         }
 
-        private Dictionary<Flag.Category, uint> flagUsedCounts;
+        private Dictionary<Category, uint> flagUsedCounts;
         private Dictionary<EntityType, uint> entityUsedCounts;
 
         public Script(ScriptManager manager, int map, int x, int y, int block) : base(manager)
@@ -38,9 +38,9 @@ namespace JortPob
 
             flagUsedCounts = new()
             {
-                { Flag.Category.Event, 0 },
-                { Flag.Category.Saved, 0 },
-                { Flag.Category.Temporary, 0 }
+                { Category.Event, 0 },
+                { Category.Saved, 0 },
+                { Category.Temporary, 0 }
             };
 
             entityUsedCounts = new()
@@ -80,7 +80,7 @@ namespace JortPob
             uint respawnEntity = bedEntity + 30;
             bedCount++;
 
-            Flag bedFlag = CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.RegisterBed, bedEntity.ToString());
+            Flag bedFlag = CreateFlag(Category.Saved, Type.Bit, Designation.RegisterBed, bedEntity.ToString());
             init.Instructions.Add(AUTO.ParseAdd($"RegisterBonfire({bedFlag.id}, {bedEntity}, 0, 0, 0, 5);"));
             return (bedEntity, respawnEntity);
         }
@@ -97,7 +97,7 @@ namespace JortPob
             if(item.ownerNpc != null) { owner = GetAreaNpcById(item.ownerNpc); }
             else { owner = null; }
 
-            Script.Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, item);
+            Flag disableFlag = manager.GetFlag(Designation.Disabled, item);
 
             // Unowned item free for the taking
             if (owner == null)
@@ -190,7 +190,7 @@ namespace JortPob
             /* If not create one and return */
             if (playFlag == null)
             {
-                playFlag = CreateFlag(Category.Saved, Flag.Type.Bit, Designation.PlaySE, playId);
+                playFlag = CreateFlag(Category.Saved, Type.Bit, Designation.PlaySE, playId);
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.PlaySE]}, {playFlag.id}, {entity}, 5, {seId}, {playFlag.id});"));  // 5 is SFX type
             }
             return playFlag;
@@ -203,12 +203,12 @@ namespace JortPob
         {
             foreach(CharacterContent npc in npcs)
             {
-                Flag eventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"{npc.entity}->CrimeEvent");
+                Flag eventFlag = CreateFlag(Category.Event, Type.Bit, Designation.Event, $"{npc.entity}->CrimeEvent");
                 EMEVD.Event crimeEvent = new EMEVD.Event();
                 crimeEvent.ID = eventFlag.id;
                 // If the player commits a crime agains this npc, their crime flag flips, we then go hostile
-                Flag hvar = manager.GetFlag(Flag.Designation.Hostile, npc);
-                Flag cvar = manager.GetFlag(Flag.Designation.CrimeEvent, npc);
+                Flag hvar = manager.GetFlag(Designation.Hostile, npc);
+                Flag cvar = manager.GetFlag(Designation.CrimeEvent, npc);
                 crimeEvent.Instructions.Add(AUTO.ParseAdd($"IfEventFlag(MAIN, ON, TargetEventFlagType.EventFlag, {cvar.id});"));  // if crime flag on
                 crimeEvent.Instructions.Add(AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {hvar.id}, ON);"));       // go hostile
 
@@ -221,7 +221,7 @@ namespace JortPob
                         if (other.alarm < 50) { continue; } // no nearby crime aggro if low alarm
                         if (System.Numerics.Vector3.Distance(npc.position, other.position) > 10) { continue; } // no nearby crime aggro if far away
                     }
-                    Flag otherhvar = manager.GetFlag(Flag.Designation.Hostile, other);
+                    Flag otherhvar = manager.GetFlag(Designation.Hostile, other);
                     crimeEvent.Instructions.Add(AUTO.ParseAdd($"SetEventFlag(TargetEventFlagType.EventFlag, {otherhvar.id}, ON);"));       // go hostile as well
                 }
 
@@ -241,7 +241,7 @@ namespace JortPob
         public void GenerateThieveryEvent()
         {
             EMEVD.Event thieveryEvent = new();
-            Flag thieveryEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"ThieveryEvent::{map:D2}_{x:D2}_{y:D2}_{block:D2}");
+            Flag thieveryEventFlag = CreateFlag(Category.Event, Type.Bit, Designation.Event, $"ThieveryEvent::{map:D2}_{x:D2}_{y:D2}_{block:D2}");
             thieveryEvent.ID = thieveryEventFlag.id;
 
             Flag playerIsSneakingFlag = manager.GetFlag(Designation.PlayerIsSneaking, "PlayerIsSneaking");
@@ -272,14 +272,14 @@ namespace JortPob
         }
 
         /* Create an EMEVD flag for this MSB */
-        private static readonly Dictionary<Flag.Category, uint[]> FLAG_TYPE_OFFSETS = new()
+        private static readonly Dictionary<Category, uint[]> FLAG_TYPE_OFFSETS = new()
         {
-            { Flag.Category.Event, new uint[] { 1000, 3000, 6000 } },
-            { Flag.Category.Saved, new uint[] { 0, 4000, 7000, 8000, 9000 } },
-            { Flag.Category.Temporary, new uint[] { 2000, 5000 } }
+            { Category.Event, new uint[] { 1000, 3000, 6000 } },
+            { Category.Saved, new uint[] { 0, 4000, 7000, 8000, 9000 } },
+            { Category.Temporary, new uint[] { 2000, 5000 } }
         };
 
-        public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
+        public override Flag CreateFlag(Category category, Type type, Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
             if(content is PhasedNpcContent && !allowPhased) { throw new System.Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
             else if(content is PhasedNpcContent) { return CreateFlag(category, type, designation, manager.routing[(PhasedNpcContent)content], value); }
@@ -296,7 +296,7 @@ namespace JortPob
             return CreateFlag(Category.Saved, Type.Short, Designation.Local, $"{content.entity.ToString()}.{name}", value);
         }
 
-        public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        public override Flag CreateFlag(Category category, Type type, Designation designation, string name, uint value = 0)
         {
             uint rawCount = flagUsedCounts[category];
             uint perThou = rawCount / 1000;
@@ -306,7 +306,7 @@ namespace JortPob
             else { mapOffset = uint.Parse($"{map:D2}{x:D2}0000"); }
 
             uint id = mapOffset + FLAG_TYPE_OFFSETS[category][perThou] + mod;  // if we run out of flags this will throw an out of bounds exception. that situation would be bad but should't happen.
-            flagUsedCounts[category] += ((uint)type);
+            flagUsedCounts[category] += (uint)type;
 
             // Check for a collision with a common event flag, if we find a collision we recursviely try making another flag
             if (ScriptManager.DO_NOT_USE_FLAGS.Contains(id))
@@ -328,7 +328,7 @@ namespace JortPob
             return CreateFlag(category, type, designation, content, value, allowPhased);
         }
 
-        public override Flag GetOrCreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
+        public override Flag GetOrCreateFlag(Category category, Type type, Designation designation, string name, uint value = 0)
         {
             Flag flag = manager.GetFlag(designation, name);
             if (flag != null) { return flag; }
@@ -354,7 +354,7 @@ namespace JortPob
 
             uint newid;
             if (rawCount >= 950) { newid = manager.common.CreateEntity(type, name); }
-            else { newid = mapOffset + ((uint)type) + rawCount; }
+            else { newid = mapOffset + (uint)type + rawCount; }
 
             entityIdMapping.Add(newid, name);
 
@@ -377,7 +377,7 @@ namespace JortPob
             return FormatFlagLookupKey(flag.designation, flag.name.ToLower());
         }
 
-        public static ScriptFlagLookupKey FormatFlagLookupKey(Flag.Designation designation, string name)
+        public static ScriptFlagLookupKey FormatFlagLookupKey(Designation designation, string name)
         {
             return (designation, name.ToLower());
         }

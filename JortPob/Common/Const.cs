@@ -284,7 +284,7 @@ namespace JortPob.Common
 
         #region Music
         /// dont want or dont have set false
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool INCLUDE_SKYRIM_MUSIC { get; private set; }
 
         /// dont want set false. you can have both and it will combine the OSTs from both games if desired
@@ -296,42 +296,45 @@ namespace JortPob.Common
 
         /* when building for release everything in this group should be FALSE or NULL */
 
-        [Setting(DefaultValue = false)]
+        [Setting]
+        public static bool DEBUG_REUSE_FILES { get; private set; }
+
+        [Setting]
         public static bool DEBUG_SKIP_CUSTOM_MAP { get; private set; }
 
         /// can make dialog unuseable
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_SOUND { get; private set; }
 
         /// skips navmeshes, will make enmey ai act really stupid
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_NAVMESH { get; private set; }
 
         /// if true we only generate items that referenced in script files directly, or have overrides. minor speedup
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_NON_ESSENTIAL_ITEMS { get; private set; }
 
         /// skip generating icons and previews for items. All icons will show default fallback icon (saves 1~ minute on builds)
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_MENU_TEXTURES { get; private set; }
 
         /// skip generating cutscene binds and BK2 videos.
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_CUTSCENES { get; private set; }
 
         /// if true we don't overwrite base game overworld tiles with blanks. probably no reason to set this to true but it's here
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_DONT_WRITE_BLANK_MSBS { get; private set; }
 
         /// disables all doors that are NOT load doors
         [Setting(DefaultValue = true)]
         public static bool DEBUG_DISCARD_ANIMATED_DOORS { get; private set; }
 
-        [Setting(DefaultValue = false)] 
+        [Setting] 
         public static bool DEBUG_SKIP_FMG_PARAM_SORTING { get; private set; }
 
         /// skip building dialog AND scripts
-        [Setting(DefaultValue = false)]
+        [Setting]
         public static bool DEBUG_SKIP_SCRIPTS { get; private set; }
 
         /// slow as shit, skipping this saves about a minute per build

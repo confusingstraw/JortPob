@@ -65,9 +65,14 @@ namespace JortPob.Common
                     }
                     else
                     {
+                        // If the attribute value is default(object) (i.e. null) then check if the type of the prop is a value type (bool, int, etc.) and do default(type) instead
+                        // which is the proper way to get false, 0, etc. instead of null. Otherwise fall back to null for non-value types or the original default value set.
+                        object defaultValue = attribute.DefaultValue == default ? 
+                            prop.PropertyType.IsValueType ? Activator.CreateInstance(prop.PropertyType) : null
+                            : attribute.DefaultValue;
                         // It's optional and missing. Convert the C# default value into a JSON Node.
                         // This allows it to pass through our custom converters (like Vector3) seamlessly.
-                        node = JsonSerializer.SerializeToNode(attribute.DefaultValue, _options);
+                        node = JsonSerializer.SerializeToNode(defaultValue, _options);
                     }
                 }
 

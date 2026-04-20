@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using JortPob.Worker;
 using PortJob;
 using SoulsFormats;
@@ -7,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using static JortPob.Script;
+using static JortPob.Scripts.Script;
 
 namespace JortPob
 {

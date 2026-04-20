@@ -2,11 +2,10 @@
 using SoulsFormats;
 using System.Collections.Generic;
 using System.IO;
-using JortPob.Scripts;
 using System;
 using System.Linq;
 
-namespace JortPob
+namespace JortPob.Scripts
 {
     using ScriptFlagLookupKey = (Script.Flag.Designation, string); 
 
@@ -47,7 +46,7 @@ namespace JortPob
             // Create a fresh common_func.emevd
             func = new EMEVD();
             func.Compression = Compression.KRAK();
-            func.Format = SoulsFormats.EMEVD.Game.Sekiro;
+            func.Format = EMEVD.Game.Sekiro;
 
             // Add preconstructor with a few specific calls from the base game common
             EMEVD.Event precon = new(50);
@@ -180,7 +179,7 @@ namespace JortPob
 
             Script.Flag messageFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Message, text);
             int param = paramanager.GenerateMessage(title, text);
-            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
             messages.Add(textHash, messageFlag);
             return messageFlag;
         }
@@ -195,7 +194,7 @@ namespace JortPob
 
             Script.Flag messageFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Message, text);
             int param = paramanager.GenerateNotification(text);
-            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.Message]}, {messageFlag.id}, {param}, {messageFlag.id});"));
             messages.Add(textHash, messageFlag);
             return messageFlag;
         }
@@ -208,7 +207,7 @@ namespace JortPob
             if (warpToFlag != null) { return warpToFlag; }
 
             warpToFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.TravelWarp, flagName);
-            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.TravelWarp]}, {warpToFlag.id}, {travel.map}, {travel.x}, {travel.y}, {travel.block}, {travel.entity});"));
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.TravelWarp]}, {warpToFlag.id}, {travel.map}, {travel.x}, {travel.y}, {travel.block}, {travel.entity});"));
             return warpToFlag;
         }
 
@@ -220,7 +219,7 @@ namespace JortPob
             if (removeItemFlag != null) { return removeItemFlag; }
 
             removeItemFlag = CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.RemoveItem, flagName);
-            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.RemoveItem]}, {removeItemFlag.id}, {(int)itemInfo.type}, {(int)itemInfo.row}, {quantity}, {removeItemFlag.id});"));
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.RemoveItem]}, {removeItemFlag.id}, {(int)itemInfo.type}, {itemInfo.row}, {quantity}, {removeItemFlag.id});"));
             return removeItemFlag;
         }
 
@@ -228,7 +227,7 @@ namespace JortPob
         public Script.Flag CreatePermanentSpeff(SpeffManager.SpeffSpell spell)
         {
             Script.Flag speffFlag = CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.PermanentSpeff, spell.id);
-            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[ScriptCommon.Event.PermanentSpeff]}, {speffFlag.id}, {spell.row}, {spell.row}, {speffFlag.id}, {spell.row}, {spell.row});"));
+            init.Instructions.Insert(0, AUTO.ParseAdd($"InitializeCommonEvent(0, {events[Event.PermanentSpeff]}, {speffFlag.id}, {spell.row}, {spell.row}, {speffFlag.id}, {spell.row}, {spell.row});"));
             return speffFlag;
         }
 
@@ -430,7 +429,7 @@ namespace JortPob
 
         public override Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
-            if (content is PhasedNpcContent && !allowPhased) { throw new System.Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
+            if (content is PhasedNpcContent && !allowPhased) { throw new Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
             else if (content is PhasedNpcContent) { return CreateFlag(category, type, designation, manager.routing[(PhasedNpcContent)content], value); }
             return CreateFlag(category, type, designation, content.entity.ToString(), value);
         }
@@ -449,19 +448,19 @@ namespace JortPob
         {
             /* Cap off a group of 1000 flags if it's near full. For example: This is to prevent us adding a multi bit flag like a byte when there is only 3 flags left */
             uint rawCount = flagUsedCounts[category];
-            if ((rawCount % 1000) + ((uint)type) >= 1000)
+            if (rawCount % 1000 + (uint)type >= 1000)
             {
-                flagUsedCounts[category] += 1000 - (rawCount % 1000);
+                flagUsedCounts[category] += 1000 - rawCount % 1000;
                 rawCount = flagUsedCounts[category];
             }
 
             /* Calculate next flag */
-            uint perThou = (rawCount / 1000) % (uint)(FLAG_TYPE_OFFSETS[category].Length);
-            uint perMsb = (rawCount / 1000) / (uint)(FLAG_TYPE_OFFSETS[category].Length);
+            uint perThou = rawCount / 1000 % (uint)FLAG_TYPE_OFFSETS[category].Length;
+            uint perMsb = rawCount / 1000 / (uint)FLAG_TYPE_OFFSETS[category].Length;
             uint mod = rawCount % 1000;
             uint mapOffset = COMMON_FLAG_BASES[perMsb];
             uint id = mapOffset + FLAG_TYPE_OFFSETS[category][perThou] + mod;
-            flagUsedCounts[category] += ((uint)type);
+            flagUsedCounts[category] += (uint)type;
 
             // Check for a collision with a common event flag, if we find a collision we recursviely try making another flag
             if (ScriptManager.DO_NOT_USE_FLAGS.Contains(id))
@@ -480,7 +479,7 @@ namespace JortPob
         public override uint CreateEntity(Script.EntityType type, string name)
         {
             uint rawCount = entityUsedCounts[type]++;
-            uint newid = COMMON_FLAG_BASES[(rawCount / 1000)] + ((uint)type) + rawCount;
+            uint newid = COMMON_FLAG_BASES[rawCount / 1000] + (uint)type + rawCount;
 
             return newid;
         }
@@ -498,10 +497,10 @@ namespace JortPob
         }
 
         /* Abstracts scripts that ScriptCommon does not support */
-        public override (uint bed, uint respawn) RegisterBed() { throw new System.NotImplementedException(); }
-        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door) { throw new System.NotImplementedException(); }
-        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.NotImplementedException(); }
-        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.NotImplementedException(); }
-        public override Script.Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.NotImplementedException(); }
+        public override (uint bed, uint respawn) RegisterBed() { throw new NotImplementedException(); }
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door) { throw new NotImplementedException(); }
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new NotImplementedException(); }
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new NotImplementedException(); }
+        public override Script.Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new NotImplementedException(); }
     }
 }

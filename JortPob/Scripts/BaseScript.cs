@@ -4,10 +4,10 @@ using SoulsIds;
 using System;
 using System.Collections.Generic;
 
-namespace JortPob
+namespace JortPob.Scripts
 {
-    using static JortPob.Script;
-    using static JortPob.Script.Flag;
+    using static JortPob.Scripts.Script;
+    using static JortPob.Scripts.Script.Flag;
     using ScriptFlagLookupKey = (Script.Flag.Designation, string);
 
     public abstract class BaseScript
@@ -19,14 +19,14 @@ namespace JortPob
         public readonly EMEVD emevd;
         public readonly EMEVD.Event init;
 
-        public readonly List<Script.Flag> flags;
+        public readonly List<Flag> flags;
 
         /**
         * This is just used to speed up searches for flags. It is a 1:1 mapping, so duplicate designated/named
         * flags will result in us just using the first one. This is okay (for now), because that is the same logic
         * that GetFlag already uses elsewhere.
         */
-        public readonly Dictionary<ScriptFlagLookupKey, Script.Flag> flagsByLookupKey;
+        public readonly Dictionary<ScriptFlagLookupKey, Flag> flagsByLookupKey;
 
         public readonly List<CharacterContent> npcs; // list of npcs that are registered in this areascript, used to do some script generation
         public readonly Dictionary<uint, string> entityIdMapping; // used for debuggin, just records a string (usually a record id) as a description for created entity ids
@@ -38,7 +38,7 @@ namespace JortPob
 
             emevd = new EMEVD();
             emevd.Compression = Compression.KRAK();
-            emevd.Format = SoulsFormats.EMEVD.Game.Sekiro;
+            emevd.Format = EMEVD.Game.Sekiro;
             LinkFiles(emevd, FilesToLink()); // Linked file offsets are stored as bytes of a UTF16 string pointing to other EMEVD scripts which we want to share events with
 
             init = new EMEVD.Event(0);
@@ -77,19 +77,19 @@ namespace JortPob
 
         public abstract string[] FilesToLink();
 
-        public Script.Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
+        public Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
         {
             return flagsByLookupKey.GetValueOrDefault(key);
         }
 
         public void RegisterNpcHostility(CharacterContent npc)
         {
-            GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Nibble, Flag.Designation.FriendHitCounter, npc); // setup friendly hit counter
-            Flag hostileFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc, npc.IsHostile() ? 1u : 0u);
-            Flag crimeFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeEvent, npc);
-            Flag hostileQuipFlag = GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.HostileQuip, npc);
-            Flag hasBeenAttackedFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.HasBeenAttacked, npc);
-            Flag helloFlag = GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Hello, npc);
+            GetOrCreateFlag(Category.Temporary, Type.Nibble, Designation.FriendHitCounter, npc); // setup friendly hit counter
+            Flag hostileFlag = GetOrCreateFlag(Category.Saved, Type.Bit, Designation.Hostile, npc, npc.IsHostile() ? 1u : 0u);
+            Flag crimeFlag = GetOrCreateFlag(Category.Saved, Type.Bit, Designation.CrimeEvent, npc);
+            Flag hostileQuipFlag = GetOrCreateFlag(Category.Temporary, Type.Bit, Designation.HostileQuip, npc);
+            Flag hasBeenAttackedFlag = GetOrCreateFlag(Category.Saved, Type.Bit, Designation.HasBeenAttacked, npc);
+            Flag helloFlag = GetOrCreateFlag(Category.Temporary, Type.Bit, Designation.Hello, npc);
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {npc.entity}, {hostileFlag.id}, {npc.entity}, {npc.entity});"));
             npcs.Add(npc);
         }
@@ -102,8 +102,8 @@ namespace JortPob
 
         public void RegisterCharacter(Paramanager paramanager, CharacterContent npc, Flag count)
         {
-            Flag deadFlag = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc);
-            Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, npc);
+            Flag deadFlag = GetOrCreateFlag(Category.Saved, Type.Bit, Designation.Dead, npc);
+            Flag disableFlag = manager.GetFlag(Designation.Disabled, npc);
 
             if (IsInterior())
             {
@@ -191,8 +191,8 @@ namespace JortPob
 
         public void RegisterHaltEvent(CharacterContent npc)
         {
-            Flag deadFlag = manager.GetFlag(Script.Flag.Designation.Dead, npc);
-            Flag hostileFlag = manager.GetFlag(Script.Flag.Designation.Hostile, npc);
+            Flag deadFlag = manager.GetFlag(Designation.Dead, npc);
+            Flag hostileFlag = manager.GetFlag(Designation.Hostile, npc);
 
             List<string> parameters = new()
             {
@@ -220,7 +220,7 @@ namespace JortPob
         /* Register NpcInfight event for StartCombat and StopCombat calls */
         public Flag GetOrRegisterInfight(CharacterContent content)
         {
-            Script.Flag fightFlag = manager.GetFlag(Designation.NpcInfight, content);
+            Flag fightFlag = manager.GetFlag(Designation.NpcInfight, content);
             if (fightFlag != null) { return fightFlag; } // already exists, return flag
 
             fightFlag = CreateFlag(Category.Saved, Type.Bit, Designation.NpcInfight, content, 0, true);
@@ -230,7 +230,7 @@ namespace JortPob
 
         public Flag RegisterStaticDisable(StaticContent content)
         {
-            Script.Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, content);
+            Flag disableFlag = manager.GetFlag(Designation.Disabled, content);
             if (disableFlag == null) { return null; } // disable flags only get created for objects that have disable calls referencing them.
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.StaticDisable]}, {disableFlag.id}, {content.entity});"));
             return disableFlag;
@@ -239,11 +239,11 @@ namespace JortPob
         /* This cannot be a common event. It seems that calling "initializeevent" from within a common func does not work so... */
         public Flag RegisterTriggerAiPackageSwitch(CharacterContent content, Flag switchEventFlag, Flag packageFlag)
         {
-            Script.Flag triggerFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerSwitchAiPackage, packageFlag.id.ToString());
-            Flag deadFlag = manager.GetFlag(Script.Flag.Designation.Dead, content);
+            Flag triggerFlag = CreateFlag(Category.Temporary, Type.Bit, Designation.TriggerSwitchAiPackage, packageFlag.id.ToString());
+            Flag deadFlag = manager.GetFlag(Designation.Dead, content);
 
             /* Create an event to trigger and ai package switch from dialog result via a flag */
-            Flag triggerEventFlag = CreateFlag(Flag.Category.Event, Flag.Type.Bit, Flag.Designation.Event, $"TriggerSwitchAiPackage->{packageFlag.id}");
+            Flag triggerEventFlag = CreateFlag(Category.Event, Type.Bit, Designation.Event, $"TriggerSwitchAiPackage->{packageFlag.id}");
             EMEVD.Event triggerEvent = new(triggerEventFlag.id);
 
             string[] triggerEventRaw = new string[]
@@ -274,10 +274,10 @@ namespace JortPob
         /* Used by ESD to disable an object via a flag */
         public Flag GetOrRegisterTriggerDisable(Content content)
         {
-            Flag triggerDisableFlag = manager.GetFlag(Script.Flag.Designation.TriggerDisable, content);
+            Flag triggerDisableFlag = manager.GetFlag(Designation.TriggerDisable, content);
             if (triggerDisableFlag == null)
             {
-                triggerDisableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerDisable, content.id);
+                triggerDisableFlag = CreateFlag(Category.Temporary, Type.Bit, Designation.TriggerDisable, content.id);
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerDisable]}, {triggerDisableFlag.id}, {content.entity}, {content.entity}, {triggerDisableFlag.id});"));
             }
             return triggerDisableFlag;
@@ -286,10 +286,10 @@ namespace JortPob
         /* Used by ESD to enable an object via a flag */
         public Flag GetOrRegisterTriggerEnable(Content content)
         {
-            Flag triggerEnableFlag = manager.GetFlag(Script.Flag.Designation.TriggerEnable, content);
+            Flag triggerEnableFlag = manager.GetFlag(Designation.TriggerEnable, content);
             if (triggerEnableFlag == null)
             {
-                triggerEnableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerEnable, content.id);
+                triggerEnableFlag = CreateFlag(Category.Temporary, Type.Bit, Designation.TriggerEnable, content.id);
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerEnable]}, {triggerEnableFlag.id}, {content.entity}, {content.entity}, {triggerEnableFlag.id});"));
             }
             return triggerEnableFlag;
@@ -304,10 +304,10 @@ namespace JortPob
 
         /* Abstracts supported by both ScriptArea and ScriptCommon */
         public abstract Flag CreateFlagLocal(Content content, string name, uint value = 0);
-        public abstract Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false);
-        public abstract Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0);
-        public abstract Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false);
-        public abstract Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0);
+        public abstract Flag CreateFlag(Category category, Type type, Designation designation, Content content, uint value = 0, bool allowPhased = false);
+        public abstract Flag CreateFlag(Category category, Type type, Designation designation, string name, uint value = 0);
+        public abstract Flag GetOrCreateFlag(Category category, Type type, Designation designation, Content content, uint value = 0, bool allowPhased = false);
+        public abstract Flag GetOrCreateFlag(Category category, Type type, Designation designation, string name, uint value = 0);
         public abstract uint CreateEntity(EntityType type, string name);
         public abstract bool IsInterior();
         public abstract void Write();

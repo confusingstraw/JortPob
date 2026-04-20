@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using static JortPob.Papyrus;
-using static JortPob.Script.Flag;
+using static JortPob.Scripts.Script.Flag;
 
 namespace JortPob
 {
