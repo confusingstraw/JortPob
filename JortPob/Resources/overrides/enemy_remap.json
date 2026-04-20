@@ -284,6 +284,149 @@
     "comment": "Spirit Jellyfish"
   },
 
+  "skeleton": {
+    "character": "c3510",
+    "npc": {
+      "row": 35101012,
+      "data": {}
+    },
+    "think": {
+      "row": 35101000,
+      "data": {}
+    },
+    "comment": "Skeleton with sword"
+  },
+
+  "skeleton archer": {
+    "character": "c3510",
+    "npc": {
+      "row": 35102012,
+      "data": {}
+    },
+    "think": {
+      "row": 35102000,
+      "data": {}
+    },
+    "comment": "Skeleton with bow"
+  },
+
+  "skeleton warrior": {
+    "character": "c3510",
+    "npc": {
+      "row": 35100012,
+      "data": {}
+    },
+    "think": {
+      "row": 35100000,
+      "data": {}
+    },
+    "comment": "Skeleton with sword and shield"
+  },
+
+  "skeleton champion": {
+    "character": "c3510",
+    "npc": {
+      "row": 35100012,
+      "data": {}
+    },
+    "think": {
+      "row": 35100000,
+      "data": {}
+    },
+    "comment": "Skeleton with sword and shield"
+  },
+
+  "skeleton entrance": {
+    "character": "c3510",
+    "npc": {
+      "row": 35103012,
+      "data": {}
+    },
+    "think": {
+      "row": 35103000,
+      "data": {}
+    },
+    "comment": "Skeleton no weapon with firebombs"
+  },
+
+  "skeleton_weak": {
+    "character": "c3510",
+    "npc": {
+      "row": 35103012,
+      "data": {}
+    },
+    "think": {
+      "row": 35103000,
+      "data": {}
+    },
+    "comment": "Skeleton no weapon with firebombs"
+  },
+
+  "bonewalker_weak": {
+    "character": "c3661",
+    "npc": {
+      "row": 36611031,
+      "data": {}
+    },
+    "think": {
+      "row": 36610000,
+      "data": {}
+    },
+    "comment": "Putrid corpse (poison) (small)"
+  },
+
+  "bonewalker": {
+    "character": "c3661",
+    "npc": {
+      "row": 36611031,
+      "data": {}
+    },
+    "think": {
+      "row": 36610000,
+      "data": {}
+    },
+    "comment": "Putrid corpse (poison) (small)"
+  },
+
+  "Bonewalker_Greater": {
+    "character": "c3662",
+    "npc": {
+      "row": 36621031,
+      "data": {}
+    },
+    "think": {
+      "row": 36620000,
+      "data": {}
+    },
+    "comment": "Putrid corpse (poison) (large)"
+  },
+
+  "bonelord": {
+    "character": "c3500",
+    "npc": {
+      "row": 35002020,
+      "data": {}
+    },
+    "think": {
+      "row": 35002000,
+      "data": {}
+    },
+    "comment": "Large skeleton (Scythe)"
+  },
+
+  "ancestor_ghost": {
+    "character": "c4315",
+    "npc": {
+      "row": 43150012,
+      "data": {}
+    },
+    "think": {
+      "row": 43150000,
+      "data": {}
+    },
+    "comment": "Mauseleum soldier ghosts boys"
+  },
+
   "scamp_creeper": {
     "character": "c4100",
     "npc": {

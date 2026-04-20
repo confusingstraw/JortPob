@@ -1394,10 +1394,10 @@ namespace JortPob
             List<PathGridPoint> source;
             BaseTile tile = FindTile(content);
             if (tile != null && tile is Tile t) { source = t.paths; }
+            if (tile != null && tile is HugeTile huge) { return new(); }  // @TODO: This is the case where we attempt to lookup wander points for an CharacterContent that is msb promoted so it fails to find anything. In order to resolve this we will need to propogate pathgrid shit up to big/huge tiles. Big annoying cunt to do and minimal effect on gameplay so fix it later!
             else {
                 InteriorGroup.Chunk chunk = FindChunk(content);
-                if(chunk != null) { source = chunk.paths; }
-                else { return new(); }  // @TODO: DEBUGGIN, PLEASE CHANGE TO PROPER LOOKUP
+                source = chunk.paths;
             }
 
             List<PathGridPoint> result = new();

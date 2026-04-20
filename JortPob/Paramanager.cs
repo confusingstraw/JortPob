@@ -998,21 +998,17 @@ namespace JortPob
                         float height = top + bottom;
                         float offset = -bottom - 0.25f;
 
-                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+                        height = Math.Max(Const.DOOR_MINIMUM_HEIGHT, height); // makes sure that doors are at least about as tall as a player, mainly fixes trapdoors which are very short
 
-                        // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
-                        if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
+                        // If a door really appears to be a trapdoor extend the offset more so its reachable
+                        string lname = modelInfo.name.ToLower();
+                        if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
                         {
-                            height = Const.DOOR_MINIMUM_HEIGHT; // makes sure that doors are at least about as tall as a player
-
-                            // If a door really appears to be a trapdoor extend the offset more so its reachable
-                            string lname = modelInfo.name.ToLower();
-                            if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
-                            {
-                                height += Const.TRAPDOOR_HEIGHT_CORRECTION;
-                                offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
-                            }
+                            height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                            offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
                         }
+
+                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
 
                         row["regionType"].Value.SetValue((byte)0); // cylinder
                         row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
@@ -1059,24 +1055,20 @@ namespace JortPob
             float height = top + bottom;
             float offset = -bottom - 0.25f;
 
+            height = Math.Max(Const.DOOR_MINIMUM_HEIGHT, height); // makes sure that doors are at least about as tall as a player, mainly fixes trapdoors which are very short
+
+            // If a door really appears to be a trapdoor extend the offset more so its reachable
+            string lname = modelInfo.name.ToLower();
+            if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
+            {
+                height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
+            }
+
             FsParam actionParam = param[ParamType.ActionButtonParam];
             FsParam.Row row = CloneRow(actionParam[1000], door.warp.prompt, rowId); // 1000 is pick up runes prompt
 
             int textId = textManager.AddActionButton(door.warp.prompt);
-
-            // If a "door" is really short we make an assumption that it's a trapdoor or something and resize the interaction area to compensate
-            if (flver.Nodes[0].BoundingBoxMax.Y - flver.Nodes[0].BoundingBoxMin.Y < Const.DOOR_MINIMUM_HEIGHT)
-            {
-                height = Const.DOOR_MINIMUM_HEIGHT; // makes sure that doors are at least about as tall as a player
-
-                // If a door really appears to be a trapdoor extend the offset more so its reachable
-                string lname = modelInfo.name.ToLower();
-                if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
-                {
-                    height += Const.TRAPDOOR_HEIGHT_CORRECTION;
-                    offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
-                }
-            }
 
             row["regionType"].Value.SetValue((byte)0); // cylinder
             row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character

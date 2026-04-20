@@ -753,9 +753,8 @@ namespace JortPob
             return $"def t{id_s}_x42(flag2={unk0Flag}, flag3={unk1Flag}):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        # actionbutton:6000:\"Talk\"\r\n        call = t{id_s}_x0(actionbutton1={talkActionButtonId}, flag10=6001, flag14=6000, flag15=6000, flag16=6000, flag17=6000,\r\n                             flag9=6000)\r\n        if call.Done():\r\n            break\r\n        elif GetEventFlag(flag2) and not GetEventFlag(flag3):\r\n            \"\"\"State 2\"\"\"\r\n            # talk:80181010:\"What are you playing at! Stop this!\"\r\n            assert t{id_s}_x34(text1=80181010, flag3=flag3, mode3=1)\r\n    \"\"\"State 3\"\"\"\r\n    return 0\r\n";
         }
 
-        // Some ESD calls have custom state machine calls because they are complex
+        // Some ESD calls have custom state machine calls because they are complex (EX: rankreq)
         // These are hardcoded in Const the Papyrus region
-        // All states 50 and beyond are Choice calls
         private string State_x44(uint id, List<NpcManager.TopicData> topics)
         {
             string id_s = id.ToString("D9");

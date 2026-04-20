@@ -821,14 +821,24 @@ namespace JortPob
                             }
 
                             // Destination goal stuff
-                            if (position != Vector3.Zero) 
+                            if (
+                                (location != null && target.cell.name.ToLower() == location.ToLower()) || // goal is valid as it is in the same interior cell
+                                (location == null && !areaScript.IsInterior()) // goal is valid as it is an ext target and we are outside
+                            )
                             {
-                                Layout.TravelPoint goal = layout.FindTravelable(location, position);
-                                if (goal == null) { break; } // partial build can cause this
-                                uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
-                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
-                                evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
+                                if (position != Vector3.Zero)
+                                {
+                                    Layout.TravelPoint goal = layout.FindTravelable(location, position);
+                                    if (goal != null)
+                                    {
+                                        uint defaultId = target.packageDefaultFlag != null ? target.packageDefaultFlag.id : 0;
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SkipIfInoutsideArea(1, 0, {target.entity}, {goal.entity}, 1);"));     // check if inside goal area...
+                                        evt.Instructions.Add(areaScript.AUTO.ParseAdd($"InitializeEvent(0, {switchFlag.id}, {defaultId}, 1);"));             // switch back to our default normal package
+                                    }
+                                    else { Lort.Log($"AiFollow failed to resolve goal location: '{call.RAW}'", Lort.Type.Debug); }
+                                }
                             }
+                            else { Lort.Log($"AiFollow goal was determined unreacahable by interior cell traversal: '{call.RAW}'", Lort.Type.Debug); }
 
                             // Follow stuff
                             evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SetSpEffect({target.entity}, {(int)SpeffManager.Functional.NpcFollow});"));   // apply speff for follower

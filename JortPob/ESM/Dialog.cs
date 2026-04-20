@@ -956,6 +956,7 @@ namespace JortPob
                                         else { Lort.Log($"AiFollow failed to resolve goal location: '{call.RAW}'", Lort.Type.Debug); }
                                     }
                                 }
+                                else { Lort.Log($"AiFollow goal was determined unreacahable by interior cell traversal: '{call.RAW}'", Lort.Type.Debug); }
 
                                 // Follow stuff
                                 evt.Instructions.Add(areaScript.AUTO.ParseAdd($"SetSpEffect({target.entity}, {(int)SpeffManager.Functional.NpcFollow});"));   // apply speff for follower
