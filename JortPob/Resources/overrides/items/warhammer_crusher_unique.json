@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Skullcrusher as a copy of Giant-Crusher +6",
+  "type": "Weapon",
+  "row": 23110000,
+  "useIcon": true,
+  "upgrade": 6,
+  "text": {
+    "name": "Skullcrusher",
+    "description": "A massive hammer that seems lighter than it should be.",
+    "enchant": [ "Lightens equip load", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "feather_en"
+  }
+}

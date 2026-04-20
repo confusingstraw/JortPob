@@ -1,3 +1,12 @@
 {
-
+  "iron_shield": {
+    "type": "Weapon",
+    "row": 31050000,
+    "comment": "Sunrealm Shield"
+  },
+  "iron_towershield": {
+    "type": "Weapon",
+    "row": 32300000,
+    "comment": "Lordsworn's shield"
+  }
 }

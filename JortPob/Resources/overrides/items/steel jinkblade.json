@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Steel Jinkblade as a copy of Misericorde +3",
+  "type": "Weapon",
+  "row": 1030000,
+  "useIcon": true,
+  "upgrade": 3,
+  "text": {
+    "name": "Steel Jinkblade",
+    "description": "A paralyzing dagger.",
+    "enchant": [ "Causes Paralysis", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}

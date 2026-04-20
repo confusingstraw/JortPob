@@ -1,0 +1,17 @@
+﻿{
+  "comment": "Wooden Staff of War as a copy of Academy Glintstone Staff +3 with spinning weapon skill",
+  "type": "Weapon",
+  "row": 33200000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 3,
+  "text": {
+    "name": "Wooden Staff of War",
+    "description": "A staff that strikes with ice",
+    "enchant": [ "Deals ice damage", "","" ]
+  },
+  "data": {
+    "residentSpEffectId": 107500,
+    "attackBaseMagic": 61
+  }
+}

@@ -1,0 +1,16 @@
+﻿{
+  "comment": "Wooden Staff of Shaming as a copy of Academy Glintstone Staff +3 with spinning weapon",
+  "type": "Weapon",
+  "row": 33200000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 1,
+  "text": {
+    "name": "Wooden Staff of Shaming",
+    "description": "A staff that damages intelligence",
+    "enchant": [ "Damages intelligence", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "grave curse: intelligence_en"
+  }
+}

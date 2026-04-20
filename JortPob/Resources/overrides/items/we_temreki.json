@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Temreki as a copy of Alabaster Lord's Sword +8",
+  "type": "Weapon",
+  "row": 3070000,
+  "useIcon": true,
+  "upgrade": 8,
+  "text": {
+    "name": "Temreki, Schackler of Souls",
+    "description": "A massive sword that sucks the souls of its victims.",
+    "enchant": [ "Absorb's strength", "Absorb's endurance", "Soultraps" ]
+  },
+  "data": {
+    "residentSpEffectId": "wound_en"
+  }
+}

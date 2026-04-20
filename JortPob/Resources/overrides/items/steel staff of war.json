@@ -1,0 +1,18 @@
+﻿{
+  "comment": "Steel Staff of War as a copy of Demi Human Queen Staff +3 with spinning weapon skill",
+  "type": "Weapon",
+  "row": 33060000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 3,
+  "text": {
+    "name": "Steel Staff of War",
+    "description": "A staff that strikes with fire and ice",
+    "enchant": [ "Deals fire damage", "Deals ice damage", "" ]
+  },
+  "data": {
+    "residentSpEffectId": 107500,
+    "attackBaseMagic": 61,
+    "attackBaseFire": 61
+  }
+}

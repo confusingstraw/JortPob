@@ -1,0 +1,16 @@
+﻿{
+  "comment": "Steel Staff of Shaming as a copy of Demi Human Queen Staff +3 with spinning weapon skill",
+  "type": "Weapon",
+  "row": 33060000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 3,
+  "text": {
+    "name": "Steel Staff of Shaming",
+    "description": "A staff that damages intelligence and willpower",
+    "enchant": [ "Damages intelligence", "Damages willpower", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}

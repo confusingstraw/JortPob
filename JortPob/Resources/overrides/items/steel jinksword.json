@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Steel Jinksword as a copy of Short Sword +3",
+  "type": "Weapon",
+  "row": 2010000,
+  "useIcon": true,
+  "upgrade": 3,
+  "text": {
+    "name": "Steel Jinksword",
+    "description": "A paralyzing short sword.",
+    "enchant": [ "Causes Paralysis", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}

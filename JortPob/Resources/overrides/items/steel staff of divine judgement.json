@@ -1,0 +1,16 @@
+﻿{
+  "comment": "Steel Staff of Divine Judgement as a copy of Demi Human Queen Staff +3 with spinning weapon skill",
+  "type": "Weapon",
+  "row": 33060000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 3,
+  "text": {
+    "name": "Steel Staff of Divine Judgement",
+    "description": "A staff that damages endurance and strength",
+    "enchant": [ "Damages endurance", "Damages strength", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}
