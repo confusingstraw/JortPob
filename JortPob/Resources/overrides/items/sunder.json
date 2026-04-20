@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Sunder as a copy of Marika's Hammer +4",
+  "type": "Weapon",
+  "row": 11150000,
+  "useIcon": true,
+  "upgrade": 4,
+  "text": {
+    "name": "Sunder",
+    "description": "A hammer that for striking the heart",
+    "enchant": [ "Mortally wounds without Wraithguard", "Boosts many stats", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}

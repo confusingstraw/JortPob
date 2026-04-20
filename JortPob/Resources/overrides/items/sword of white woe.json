@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Sword of White Woe as a copy of Regalia of Echoaid +4",
+  "type": "Weapon",
+  "row": 2220000,
+  "useIcon": true,
+  "upgrade": 4,
+  "text": {
+    "name": "Sword of White Woe",
+    "description": "A blessed sword that inflicts grievous wounds.",
+    "enchant": [ "Drains enemy health", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "wound_en"
+  }
+}

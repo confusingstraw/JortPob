@@ -1,0 +1,16 @@
+﻿{
+  "comment": "Steel Jinkblade of the Aegis as a copy of Misericorde +5 with poison mist skill",
+  "type": "Weapon",
+  "row": 1030000,
+  "useIcon": true,
+  "upgrade": 5,
+  "skill": 22800,
+  "text": {
+    "name": "Steel Jinkblade of the Aegis",
+    "description": "A dagger that paralyzes and boosts attack",
+    "enchant": [ "Causes Paralysis", "Boots Attack", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "paralysis_en"
+  }
+}
