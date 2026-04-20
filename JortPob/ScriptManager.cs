@@ -40,8 +40,10 @@ namespace JortPob
             }
         }
 
-        public Script GetScript(int map, int x, int y, int block)
+        public BaseScript GetScript(int map, int x, int y, int block)
         {
+            if ((map == 60 || map == 61) && block != 0) { return common; } // big/huge tiles return scriptcommon as their area scripts.
+
             foreach (Script script in scripts)
             {
                 if (script.map == map && script.x == x && script.y == y && script.block == block)
@@ -55,14 +57,14 @@ namespace JortPob
             return s;
         }
 
-        public Script GetScript(BaseTile tile)
+        public BaseScript GetScript(BaseTile tile)
         {
-            if (tile.GetType() != typeof(Tile)) { return null; } // big/huge tiles don't need scripts
+            if (tile.GetType() != typeof(Tile)) { return common; } // big/huge tiles return scriptcommon as their area scripts.
 
             return GetScript(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block);
         }
 
-        public Script GetScript(InteriorGroup group)
+        public BaseScript GetScript(InteriorGroup group)
         {
             return GetScript(group.map, group.area, group.unk, group.block);
         }
@@ -95,7 +97,7 @@ namespace JortPob
             Flag f = common.FindFlagByLookupKey(lookupKey);
             if (f != null) { return f; }
 
-            foreach (Script script in scripts)
+            foreach (BaseScript script in scripts)
             {
                 f = script.FindFlagByLookupKey(lookupKey);
                 if (f != null) { return f; }
@@ -592,9 +594,9 @@ namespace JortPob
 
         /* Finds an area script for a piece of content */
         /* Called by script compiling in DialogESD.cs and PapyrusEMEVD.cs */
-        public Script FindScriptFor(Layout layout, Content content)
+        public BaseScript FindScriptFor(Layout layout, Content content)
         {
-            Tile tile = layout.FindTile(content);
+            BaseTile tile = layout.FindTile(content);
             if (tile != null)
             {
                 return GetScript(tile);
@@ -645,7 +647,7 @@ namespace JortPob
         {
             /* Debuggy thing */
             List<Flag> allFlags = [.. common.flags];
-            foreach (Script script in scripts)
+            foreach (BaseScript script in scripts)
             {
                 allFlags.AddRange(script.flags);
             }
@@ -656,7 +658,7 @@ namespace JortPob
             {
                 /* If the description of a flag looks like it's a number, its probably an entity id, search the entityIdMappings and see if we have some info on it to include in this file */
                 string desc = null;
-                foreach (Script script in scripts)
+                foreach (BaseScript script in scripts)
                 {
                     if (!Utility.StringIsInteger(flag.name)) { break; } // dont bother checking unless flag name appears to be an entityid
                     if (script.entityIdMapping.ContainsKey(uint.Parse(flag.name))) { desc = script.entityIdMapping[uint.Parse(flag.name)]; break; }
@@ -669,7 +671,7 @@ namespace JortPob
             /* Write EMEVD scripts */
             Lort.Log($"Writing {scripts.Count + 1} EMEVDs...", Lort.Type.Main);
             common.Write();
-            foreach(Script script in scripts)
+            foreach(BaseScript script in scripts)
             {
                 script.Write();
             }

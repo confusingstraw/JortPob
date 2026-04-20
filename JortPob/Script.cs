@@ -1,6 +1,5 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
-using SoulsIds;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -16,66 +15,17 @@ namespace JortPob
 {
     using ScriptFlagLookupKey = (Script.Flag.Designation, string);
 
-    public abstract class BaseScript
-    {
-        public readonly ScriptManager manager;
-
-        public readonly Events AUTO;
-
-        public readonly EMEVD emevd;
-        public readonly EMEVD.Event init;
-
-        public BaseScript(ScriptManager manager)
-        {
-            this.manager = manager;
-            AUTO = new(Utility.ResourcePath(@"script\er-common.emedf.json"), true, true);
-
-            emevd = new EMEVD();
-            emevd.Compression = Compression.KRAK();
-            emevd.Format = SoulsFormats.EMEVD.Game.Sekiro;
-
-            // Linked file offsets are stored as bytes of a UTF16 string pointing to the commonfunc and macro emevd files
-            byte[] file1 = System.Text.Encoding.Unicode.GetBytes(@"N:\GR\data\Param\event\common_func.emevd" + "\0");
-            byte[] file2 = System.Text.Encoding.Unicode.GetBytes(@"N:\GR\data\Param\event\common_macro.emevd" + "\0");
-            List<byte> combined = new();
-            combined.AddRange(file1);
-            combined.AddRange(file2);
-            emevd.StringData = combined.ToArray();
-            emevd.LinkedFileOffsets = new() { 0, file1.Length };
-
-            init = new EMEVD.Event(0);
-            emevd.Events.Add(init);
-        }
-
-        public abstract Script.Flag CreateFlagLocal(Content content, string name, uint value = 0);
-        public abstract Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false);
-        public abstract Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0);
-        public abstract Script.Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false);
-        public abstract Script.Flag GetOrCreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0);
-    }
-
     public class Script : BaseScript
     {
         public readonly int map, x, y, block;
 
-        public readonly List<CharacterContent> npcs; // list of npcs that are registered in this areascript, used to do some script generation
         public readonly List<Content> ownedContent; // list of all items/containers that have an npc owner. this is used to generate a thievery script after main gen finishes
-
-        public readonly Dictionary<uint, string> entityIdMapping; // used for debuggin, just records a string (usually a record id) as a description for created entity ids
 
         public enum EntityType
         {
             Enemy = 0, Asset = 1000, Region = 2000, Event = 3000, Collision = 4000, Group = 5000
         }
 
-        public List<Flag> flags;
-
-        /**
-         * This is just used to speed up searches for flags. It is a 1:1 mapping, so duplicate designated/named
-         * flags will result in us just using the first one. This is okay (for now), because that is the same logic
-         * that GetFlag already uses elsewhere.
-         */
-        private readonly Dictionary<ScriptFlagLookupKey, Flag> flagsByLookupKey;
         private Dictionary<Flag.Category, uint> flagUsedCounts;
         private Dictionary<EntityType, uint> entityUsedCounts;
 
@@ -85,11 +35,6 @@ namespace JortPob
             this.x = x;
             this.y = y;
             this.block = block;
-
-            entityIdMapping = new();
-
-            flags = new();
-            flagsByLookupKey = new();
 
             flagUsedCounts = new()
             {
@@ -108,13 +53,22 @@ namespace JortPob
                 { EntityType.Group, 0 }
             };
 
-            npcs = new();
             ownedContent = new();
+        }
+
+        public override string[] FilesToLink()
+        {
+            return new string[]
+            {
+                @"N:\GR\data\Param\event\common_func.emevd" + "\0",
+                @"N:\GR\data\Param\event\common_macro.emevd" + "\0",
+                @"N:\GR\data\Param\event\common.emevd" + "\0"
+            };
         }
 
         /* Registers bed as a "bonfire" and creates and returns the specail entity ids for a bed and its respawn point */
         private uint bedCount = 0;
-        public (uint bed, uint respawn) RegisterBed()
+        public override  (uint bed, uint respawn) RegisterBed()
         {
             if(bedCount > Const.MAX_BEDS_PER_MSB) { Lort.Log($"## ERROR ## Failed to register respawn for bed in m{map:D2}_{x:D2}_{y:D2}_{block:D2} due to 19 bed limit!", Lort.Type.Debug); return (0, 0); }
 
@@ -131,13 +85,13 @@ namespace JortPob
             return (bedEntity, respawnEntity);
         }
 
-        public void RegisterLoadDoor(Paramanager paramanager, DoorContent door, ModelInfo modelInfo)
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door)
         {
-            int actionParamId = paramanager.GenerateActionButtonDoorParam(modelInfo, door.warp.prompt);
+            int actionParamId = paramanager.GenerateActionButtonDoorParam(door);
             init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.LoadDoor]}, {actionParamId}, {door.entity}, {door.entity}, {1000}, {door.warp.map}, {door.warp.x}, {door.warp.y}, {door.warp.block}, {door.warp.entity});"));
         }
 
-        public void RegisterItemAsset(ItemContent item)
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item)
         {
             CharacterContent owner;
             if(item.ownerNpc != null) { owner = GetAreaNpcById(item.ownerNpc); }
@@ -164,6 +118,7 @@ namespace JortPob
                 Flag crimeLevel = manager.GetFlag(Designation.CrimeLevel, "CrimeLevel");
                 Flag crimeFlag = manager.GetFlag(Designation.CrimeEvent, owner);
                 Flag thiefFlag = manager.GetFlag(Designation.ThiefCrime, owner);
+                Flag notifFlag = manager.common.GetOrRegisterNotification(paramanager, "Your crime was reported!");
 
                 List<string> parameters = new()
                 {
@@ -174,6 +129,7 @@ namespace JortPob
                     ownerDead.id.ToString(),
                     owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
+                    notifFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
                     item.value.ToString()
@@ -192,7 +148,7 @@ namespace JortPob
             }
         }
 
-        public void RegisterContainerAsset(ContainerContent container, int totalValue)
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue)
         {
             CharacterContent owner;
             if (container.ownerNpc != null) { owner = GetAreaNpcById(container.ownerNpc); }
@@ -204,6 +160,7 @@ namespace JortPob
                 Flag crimeLevel = manager.GetFlag(Designation.CrimeLevel, "CrimeLevel");
                 Flag crimeFlag = manager.GetFlag(Designation.CrimeEvent, owner);
                 Flag thiefFlag = manager.GetFlag(Designation.ThiefCrime, owner);
+                Flag notifFlag = manager.common.GetOrRegisterNotification(paramanager, "Your crime was reported!");
 
                 List<string> parameters = new()
                 {
@@ -212,6 +169,7 @@ namespace JortPob
                     ownerDead.id.ToString(),
                     owner.witness == CharacterContent.Witness.Guard ? thiefFlag.id.ToString() : crimeFlag.id.ToString(),  // minor hack. if guard witness then dont trigger hostility so guard can arrest player.
                     thiefFlag.id.ToString(),
+                    notifFlag.id.ToString(),
                     crimeLevel.id.ToString(),
                     crimeLevel.Bits().ToString(),
                     totalValue.ToString()
@@ -222,167 +180,8 @@ namespace JortPob
             }
         }
 
-        public void RegisterNpcHostility(CharacterContent npc)
-        {
-            GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Nibble, Flag.Designation.FriendHitCounter, npc); // setup friendly hit counter
-            Flag hostileFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.Hostile, npc, npc.IsHostile() ? 1u : 0u);
-            Flag crimeFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeEvent, npc);
-            Flag hostileQuipFlag = GetOrCreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.HostileQuip, npc);
-            Flag hasBeenAttackedFlag = GetOrCreateFlag(Flag.Category.Saved, Flag.Type.Bit, Script.Flag.Designation.HasBeenAttacked, npc);
-            Flag helloFlag = GetOrCreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Hello, npc);
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcHostilityHandler]}, {hostileFlag.id}, {npc.entity}, {npc.entity}, {hostileFlag.id}, {npc.entity}, {npc.entity});"));
-            npcs.Add(npc);
-        }
-
-        /* Dead body */
-        public void RegisterDeadNpc(NpcContent npc)
-        {
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.DeadBody]}, {npc.entity}, {npc.entity}, {npc.entity});"));
-        }
-
-        public void RegisterCharacter(Paramanager paramanager, CharacterContent npc, Flag count)
-        {
-            Flag deadFlag = GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Dead, npc);
-            Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, npc);
-
-            if (IsInterior())
-            {
-                uint cellAreaEntityId = manager.areas[npc.cell];
-
-                // NPC spawn handler for phased npcs
-                if (npc is PhasedNpcContent)
-                {
-                    PhasedNpcContent pnpc = (PhasedNpcContent)npc;
-                    Flag phaseFlag = manager.GetFlag(Designation.Phase, pnpc);
-                    List<string> parameters = new()
-                    {
-                        cellAreaEntityId.ToString(),
-                        pnpc.entity.ToString(),
-                        deadFlag.id.ToString(),
-                        pnpc.entity.ToString(),
-                        pnpc.entity.ToString(),
-                        disableFlag.id.ToString(),
-                        phaseFlag.id.ToString(),
-                        phaseFlag.Bits().ToString(),
-                        pnpc.phase.ToString(),
-                        pnpc.entity.ToString(),
-                        pnpc.entity.ToString(),
-                        deadFlag.id.ToString(),
-                        count.id.ToString(),
-                        count.Bits().ToString(),
-                        count.MaxValue().ToString()
-                    };
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.IntSpawnHandlerPhased]}, {string.Join(", ", parameters)});"));
-                }
-                // NPC spawn handler for NPCS that can't be disabled
-                else if (disableFlag == null)
-                {
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.IntSpawnHandler]}, {cellAreaEntityId}, {npc.entity}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-                }
-                // NPC spawn handler for NPCS that can be disabled
-                else
-                {
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.IntSpawnHandlerDisableable]}, {cellAreaEntityId}, {npc.entity}, {deadFlag.id}, {npc.entity}, {disableFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-                }
-            }
-            else
-            {
-                // NPC spawn handler for phased npcs
-                if (npc is PhasedNpcContent)
-                {
-                    PhasedNpcContent pnpc = (PhasedNpcContent)npc;
-                    Flag phaseFlag = manager.GetFlag(Designation.Phase, pnpc);
-                    List<string> parameters = new()
-                    {
-                        deadFlag.id.ToString(),
-                        pnpc.entity.ToString(),
-                        pnpc.entity.ToString(),
-                        disableFlag.id.ToString(),
-                        phaseFlag.id.ToString(),
-                        phaseFlag.Bits().ToString(),
-                        pnpc.phase.ToString(),
-                        pnpc.entity.ToString(),
-                        pnpc.entity.ToString(),
-                        deadFlag.id.ToString(),
-                        count.id.ToString(),
-                        count.Bits().ToString(),
-                        count.MaxValue().ToString()
-                    };
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.SpawnHandlerPhased]}, {string.Join(", ", parameters)});"));
-                }
-                // NPC spawn handler for NPCS that can't be disabled
-                else if (disableFlag == null)
-                {
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.SpawnHandler]}, {deadFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-                }
-                // NPC spawn handler for NPCS that can be disabled
-                else
-                {
-                    init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.SpawnHandlerDisableable]}, {deadFlag.id}, {npc.entity}, {disableFlag.id}, {npc.entity}, {npc.entity}, {deadFlag.id}, {count.id}, {count.Bits()}, {count.MaxValue()});"));
-                }
-            }
-
-            if (npc.essential)
-            {
-                int tutorialPopupId = paramanager.GenerateMessage("", "With this character's death, the thread of prophecy is severed. You are doomed.");
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.Essential]}, {deadFlag.id}, {deadFlag.id}, {tutorialPopupId});"));
-            }
-        }
-
-        public void RegisterHaltEvent(CharacterContent npc)
-        {
-            Flag deadFlag = manager.GetFlag(Script.Flag.Designation.Dead, npc);
-            Flag hostileFlag = manager.GetFlag(Script.Flag.Designation.Hostile, npc);
-
-            List<string> parameters = new()
-            {
-                deadFlag.id.ToString(),
-                npc.entity.ToString(),
-                hostileFlag.id.ToString(),
-                npc.entity.ToString(),
-                npc.entity.ToString(),
-                npc.entity.ToString(),
-                hostileFlag.id.ToString(),
-                npc.entity.ToString(),
-                npc.entity.ToString(),
-            };
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.Halt]}, {string.Join(", ", parameters)});"));
-        }
-
-        public Flag RegisterStaticDisable(StaticContent content)
-        {
-            Script.Flag disableFlag = manager.GetFlag(Script.Flag.Designation.Disabled, content);
-            if(disableFlag == null) { return null; } // disable flags only get created for objects that have disable calls referencing them.
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.StaticDisable]}, {disableFlag.id}, {content.entity});"));
-            return disableFlag;
-        }
-
-        /* Used by ESD to disable an object via a flag */
-        public Flag GetOrRegisterTriggerDisable(Content content)
-        {
-            Flag triggerDisableFlag = manager.GetFlag(Script.Flag.Designation.TriggerDisable, content);
-            if (triggerDisableFlag == null)
-            {
-                triggerDisableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerDisable, content.id);
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerDisable]}, {triggerDisableFlag.id}, {content.entity}, {content.entity}, {triggerDisableFlag.id});"));
-            }
-            return triggerDisableFlag;
-        }
-
-        /* Used by ESD to enable an object via a flag */
-        public Flag GetOrRegisterTriggerEnable(Content content)
-        {
-            Flag triggerEnableFlag = manager.GetFlag(Script.Flag.Designation.TriggerEnable, content);
-            if (triggerEnableFlag == null)
-            {
-                triggerEnableFlag = CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.TriggerEnable, content.id);
-                init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.TriggerEnable]}, {triggerEnableFlag.id}, {content.entity}, {content.entity}, {triggerEnableFlag.id});"));
-            }
-            return triggerEnableFlag;
-        }
-
         /* Can't call PlaySE from ESD so we are using an EMEVD event triggered by a flag to do it. Returned flag is the trigger for playing a sound. */
-        public Script.Flag GetOrRegisterPlaySE(uint entity, int seId)
+        public override Flag GetOrRegisterPlaySE(uint entity, int seId)
         {
             /* See if this SE already has an event registered for it */
             string playId = $"{entity}->{seId}";
@@ -395,25 +194,6 @@ namespace JortPob
                 init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.PlaySE]}, {playFlag.id}, {entity}, 5, {seId}, {playFlag.id});"));  // 5 is SFX type
             }
             return playFlag;
-        }
-
-        /* Register a modStat call here so that it is permanently applied to npc. Flag returned is the trigger for it to be on. */
-        public Flag RegisterModStat(uint entityId, int speffId)
-        {
-            Flag modStatFlag = CreateFlag(Category.Saved, Type.Bit, Designation.NpcModStat, $"{entityId}->{speffId}");
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcModStat]}, {modStatFlag.id}, {entityId}, {speffId});"));
-            return modStatFlag;
-        }
-
-        /* Register NpcInfight event for StartCombat and StopCombat calls */
-        public Flag GetOrRegisterInfight(CharacterContent content)
-        {
-            Script.Flag fightFlag = manager.GetFlag(Designation.NpcInfight, content);
-            if(fightFlag != null) { return fightFlag; } // already exists, return flag
-
-            fightFlag = CreateFlag(Category.Saved, Type.Bit, Designation.NpcInfight, content, 0, true);
-            init.Instructions.Add(AUTO.ParseAdd($"InitializeCommonEvent(0, {manager.common.events[ScriptCommon.Event.NpcInfight]}, {fightFlag.id}, {content.entity}, {content.entity}, {fightFlag.id}, {content.entity}, {content.entity});"));
-            return fightFlag;
         }
 
         /* Crime events are charcters reactions to being attacked or stolen from */
@@ -499,16 +279,6 @@ namespace JortPob
             { Flag.Category.Temporary, new uint[] { 2000, 5000 } }
         };
 
-        public static ScriptFlagLookupKey GetLookupKeyForFlag(Flag flag)
-        {
-            return FormatFlagLookupKey(flag.designation, flag.name.ToLower());
-        }
-
-        public static ScriptFlagLookupKey FormatFlagLookupKey(Flag.Designation designation, string name)
-        {
-            return (designation, name.ToLower());
-        }
-
         public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
             if(content is PhasedNpcContent && !allowPhased) { throw new System.Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
@@ -521,7 +291,7 @@ namespace JortPob
             if (content is PhasedNpcContent)
             {
                 PhasedNpcContent pnpc = (PhasedNpcContent)content;
-                return GetOrCreateFlag(Category.Saved, Type.Short, Designation.Local, $"{manager.routing[pnpc]}.{name}", value); // this is the only place where a phased npc creates new flags
+                return GetOrCreateFlag(Category.Saved, Type.Short, Designation.Local, $"{manager.routing[pnpc]}.{name}", value); // this is one of the few places where a phased npc creates new flags
             }
             return CreateFlag(Category.Saved, Type.Short, Designation.Local, $"{content.entity.ToString()}.{name}", value);
         }
@@ -566,7 +336,7 @@ namespace JortPob
         }
 
         /* Create a unique entity id for this MSB */
-        public uint CreateEntity(EntityType type, string name)
+        public override uint CreateEntity(EntityType type, string name)
         {
             uint rawCount = entityUsedCounts[type]++;
             uint mapOffset;
@@ -591,20 +361,25 @@ namespace JortPob
             return newid;
         }
 
-        public Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
-        {
-            return flagsByLookupKey.GetValueOrDefault(key);
-        }
-
         // map 60 and 61 are the main overworld and dlc overworld respectively. All other map ids are interior areas like caves/forts. Important disction as there are differences in how they are handled by the game engine.
-        public bool IsInterior()
+        public override bool IsInterior()
         {
             return !(map == 60 || map == 61);
         }
 
-        public void Write()
+        public override void Write()
         {
             emevd.Write(Path.Combine(Const.OUTPUT_PATH, "event", $"m{map:D2}_{x:D2}_{y:D2}_{block:D2}.emevd.dcx"));
+        }
+
+        public static ScriptFlagLookupKey GetLookupKeyForFlag(Flag flag)
+        {
+            return FormatFlagLookupKey(flag.designation, flag.name.ToLower());
+        }
+
+        public static ScriptFlagLookupKey FormatFlagLookupKey(Flag.Designation designation, string name)
+        {
+            return (designation, name.ToLower());
         }
 
         [DebuggerDisplay("Flag :: {category} {type} {designation} {name}")]
@@ -642,6 +417,7 @@ namespace JortPob
                 NpcInfight,   // Used to make npcs fight each other. papyrus StartCombat/StopCombat calls
                 AiPackage,   // Index of what default aipacakge we are running
                 SwitchAiPackage, // Very special event flag that creates a function with a single parameter that kills all ai package events and starts a new one after
+                TriggerSwitchAiPackage, // Trigger flag for above, used by dialog result
                 AiPackageDone,  // Set to 1 when "SwitchAiPackage" is called. Reading from this value in a script sets it back to 0
                 Wander,      // Index of wander position used by Wander AiPackage
                 RunSubscript, // Flag created for StartScript, StopScript, ScriptRunning papyrus calls. when true subscripts run, when false they stop

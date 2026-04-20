@@ -1,8 +1,8 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
 using static JortPob.Script;
 using static JortPob.Script.Flag;
 
@@ -16,7 +16,6 @@ namespace JortPob
     {
         public readonly EMEVD func;
 
-        public List<Flag> flags;
         private Dictionary<Flag.Category, uint> flagUsedCounts;
         private Dictionary<EntityType, uint> entityUsedCounts;
 
@@ -30,22 +29,17 @@ namespace JortPob
         public readonly Dictionary<Event, uint> events;
         public readonly Dictionary<int, Flag> messages;  // hash of message text as key, value is flag that when set to true triggers a message to display
 
-        /**
-         * This is just used to speed up searches for flags. It is a 1:1 mapping, so duplicate designated/named
-         * flags will result in us just using the first one. This is okay (for now), because that is the same logic
-         * that GetFlag already uses.
-         */
-        private readonly Dictionary<ScriptFlagLookupKey, Flag> flagsByLookupKey;
-
         public ScriptCommon(ScriptManager manager) : base(manager)
         {
-            func = EMEVD.Read(Utility.ResourcePath(@"script\common_func.emevd.dcx"));
+            // Create a fresh common_func.emevd
+            func = new EMEVD();
+            func.Compression = Compression.KRAK();
+            func.Format = SoulsFormats.EMEVD.Game.Sekiro;
 
+            // For displaying message boxes and notifications
             messages = new();
 
-            flags = new();
-            flagsByLookupKey = new();
-
+            // Flag id usage tracking
             flagUsedCounts = new()
             {
                 { Flag.Category.Event, 0 },
@@ -53,6 +47,7 @@ namespace JortPob
                 { Flag.Category.Temporary, 0 }
             };
 
+            // Entity id usage tracking
             entityUsedCounts = new()
             {
                 { EntityType.Enemy, 0 },
@@ -63,6 +58,7 @@ namespace JortPob
                 { EntityType.Group, 0 }
             };
 
+            // Mapping of common events written into common_func.emevd
             events = new();
 
             /* Create an event for going through load doors */
@@ -489,6 +485,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
@@ -543,6 +540,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});"           // add alarming speff to player since they did a crime
             };
@@ -571,6 +569,7 @@ namespace JortPob
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {NextParameterName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {NextParameterName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({NextParameterName()}, {NextParameterName()}, {NextParameterName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
             };
 
@@ -827,6 +826,15 @@ namespace JortPob
 
             func.Events.Add(getSecondsPassed);
             events.Add(Event.GetSecondsPassed, getSecondsPassedFlag.id);
+        }
+
+        public override string[] FilesToLink()
+        {
+            return new string[]
+            {
+                @"N:\GR\data\Param\event\common_func.emevd" + "\0",
+                @"N:\GR\data\Param\event\common_macro.emevd" + "\0"
+            };
         }
 
         /* Register a tutorial popup message with given text */
@@ -1089,13 +1097,19 @@ namespace JortPob
 
         public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
-            if (content is PhasedNpcContent) { throw new System.Exception("Cannot create flags for phased content in ScriptCommon!"); }
+            if (content is PhasedNpcContent && !allowPhased) { throw new System.Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
+            else if (content is PhasedNpcContent) { return CreateFlag(category, type, designation, manager.routing[(PhasedNpcContent)content], value); }
             return CreateFlag(category, type, designation, content.entity.ToString(), value);
         }
 
         public override Flag CreateFlagLocal(Content content, string name, uint value = 0)
         {
-            throw new System.Exception("CreateFlagLocal cannot be called from ScriptCommon.cs! Please use Script.CreateFlagLocal()");
+            if (content is PhasedNpcContent)
+            {
+                PhasedNpcContent pnpc = (PhasedNpcContent)content;
+                return GetOrCreateFlag(Category.Saved, Type.Short, Designation.Local, $"{manager.routing[pnpc]}.{name}", value); // this is one of the few places where a phased npc creates new flags
+            }
+            return CreateFlag(Category.Saved, Type.Short, Designation.Local, $"{content.entity.ToString()}.{name}", value);
         }
 
         public override Flag CreateFlag(Flag.Category category, Flag.Type type, Flag.Designation designation, string name, uint value = 0)
@@ -1129,13 +1143,8 @@ namespace JortPob
             return flag;
         }
 
-        public Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
-        {
-            return flagsByLookupKey.GetValueOrDefault(key);
-        }
-
         /* Create a unique entity id, this is primarily used as an overflow for other msbs when they run out of room. */
-        public uint CreateEntity(EntityType type, string name)
+        public override uint CreateEntity(EntityType type, string name)
         {
             uint rawCount = entityUsedCounts[type]++;
             uint newid = COMMON_FLAG_BASES[(rawCount / 1000)] + ((uint)type) + rawCount;
@@ -1143,10 +1152,23 @@ namespace JortPob
             return newid;
         }
 
-        public void Write()
+        // script common is only ever used for exteriors in the case of msb promoted npcs
+        public override bool IsInterior()
+        {
+            return false;
+        }
+
+        public override void Write()
         {
             emevd.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common.emevd.dcx"));
             func.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common_func.emevd.dcx"));
         }
+
+        /* Abstracts scripts that ScriptCommon does not support */
+        public override (uint bed, uint respawn) RegisterBed() { throw new System.NotImplementedException(); }
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door) { throw new System.NotImplementedException(); }
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.NotImplementedException(); }
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.NotImplementedException(); }
+        public override Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.NotImplementedException(); }
     }
 }

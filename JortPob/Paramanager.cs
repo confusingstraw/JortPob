@@ -82,19 +82,21 @@ namespace JortPob
             WORLD_MAP_PLACE_NAME_PARAM_ST, WORLD_MAP_POINT_PARAM_ST, WWISE_VALUE_TO_STR_CONVERT_PARAM_ST
         }
 
+        public readonly Cache cache;
         public readonly TextManager textManager;
 
         public readonly Dictionary<ParamType, FsParam> param;
         public readonly LiveParam extendedTalkParam;
 
-        public Dictionary<string, int> interactActionButtons, itemActionButtons; // string is the text of the button prompt, int is the row id
+        public Dictionary<string, int> itemActionButtons; // string is the text of the button prompt, int is the row id
 
         public short terrainDrawParamID;
         private Dictionary<int, int> lodPartDrawParamIDs; // first int is the index of the array from Const.ASSET_LOD_VALUES, second int is the param row id
         private int nextMessageParam, nextMapItemLotId, nextEnemyItemLotId, nextActionButtonId, nextWeatherLotParamId;
 
-        public Paramanager(TextManager textManager)
+        public Paramanager(Cache cache, TextManager textManager)
         {
+            this.cache = cache;
             this.textManager = textManager;
 
             nextMessageParam = 3000;
@@ -103,7 +105,6 @@ namespace JortPob
             nextActionButtonId = 300000;
             nextWeatherLotParamId = 500000000;
 
-            interactActionButtons = new();
             itemActionButtons = new();
 
             SoulsFormats.BND4 paramBnd = RegulationDecryptor.DecryptERRegulation(Utility.ResourcePath(@"misc\regulation.bin"));
@@ -869,7 +870,7 @@ namespace JortPob
             AddOrReplaceRow(charInitParam, row);
         }
 
-        public void GenerateNpcParam(ItemManager itemManager, Script script, NpcContent npc, int id)
+        public void GenerateNpcParam(ItemManager itemManager, BaseScript script, NpcContent npc, int id)
         {
             // It seems like special poses are tied to npcparam in some way so i need to copy lanya to get the 'dead body' pose
             int rowToCopy;
@@ -894,7 +895,7 @@ namespace JortPob
             AddOrReplaceRow(npcParam, row);
         }
 
-        public void GenerateNpcParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        public void GenerateNpcParam(ItemManager itemManager, BaseScript script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
             int rowToCopy = remap.npc.row;
 
@@ -906,32 +907,39 @@ namespace JortPob
             if (inventory.Count() > 0) { itemLotRow = GenerateInventoryItemLot(script, creature, inventory); }    // @TODO: rework item lot generation for creatures to be non-fixed
             else { itemLotRow = -1; }
 
+            SillyJsonUtils.ModifyRow(row, remap.npc.data);
+
             int textId = textManager.AddNpcName(creature.name);
             row.Cells[5].SetValue(textId); // nameId
             row.Cells[105].SetValue((byte)(creature.IsHostile() ? 6 : 26)); // team type (enemy=6, hostilenpc=27, friendlynpc=26)
             row["itemLotId_enemy"].Value.SetValue(itemLotRow);
 
-            // @TODO: apply data from json remap to param!
-
             AddOrReplaceRow(npcParam, row);
         }
 
-        public void GenerateThinkParam(ItemManager itemManager, Script script, NpcContent npc, int id)
+        public void GenerateThinkParam(ItemManager itemManager, BaseScript script, NpcContent npc, int id)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
             FsParam.Row row = CloneRow(thinkParam[533250000], npc.id, id); // 533250000 is rogier followy
 
             // STUB:: do stuff to this param lol
 
+            if (npc.follower) // remove back home distance if follower
+            {
+                row["maxBackhomeDist"].Value.SetValue(ushort.MaxValue);
+                row["backhomeDist"].Value.SetValue(ushort.MaxValue);
+                row["backhomeBattleDist"].Value.SetValue(ushort.MaxValue);
+            }
+
             AddOrReplaceRow(thinkParam, row);
         }
 
-        public void GenerateThinkParam(ItemManager itemManager, Script script, CreatureContent creature, int id, Override.EnemyRemap remap)
+        public void GenerateThinkParam(ItemManager itemManager, BaseScript script, CreatureContent creature, int id, Override.EnemyRemap remap)
         {
             FsParam thinkParam = param[ParamType.NpcThinkParam];
             FsParam.Row row = CloneRow(thinkParam[remap.think.row], creature.id, id);
 
-            // STUB:: do stuff to this param lol
+            SillyJsonUtils.ModifyRow(row, remap.think.data);
 
             AddOrReplaceRow(thinkParam, row);
         }
@@ -965,41 +973,102 @@ namespace JortPob
             return rowId;
         }
 
-        public int GenerateActionButtonInteractParam(string text)
+        // Refactor this @TODO: guh
+        public int GenerateActionButtonInteractParam(string text) { return GenerateActionButtonInteractParam(null, text); }
+
+        // Might be worth seperating this out into multiple smaller functions instead. idk just guh
+        public int GenerateActionButtonInteractParam(Content content, string text)
         {
-            if (interactActionButtons.ContainsKey(text)) { return interactActionButtons[text]; } // already exists, return row to it
-
-            int rowId = nextActionButtonId++;
-
             FsParam actionParam = param[ParamType.ActionButtonParam];
-            FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
-
+            int rowId = nextActionButtonId++;
             int textId = textManager.AddActionButton(text);
-            row["textId"].Value.SetValue(textId);
-            row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
-            row["execInvalidTime"].Value.SetValue(3f); // cooldown
 
-            AddOrReplaceRow(actionParam, row);
-            interactActionButtons.Add(text, rowId);
+            // Generating action button prompts for differetn types of objects can require very differnt parameters so usign a switch
+            switch (content)
+            {
+                case DoorContent:
+                    {
+                        ModelInfo modelInfo = cache.GetModel(content.mesh, content.scale);
+                        FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
+                        float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
+                        float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
+                        float width = x > z ? x : z;
+                        float top = Math.Max(0, flver.Nodes[0].BoundingBoxMax.Y);
+                        float bottom = Math.Abs(flver.Nodes[0].BoundingBoxMin.Y);
+                        float height = top + bottom;
+                        float offset = -bottom - 0.25f;
 
-            return rowId;
+                        height = Math.Max(Const.DOOR_MINIMUM_HEIGHT, height); // makes sure that doors are at least about as tall as a player, mainly fixes trapdoors which are very short
+
+                        // If a door really appears to be a trapdoor extend the offset more so its reachable
+                        string lname = modelInfo.name.ToLower();
+                        if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
+                        {
+                            height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                            offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
+                        }
+
+                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+
+                        row["regionType"].Value.SetValue((byte)0); // cylinder
+                        row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
+                        row["dummyPoly2"].Value.SetValue(-1);
+                        row["radius"].Value.SetValue(width); // radius
+                        row["angle"].Value.SetValue(180); // angle from dmy
+                        row["depth"].Value.SetValue(0f);
+                        row["width"].Value.SetValue(0f);
+                        row["height"].Value.SetValue(height);
+                        row["baseHeightOffset"].Value.SetValue(offset);
+                        row["angleCheckType"].Value.SetValue((byte)0);
+                        row["allowAngle"].Value.SetValue(90);  // player look angle
+                        row["textId"].Value.SetValue(textId);
+                        row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+                        row["execInvalidTime"].Value.SetValue(3f); // cooldown
+
+                        AddOrReplaceRow(actionParam, row);
+                        return rowId;
+                    }
+                case null:
+                default:
+                    {
+                        FsParam.Row row = CloneRow(actionParam[6000], text, rowId); // 6000 is talk prompt
+                        row["textId"].Value.SetValue(textId);
+                        row["isGrayoutForRide"].Value.SetValue((byte)1); // don't allow while riding torrent
+                        row["execInvalidTime"].Value.SetValue(3f); // cooldown
+                        AddOrReplaceRow(actionParam, row);
+                        return rowId;
+                    }
+            }
         }
 
-        public int GenerateActionButtonDoorParam(ModelInfo modelInfo, string text)
+        public int GenerateActionButtonDoorParam(DoorContent door)
         {
             int rowId = nextActionButtonId++;
 
+            ModelInfo modelInfo = cache.GetModel(door.mesh, door.scale);
             FLVER2 flver = FLVER2.Read(Path.Combine(Const.CACHE_PATH, modelInfo.path)); // load flver of this door so we can look at its bounding box
             float x = flver.Nodes[0].BoundingBoxMax.X - flver.Nodes[0].BoundingBoxMin.X;
             float z = flver.Nodes[0].BoundingBoxMax.Z - flver.Nodes[0].BoundingBoxMin.Z;
             float width = x > z ? x : z;
             float top = Math.Max(0, flver.Nodes[0].BoundingBoxMax.Y);
             float bottom = Math.Abs(flver.Nodes[0].BoundingBoxMin.Y);
+            float height = top + bottom;
+            float offset = -bottom - 0.25f;
+
+            height = Math.Max(Const.DOOR_MINIMUM_HEIGHT, height); // makes sure that doors are at least about as tall as a player, mainly fixes trapdoors which are very short
+
+            // If a door really appears to be a trapdoor extend the offset more so its reachable
+            string lname = modelInfo.name.ToLower();
+            if (lname.Contains("trapdoor") || lname.Contains("shipdoor"))
+            {
+                height += Const.TRAPDOOR_HEIGHT_CORRECTION;
+                offset -= Const.TRAPDOOR_HEIGHT_CORRECTION;
+            }
 
             FsParam actionParam = param[ParamType.ActionButtonParam];
-            FsParam.Row row = CloneRow(actionParam[1000], text, rowId); // 1000 is pick up runes prompt
+            FsParam.Row row = CloneRow(actionParam[1000], door.warp.prompt, rowId); // 1000 is pick up runes prompt
 
-            int textId = textManager.AddActionButton(text);
+            int textId = textManager.AddActionButton(door.warp.prompt);
 
             row["regionType"].Value.SetValue((byte)0); // cylinder
             row["dummyPoly1"].Value.SetValue((int)Const.FLVER_DMY_BOTTOM); // area for entering door is at the bottom since the check is at the feet of the player character
@@ -1008,8 +1077,8 @@ namespace JortPob
             row["angle"].Value.SetValue(180); // angle from dmy
             row["depth"].Value.SetValue(0f);
             row["width"].Value.SetValue(0f);
-            row["height"].Value.SetValue(top + bottom);
-            row["baseHeightOffset"].Value.SetValue(-bottom - 0.25f);
+            row["height"].Value.SetValue(height);
+            row["baseHeightOffset"].Value.SetValue(offset);
             row["angleCheckType"].Value.SetValue((byte)0);
             row["allowAngle"].Value.SetValue(90);  // player look angle
             row["textId"].Value.SetValue(textId);
@@ -1402,7 +1471,7 @@ namespace JortPob
         }
 
         /* Generates an itemlot with a single item with a flag. For item objects placed in the overworld that you can pick up as treasure. */
-        public int GenerateContentItemLot(Script script, ItemContent itemContent, ItemManager.ItemInfo itemInfo)
+        public int GenerateContentItemLot(BaseScript script, ItemContent itemContent, ItemManager.ItemInfo itemInfo)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             FsParam.Row row = CloneRow(itemLotParam[0], $"single, not repeatable, map treasure, {itemInfo.type}", nextMapItemLotId); // 0 is a default template we created in the constructor
@@ -1415,7 +1484,7 @@ namespace JortPob
             row["lotItemNum01"].Value.SetValue((byte)1);
             row[$"lotItemBasePoint01"].Value.SetValue((ushort)1000);
 
-            script.RegisterItemAsset(itemContent);
+            script.RegisterItemAsset(this, itemContent);
 
             AddOrReplaceRow(itemLotParam, row);
             nextMapItemLotId += 10;
@@ -1423,7 +1492,7 @@ namespace JortPob
         }
 
         /* Generates a map item lot from the inventory of an npccontent with a flag. This is for dead npcs that are just bodies that you loot NOT LIVING ONES! */
-        public int GenerateDeadBodyItemLot(Script script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateDeadBodyItemLot(BaseScript script, NpcContent npc, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv
@@ -1452,7 +1521,7 @@ namespace JortPob
         }
 
         /* Generates a map item lot from the inventory of a container with a flag. Barrels, chests, boxes, etc... */
-        public int GenerateContainerItemLot(Script script, ContainerContent container, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateContainerItemLot(BaseScript script, ContainerContent container, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_map];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv
@@ -1478,14 +1547,14 @@ namespace JortPob
                 AddOrReplaceRow(itemLotParam, row);
             }
 
-            script.RegisterContainerAsset(container, totalValue);
+            script.RegisterContainerAsset(this, container, totalValue);
 
             nextMapItemLotId += 10;
             return baseRow;
         }
 
         /* Generates an enemy item lot from the inventory of an npccontent with no flag. This is for LIVING npcs when the player kills them */
-        public int GenerateInventoryItemLot(Script script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
+        public int GenerateInventoryItemLot(BaseScript script, Content content, List<(ItemManager.ItemInfo item, int quantity)> inventory)
         {
             FsParam itemLotParam = param[Paramanager.ParamType.ItemLotParam_enemy];
             if (inventory.Count() <= 0) { return -1; } // skip empty inv

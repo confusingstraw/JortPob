@@ -48,5 +48,753 @@
     "comment": "Thick",
     "part": 100,
     "color": "Black"
-  }
+  },
+
+  "b_n_imperial_f_hair_01": {
+    "comment": "Long",
+    "part": 106,
+    "color": "Brown"
+  },
+  "b_n_imperial_f_hair_02": {
+    "comment": "High Tail",
+    "part": 117,
+    "color": "DarkBrown"
+  },
+  "b_n_imperial_f_hair_03": {
+    "comment": "Tied Back Tail",
+    "part": 117,
+    "color": "LightBrown"
+  },
+  "b_n_imperial_f_hair_04": {
+    "comment": "Wedge",
+    "part": 105,
+    "color": "LightBrown"
+  },
+  "b_n_imperial_f_hair_05": {
+    "comment": "Bangs",
+    "part": 104,
+    "color": "Brown"
+  },
+  "B_N_Imperial_F_hair_06": {
+    "comment": "50s US housewife stereotype",
+    "part": 102,
+    "color": "DarkBrown"
+  },
+  "B_N_Imperial_F_hair_07": {
+    "comment": "Dark Bangs",
+    "part": 104,
+    "color": "DarkBrown"
+    },
+
+
+  "b_n_breton_m_hair_00": {
+    "comment": "Bald",
+    "part": 0,
+    "color": "Gray"
+    },
+  "b_n_breton_m_hair_01": {
+    "comment": "Monk cut",
+    "part": 113,
+    "color": "DarkBrown"
+    },
+  "b_n_breton_m_hair_02": {
+    "comment": "Low Tail",
+    "part": 9,
+    "color": "DirtyBlonde"
+    },
+  "b_n_breton_m_hair_03": {
+    "comment": "Bunched",
+    "part": 101,
+    "color": "Brown"
+    },
+  "b_n_breton_m_hair_04": {
+    "comment": "Blonde bunched",
+    "part": 101,
+    "color": "DirtyBlonde"
+    },
+  "b_n_breton_m_hair_05": {
+    "comment": "Balding",
+    "part": 2,
+    "color": "White"
+    },
+
+  "b_n_breton_f_hair_01": {
+    "comment": "Fringe",
+    "part": 111,
+    "color": "LightBrown"
+    },
+  "b_n_breton_f_hair_02": {
+    "comment": "Long Tucked",
+    "part": 120,
+    "color": "Brown"
+    },
+  "b_n_breton_f_hair_03": {
+    "comment": "Dracula Cosplay Long",
+    "part": 118,
+    "color": "Red"
+    },
+  "b_n_breton_f_hair_04": {
+    "comment": "Small Afro",
+    "part": 4,
+    "color": "Brown"
+    },
+  "b_n_breton_f_hair_05": {
+    "comment": "Mid Tail Fringe",
+    "part": 9,
+    "color": "LightBrown"
+    },
+
+
+  "b_n_dark elf_m_hair_01": {
+    "comment": "Topknot",
+    "part": 114,
+    "color": "White"
+    },
+    "b_n_dark elf_m_hair_02": {
+    "comment": "Bald",
+    "part": 0,
+    "color": "White"
+    },
+    "b_n_dark elf_m_hair_03": {
+    "comment": "High Bun Receding?",
+    "part": 2,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_04": {
+    "comment": "Receding Grey",
+    "part": 2,
+    "color": "Gray"
+    },
+    "b_n_dark elf_m_hair_05": {
+    "comment": "Mohawk?",
+    "part": 114,
+    "color": "Red"
+    },
+    "b_n_dark elf_m_hair_06": {
+    "comment": "Low Tail Coif",
+    "part": 9,
+    "color": "Red"
+    },
+    "b_n_dark elf_m_hair_07": {
+    "comment": "Mohawk Plus Long (with headdress in TES3)",
+    "part": 117,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_08": {
+    "comment": "Swept Spikes (with headdress in TES3)",
+    "part": 119,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_09": {
+    "comment": "Trihawk? (with headdress in TES3)",
+    "part": 122,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_10": {
+    "comment": "Mohawk Tail",
+    "part": 114,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_11": {
+    "comment": "Top Wedge",
+    "part": 114,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_12": {
+    "comment": "Balding Long",
+    "part": 2,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_13": {
+    "comment": "Balding Mohawk",
+    "part": 114,
+    "color": "Red"
+    },
+    "b_n_dark elf_m_hair_14": {
+    "comment": "Dark Mohawk",
+    "part": 114,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_15": {
+    "comment": "Balding Mohawk Dark",
+    "part": 2,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_16": {
+    "comment": "Trihawk Dark",
+    "part": 122,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_17": {
+    "comment": "Swayze Red",
+    "part": 10,
+    "color": "Red"
+    },
+    "b_n_dark elf_m_hair_18": {
+    "comment": "Swayze Dark",
+    "part": 10,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_19": {
+    "comment": "Pulled High Tail",
+    "part": 114,
+    "color": "White"
+    },
+    "b_n_dark elf_m_hair_20": {
+    "comment": "Swept Spikes (with headdress in TES3)",
+    "part": 119,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_m_hair_21": {
+    "comment": "Swayze Brown",
+    "part": 10,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_22": {
+    "comment": "Swept Spikes",
+    "part": 119,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_23": {
+    "comment": "Mohawk",
+    "part": 114,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_24": {
+    "comment": "Spikes Short",
+    "part": 119,
+    "color": "Brown"
+    },
+    "b_n_dark elf_m_hair_25": {
+    "comment": "Spikes Long",
+    "part": 119,
+    "color": "Gray"
+    },
+    "b_n_dark elf_m_hair_26": {
+    "comment": "High Tail Long",
+    "part": 118,
+    "color": "DarkBrown"
+    },
+
+    "b_n_dark elf_f_hair_01": {
+    "comment": "Swept Bangs",
+    "part": 109,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_02": {
+    "comment": "Clipped",
+    "part": 115,
+    "color": "Red"
+    },
+    "b_n_dark elf_f_hair_03": {
+    "comment": "Swept Bangs the Sequel",
+    "part": 109,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_04": {
+    "comment": "Tall",
+    "part": 117,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_05": {
+    "comment": "High Bun",
+    "part": 101,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_06": {
+    "comment": "High Bun Long (with headdress in TES3)",
+    "part": 101,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_07": {
+    "comment": "High Bun Red",
+    "part": 101,
+    "color": "Red"
+    },
+    "b_n_dark elf_f_hair_08": {
+    "comment": "High Bun Long (with headdress in TES3)",
+    "part": 101,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_09": {
+    "comment": "High Bun Long (with headdress in TES3)",
+    "part": 101,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_10": {
+    "comment": "Long (Nibani Maesa)",
+    "part": 104,
+    "color": "Gray"
+    },
+    "b_n_dark elf_f_hair_11": {
+    "comment": "Long",
+    "part": 104,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_12": {
+    "comment": "Long Red",
+    "part": 104,
+    "color": "Red"
+    },
+    "b_n_dark elf_f_hair_13": {
+    "comment": "Claw",
+    "part": 3,
+    "color": "White"
+    },
+    "b_n_dark elf_f_hair_14": {
+    "comment": "Low Hawk (With Headdress in TES3)",
+    "part": 117,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_15": {
+    "comment": "Plaits",
+    "part": 116,
+    "color": "White"
+    },
+    "b_n_dark elf_f_hair_16": {
+    "comment": "Jaw Length",
+    "part": 101,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_17": {
+    "comment": "Jaw Length Red",
+    "part": 101,
+    "color": "Red"
+    },
+    "b_n_dark elf_f_hair_18": {
+    "comment": "Long Back Plaits",
+    "part": 109,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_19": {
+    "comment": "Top Spikes (With Headdress in TES3)",
+    "part": 119,
+    "color": "Red"
+    },
+    "b_n_dark elf_f_hair_20": {
+    "comment": "High Bun Large",
+    "part": 117,
+    "color": "DarkBrown"
+    },
+    "b_n_dark elf_f_hair_21": {
+    "comment": "Wild Spikes (Headband)",
+    "part": 119,
+    "color": "Brown"
+    },
+    "b_n_dark elf_f_hair_22": {
+    "comment": "High Tail",
+    "part": 117,
+    "color": "LightBrown"
+    },
+    "b_n_dark elf_f_hair_23": {
+    "comment": "High Tail White",
+    "part": 117,
+    "color": "White"
+    },
+    "b_n_dark elf_f_hair_24": {
+    "comment": "Long Wide Red",
+    "part": 106,
+    "color": "Red"
+    },
+
+
+    "b_n_high elf_m_hair_01": {
+    "comment": "Tall Knot",
+    "part": 114,
+    "color": "Brown"
+    },
+    "b_n_high elf_m_hair_02": {
+    "comment": "Long Smooth",
+    "part": 104,
+    "color": "Brown"
+    },
+    "b_n_high elf_m_hair_03": {
+    "comment": "Mister Whippy",
+    "part": 115,
+    "color": "Blonde"
+    },
+    "b_n_high elf_m_hair_04": {
+    "comment": "Long Thick",
+    "part": 104,
+    "color": "Blonde"
+    },
+    "b_n_high elf_m_hair_05": {
+    "comment": "High Bunched",
+    "part": 111,
+    "color": "Blonde"
+    },
+
+    "b_n_high elf_f_hair_01": {
+    "comment": "Puffy (With Jewelry in TES3)",
+    "part": 110,
+    "color": "LightBrown"
+    },
+    "b_n_high elf_f_hair_02": {
+    "comment": "Tall (With Jewelry in TES3)",
+    "part": 108,
+    "color": "DirtyBlonde"
+    },
+    "b_n_high elf_f_hair_03": {
+    "comment": "High Knot",
+    "part": 110,
+    "color": "Blonde"
+    },
+    "b_n_high elf_f_hair_04": {
+    "comment": "Short Puffy",
+    "part": 111,
+    "color": "Blonde"
+    },
+
+
+    "b_n_khajiit_m_hair01": {
+    "comment": "Bald - Ear Customisation",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_m_hair02": {
+    "comment": "Bald - Ear Customisation",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_m_hair03": {
+    "comment": "Bald - Ear Customisation",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_m_hair04": {
+    "comment": "Dark Mane",
+    "part": 7,
+    "color": "Brown"
+    },
+    "b_n_khajiit_m_hair05": {
+    "comment": "Light Mane",
+    "part": 5,
+    "color": "LightBrown"
+    },
+
+    "b_n_khajiit_f_hair01": {
+    "comment": "Bald - Earrings",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_f_hair02": {
+    "comment": "Bald - Ear Customisation",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_f_hair03": {
+    "comment": "Bald - Earrings",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_f_hair04": {
+    "comment": "Bald - Ear Customisation",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_khajiit_f_hair05": {
+    "comment": "Bald - Earrings",
+    "part": 0,
+    "color": "Brown"
+    },
+
+
+    "b_n_nord_m_hair00": {
+    "comment": "Bald",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_nord_m_hair01": {
+    "comment": "Long Brown",
+    "part": 123,
+    "color": "Brown"
+    },
+    "b_n_nord_m_hair02": {
+    "comment": "Long Brown Tucked",
+    "part": 120,
+    "color": "Brown"
+    },
+    "b_n_nord_m_hair03": {
+    "comment": "Long Light",
+    "part": 123,
+    "color": "LightBrown"
+    },
+    "b_n_nord_m_hair04": {
+    "comment": "Long Blonde",
+    "part": 123,
+    "color": "Blonde"
+    },
+    "b_n_nord_m_hair05": {
+    "comment": "Topknot Long Grey",
+    "part": 123,
+    "color": "Gray"
+    },
+    "b_n_nord_m_hair06": {
+    "comment": "Topknot Long Dark",
+    "part": 123,
+    "color": "DarkBrown"
+    },
+    "b_n_nord_m_hair07": {
+    "comment": "Long Dark",
+    "part": 120,
+    "color": "DarkBrown"
+    },
+
+    "b_n_nord_f_hair_01": {
+    "comment": "Long Blonde",
+    "part": 123,
+    "color": "Blonde"
+    },
+    "b_n_nord_f_hair_02": {
+    "comment": "Mid Tail Red",
+    "part": 122,
+    "color": "Red"
+    },
+    "b_n_nord_f_hair_03": {
+    "comment": "Wedge",
+    "part": 125,
+    "color": "Brown"
+    },
+    "b_n_nord_f_hair_04": {
+    "comment": "Long Light",
+    "part": 123,
+    "color": "LightBrown"
+    },
+    "b_n_nord_f_hair_05": {
+    "comment": "Wegde Blonde",
+    "part": 125,
+    "color": "Blonde"
+    },
+
+
+    "b_n_orc_m_hair_01": {
+    "comment": "Mohawk and Mid Tail",
+    "part": 122,
+    "color": "DarkBrown"
+    },
+    "b_n_orc_m_hair_02": {
+    "comment": "Bun Only",
+    "part": 114,
+    "color": "DarkBrown"
+    },
+    "b_n_orc_m_hair_03": {
+    "comment": "Topknot Only",
+    "part": 117,
+    "color": "DarkBrown"
+    },
+    "b_n_orc_m_hair_04": {
+    "comment": "Mostly Bald",
+    "part": 0,
+    "color": "DarkBrown"
+    },
+    "b_n_orc_m_hair_05": {
+    "comment": "Devil's Tower",
+    "part": 2,
+    "color": "DarkBrown"
+    },
+
+    "b_n_orc_f_hair01": {
+    "comment": "Mid Tail",
+    "part": 122,
+    "color": "Brown"
+    },
+    "b_n_orc_f_hair02": {
+    "comment": "Palm Topknot",
+    "part": 118,
+    "color": "Brown"
+    },
+    "b_n_orc_f_hair03": {
+    "comment": "High Bun",
+    "part": 122,
+    "color": "White"
+    },
+    "b_n_orc_f_hair04": {
+    "comment": "Long",
+    "part": 106,
+    "color": "Brown"
+    },
+    "b_n_orc_f_hair05": {
+    "comment": "High Knot",
+    "part": 117,
+    "color": "Brown"
+    },
+
+
+    "b_n_redguard_m_hair_00": {
+    "comment": "Bald",
+    "part": 0,
+    "color": "Brown"
+    },
+    "b_n_redguard_m_hair_01": {
+    "comment": "Balding",
+    "part": 2,
+    "color": "Black"
+    },
+    "b_n_redguard_m_hair_02": {
+    "comment": "Rows",
+    "part": 115,
+    "color": "Black"
+    },
+    "b_n_redguard_m_hair_03": {
+    "comment": "Spikes",
+    "part": 5,
+    "color": "Brown"
+    },
+    "b_n_redguard_m_hair_04": {
+    "comment": "Clipped",
+    "part": 112,
+    "color": "Brown"
+    },
+    "b_n_redguard_m_hair_05": {
+    "comment": "Bald?",
+    "part": 113,
+    "color": "Brown"
+    },
+    "b_n_redguard_m_hair_06": {
+    "comment": "Low Tail",
+    "part": 118,
+    "color": "Black"
+    },
+
+    "b_n_redguard_f_hair_01": {
+    "comment": "Spikes",
+    "part": 5,
+    "color": "Brown"
+    },
+    "b_n_redguard_f_hair_02": {
+    "comment": "Clipped Thick",
+    "part": 115,
+    "color": "Brown"
+    },
+    "b_n_redguard_f_hair_03": {
+    "comment": "Close Clipped",
+    "part": 113,
+    "color": "Brown"
+    },
+    "b_n_redguard_f_hair_04": {
+    "comment": "High Bun",
+    "part": 118,
+    "color": "Brown"
+    },
+    "b_n_redguard_f_hair_05": {
+    "comment": "Clipped",
+    "part": 112,
+    "color": "Brown"
+    },
+
+
+    "b_n_wood elf_m_hair_01": {
+    "comment": "Narrow Long",
+    "part": 120,
+    "color": "Blonde"
+    },
+    "b_n_wood elf_m_hair_02": {
+    "comment": "Muffin",
+    "part": 119,
+    "color": "Brown"
+    },
+    "b_n_wood elf_m_hair_03": {
+    "comment": "Long",
+    "part": 124,
+    "color": "Blonde"
+    },
+    "b_n_wood elf_m_hair_04": {
+    "comment": "Egghead",
+    "part": 125,
+    "color": "LightBrown"
+    },
+    "b_n_wood elf_m_hair_05": {
+    "comment": "Hawk Plus Long",
+    "part": 119,
+    "color": "Blonde"
+    },
+    "b_n_wood elf_m_hair_06": {
+    "comment": "Spikes",
+    "part": 5,
+    "color": "Brown"
+    },
+
+    "b_n_wood elf_f_hair_01": {
+    "comment": "Long With Sides",
+    "part": 120,
+    "color": "LightBrown"
+    },
+    "b_n_wood elf_f_hair_02": {
+    "comment": "Low Tail",
+    "part": 122,
+    "color": "Blonde"
+    },
+    "b_n_wood elf_f_hair_03": {
+    "comment": "Long",
+    "part": 124,
+    "color": "Brown"
+    },
+    "b_n_wood elf_f_hair_04": {
+    "comment": "Fem Swayze",
+    "part": 10,
+    "color": "Black"
+    },
+    "b_n_wood elf_f_hair_05": {
+    "comment": "50's US Housewife stereotype",
+    "part": 102,
+    "color": "DarkBrown"
+    },
+
+
+    "b_n_argonian_m_hair01": {
+    "comment": "Horns and Frills",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_m_hair02": {
+    "comment": "Three Spines",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_m_hair03": {
+    "comment": "Large Ears and Earrings",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_m_hair04": {
+    "comment": "Parasaurolophus Head Thing",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_m_hair05": {
+    "comment": "Curled Horns",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_m_hair06": {
+    "comment": "Paired Spikes",
+    "part": 0,
+    "color": "Blonde"
+    },
+
+    "b_n_argonian_f_hair01": {
+    "comment": "Small Horns and Decoration",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_f_hair02": {
+    "comment": "Small Horns and Headpiece",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_f_hair03": {
+    "comment": "Horn and Feathers",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_f_hair04": {
+    "comment": "Small Horns With Loop",
+    "part": 0,
+    "color": "Blonde"
+    },
+    "b_n_argonian_f_hair05": {
+    "comment": "Spines",
+    "part": 0,
+    "color": "Blonde"
+    }
 }

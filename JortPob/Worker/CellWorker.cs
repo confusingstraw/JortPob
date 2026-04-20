@@ -75,6 +75,12 @@ namespace JortPob.Worker
                 }
             }
 
+            /* Sort arrays since they were loaded in threads the order is effectively random */
+            /* Sorting is not strictly required but it causes randomization in the process which we want to avoid */
+            interior = interior.OrderBy(c => c.name).ToList();
+            exterior = exterior.OrderByDescending(c => c.coordinate.x).ThenByDescending(c => c.coordinate.y).ToList();
+
+            /* return */
             return (exterior, interior);
         }
     }

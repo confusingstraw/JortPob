@@ -51,7 +51,7 @@ namespace JortPob
             Script debugScript = new(scriptManager, 18, 0, 0, 0);
             debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(18000000, 18001950, 0, 0, 0, 5);"));
             debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(18000001, 18001951, 0, 0, 0, 5);"));
-            List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald-ruhn" };
+            List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald-ruhn", "Hla Oad" };
             int debugCounty = 0;
             for (int i = 0; i < debugWarpCellList.Count(); i++)
             {

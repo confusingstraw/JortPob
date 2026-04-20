@@ -2,12 +2,14 @@
 using SoulsFormats.Formats.Morpheme.NSA;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
 
 namespace JortPob
 {
+    [DebuggerDisplay("{name} :: [{coordinate.x},{coordinate.y}]")]
     public class Cell
     {
         public enum Flag { IsInterior, HasWater, RestingIsIllegal, BehavesLikeExterior, Unk40 }

@@ -73,6 +73,8 @@ namespace JortPob
             string bnkJsonPath = Path.Combine(dir, "cs_main", "soundbank.json");
             string bnkRebuiltPath = Path.Combine(dir, "cs_main.created.bnk");
 
+            if (Const.DEBUG_REUSE_FILES && File.Exists(bnkPath)) { return; } // if debug_reuse is on, skip if file already created
+
             /* Copy base game cs_main.bnk and then decompile it */
             if (File.Exists(bnkPath)) { File.Delete(bnkPath); }
             if (Directory.Exists(bnkDir)) { Directory.Delete(bnkDir, true); }

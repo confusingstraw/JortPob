@@ -13,11 +13,11 @@ namespace JortPob
         public List<Tuple<int, string>> mapIndices;
         public MSBE msb;
         public LightManager lights;
-        public Script script;
+        public BaseScript script;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
         /* Exterior cells */
-        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights, Script script = null)
+        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights, BaseScript script = null)
         {
             id = new int[]
             {
@@ -31,7 +31,7 @@ namespace JortPob
         }
 
         /* Interior cells */
-        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights, Script script = null)
+        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights, BaseScript script = null)
         {
             id = new int[]
             {
