@@ -2,10 +2,10 @@
   "iron shardaxe": {
     "type": "CustomWeapon",
     "row": 14000000,
-    "infusion": "Lightning",
-    "skill": 21700,
-    "upgrade": 2,
-    "comment": "Remapping the iron shardaxe to a regular battle axe with +2 lightning infusion and the lightning slash skill."
+    "infusion": "Cold",
+    "skill": 50100,
+    "upgrade": 1,
+    "comment": "Remapping the iron shardaxe to a battle axe with +1 cold infusion and the hoarfrost stomp skill."
   },
   "iron longsword": {
     "type": "Weapon",
@@ -49,23 +49,517 @@
   "steel halberd": {
     "type": "CustomWeapon",
     "row": 18000000,
-    "upgrade": 3,
-    "comment": "Remapping the steel halberd to a halberd +3"
+    "upgrade": 2,
+    "comment": "Remapping the steel halberd to a halberd +2"
   },
-  "steel jinkblade": {
+  "steel katana": {
     "type": "CustomWeapon",
-    "row": 1000000,
+    "row": 9000000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Katana to Uchigatana +2"
+  },
+  "steel longbow": {
+    "type": "CustomWeapon",
+    "row": 41010000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Longbow to Albinauric Bow +2"
+  },
+  "steel longsword": {
+    "type": "CustomWeapon",
+    "row": 2000000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Longsword to Longsword +2"
+  },
+  "steel mace": {
+    "type": "CustomWeapon",
+    "row": 11000000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Mace to Mace +2"
+  },
+  "steel poisonsword": {
+    "type": "CustomWeapon",
+    "row": 2010000,
     "infusion": "Poison",
     "skill": 22800,
     "upgrade": 3,
-    "comment": "Remapping the steel jinkblade to a poison dagger +3"
+    "comment": "Remapping the steel poisonsword to a longsword with +3 poison infusion and poison mist skill."
   },
-   "steel jinkblade of the aegis": {
+  "steel saber": {
     "type": "CustomWeapon",
-    "row": 1030000,
+    "row": 5000000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Saber to Estoc +2"
+  },
+  "steel shardaxe": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "infusion": "Cold",
+    "skill": 50100,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardaxe to a battle axe with +3 cold infusion and the hoarfrost stomp skill."
+  },
+  "steel shardblade": {
+    "type": "CustomWeapon",
+    "row": 2010000,
+    "infusion": "Cold",
+    "skill": 22700,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardblade to a short sword with +3 cold infusion and the chilling mist skill."
+  },
+  "steel shardcleaver": {
+    "type": "CustomWeapon",
+    "row": 18000000,
+    "infusion": "Cold",
+    "skill": 50100,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardcleaver to a +3 cold halberd with the hoarfrost stomp skill."
+  },
+  "steel shardmace": {
+    "type": "CustomWeapon",
+    "row": 11000000,
+    "infusion": "Cold",
+    "skill": 50100,
+    "upgrade": 3,
+    "comment": "Remapping Steel Shardmace to Cold Mace +2 with Hoarfrost Stomp"
+  },
+  "steel shardmauler": {
+    "type": "CustomWeapon",
+    "row": 11080000,
+    "infusion": "Cold",
+    "skill": 416000,
+    "upgrade": 3,
+    "comment": "Remapping Steel Shardmauler to Cold Hammer +3 with Divine Beast Frost Stomp"
+  },
+  "steel shardscythe": {
+    "type": "CustomWeapon",
+    "row": 9000000,
+    "infusion": "Cold",
+    "skill": 22700,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardscythe to a +3 cold uchigatana with the chilling mist skill."
+  },
+  "steel shardskewer": {
+    "type": "CustomWeapon",
+    "row": 16070000,
+    "infusion": "Cold",
+    "skill": 20200,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardskewer to a +3 cold pike with the ice spear skill."
+  },
+  "steel shardslayer": {
+    "type": "CustomWeapon",
+    "row": 3050000,
+    "infusion": "Cold",
+    "skill": 50100,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardskewer to a +3 cold flamberge with the hoarfrost stomp skill."
+  },
+  "steel shardsword": {
+    "type": "CustomWeapon",
+    "row": 2000000,
+    "infusion": "Cold",
+    "skill": 22700,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardsword to a +3 cold longsword with the chilling mist skill."
+  },
+  "steel shortsword": {
+    "type": "CustomWeapon",
+    "row": 2010000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Shortsword to Short Sword +2"
+  },
+  "steel sparkaxe": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparkaxe to a battle axe with +3 lightning infusion and the lightning slash skill."
+  },
+  "steel sparkblade": {
+    "type": "CustomWeapon",
+    "row": 2010000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparkblade to a short sword with +3 lightning infusion and the lightning slash skill."
+  },
+  "steel sparkcleaver": {
+    "type": "CustomWeapon",
+    "row": 18000000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel shardcleaver to a +3 lightning halberd with the lightning slash skill."
+  },
+  "steel sparkmace": {
+    "type": "CustomWeapon",
+    "row": 11000000,
+    "infusion": "Lightning",
+    "skill": 50400,
+    "upgrade": 3,
+    "comment": "Remapping Steel Sparkmace to Lightning Mace +3 with Lightning Ram"
+  },
+  "steel sparkmauler": {
+    "type": "CustomWeapon",
+    "row": 11080000,
+    "infusion": "Lightning",
+    "skill": 50400,
+    "upgrade": 3,
+    "comment": "Remapping Steel Sparkmauler to Lightning Hammer +3 with Lightning Ram"
+  },
+  "steel sparkscythe": {
+    "type": "CustomWeapon",
+    "row": 9000000,
+    "infusion": "Lightning",
+    "skill": 413000,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparkscythe to a +3 Lightning uchigatana with the blinkbolt skill."
+  },
+  "steel sparkskewer": {
+    "type": "CustomWeapon",
+    "row": 16070000,
+    "infusion": "Lightning",
+    "skill": 21600,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparkskewer to a +3 lightning pike with the thunderbolt skill."
+  },
+  "steel sparkslayer": {
+    "type": "CustomWeapon",
+    "row": 3050000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparkslayer to a +3 Lightning flamberge with the lightning slash skill."
+  },
+  "steel sparksword": {
+    "type": "CustomWeapon",
+    "row": 2000000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparksword to a +3 lightning longsword with the lightning slash skill."
+  },
+  "steel spear": {
+    "type": "CustomWeapon",
+    "row": 16070000,
+    "upgrade": 2,
+    "comment": "Remapping the steel halberd to a pike +2"
+  },
+  "steel spear of impaling thrust": {
+    "type": "CustomWeapon",
+    "row": 16030000,
+    "skill": 11600,
+    "upgrade": 6,
+    "comment": "Remapping the steel spear of impaling thrusts to a +6 pike and giant hurl skill."
+  },
+  "steel spider blade": {
+    "type": "CustomWeapon",
+    "row": 7080000,
+    "skill": 22400,
+    "infustion": "Blood",
+    "upgrade": 4,
+    "comment": "Remapping the steel spear of impaling thrusts to a +4 blood scavenger's curved sword and blood blade skill."
+  },
+  "steel staff": {
+    "type": "CustomWeapon",
+    "row": 33060000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Staff to Demi Human Queen's Staff +2"
+  },
+  "steel viperaxe": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping the steel viperaxe to a battle axe with +3 poison infusion and the poison mist skill."
+  },
+  "steel viperblade": {
+    "type": "CustomWeapon",
+    "row": 2010000,
     "infusion": "Poison",
     "skill": 11900,
     "upgrade": 3,
-    "comment": "Remapping the steel jinkblade of the aegis to a Misericorde +3"
+    "comment": "Remapping the steel viperblade to a short sword with +3 poison infusion and the poison moth flight skill."
+  },
+  "steel vipercleaver": {
+    "type": "CustomWeapon",
+    "row": 18000000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping the steel vipercleaver to a +3 Poison halberd with the poison mist skill."
+  },
+  "steel vipermace": {
+    "type": "CustomWeapon",
+    "row": 11000000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping Steel Vipermace to Poison Mace +3 with Poison Mist"
+  },
+  "steel vipermauler": {
+    "type": "CustomWeapon",
+    "row": 11080000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping Steel Vipermauler to Poison Hammer +3 with Poison Mist"
+  },
+  "steel viperscythe": {
+    "type": "CustomWeapon",
+    "row": 9000000,
+    "infusion": "Poison",
+    "skill": 11900,
+    "upgrade": 3,
+    "comment": "Remapping the steel Viperscythe to a +3 Poison uchigatana with the poison moth flight skill."
+  },
+  "steel viperskewer": {
+    "type": "CustomWeapon",
+    "row": 16070000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping the steel viperskewer to a +3 poison pike with the poison mist skill."
+  },
+  "steel viperslayer": {
+    "type": "CustomWeapon",
+    "row": 3050000,
+    "infusion": "Poison",
+    "skill": 22800,
+    "upgrade": 3,
+    "comment": "Remapping the steel viperslayer to a +3 Poison flamberge with the poison mist skill."
+  },
+  "steel vipersword": {
+    "type": "CustomWeapon",
+    "row": 2000000,
+    "infusion": "Poison",
+    "skill": 11900,
+    "upgrade": 3,
+    "comment": "Remapping the steel vipersword to a +3 poison longsword with the poison moth flight skill."
+  },
+  "steel stormsword": {
+    "type": "CustomWeapon",
+    "row": 2240000,
+    "infusion": "Lightning",
+    "skill": 21700,
+    "upgrade": 3,
+    "comment": "Remapping the steel sparksword to a +3 lightning Warhawk's Talon with the lightning slash skill."
+  },
+  "steel tanto": {
+    "type": "CustomWeapon",
+    "row": 1150000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Tanto to Erdsteel Dagger +2"
+  },
+  "steel throwing knife": {
+    "type": "Goods",
+    "row": 1730,
+    "text": {
+      "name": "Steel Throwing Knife",
+      "description": "A steel knife balanced for throwing.",
+      "effect": "Deals Damage"
+    }
+  },
+  "steel throwing star": {
+    "type": "Goods",
+    "row": 1730,
+    "text": {
+      "name": "Steel Throwing Star",
+      "description": "A throwing star made of steel.",
+      "effect": "Deals Damage"
+    }
+  },
+  "steel wakizashi": {
+    "type": "CustomWeapon",
+    "row": 1100000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Wakizashi to Wakizashi +2"
+  },
+  "steel war axe": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "upgrade": 2,
+    "comment": "Remapping Steel War Axe to Battle Axe +2"
+  },
+  "steel war axe of deep biting": {
+    "type": "CustomWeapon",
+    "row": 14000000,
+    "infusion": "Heavy",
+    "skill": 10700,
+    "upgrade": 6,
+    "comment": "Remapping Steel War Axe of Deep Biting to Battle Axe +6 with Stamp (Sweep) skill."
+  },
+  "steel warhammer": {
+    "type": "CustomWeapon",
+    "row": 11080000,
+    "upgrade": 2,
+    "comment": "Remapping Steel Warhammer to hammer +2"
+  },
+  "steel warhammer of smiting": {
+    "type": "CustomWeapon",
+    "row": 11080000,
+    "infusion": "Heavy",
+    "skill": 10000,
+    "upgrade": 6,
+    "comment": "Remapping Steel Warhammer of Smiting to hammer +6 with Lion's Claw skill."
+  },
+  "stormblade": {
+    "type": "CustomWeapon",
+    "row": 7060000,
+    "infusion": "Lightning",
+    "skill": 21600,
+    "upgrade": 4,
+    "comment": "Remapping the stormblade to a Flowing Curved Sword with +4 lightning infusion and the thunderbolt skill."
+  },
+  "viper arrow": {
+    "type": "Weapon",
+    "row": 50160000,
+    "comment": "Remapping Viper Arrow to Poisonbone Arrow"
+  },
+  "viper_bolt": {
+    "type": "Weapon",
+    "row": 52140000,
+    "comment": "Remapping Viper Bolt to Poisonbone Bolt"
+  },
+  "viperstar": {
+    "type": "Goods",
+    "row": 1720,
+    "text": {
+      "name": "Viperstar",
+      "description": "A throwing star coated with deadly poison. Inflicts poison buildup on hit.",
+      "effect": "Inflicts Poison Buildup"
+    }
+  },
+  "war_axe_airan_ammu": {
+    "type": "CustomWeapon",
+    "row": 15040000,
+    "upgrade": 8,
+    "comment": "Remapping War Axe of Airan Ammu to Axe of Godrick +8"
+  },
+  "water spear": {
+    "type": "CustomWeapon",
+    "row": 16020000,
+    "skill": 20300,
+    "comment": "Remapping the water spear to a crystal spear +4 and the glintstone pebble skill."
+  },
+  "we_hellfirestaff": {
+    "type": "CustomWeapon",
+    "row": 33050000,
+    "upgrade": 8,
+    "skill": 12000,
+    "comment": "Remapping Hellfire Staff to Gelmir Glintstone Staff +8 with Spinning Weapon Skill"
+  },
+  "we_illkurok": {
+    "type": "CustomWeapon",
+    "row": 16090000,
+    "upgrade": 8,
+    "comment": "Remapping Illkurok to Bolt of Gransax +8"
+  },
+  "we_shimsil": {
+    "type": "CustomWeapon",
+    "row": 1030000,
+    "infusion": "Occult",
+    "upgrade": 8,
+    "skill": 60200,
+    "comment": "Remapping Shimsil to Misericorde +8 Occult Infusion with Assassin's Gambit skill"
+  },
+  "we_stormforge": {
+    "type": "CustomWeapon",
+    "row": 18140000,
+    "upgrade": 8,
+    "comment": "Remapping Stormforge to Dragon Halberd +8"
+  },
+  "widowmaker_unique": {
+    "type": "CustomWeapon",
+    "row": 15120000,
+    "infusion": "Heavy",
+    "skill": 65400,
+    "upgrade": 8,
+    "comment": "Remapping the widowmaker to a +8 Butchering Knife with the Braggart's Roar skill."
+  },
+  "wild flamesword": {
+    "type": "CustomWeapon",
+    "row": 7050000,
+    "upgrade": 6,
+    "comment": "Remapping the wild flamesword to a magma blade +6"
+  },
+  "wild flameblade": {
+    "type": "CustomWeapon",
+    "row": 1150000,
+    "infusion": "FlameArt",
+    "skill": 417000,
+    "upgrade": 6,
+    "comment": "Remapping the wild flameblade to a erdsteel dagger with +6 flameart infusion with the flame spear skill"
+  },
+  "wild shardblade": {
+    "type": "CustomWeapon",
+    "row": 1090000,
+    "infusion": "Cold",
+    "skill": 422000,
+    "upgrade": 6,
+    "comment": "Remapping the wild shardblade to a great knife with +6 cold infusion and the ghostflame call skill."
+  },
+  "wild shardsword": {
+    "type": "CustomWeapon",
+    "row": 2210000,
+    "infusion": "Cold",
+    "skill": 422000,
+    "upgrade": 6,
+    "comment": "Remapping the wild shardsword to a cane sword with +6 cold infusion and the ghostflame call skill."
+  },
+  "wild sparkblade": {
+    "type": "CustomWeapon",
+    "row": 1100000,
+    "infusion": "Lightning",
+    "skill": 413000,
+    "upgrade": 6,
+    "comment": "Remapping the wild sparkblade to a Wakizashi with +6 lightning infusion and the blinkbolt skill."
+  },
+  "wild sparksword": {
+    "type": "CustomWeapon",
+    "row": 2230000,
+    "infusion": "Lightning",
+    "skill": 413000,
+    "upgrade": 6,
+    "comment": "Remapping the wild sparksword to a noble's slender sword with +6 lightning infusion and the blinkbolt skill."
+  },
+  "wild viperblade": {
+    "type": "CustomWeapon",
+    "row": 1060000,
+    "infusion": "Poison",
+    "skill": 11900,
+    "upgrade": 6,
+    "comment": "Remapping the wild viperblade to a celebrant's sickle with +6 poison infusion and the poison moth flight skill."
+  },
+  "wild vipersword": {
+    "type": "CustomWeapon",
+    "row": 5020000,
+    "infusion": "Poison",
+    "skill": 11900,
+    "upgrade": 6,
+    "comment": "Remapping the wild vipersword to a rapier with +6 poison infusion and the poison moth flight skill."
+  },
+  "Wind of Ahaz": {
+    "type": "CustomWeapon",
+    "row": 1061200,
+    "infusion": "Occult",
+    "skill": 60200,
+    "upgrade": 2,
+    "comment": "Remapping Wind of Ahaz to a +2 Occult Celebrant's Sickle with the assassin's gambit skill."
+  },
+  "wooden staff": {
+    "type": "Weapon",
+    "row": 33200000,
+    "comment": "Remapping Wooden Staff as Academy Glintstone Staff"
+  },
+  "glass netch dagger": {
+    "type": "CustomWeapon",
+    "row": 1000000,
+    "infusion": "Blood",
+    "skill" : 10800,
+    "upgrade": 8,
+    "comment": "Remapping the glass netch dagger to a dagger with +8 blood infusion and the blood tax skill."
   }
 }

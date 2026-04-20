@@ -52,13 +52,16 @@ namespace JortPob
             item = LoadMsgBnd(Utility.ResourcePath(@"text\item_dlc02.msgbnd.dcx"));
         }
 
-        private FMG.Entry GetEntry(FMG fmg, int id)
+        private FMG.Entry GetOrCreateEntry(FMG fmg, int id)
         {
             foreach (FMG.Entry entry in fmg.Entries)
             {
                 if (entry.ID == id) { return entry; }
             }
-            return null;
+
+            FMG.Entry e = new(id, "");
+            fmg.Entries.Add(e);
+            return e;
         }
 
         public void AddTalk(int id, string text)
@@ -117,7 +120,7 @@ namespace JortPob
         public void SetLocation(int id, string text)
         {
             FMG fmg = item[TextType.PlaceName];
-            FMG.Entry entry = GetEntry(fmg, id);
+            FMG.Entry entry = GetOrCreateEntry(fmg, id);
             if (fmg != null) { fmg.Entries.Remove(entry); }
             fmg.Entries.Add(new(id, text));
         }
@@ -210,8 +213,8 @@ namespace JortPob
         }
         public void RenameWeapon(int id, string name, string description)
         {
-            FMG.Entry entryName = GetEntry(item[TextType.WeaponName], id);
-            FMG.Entry entryDescription = GetEntry(item[TextType.WeaponCaption], id);
+            FMG.Entry entryName = GetOrCreateEntry(item[TextType.WeaponName], id);
+            FMG.Entry entryDescription = GetOrCreateEntry(item[TextType.WeaponCaption], id);
 
             if (name != null) { entryName.Text = name; }
             if (description != null) { entryDescription.Text = description; }
@@ -219,9 +222,9 @@ namespace JortPob
 
         public void RenameArmor(int id, string name, string summary, string description)
         {
-            FMG.Entry entryName = GetEntry(item[TextType.ProtectorName], id);
-            FMG.Entry entrySummary = GetEntry(item[TextType.ProtectorInfo], id);
-            FMG.Entry entryDescription = GetEntry(item[TextType.ProtectorCaption], id);
+            FMG.Entry entryName = GetOrCreateEntry(item[TextType.ProtectorName], id);
+            FMG.Entry entrySummary = GetOrCreateEntry(item[TextType.ProtectorInfo], id);
+            FMG.Entry entryDescription = GetOrCreateEntry(item[TextType.ProtectorCaption], id);
 
             if (name != null) { entryName.Text = name; }
             if (summary != null) { entrySummary.Text = summary; }
@@ -230,10 +233,10 @@ namespace JortPob
 
         public void RenameGoods(int id, string name, string summary, string description, string effect)
         {
-            FMG.Entry entryName = GetEntry(item[TextType.GoodsName], id);
-            FMG.Entry entrySummary = GetEntry(item[TextType.GoodsInfo], id);
-            FMG.Entry entryDescription = GetEntry(item[TextType.GoodsCaption], id);
-            FMG.Entry entryEffect = GetEntry(item[TextType.GoodsInfo2], id);
+            FMG.Entry entryName = GetOrCreateEntry(item[TextType.GoodsName], id);
+            FMG.Entry entrySummary = GetOrCreateEntry(item[TextType.GoodsInfo], id);
+            FMG.Entry entryDescription = GetOrCreateEntry(item[TextType.GoodsCaption], id);
+            FMG.Entry entryEffect = GetOrCreateEntry(item[TextType.GoodsInfo2], id);
 
             if (name != null) { entryName.Text = name; }
             if (summary != null) { entrySummary.Text = summary; }
@@ -243,9 +246,9 @@ namespace JortPob
 
         public void RenameAccessory(int id, string name, string summary, string description)
         {
-            FMG.Entry entryName = GetEntry(item[TextType.AccessoryName], id);
-            FMG.Entry entrySummary = GetEntry(item[TextType.AccessoryInfo], id);
-            FMG.Entry entryDescription = GetEntry(item[TextType.AccessoryCaption], id);
+            FMG.Entry entryName = GetOrCreateEntry(item[TextType.AccessoryName], id);
+            FMG.Entry entrySummary = GetOrCreateEntry(item[TextType.AccessoryInfo], id);
+            FMG.Entry entryDescription = GetOrCreateEntry(item[TextType.AccessoryCaption], id);
 
             if (name != null) { entryName.Text = name; }
             if (summary != null) { entrySummary.Text = summary; }
@@ -254,9 +257,9 @@ namespace JortPob
 
         public void RenameGem(int id, string name, string description)
         {
-            FMG.Entry entryName = GetEntry(item[TextType.GemName], id);
-            FMG.Entry entrySummary = GetEntry(item[TextType.GemInfo], id);
-            FMG.Entry entryDescription = GetEntry(item[TextType.GemCaption], id);
+            FMG.Entry entryName = GetOrCreateEntry(item[TextType.GemName], id);
+            FMG.Entry entrySummary = GetOrCreateEntry(item[TextType.GemInfo], id);
+            FMG.Entry entryDescription = GetOrCreateEntry(item[TextType.GemCaption], id);
 
             if (name != null) { entryName.Text = name; }
             entrySummary.Text = "Can be used to enchant a weapon or shield";
@@ -265,7 +268,7 @@ namespace JortPob
 
         public void EditMenuText(int id, string text)
         {
-            GetEntry(menu[TextType.GR_MenuText], id).Text = text;
+            GetOrCreateEntry(menu[TextType.GR_MenuText], id).Text = text;
         }
 
         public int AddLoadingTip(string title, string text)

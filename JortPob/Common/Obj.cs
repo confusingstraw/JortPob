@@ -260,6 +260,42 @@ namespace JortPob.Common
             }
         }
 
+        /* Very specific and special function for use in terrain navmeshes */
+        /* Finds the border vertices and expands them out from the center by the given distance. Used to create overlap betweeen terrain navmeshes so npcs can traverse easier */
+        public void borderize(float distance)
+        {
+            /* Find borders */
+            Vector2 min = Vector2.Zero, max = Vector2.Zero;   // only works if model is centered on 0,0,0
+            foreach(Vector3 v in vs)
+            {
+                if (v.X > max.X) { max.X = v.X; }
+                if (v.Z > max.Y) { max.Y = v.Z; }
+                if (v.X < min.X) { min.X = v.X; }
+                if (v.Z < min.Y) { min.Y = v.Z; }
+            }
+
+            const float precision = .1f;
+            max.X -= precision;
+            max.Y -= precision;
+            min.X += precision;
+            min.Y += precision;
+
+            /* Expand dong */
+            for (int i=0;i<vs.Count;i++)
+            {
+                Vector3 v = vs[i];
+                float x = v.X;
+                float z = v.Z;
+
+                if (x >= max.X) { x += distance; }
+                if (z >= max.Y) { z += distance; }
+                if (x <= min.X) { x -= distance; }
+                if (z <= min.Y) { z -= distance; }
+
+                vs[i] = new(x, v.Y, z);
+            }
+        }
+
         /* Returns number of triangles in this obj */
         public int count()
         {

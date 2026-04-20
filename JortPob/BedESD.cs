@@ -9,7 +9,7 @@ namespace JortPob
 
         /* generate an esd script for beds */
         public BedESD(Layout layout, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, BedContent content, int id) {
-            int interactAction = paramanager.GenerateActionButtonInteractParam("Use Bed");
+            int interactAction = paramanager.GenerateActionButtonInteractParam(content, "Use Bed");
             int restAction = textManager.GetTopic("Rest");
             int longRestAction = textManager.GetTopic("Long Rest");
             int storageAction = textManager.GetTopic("Organize Storage");

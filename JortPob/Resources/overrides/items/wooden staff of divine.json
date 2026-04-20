@@ -1,0 +1,16 @@
+﻿{
+  "comment": "Wooden Staff of Divine as a copy of Academy Glintstone Staff +3 with spinning weapon skill",
+  "type": "Weapon",
+  "row": 33200000,
+  "useIcon": true,
+  "skill": 12000,
+  "upgrade": 1,
+  "text": {
+    "name": "Wooden Staff of Judgement",
+    "description": "A staff that damages endurance",
+    "enchant": [ "Damages endurance", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "curse endurance_en"
+  }
+}

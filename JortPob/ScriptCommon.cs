@@ -1,10 +1,10 @@
 ﻿using JortPob.Common;
 using SoulsFormats;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using JortPob.Scripts;
 using System;
+using System.Linq;
 
 namespace JortPob
 {
@@ -16,7 +16,6 @@ namespace JortPob
     {
         public readonly EMEVD func;
 
-        public List<Script.Flag> flags = new();
         private Dictionary<Script.Flag.Category, uint> flagUsedCounts = new()
             {
                 { Script.Flag.Category.Event, 0 },
@@ -43,16 +42,12 @@ namespace JortPob
         public readonly Dictionary<Event, uint> events = new();
         public readonly Dictionary<int, Script.Flag> messages = new();  // hash of message text as key, value is flag that when set to true triggers a message to display
 
-        /**
-         * This is just used to speed up searches for flags. It is a 1:1 mapping, so duplicate designated/named
-         * flags will result in us just using the first one. This is okay (for now), because that is the same logic
-         * that GetFlag already uses.
-         */
-        private readonly Dictionary<ScriptFlagLookupKey, Script.Flag> flagsByLookupKey = new();
-
         public ScriptCommon(ScriptManager manager) : base(manager)
         {
-            func = EMEVD.Read(Utility.ResourcePath(@"script\common_func.emevd.dcx"));
+            // Create a fresh common_func.emevd
+            func = new EMEVD();
+            func.Compression = Compression.KRAK();
+            func.Format = SoulsFormats.EMEVD.Game.Sekiro;
 
             // Add preconstructor with a few specific calls from the base game common
             EMEVD.Event precon = new(50);
@@ -164,6 +159,15 @@ namespace JortPob
 
             /* Create event for emulating the GetSecondsPassed papyrus call */
             RegisterTemplateEvent(Event.GetSecondsPassed, "CommonFunc:GetSecondsPassed", TemplateEMEVD.CreateGetSecondsPassedEvent);
+        }
+
+        public override string[] FilesToLink()
+        {
+            return new string[]
+            {
+                @"N:\GR\data\Param\event\common_func.emevd" + "\0",
+                @"N:\GR\data\Param\event\common_macro.emevd" + "\0"
+            };
         }
 
         /* Register a tutorial popup message with given text */
@@ -426,13 +430,19 @@ namespace JortPob
 
         public override Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, Content content, uint value = 0, bool allowPhased = false)
         {
-            if (content is PhasedNpcContent) { throw new System.Exception("Cannot create flags for phased content in ScriptCommon!"); }
+            if (content is PhasedNpcContent && !allowPhased) { throw new System.Exception("Cannot create flags for phased content in this manner! See CreateFlagLocal or use allowePhased if you are certain it's okay."); }
+            else if (content is PhasedNpcContent) { return CreateFlag(category, type, designation, manager.routing[(PhasedNpcContent)content], value); }
             return CreateFlag(category, type, designation, content.entity.ToString(), value);
         }
 
         public override Script.Flag CreateFlagLocal(Content content, string name, uint value = 0)
         {
-            throw new System.Exception("CreateFlagLocal cannot be called from ScriptCommon.cs! Please use Script.CreateFlagLocal()");
+            if (content is PhasedNpcContent)
+            {
+                PhasedNpcContent pnpc = (PhasedNpcContent)content;
+                return GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, $"{manager.routing[pnpc]}.{name}", value); // this is one of the few places where a phased npc creates new flags
+            }
+            return CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Local, $"{content.entity.ToString()}.{name}", value);
         }
 
         public override Script.Flag CreateFlag(Script.Flag.Category category, Script.Flag.Type type, Script.Flag.Designation designation, string name, uint value = 0)
@@ -466,13 +476,8 @@ namespace JortPob
             return flag;
         }
 
-        public Script.Flag FindFlagByLookupKey(ScriptFlagLookupKey key)
-        {
-            return flagsByLookupKey.GetValueOrDefault(key);
-        }
-
         /* Create a unique entity id, this is primarily used as an overflow for other msbs when they run out of room. */
-        public uint CreateEntity(Script.EntityType type, string name)
+        public override uint CreateEntity(Script.EntityType type, string name)
         {
             uint rawCount = entityUsedCounts[type]++;
             uint newid = COMMON_FLAG_BASES[(rawCount / 1000)] + ((uint)type) + rawCount;
@@ -480,10 +485,23 @@ namespace JortPob
             return newid;
         }
 
-        public void Write()
+        // script common is only ever used for exteriors in the case of msb promoted npcs
+        public override bool IsInterior()
+        {
+            return false;
+        }
+
+        public override void Write()
         {
             emevd.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common.emevd.dcx"));
             func.Write(Path.Combine(Const.OUTPUT_PATH, "event", "common_func.emevd.dcx"));
         }
+
+        /* Abstracts scripts that ScriptCommon does not support */
+        public override (uint bed, uint respawn) RegisterBed() { throw new System.NotImplementedException(); }
+        public override void RegisterLoadDoor(Paramanager paramanager, DoorContent door) { throw new System.NotImplementedException(); }
+        public override void RegisterItemAsset(Paramanager paramanager, ItemContent item) { throw new System.NotImplementedException(); }
+        public override void RegisterContainerAsset(Paramanager paramanager, ContainerContent container, int totalValue) { throw new System.NotImplementedException(); }
+        public override Script.Flag GetOrRegisterPlaySE(uint entity, int seId) { throw new System.NotImplementedException(); }
     }
 }

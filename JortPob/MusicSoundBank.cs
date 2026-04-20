@@ -148,10 +148,6 @@ namespace JortPob
 
         public void Write()
         {
-            /* Convert music files and add the tracks to our track list*/
-            ImportMorrowindMusic();
-            ImportSkyrimMusic();
-
             /* Setup some paths */
             string dir = Path.Combine(Const.OUTPUT_PATH, "sd");
             string bnkPath = Path.Combine(dir, "cs_smain.bnk");
@@ -159,6 +155,12 @@ namespace JortPob
             string sourcePath = Path.Combine(Const.ELDEN_PATH, "game", "sd", "cs_smain.bnk");
             string bnkJsonPath = Path.Combine(dir, "cs_smain", "soundbank.json");
             string bnkRebuiltPath = Path.Combine(dir, "cs_smain.created.bnk");
+
+            if (Const.DEBUG_REUSE_FILES && File.Exists(bnkPath)) { return; } // if debug_reuse is on, skip if file already created
+
+            /* Convert music files and add the tracks to our track list*/
+            ImportMorrowindMusic();
+            ImportSkyrimMusic();
 
             /* Copy base game cs_smain.bnk and then decompile it */
             if (File.Exists(bnkPath)) { File.Delete(bnkPath); }

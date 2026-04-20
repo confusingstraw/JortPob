@@ -1,0 +1,15 @@
+﻿{
+  "comment": "Warhammer of Wounds as a copy of Battlehammer +4",
+  "type": "Weapon",
+  "row": 12020000,
+  "useIcon": true,
+  "upgrade": 4,
+  "text": {
+    "name": "Warhammer of Wounds",
+    "description": "A warhammer that drains the life from its victims.",
+    "enchant": [ "Drains Health", "", "" ]
+  },
+  "data": {
+    "residentSpEffectId": "wound_en"
+  }
+}

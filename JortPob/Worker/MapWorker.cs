@@ -72,7 +72,12 @@ namespace JortPob.Worker
 
         public static void Go()
         {
-            if (Const.DEBUG_SKIP_CUSTOM_MAP) return;
+            if (Const.DEBUG_SKIP_CUSTOM_MAP) { return; }
+            if (Const.DEBUG_REUSE_FILES &&
+                File.Exists(Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.tpfbhd")) &&
+                File.Exists(Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.tpfbdt")) &&
+                File.Exists(Path.Combine(Const.OUTPUT_PATH, "menu\\71_maptile.mtmskbnd.dcx")))
+            { return; }             // if debug_reuse is on and the files are already there...
 
             MapWorker worker = new();
 

@@ -28,7 +28,7 @@ namespace JortPob
             Cache cache = Cache.Load(esm);                                                  // Load existing cache (FAST!) or generate a new one (SLOW!)
             TextManager text = new();                                                      // Manages FMG text files
             MenuTextureManager texManager = new(esm);                                     // Manages menu textures for things like inventory icons and loading screens
-            Paramanager param = new(text);                                               // Class for managing PARAM files
+            Paramanager param = new(cache, text);                                        // Class for managing PARAM files
             SpeffManager speff = new(esm, param, scriptManager, texManager, text);      // Manages speff params, primarily for magic effects like potions and enchanted gear. NOT SPELLS!
             ItemManager item = new(esm, param, scriptManager, speff, texManager, text);                         // Handles generation and reampping of items
             Layout layout = new(cache, esm, param, text, scriptManager);                                       // Subdivides all content data from ESM into a more elden ring friendly format
@@ -46,10 +46,10 @@ namespace JortPob
             for (int i = 0; i <= 100; i++) { text.AddTopic($"Disposition: {i}"); }
 
             /* Write custom map */
-            if (!Const.DEBUG_SKIP_CUSTOM_MAP) { MapWorker.Go(); }
+            MapWorker.Go();
 
             /* replace the maptexinfo responsible for weather functions, sourced from Resources/other/mapinfotex.png */
-            MapInfoTexWorker.Go();
+            MapInfoTexWorker.Go(); // @TODO: this is like... designed as a worker but runs on 1 thread lol
 
             /* Replace openign cutscene */
             if(!Const.DEBUG_SKIP_CUTSCENES) { Cutscener.Create(Path.Combine(Const.MORROWIND_PATH, @"Data Files\video\mw_intro.bik"), 0040); }
@@ -72,7 +72,7 @@ namespace JortPob
                 MSBE msb = new MSBE();
                 msb.Compression = Compression.KRAK();
 
-                Script script = scriptManager.GetScript(tile);
+                BaseScript script = scriptManager.GetScript(tile);
                 bool isTileType = tile.GetType() == typeof(Tile);
                 List<Tuple<Vector3, TerrainInfo>> terrains = isTileType ? tile.terrain : emptyTerrainList;
                 LightManager lightManager = new(tile.map, tile.coordinate, tile.block);
@@ -215,7 +215,6 @@ namespace JortPob
                     {
                         asset.EntityID = content.entity;
                         contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, content, asset));
-                        if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
                     }
 
                     /* Add to msb */
@@ -296,11 +295,18 @@ namespace JortPob
                     enemy.ThinkParamID = paramRows.think;
                     enemy.CharaInitID = paramRows.init;
 
+                    /* Asset tileload config */
+                    if (tile.GetType() == typeof(HugeTile) || tile.GetType() == typeof(BigTile))
+                    {
+                        enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)tile.map };
+                        //enemy.TileLoad.Unk04 = 13;
+                    }
+
                     /* Objects with script references added to PleaseCompile list */
                     if (npc.entity > 0)
                     {
                         enemy.EntityID = npc.entity;
-                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, npc, enemy));
+                        contentToCompile.Add(new PleaseCompileTile(tile, msb, script, npc, enemy));
                     }
 
                     /* Add to msb */
@@ -325,7 +331,7 @@ namespace JortPob
                     if (creature.entity > 0)
                     {
                         enemy.EntityID = creature.entity;
-                        contentToCompile.Add(new PleaseCompileTile((Tile)tile, msb, script, creature, enemy));
+                        contentToCompile.Add(new PleaseCompileTile(tile, msb, script, creature, enemy));
                     }
 
                     /* Add to msb */
@@ -565,7 +571,7 @@ namespace JortPob
                 /* Generate msb from group */
                 MSBE msb = new();
                 LightManager lightManager = new(group.map, group.area, group.unk, group.block);
-                Script script = scriptManager.GetScript(group);
+                BaseScript script = scriptManager.GetScript(group);
                 ResourcePool pool = new(group, msb, lightManager, script);
                 msb.Compression = Compression.KRAK();
 
@@ -675,7 +681,6 @@ namespace JortPob
                         {
                             asset.EntityID = content.entity;
                             contentToCompile.Add(new PleaseCompileGroup(group, msb, script, content, asset));
-                            if (content.warp != null) { script.RegisterLoadDoor(param, content, modelInfo); } // if the door is a load door we need to generate scripts for it (@TODO: some what temp as we will need more complex scripting for doors in the future)
                         }
 
                         /* Add to msb */
@@ -1056,6 +1061,7 @@ namespace JortPob
                 foreach (BaseTile bt in layout.tiles)
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
+                    tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
@@ -1068,6 +1074,7 @@ namespace JortPob
                     {
                         InteriorGroup.Chunk chunk = group.chunks[i];
                         string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        if (Const.DEBUG_REUSE_FILES && File.Exists(objPath)) { objs.Add(objPath); continue; } // if debug_reuse is on, skip if file already created
                         chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                         objs.Add(objPath);
                     }
@@ -1250,6 +1257,13 @@ namespace JortPob
                         if (compile is PleaseCompileTile pct) { enemyPart.TalkID = character.GetESD(pct.tile, pct.msb, characterContent); }
                         else if (compile is PleaseCompileGroup pcg) { enemyPart.TalkID = character.GetESD(pcg.group, pcg.msb, characterContent); }
                     }
+                    else if (compile.content is DoorContent dc && dc.warp != null)
+                    {
+                        if (!(papyrus != null && (papyrus.HasCall(Papyrus.Call.Type.OnActivate) || papyrus.HasCall(Papyrus.Call.Type.Activate))))
+                        {
+                            compile.script.RegisterLoadDoor(param, dc); // only register a basic load door script if door doesn't seem to have a custom script attached
+                        }
+                    }
 
                     Lort.TaskIterate();
                 }
@@ -1346,8 +1360,8 @@ namespace JortPob
             Lort.TaskIterate();
         }
 
-        public abstract record PleaseCompile(MSBE msb, Script script, Content content, MSBE.Part part) { }
-        public record PleaseCompileTile(Tile tile, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
-        public record PleaseCompileGroup(InteriorGroup group, MSBE msb, Script script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
+        public abstract record PleaseCompile(MSBE msb, BaseScript script, Content content, MSBE.Part part) { }
+        public record PleaseCompileTile(BaseTile tile, MSBE msb, BaseScript script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
+        public record PleaseCompileGroup(InteriorGroup group, MSBE msb, BaseScript script, Content content, MSBE.Part part) : PleaseCompile(msb, script, content, part) { }
     }
 }

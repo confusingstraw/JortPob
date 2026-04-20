@@ -3,11 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Packaging;
 using System.Linq;
 using System.Numerics;
 using static JortPob.Layout;
-using static SoulsFormats.MSBAC4.Event;
 
 namespace JortPob
 {
@@ -80,35 +78,12 @@ namespace JortPob
             return most;
         }
 
-        public IEnumerable<Content> GetAllContent()
-        {
-            IEnumerable<IEnumerable<Content>> all = [
-                assets,
-                doors,
-                emitters,
-                lights,
-                creatures,
-                npcs,
-                containers,
-                pickables,
-                items,
-            ];
-
-            foreach (IEnumerable<Content> enumerable in all)
-            {
-                foreach (Content content in enumerable)
-                {
-                    yield return content;
-                }
-            }
-        }
-
         public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
             cells.Add(cell);
 
             /* Add cells pathgrid to the tile */
-            Script script = scriptManager.GetScript(this);
+            BaseScript script = scriptManager.GetScript(this);
             for (int i = 0; i < cell.paths.Count(); i++)
             {
                 Vector3 path = cell.paths[i];
@@ -127,10 +102,23 @@ namespace JortPob
             float y = (coordinate.y * Const.TILE_SIZE);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
-            nav.add(new Obj(Path.Combine(Const.CACHE_PATH, terrainInfo.obj)), relative, Vector3.Zero, 1f);
         }
 
-        public new void AddContent(Cache cache, Cell cell, Content content)
+        public void FinalizeTerrainNav()
+        {
+            Obj all = new();
+            foreach((Vector3 v, TerrainInfo t) in terrain)
+            {
+                Obj obj = new Obj(Path.Combine(Const.CACHE_PATH, t.obj));
+                all.add(obj, v, Vector3.Zero, 1f);
+            }
+            all.collapse(Obj.CollisionMaterial.Stock);
+            all.optimize();
+            all.borderize(1.25f);
+            nav.add(all, Vector3.Zero, Vector3.Zero, 1f);
+        }
+
+        public override void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
             float y = (coordinate.y * Const.TILE_SIZE);
@@ -179,7 +167,7 @@ namespace JortPob
             points.Add(point);
         }
 
-        public void AddScriptedPosition(Script script, Vector3 position, float rot)
+        public void AddScriptedPosition(BaseScript script, Vector3 position, float rot)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
             float y = (coordinate.y * Const.TILE_SIZE);
@@ -192,7 +180,7 @@ namespace JortPob
         }
         
         /* Add travelpoint */
-        public void AddTravelPoint(Script script, Vector3 point, float radius = -1f)
+        public void AddTravelPoint(BaseScript script, Vector3 point, float radius = -1f)
         {
             float x = (coordinate.x * Const.TILE_SIZE);
             float y = (coordinate.y * Const.TILE_SIZE);
@@ -205,7 +193,7 @@ namespace JortPob
         /* Converts all "Travel" positions to travelpoints */
         public void ProcessTravelPoints(ScriptManager scriptManager)
         {
-            Script script = scriptManager.GetScript(this);
+            BaseScript script = scriptManager.GetScript(this);
             void HandleCharacterContent(CharacterContent content)
             {
                 foreach (CharacterContent.AiPackage package in content.packages)
@@ -287,10 +275,33 @@ namespace JortPob
             return cells.Count() <= 0 && terrain.Count() <= 0 && assets.Count() <= 0;
         }
 
+        public IEnumerable<Content> GetAllContent()
+        {
+            IEnumerable<IEnumerable<Content>> all = [
+                assets,
+                doors,
+                emitters,
+                lights,
+                creatures,
+                npcs,
+                containers,
+                pickables,
+                items,
+            ];
+
+            foreach (IEnumerable<Content> enumerable in all)
+            {
+                foreach (Content content in enumerable)
+                {
+                    yield return content;
+                }
+            }
+        }
+
         public abstract void AddCell(ScriptManager scriptManager, Cell cell);
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordiantes to relative space */
-        public void AddContent(Cache cache, Cell cell, Content content)
+        public virtual void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
             switch(content)
             {

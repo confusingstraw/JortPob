@@ -1,6 +1,7 @@
 ﻿using JortPob.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
@@ -8,6 +9,7 @@ using System.Text.Json.Nodes;
 namespace JortPob
 {
     /* Content is effectively any physical object in the game world. Anything that has a physical position in a cell */
+    [DebuggerDisplay("{type} :: {id}")]
     public abstract class Content
     {
         public readonly Cell cell;
@@ -132,6 +134,8 @@ namespace JortPob
         public List<Travel> travel;  // travel destinations for silt strider people, mage guild teles, etc...
 
         public Script.Flag treasure; // only used if this is a dead body npc and it has treasure. otherwise null. NEVER SET THIS FOR A LIVING NPC!!!
+
+        public bool follower;       // Flagged for msb promoted followers. If true this character will be placed in a HugeTile and its scripts will be compiled into ScriptCommon.
 
         public class Travel : DoorContent.Warp
         {
@@ -475,6 +479,7 @@ namespace JortPob
             spells = content.spells;
             travel = content.travel;
             barter = content.barter;
+            follower = content.follower;
         }
 
         /* Checks innate fight value to determine if npc is naturally hostile to the player or not */

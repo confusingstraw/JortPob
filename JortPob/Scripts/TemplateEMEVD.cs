@@ -227,6 +227,7 @@ namespace JortPob.Scripts
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {getNextParamName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({getNextParamName()}, {getNextParamName()}, {getNextParamName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});");           // add alarming speff to player since they did a crime
         }
@@ -250,6 +251,7 @@ namespace JortPob.Scripts
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {getNextParamName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({getNextParamName()}, {getNextParamName()}, {getNextParamName()}, 0, 1, 0);", // add to bounty (last 0 is ADD operation type)
                 $"SetSpEffect(10000, {(int)SpeffManager.Functional.Alarming});");           // add alarming speff to player since they did a crime
         }
@@ -263,6 +265,7 @@ namespace JortPob.Scripts
                 $"SkipIfEventFlag(3, ON, TargetEventFlagType.EventFlag, {getNextParamName()});", // skip if the owner is dead
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag this crime as thievery
                 $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime comitted
+                $"SetEventFlag(TargetEventFlagType.EventFlag, {getNextParamName()}, ON);", // flag crime reported notification
                 $"EventValueOperation({getNextParamName()}, {getNextParamName()}, {getNextParamName()}, 0, 1, 0);"); // add to bounty (last 0 is ADD operation type)
         }
 

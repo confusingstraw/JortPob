@@ -10,35 +10,7 @@ function npc30000_Logic(ai)
     ai:SetStringIndexedNumber("IsApproachingHost", 0)
 	if ai:HasSpecialEffectId(TARGET_SELF, 1000001) == true then
 		if COMMON_EasySetup_Initial(ai) == false then
-			if f1_local7 == true and ai:HasSpecialEffectId(TARGET_ENE_0, 13945) == true then
-				f1_local7 = false
-			end
-			if eventRequest == 80 then
-				ai:AddTopGoal(GOAL_COMMON_Wait, 0.5, TARGET_NONE)
-				ai:AddTopGoal(GOAL_COMMON_WaitWithAnime, 10, 1000 + eventRequest_2, TARGET_NONE)
-			elseif distanceHost >= 22 then
-				ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)
-				ai:SetStringIndexedNumber("IsApproachingHost", 1)
-			elseif distanceHost >= 15 then
-				if f1_local7 == true then
-					if ai:HasSpecialEffectId(TARGET_SELF, 20018050) == true then
-						if distanceEnemy >= 6 and distanceEnemy <= f1_local4 then
-							ai:AddTopGoal(GOAL_COMMON_SidewayMove, 2, TARGET_ENE_0, ai:GetRandam_Int(0, 1), ai:GetRandam_Int(30, 45), true, true, -1)
-							ai:SetStringIndexedNumber("IsApproachingHost", 1)
-						else
-							topGoal = ai:AddTopGoal(goalId, -1)
-						end
-					elseif distanceEnemy >= 6 then
-						ai:AddTopGoal(GOAL_COMMON_SidewayMove, 2, TARGET_ENE_0, ai:GetRandam_Int(0, 1), ai:GetRandam_Int(30, 45), true, true, -1)
-						ai:SetStringIndexedNumber("IsApproachingHost", 1)
-					else
-						topGoal = ai:AddTopGoal(goalId, -1)
-					end
-				else
-					ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)
-					ai:SetStringIndexedNumber("IsApproachingHost", 1)
-				end
-			elseif distanceHost >= 3 then
+			if distanceHost >= 1.5 then
 				if f1_local7 == true then
 					if distanceEnemy >= 15 then
 						ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)
@@ -50,7 +22,7 @@ function npc30000_Logic(ai)
 					ai:AddTopGoal(GOAL_COMMON_ApproachTarget, 2, TARGET_HOSTPLAYER, 2, TARGET_SELF, false, -1)
 					ai:SetStringIndexedNumber("IsApproachingHost", 1)
 				end
-			elseif distanceHost >= 2 then
+			else
 				if f1_local7 == true then
 					if distanceEnemy >= 15 then
 						ai:AddTopGoal(GOAL_COMMON_Wait, 0.5, TARGET_SELF)
@@ -60,14 +32,6 @@ function npc30000_Logic(ai)
 				else
 					ai:AddTopGoal(GOAL_COMMON_Wait, 0.5, TARGET_SELF)
 				end
-			elseif f1_local7 == true then
-				if distanceEnemy > 15 then
-					ai:AddTopGoal(GOAL_COMMON_LeaveTarget, 2, TARGET_HOSTPLAYER, 999, TARGET_SELF, true, -1)
-				else
-					topGoal = ai:AddTopGoal(goalId, -1)
-				end
-			else
-				ai:AddTopGoal(GOAL_COMMON_LeaveTarget, 2, TARGET_HOSTPLAYER, 999, TARGET_SELF, true, -1)
 			end
 			if topGoal then
 				topGoal:SetManagementGoal()

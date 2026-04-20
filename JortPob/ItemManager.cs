@@ -1056,7 +1056,7 @@ namespace JortPob
 
             ItemInfo rightHand, leftHand;
             // Go twohanded big weapon
-            if (twoHand != null && twoHand.value > oneHand.FirstOrDefault()?.value) { rightHand = twoHand; leftHand = null; }
+            if (twoHand != null && twoHand.value > (oneHand.FirstOrDefault()?.value ?? 0)) { rightHand = twoHand; leftHand = null; }
             // Go dual short blades
             else if (oneHand.Count() >= 2 && oneHand[0].info == ItemInfo.OriginalType.ShortBladeOneHand && oneHand[1].info == ItemInfo.OriginalType.ShortBladeOneHand) { rightHand = oneHand[0]; leftHand = oneHand[1]; }
             // One handed weapon and shield (if we have a shield)

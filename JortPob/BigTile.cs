@@ -45,7 +45,7 @@ namespace JortPob
         }
 
         /* Incoming content is in aboslute worldspace from the ESM, when adding content to a tile we convert it's coordinates to relative space */
-        public new void AddContent(Cache cache, Cell cell, Content content)
+        public override void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
             switch (content)
             {

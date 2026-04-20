@@ -25,6 +25,9 @@
   // Add morrowind OST to game music (you can have both if you want!)
   "INCLUDE_MORROWIND_MUSIC": true,
 
+  // Reuse certain slow to build objects between builds (BNK, NAV). Great for debugging but you will need to manually delete files to rebuild them if this is on
+  "DEBUG_REUSE_FILES": false,
+
   // Saves a minute or 2 on a build
   "DEBUG_SKIP_CUSTOM_MAP": false,
 

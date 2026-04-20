@@ -20,7 +20,7 @@ namespace JortPob
         private readonly TextManager textManager;
         private readonly ItemManager itemManager;
         private readonly SpeffManager speffManager;
-        private readonly Script areaScript;
+        private readonly BaseScript areaScript;
         private readonly CharacterContent npcContent;
 
         private readonly List<string> defs;
@@ -28,7 +28,7 @@ namespace JortPob
         private readonly Dictionary<NpcManager.TopicData.TalkData, int> choiceMap; // this is a fix for recursive choices. if we generate a choice and another dialog refs it we return the id of the alraedy gen'd one
         private int nxtGenStateId;
 
-        public DialogESD(ESM esm, Layout layout, SoulsFormats.MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, Script areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
+        public DialogESD(ESM esm, Layout layout, SoulsFormats.MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, TextManager textManager, ItemManager itemManager, SpeffManager speffManager, BaseScript areaScript, uint id, CharacterContent npcContent, List<NpcManager.TopicData> topicData)
         {
             this.esm = esm;
             this.layout = layout;
@@ -99,7 +99,7 @@ namespace JortPob
             generatedStates.Add(GeneratedState_IdleTalk(id, Common.Const.ESD_STATE_HARDCODE_IDLETALK, idle, hello));
             generatedStates.Add(GeneratedState_Pickpocket(id, Common.Const.ESD_STATE_HARDCODE_PICKPOCKET));
 
-            int talkActionButtonId = paramanager.GenerateActionButtonInteractParam($"Talk to {npcContent.name}");
+            int talkActionButtonId = paramanager.GenerateActionButtonInteractParam(npcContent, $"Talk to {npcContent.name}");
 
             defs.Add($"# dialog esd : {npcContent.id}\r\n");
 
@@ -254,7 +254,7 @@ namespace JortPob
 
         private string State_x0(uint id, int talkActionButtonId)
         {
-            int pickpocketActionId = paramanager.GenerateActionButtonInteractParam($"Pickpocket {npcContent.name}");
+            int pickpocketActionId = paramanager.GenerateActionButtonInteractParam(npcContent, $"Pickpocket {npcContent.name}");
             Script.Flag crimeLevel = scriptManager.GetFlag(Script.Flag.Designation.CrimeLevel, "CrimeLevel");
             Script.Flag playerIsSneaking = scriptManager.GetFlag(Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
             Script.Flag pickpocketedFlag = scriptManager.GetFlag(Script.Flag.Designation.Pickpocketed, npcContent);
@@ -753,9 +753,8 @@ namespace JortPob
             return $"def t{id_s}_x42(flag2={unk0Flag}, flag3={unk1Flag}):\r\n    \"\"\"State 0\"\"\"\r\n    while True:\r\n        \"\"\"State 1\"\"\"\r\n        # actionbutton:6000:\"Talk\"\r\n        call = t{id_s}_x0(actionbutton1={talkActionButtonId}, flag10=6001, flag14=6000, flag15=6000, flag16=6000, flag17=6000,\r\n                             flag9=6000)\r\n        if call.Done():\r\n            break\r\n        elif GetEventFlag(flag2) and not GetEventFlag(flag3):\r\n            \"\"\"State 2\"\"\"\r\n            # talk:80181010:\"What are you playing at! Stop this!\"\r\n            assert t{id_s}_x34(text1=80181010, flag3=flag3, mode3=1)\r\n    \"\"\"State 3\"\"\"\r\n    return 0\r\n";
         }
 
-        // Some ESD calls have custom state machine calls because they are complex
+        // Some ESD calls have custom state machine calls because they are complex (EX: rankreq)
         // These are hardcoded in Const the Papyrus region
-        // All states 50 and beyond are Choice calls
         private string State_x44(uint id, List<NpcManager.TopicData> topics)
         {
             string id_s = id.ToString("D9");
@@ -1207,7 +1206,8 @@ namespace JortPob
                 case NpcContent.Witness.Citizen:
                     s = $""""
                         def t{id:D9}_x{x:D2}(crimeGold=_,violent=_):
-                            SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs, and turn us hostile
+                            SetEventFlag({crimeFlag.id}, FlagState.On)     ## flag crime to all nearby npcs
+                            SetEventFlag({hostileFlag.id}, FlagState.On)   ## turn hostile to player
                             SetEventFlag({crimeNotif.id}, FlagState.On)    ## notify player crime was reported
                             SetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}, GetEventFlagValue({crimeLevel.id}, {crimeLevel.Bits()}) + crimeGold)
                             GiveSpEffectToPlayer({(int)SpeffManager.Functional.Alarming})  ## add alarm speff to player since they did a crime
