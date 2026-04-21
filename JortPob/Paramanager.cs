@@ -817,8 +817,11 @@ namespace JortPob
 
             /* Equipment */
             row["equip_Wep_Right"].Value.SetValue(npc.equipWeaponRight?.row ?? -1);
+            row["wepParamType_Right1"].Value.SetValue(npc.equipWeaponRight?.type == ItemManager.Type.CustomWeapon ? (byte)1 : (byte)0);
             row["equip_Subwep_Right"].Value.SetValue(npc.equipRange?.row ?? -1);
+            row["wepParamType_Right2"].Value.SetValue(npc.equipRange?.type == ItemManager.Type.CustomWeapon ? (byte)1 : (byte)0);
             row["equip_Wep_Left"].Value.SetValue(npc.equipWeaponLeft?.row ?? -1);
+            row["wepParamType_Left1"].Value.SetValue(npc.equipWeaponLeft?.type == ItemManager.Type.CustomWeapon ? (byte)1 : (byte)0);
             row["equip_Helm"].Value.SetValue(npc.equipHead?.row ?? -1);
             row["equip_Armer"].Value.SetValue(npc.equipBody?.row ?? -1);   // SIC
             row["equip_Gaunt"].Value.SetValue(npc.equipHands?.row ?? -1);
