@@ -445,8 +445,41 @@ namespace JortPob
                     msb.Parts.Assets.Add(asset);
                 }
 
+                /* Handle area names */
+                if (isTileType)
+                {
+                    foreach (Layout.MapPoint point in tile.points)
+                    {
+                        int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
+
+                        MSBE.Region.MapPoint mpr = new();
+                        mpr.Name = $"{point.name} placename";
+                        mpr.Shape = new MSB.Shape.Sphere(point.radius);
+                        mpr.Position = point.relative + Const.MSB_OFFSET;
+                        mpr.Rotation = Vector3.Zero;
+                        mpr.RegionID = nextMPR++;
+                        mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
+                        mpr.MapStudioLayer = 4294967295;
+                        mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
+
+                        mpr.MapID = -1;
+                        mpr.UnkE08 = 255;
+                        mpr.UnkS04 = 0;
+                        mpr.UnkS0C = -1;
+                        mpr.UnkT04 = -1;
+                        mpr.UnkT08 = -1;
+                        mpr.UnkT0C = -1;
+                        mpr.UnkT10 = -1;
+                        mpr.UnkT14 = -1;
+                        mpr.UnkT18 = -1;
+
+                        msb.Regions.MapPoints.Add(mpr);
+                        if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
+                    }
+                }
+
                 /* Add scripted positions */
-                if(isTileType)
+                if (isTileType)
                 {
                     foreach(Layout.ScriptedPosition sp in tile.positions)
                     {
@@ -513,39 +546,6 @@ namespace JortPob
                         region.Unk40 = 0;
 
                         msb.Regions.PatrolRoutes.Add(region);
-                    }
-                }
-
-                /* Handle area names */
-                if (isTileType)
-                {
-                    foreach (Layout.MapPoint point in tile.points)
-                    {
-                        int paramId = int.Parse($"61{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextMPR:D2}");
-
-                        MSBE.Region.MapPoint mpr = new();
-                        mpr.Name = $"{point.name} placename";
-                        mpr.Shape = new MSB.Shape.Sphere(point.radius);
-                        mpr.Position = point.relative + Const.MSB_OFFSET;
-                        mpr.Rotation = Vector3.Zero;
-                        mpr.RegionID = nextMPR++;
-                        mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
-                        mpr.MapStudioLayer = 4294967295;
-                        mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(tile, point, paramId);
-
-                        mpr.MapID = -1;
-                        mpr.UnkE08 = 255;
-                        mpr.UnkS04 = 0;
-                        mpr.UnkS0C = -1;
-                        mpr.UnkT04 = -1;
-                        mpr.UnkT08 = -1;
-                        mpr.UnkT0C = -1;
-                        mpr.UnkT10 = -1;
-                        mpr.UnkT14 = -1;
-                        mpr.UnkT18 = -1;
-
-                        msb.Regions.MapPoints.Add(mpr);
-                        if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
                     }
                 }
 
