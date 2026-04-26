@@ -24,7 +24,7 @@ namespace JortPob
         private readonly List<InteriorGroup> interiors = [];
 
         // For now, we just expose IEnumerable in case we need to change the underlying implementation
-        public IEnumerable<BaseTile> AllTiles => [tiles, bigs, huges];
+        public IEnumerable<BaseTile> AllTiles => new IEnumerable<BaseTile>[]{tiles, bigs, huges}.SelectMany(t => t);
 
         public IEnumerable<Tile> Tiles => tiles;
         public int TileCount => tiles.Count;
