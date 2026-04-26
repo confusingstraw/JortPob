@@ -111,7 +111,7 @@ namespace JortPob.Common
             if (zoomLevels.Contains(ZoomLevel.L1))
             {
                 scaledL2Image?.Dispose();
-                scaledL2Image = GetScaledMapForZoomLevel(sourceImage, ZoomLevel.L1);
+                scaledL2Image = GetScaledMapForZoomLevel(sourceImage, ZoomLevel.L2);
             }
 
             // export tiles for each ground level and zoom level
