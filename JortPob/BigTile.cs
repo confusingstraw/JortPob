@@ -82,6 +82,11 @@ namespace JortPob
             return null;
         }
         
+        /**
+         * We double the coordinates from the `BigTile` center to approximate its shape, then check each of
+         * the `tilesToAdd` to see if it is entirely contained within the BigTile (with a little padding),
+         * and add any that are fully contained.
+         */
         public void AddMatchingTiles(IEnumerable<Tile> tilesToAdd)
         {
             var x1 = coordinate.x * 2;
