@@ -8,5 +8,21 @@
     "type": "Weapon",
     "row": 32300000,
     "comment": "Lordsworn's shield"
+  },
+    "azura's servant": {
+    "type": "CustomWeapon",
+    "row": 30150000,
+    "infusion":"Fire",
+    "skill": 30200,
+	"upgrade": 5,
+    "comment": "Smoldering Shield"
+  },
+  "blessed_shield": {
+    "type": "CustomWeapon",
+    "row": 31000000,
+    "infusion":"Sacred",
+    "skill": 70200,
+	"upgrade": 3,
+    "comment": "Blessed Shield"
   }
 }

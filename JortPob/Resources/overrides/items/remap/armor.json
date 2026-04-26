@@ -1,22 +1,295 @@
 {
-  "steel_helm": {
-    "type": "Armor",
-    "row": 1500000,
-    "comment": "Knight Armor Helm"
-  },
-  "steel_cuirass": {
-    "type": "Armor",
-    "row": 1500100,
-    "comment": "Knight Armor Torso"
-  },
-  "steel_gauntlet_left": {
-    "type": "Armor",
-    "row": 1500200,
-    "comment": "Knight Armor Gloves"
-  },
-  "steel_greaves": {
-    "type": "Armor",
-    "row": 1500300,
-    "comment": "Knight Armor Legs"
-  }
+    "steel_helm": {
+        "type": "Armor",
+        "row": 1500000,
+        "comment": "Knight Armor Helm"
+    },
+    "steel_cuirass": {
+        "type": "Armor",
+        "row": 1500100,
+        "comment": "Knight Armor Torso"
+    },
+    "steel_gauntlet_left": {
+        "type": "Armor",
+        "row": 1500200,
+        "comment": "Knight Armor Gloves"
+    },
+    "steel_greaves": {
+        "type": "Armor",
+        "row": 1500300,
+        "comment": "Knight Armor Legs"
+    },
+
+    "bonemold_greaves": {
+        "type": "Armor",
+        "row": 690300,
+        "comment": "Royal Remains Greaves"
+    },
+    "bonemold_cuirass": {
+        "type": "Armor",
+        "row": 690100,
+        "comment": "Royal Remains Armor"
+    },
+    "bonemold_bracer_left": {
+        "type": "Armor",
+        "row": 690200,
+        "comment": "Royal Remains Gauntlets"
+    },
+    "bonemold_helm": {
+        "type": "Armor",
+        "row": 690000,
+        "comment": "Royal Remains Helmet"
+    },
+
+    "bonemold_armun-an_cuirass": {
+        "type": "Armor",
+        "row": 690100,
+        "comment": "Royal Remains Armor"
+    },
+    "bonemold_armun-an_helm": {
+        "type": "Armor",
+        "row": 690000,
+        "comment": "Royal Remains Helmet"
+    },
+    "bonemold_gah-julan_cuirass": {
+        "type": "Armor",
+        "row": 690100,
+        "comment": "Royal Remains Armor"
+    },
+    "bonemold_gah-julan_helm": {
+        "type": "Armor",
+        "row": 690000,
+        "comment": "Royal Remains Helmet"
+    },
+
+    "iron_greaves": {
+        "type": "Armor",
+        "row": 1500300,
+        "comment": "Knight Greaves"
+    },
+    "iron_cuirass": {
+        "type": "Armor",
+        "row": 660100,
+        "comment": "Vagabond Knight Armor"
+    },
+    "iron_gauntlet_left": {
+        "type": "Armor",
+        "row": 1500200,
+        "comment": "Knight Gauntlets"
+    },
+    "iron_helmet": {
+        "type": "Armor",
+        "row": 1101000,
+        "comment": "Greathelm"
+    },
+
+    "glass_greaves": {
+        "type": "Armor",
+        "row": 170300,
+        "comment": "Blaidd's Greaves"
+    },
+    "glass_cuirass": {
+        "type": "Armor",
+        "row": 171100,
+        "comment": "Blaidd's Armor (Altered)"
+    },
+    "glass_bracer_left": {
+        "type": "Armor",
+        "row": 350200,
+        "comment": "Fire Monk Gauntlets"
+    },
+    "glass_helm": {
+        "type": "Armor",
+        "row": 1300000,
+        "comment": "Nox Mirrorhelm"
+    },
+
+    "chitin greaves": {
+        "type": "Armor",
+        "row": 80300,
+        "comment": "Scaled Greaves"
+    },
+    "chitin cuirass": {
+        "type": "Armor",
+        "row": 81100,
+        "comment": "Scaled Armor (Altered)"
+    },
+    "chitin guantlet - left": {
+        "type": "Armor",
+        "row": 80200,
+        "comment": "Scaled Gauntlets"
+    },
+    "chitin helm": {
+        "type": "Armor",
+        "row": 80000,
+        "comment": "Scaled Helm"
+    },
+
+    "daedric_greaves": {
+        "type": "Armor",
+        "row": 230300,
+        "comment": "Night's Cavalry Greaves"
+    },
+    "daedric_cuirass": {
+        "type": "Armor",
+        "row": 231100,
+        "comment": "Night's Cavalry Armor (Altered)"
+    },
+    "daedric_gauntlet_left": {
+        "type": "Armor",
+        "row": 230200,
+        "comment": "Night's Cavalry Gauntlets"
+    },
+    "daedric_fountain_helm": {
+        "type": "Armor",
+        "row": 230000,
+        "comment": "Night's Cavalry Helm"
+    },
+    "daedric_god_helm": {
+        "type": "Armor",
+        "row": 231000,
+        "comment": "Night's Cavalry Helm (Altered)"
+    },
+    "daedric_terrifying_helm": {
+        "type": "Armor",
+        "row": 231000,
+        "comment": "Night's Cavalry Helm (Altered)"
+    },
+
+    "dwemer_greaves": {
+        "type": "Armor",
+        "row": 270300,
+        "comment": "Tree Sentinel Greaves"
+    },
+    "dwemer_cuirass": {
+        "type": "Armor",
+        "row": 271100,
+        "comment": "Tree Sentinel Armor (Altered)"
+    },
+    "dwemer_bracer_left": {
+        "type": "Armor",
+        "row": 270200,
+        "comment": "Tree Sentinel Gauntlets"
+    },
+    "dwemer_helm": {
+        "type": "Armor",
+        "row": 140000,
+        "comment": "Bull-Goat Helm"
+    },
+
+    "ebony_greaves": {
+        "type": "Armor",
+        "row": 760300,
+        "comment": "Maliketh's Greaves"
+    },
+    "ebony_cuirass": {
+        "type": "Armor",
+        "row": 761100,
+        "comment": "Maliketh's Armor (Altered)"
+    },
+    "ebony_bracer_left": {
+        "type": "Armor",
+        "row": 760200,
+        "comment": "Maliketh's Gauntlets"
+    },
+    "ebony_closed_helm": {
+        "type": "Armor",
+        "row": 760000,
+        "comment": "Maliketh's Helm"
+    },
+
+    "orcish_greaves": {
+        "type": "Armor",
+        "row": 790300,
+        "comment": "Bloodhound Knight Greaves"
+    },
+    "orcish_cuirass": {
+        "type": "Armor",
+        "row": 151100,
+        "comment": "Ronin's Armor (Altered)"
+    },
+    "orcish_bracer_left": {
+        "type": "Armor",
+        "row": 790200,
+        "comment": "Bloodhound Knight Gauntlets"
+    },
+    "orcish_helm": {
+        "type": "Armor",
+        "row": 870000,
+        "comment": "Land of Reeds Helm"
+    },
+
+    "fur_greaves": {
+        "type": "Armor",
+        "row": 530300,
+        "comment": "Godskin Noble Trousers"
+    },
+    "fur_cuirass": {
+        "type": "Armor",
+        "row": 420100,
+        "comment": "Vulgar Militia Armor"
+    },
+    "fur_gauntlet_left": {
+        "type": "Armor",
+        "row": 540200,
+        "comment": "Depraved Perfumer Gloves"
+    },
+    "fur_helm": {
+        "type": "Armor",
+        "row": 1980000,
+        "comment": "Highwayman Hood"
+    },
+
+    "imperial_greaves": {
+        "type": "Armor",
+        "row": 1710300,
+        "comment": "Raya Lucarian Greaves"
+    },
+    "imperial cuirass_armor": {
+        "type": "Armor",
+        "row": 1761100,
+        "comment": "Gelmir Knight Armor (Altered)"
+    },
+    "imperial left gauntlet": {
+        "type": "Armor",
+        "row": 420200,
+        "comment": "Vulgar Militia Gauntlets"
+    },
+    "imperial helmet armor": {
+        "type": "Armor",
+        "row": 1730000,
+        "comment": "Radahn Soldier Helm"
+    },
+
+    "netch_leather_greaves": {
+        "type": "Armor",
+        "row": 1400300,
+        "comment": "Leather Boots"
+    },
+    "netch_leather_cuirass": {
+        "type": "Armor",
+        "row": 931100,
+        "comment": "Bandit Garb"
+    },
+    "netch_leather_gauntlet_left": {
+        "type": "Armor",
+        "row": 1400200,
+        "comment": "Leather Gloves"
+    },
+    "netch_leather_helm": {
+        "type": "Armor",
+        "row": 540000,
+        "comment": "Depraved Perfumer Headscarf"
+    },
+
+    "netch_leather_boiled_cuirass": {
+        "type": "Armor",
+        "row": 1400100,
+        "comment": "Leather Armor"
+    },
+    "netch_leather_boiled_helm": {
+        "type": "Armor",
+        "row": 420000,
+        "comment": "Vulgar Militia Helm"
+    }
 }
