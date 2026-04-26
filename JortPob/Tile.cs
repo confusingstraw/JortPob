@@ -316,5 +316,23 @@ namespace JortPob
                     Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
             }
         }
+        
+        /**
+         * We double the coordinates from our center to approximate the tile shape, then check each of
+         * the `tilesToAdd` to see if it is entirely contained within the BigTile (with a little padding),
+         * and add any that are fully contained.
+         *
+         * This is mainly useful in `BigTile`/`HugeTile`, but our class hierarchy puts the implementation here.
+         */
+        protected IEnumerable<T> FilterTilesToAdd<T>(IEnumerable<T> tilesToAdd, int scaleFactor, int padding) where T: BaseTile
+        {
+            var x1 = coordinate.x * scaleFactor;
+            var y1 = coordinate.y * scaleFactor;
+            var x2 = x1 + padding;
+            var y2 = y1 + padding;
+
+            return tilesToAdd.Where(t =>
+                t.coordinate.x >= x1 && t.coordinate.x < x2 && t.coordinate.y >= y1 && t.coordinate.y < y2);
+        }
     }
 }

@@ -139,17 +139,6 @@ namespace JortPob
             }
         }
 
-        private IEnumerable<T> FilterTilesToAdd<T>(IEnumerable<T> tilesToAdd, int scaleFactor, int padding) where T: BaseTile
-        {
-            var x1 = coordinate.x * scaleFactor;
-            var y1 = coordinate.y * scaleFactor;
-            var x2 = x1 + padding;
-            var y2 = y1 + padding;
-
-            return tilesToAdd.Where(t =>
-                t.coordinate.x >= x1 && t.coordinate.x < x2 && t.coordinate.y >= y1 && t.coordinate.y < y2);
-        }
-
         public void AddTile(Tile tile)
         {
             tiles.Add(tile);
