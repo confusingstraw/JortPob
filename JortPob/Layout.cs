@@ -38,10 +38,13 @@ namespace JortPob
             Lort.NewTask("Generating Layout", 14);
 
             /* Generate tiles based off base game msb info... */
-            string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
-            string[][] msblist = msbdata.Split(";").Select(msb => msb.Split(",")).ToArray();
+            var msbData = ProcessMsbList(
+                File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"))
+                        .Split(";")
+                        .Select(msb => msb.Split(","))
+            ).ToList();
 
-            tiles = ProcessMsbList(msblist)
+            tiles = msbData
                 .Where(t => t.b == 0 && t.m == MapId)
                 .Select(t => new Tile(t.m, t.x, t.y, t.b))
                 .ToList();
@@ -49,7 +52,7 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
             
             /* Generate BigTiles... */
-            foreach (var (m, x, y, b) in ProcessMsbList(msblist))
+            foreach (var (m, x, y, b) in msbData)
             {
                 if (m != MapId || b != 1) continue;
                 BigTile big = new(m, x, y, b);
@@ -59,7 +62,7 @@ namespace JortPob
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate HugeTiles... */
-            foreach (var (m, x, y, b) in ProcessMsbList(msblist))
+            foreach (var (m, x, y, b) in msbData)
             {
                 if (m != MapId || b != 2) continue;
                 HugeTile huge = new(m, x, y, b);
@@ -72,7 +75,7 @@ namespace JortPob
             /* Generate Interior Groups */
             HashSet<int> validMaps =
                 [12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43];
-            interiors = ProcessMsbList(msblist)
+            interiors = msbData
                 .Where(t => t is { y: 0, b: 0 } && validMaps.Contains(t.m))
                 .Select(t => {
                     var (m, a, u, b) = t;
@@ -1149,7 +1152,7 @@ namespace JortPob
             return result;
         }
 
-        private static IEnumerable<(int m, int x, int y, int b)> ProcessMsbList(string[][] msblist)
+        private static IEnumerable<(int m, int x, int y, int b)> ProcessMsbList(IEnumerable<string[]> msblist)
         {
             foreach (var split in msblist)
             {
