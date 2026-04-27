@@ -1,0 +1,17 @@
+﻿{
+	"comment": "Spell Breaker as Carian Thrusting Shield with anti-magic protection",
+	"type": "Weapon",
+	"row": 62510000,
+	"infusion": "Magic",
+	"upgrade": 10,
+	"skill": 31000,
+	"text": {
+		"name": "Spell Breaker",
+		"description": "An ancient shield made to resist magic.",
+		"enchant": [ "Protector." ]
+	},
+	"data": {
+		"magGuardCutRate": 90,
+		"staminaGuardDef": 75
+	}
+}

@@ -1,28 +1,390 @@
 {
-  "iron_shield": {
-    "type": "Weapon",
-    "row": 31050000,
-    "comment": "Sunrealm Shield"
-  },
-  "iron_towershield": {
-    "type": "Weapon",
-    "row": 32300000,
-    "comment": "Lordsworn's shield"
-  },
-    "azura's servant": {
-    "type": "CustomWeapon",
-    "row": 30150000,
-    "infusion":"Fire",
-    "skill": 30200,
-	"upgrade": 5,
-    "comment": "Smoldering Shield"
-  },
-  "blessed_shield": {
-    "type": "CustomWeapon",
-    "row": 31000000,
-    "infusion":"Sacred",
-    "skill": 70200,
-	"upgrade": 3,
-    "comment": "Blessed Shield"
-  }
+    "chitin_shield": {
+        "type": "CustomWeapon",
+        "row": 30190000,
+        "infusion": "None",
+        "skill": 30000,
+        "upgrade": 3,
+        "comment": "Spiralhorn Shield | Ash: Shield Bash"
+    },
+    "chitin_towershield": {
+        "type": "CustomWeapon",
+        "row": 32090000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 3,
+        "comment": "Golden Beast Crest Shield | Ash: Barricade Shield"
+    },
+    "glass_shield": {
+        "type": "CustomWeapon",
+        "row": 62510000,
+        "infusion": "Magic",
+        "skill": 30700,
+        "upgrade": 6,
+        "comment": "Carian Thrusting Shield | Ash: Golden Parry"
+    },
+    "glass_towershield": {
+        "type": "CustomWeapon",
+        "row": 62500000,
+        "infusion": "Magic",
+        "skill": 30800,
+        "upgrade": 6,
+        "comment": "Dueling Shield | Ash: Shield Crash"
+    },
+    "netch_leather_shield": {
+        "type": "CustomWeapon",
+        "row": 30020000,
+        "infusion": "None",
+        "skill": 30200,
+        "upgrade": 2,
+        "comment": "Man-serpent's Shield | Ash: Parry"
+    },
+    "netch_leather_towershield": {
+        "type": "CustomWeapon",
+        "row": 32240000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 2,
+        "comment": "Eclipse Crest Greatshield | Ash: Barricade Shield"
+    },
+    "nordic_leather_shield": {
+        "type": "CustomWeapon",
+        "row": 31240000,
+        "infusion": "None",
+        "skill": 30600,
+        "upgrade": 2,
+        "comment": "Horse Crest Wooden Shield | Ash: Storm Wall"
+    },
+
+    "bonemold_shield": {
+        "type": "CustomWeapon",
+        "row": 31000000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 4,
+        "comment": "Kite Shield | Ash: Barricade Shield"
+    },
+    "bonemold_towershield": {
+        "type": "CustomWeapon",
+        "row": 32090000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 4,
+        "comment": "Golden Beast Crest Shield | Ash: Barricade Shield"
+    },
+    "bonemold_tshield_hlaaluguard": {
+        "type": "CustomWeapon",
+        "row": 31100000,
+        "infusion": "Quality",
+        "skill": 30000,
+        "upgrade": 3,
+        "comment": "Blue-Gold Kite Shield | Ash: Shield Bash"
+    },
+    "bonemold_tshield_hrlb": {
+        "type": "CustomWeapon",
+        "row": 31520000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 4,
+        "comment": "Serpent Crest Shield | Ash: Barricade Shield"
+    },
+    "bonemold_tshield_redoranguard": {
+        "type": "CustomWeapon",
+        "row": 32200000,
+        "infusion": "Heavy",
+        "skill": 30100,
+        "upgrade": 4,
+        "comment": "Crossed-Tree Towershield | Ash: Barricade Shield"
+    },
+    "bonemold_tshield_telvanniguard": {
+        "type": "CustomWeapon",
+        "row": 62510000,
+        "infusion": "Magic",
+        "skill": 31000,
+        "upgrade": 4,
+        "comment": "Carian Thrusting Shield | Ash: Thops's Barrier"
+    },
+
+    "dragonscale_towershield": {
+        "type": "CustomWeapon",
+        "row": 62500000,
+        "infusion": "Fire",
+        "skill": 30800,
+        "upgrade": 6,
+        "comment": "Dueling Shield | Ash: Shield Crash"
+    },
+    "dreugh_shield": {
+        "type": "CustomWeapon",
+        "row": 30200000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 5,
+        "comment": "Coil Shield | Ash: Barricade Shield"
+    },
+    "indoril shield": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 5,
+        "comment": "Eclipse Crest Heater Shield | Ash: Holy Ground"
+    },
+    "orcish_towershield": {
+        "type": "CustomWeapon",
+        "row": 32250000,
+        "infusion": "Heavy",
+        "skill": 30800,
+        "upgrade": 5,
+        "comment": "Cuckoo Greatshield | Ash: Shield Crash"
+    },
+
+    "daedric_shield": {
+        "type": "CustomWeapon",
+        "row": 62500000,
+        "infusion": "Occult",
+        "skill": 30800,
+        "upgrade": 10,
+        "comment": "Dueling Shield | Ash: Shield Crash"
+    },
+    "daedric_towershield": {
+        "type": "CustomWeapon",
+        "row": 62510000,
+        "infusion": "Occult",
+        "skill": 30800,
+        "upgrade": 10,
+        "comment": "Carian Thrusting Shield | Ash: Shield Crash"
+    },
+    "dwemer_shield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Lightning",
+        "skill": 30100,
+        "upgrade": 5,
+        "comment": "Golden Greatshield | Ash: Barricade Shield"
+    },
+    "ebony_shield": {
+        "type": "CustomWeapon",
+        "row": 32240000,
+        "infusion": "Heavy",
+        "skill": 30100,
+        "upgrade": 8,
+        "comment": "Eclipse Crest Greatshield | Ash: Barricade Shield"
+    },
+    "ebony_towershield": {
+        "type": "CustomWeapon",
+        "row": 32250000,
+        "infusion": "Heavy",
+        "skill": 30800,
+        "upgrade": 8,
+        "comment": "Cuckoo Greatshield | Ash: Shield Crash"
+    },
+    "imperial shield": {
+        "type": "CustomWeapon",
+        "row": 31300000,
+        "infusion": "Quality",
+        "skill": 30200,
+        "upgrade": 3,
+        "comment": "Blue Crest Heater Shield | Ash: Parry"
+    },
+    "iron_shield": {
+        "type": "CustomWeapon",
+        "row": 31000000,
+        "infusion": "Heavy",
+        "skill": 30000,
+        "upgrade": 2,
+        "comment": "Kite Shield | Ash: Shield Bash"
+    },
+    "iron_towershield": {
+        "type": "CustomWeapon",
+        "row": 32290000,
+        "infusion": "Heavy",
+        "skill": 30000,
+        "upgrade": 2,
+        "comment": "Wooden Greatshield | Ash: Shield Bash"
+    },
+    "trollbone_shield": {
+        "type": "CustomWeapon",
+        "row": 32050000,
+        "infusion": "Heavy",
+        "skill": 30600,
+        "upgrade": 4,
+        "comment": "Briar Greatshield | Ash: Storm Wall"
+    },
+    "steel_shield": {
+        "type": "CustomWeapon",
+        "row": 31300000,
+        "infusion": "Quality",
+        "skill": 30200,
+        "upgrade": 3,
+        "comment": "Blue Crest Heater Shield | Ash: Parry"
+    },
+    "steel_towershield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Quality",
+        "skill": 30000,
+        "upgrade": 3,
+        "comment": "Golden Greatshield | Ash: Shield Bash"
+    },
+    "blessed_shield": {
+        "type": "CustomWeapon",
+        "row": 31000000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 4,
+        "comment": "Kite Shield | Ash: Holy Ground"
+    },
+    "blessed_tower_shield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 4,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    },
+    "Blood_Feast_Shield": {
+        "type": "CustomWeapon",
+        "row": 32050000,
+        "useIcon": true,
+        "infusion": "Blood",
+	    "skill": 30800,
+	    "upgrade": 5,
+	    "comment": "Eclipse Crest Heater Shield | Ash: Shield Crash"
+    },
+    "darksun_shield_unique": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Occult",
+        "skill": 31000,
+        "upgrade": 9,
+        "comment": "Eclipse Crest Heater Shield | Ash: Thops's Barrier"
+    },
+    "ebony_shield_auriel": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 9,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    },
+    "feather_shield": {
+        "type": "CustomWeapon",
+        "row": 31100000,
+        "infusion": "Keen",
+        "skill": 30600,
+        "upgrade": 3,
+        "comment": "Blue-Gold Kite Shield | Ash: Storm Wall"
+    },
+    "holy_shield": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 4,
+        "comment": "Eclipse Crest Heater Shield | Ash: Holy Ground"
+    },
+    "holy_tower_shield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 4,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    },
+    "saint's shield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 8,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    },
+    "shadow_shield": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Occult",
+        "skill": 30600,
+        "upgrade": 6,
+        "comment": "Eclipse Crest Heater Shield | Ash: Storm Wall"
+    },
+    "shield of the undaunted": {
+        "type": "CustomWeapon",
+        "row": 31280000,
+        "infusion": "None",
+        "skill": 30100,
+        "upgrade": 3,
+        "comment": "Beast Crest Heater Shield | Ash: Barricade Shield"
+    },
+    "shield_of_light": {
+        "type": "CustomWeapon",
+        "row": 31100000,
+        "infusion": "Sacred",
+        "skill": 30700,
+        "upgrade": 3,
+        "comment": "Blue-Gold Kite Shield | Ash: Golden Parry"
+    },
+    "shield of wounds": {
+        "type": "CustomWeapon",
+        "row": 32050000,
+        "infusion": "Blood",
+        "skill": 30800,
+        "upgrade": 5,
+        "comment": "Briar Greatshield | Ash: Shield Crash"
+    },
+    "spell_breaker_unique": {
+        "type": "CustomWeapon",
+        "row": 62510000,
+        "infusion": "Magic",
+        "skill": 31000,
+        "upgrade": 10,
+        "comment": "Carian Thrusting Shield | Ash: Thops's Barrier"
+    },
+    "spirit of indoril": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 6,
+        "comment": "Eclipse Crest Heater Shield | Ash: Holy Ground"
+    },
+    "succour of indoril": {
+        "type": "CustomWeapon",
+        "row": 31310000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 6,
+        "comment": "Eclipse Crest Heater Shield | Ash: Holy Ground"
+    },
+    "towershield_eleidon_unique": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 10,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    },
+    "velothian shield": {
+        "type": "CustomWeapon",
+        "row": 31300000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 3,
+        "comment": "Blue Crest Heater Shield | Ash: Holy Ground"
+    },
+    "velothis_shield": {
+        "type": "CustomWeapon",
+        "row": 31100000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 3,
+        "comment": "Blue-Gold Kite Shield | Ash: Holy Ground"
+    },
+    "veloths_tower_shield": {
+        "type": "CustomWeapon",
+        "row": 32260000,
+        "infusion": "Sacred",
+        "skill": 1015,
+        "upgrade": 3,
+        "comment": "Golden Greatshield | Ash: Holy Ground"
+    }
 }

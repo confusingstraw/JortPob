@@ -1,0 +1,13 @@
+﻿{
+	"comment": "Daedric Cuirass as Armor of Night",
+	"type": "Armor",
+	"row": 5090100,
+	"text": {
+		"name": "Daedric Cuirass",
+		"description": "A Daedric cuirass made unnaturally light.",
+		"enchant": [ "Feather." ]
+	},
+	"data": {
+		"weight": 7.5
+	}
+}

@@ -1,0 +1,18 @@
+﻿{
+	"comment": "Dreugh Cuirass as Malformed Dragon Armor",
+	"type": "Armor",
+	"row": 260100,
+	"text": {
+		"name": "Dreugh Cuirass",
+		"description": "A hardened cuirass made from dreugh shell.",
+		"enchant": [ "Protector." ]
+	},
+	"data": {
+		"defensePhysics": 36,
+		"defenseSlash": 34,
+		"defenseBlow": 38,
+		"defenseThrust": 34,
+		"resistPoison": 70,
+		"weight": 14.0
+	}
+}

@@ -1,0 +1,13 @@
+﻿{
+	"comment": "Conoon Chodala's Boots as Leather Boots",
+	"type": "Armor",
+	"row": 1400300,
+	"text": {
+		"name": "Conoon Chodala's Boots",
+		"description": "Light boots made for long travel.",
+		"enchant": [ "Sure Feet." ]
+	},
+	"data": {
+		"weight": 1.0
+	}
+}

@@ -1,0 +1,18 @@
+﻿{
+	"comment": "Erur-Dan's Cuirass as Ronin's Armor",
+	"type": "Armor",
+	"row": 151100,
+	"text": {
+		"name": "Erur-Dan's Cuirass",
+		"description": "The cuirass of Erur-Dan.",
+		"enchant": [ "Restore Health.", "Restore Fatigue." ]
+	},
+	"data": {
+		"defensePhysics": 24,
+		"defenseSlash": 25,
+		"defenseBlow": 23,
+		"defenseThrust": 24,
+		"resistCurse": 40,
+		"weight": 8.0
+	}
+}

@@ -1,0 +1,16 @@
+﻿{
+	"comment": "Helm of Graff the White as White Mask",
+	"type": "Armor",
+	"row": 680000,
+	"text": {
+		"name": "Helm of Graff the White",
+		"description": "A heavy helm awarded for loyal service.",
+		"enchant": [ "Reflect." ]
+	},
+	"data": {
+		"defenseMagic": 24,
+		"defenseDark": 24,
+		"resistCurse": 55,
+		"weight": 5.0
+	}
+}

@@ -1,0 +1,16 @@
+﻿{
+	"comment": "Lord's Mail as Armor of Solitude",
+	"type": "Armor",
+	"row": 5130100,
+	"text": {
+		"name": "Lord's Mail",
+		"description": "A legendary Imperial cuirass.",
+		"enchant": [ "Health." ]
+	},
+	"data": {
+		"defensePhysics": 34,
+		"defenseMagic": 24,
+		"resistPoison": 70,
+		"weight": 13.0
+	}
+}

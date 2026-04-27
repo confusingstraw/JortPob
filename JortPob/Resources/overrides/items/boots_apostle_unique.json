@@ -1,0 +1,15 @@
+﻿{
+	"comment": "Boots of the Apostle as Godskin Apostle Trousers",
+	"type": "Armor",
+	"row": 520300,
+	"text": {
+		"name": "Boots of the Apostle",
+		"description": "Boots blessed with unnatural movement.",
+		"enchant": [ "Levitation." ]
+	},
+	"data": {
+		"weight": 2.0,
+		"defenseMagic": 12,
+		"resistMadness": 35
+	}
+}

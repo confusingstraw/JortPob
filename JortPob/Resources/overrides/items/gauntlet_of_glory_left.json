@@ -1,0 +1,18 @@
+﻿{
+	"comment": "Left Gauntlet of Glory as Young Lion's Gauntlets",
+	"type": "Armor",
+	"row": 770200,
+	"text": {
+		"name": "Left Gauntlet of Glory",
+		"description": "A legendary gauntlet of great renown.",
+		"enchant": [ "Left Hand of Zenithar." ]
+	},
+	"data": {
+		"defensePhysics": 24,
+		"defenseSlash": 25,
+		"defenseBlow": 22,
+		"defenseThrust": 24,
+		"resistBlood": 70,
+		"weight": 4.5
+	}
+}
