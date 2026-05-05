@@ -462,6 +462,19 @@ namespace JortPob
         public readonly string id, name;
         public readonly List<(ScriptCommon.WeatherEMEVD weather, float chance)> weathers;
 
+        private static readonly Dictionary<ScriptCommon.WeatherPapyrus, ScriptCommon.WeatherEMEVD[]> WeatherMap = new()
+        {
+            { ScriptCommon.WeatherPapyrus.Clear, [ScriptCommon.WeatherEMEVD.Default]  },
+            { ScriptCommon.WeatherPapyrus.Cloudy, [ScriptCommon.WeatherEMEVD.PuffyClouds, ScriptCommon.WeatherEMEVD.WindyPuffyClouds] },
+            { ScriptCommon.WeatherPapyrus.Foggy, [ScriptCommon.WeatherEMEVD.Fog, ScriptCommon.WeatherEMEVD.HeavyFog, ScriptCommon.WeatherEMEVD.WindyFog] },
+            { ScriptCommon.WeatherPapyrus.Overcast, [ScriptCommon.WeatherEMEVD.FlatClouds] },
+            { ScriptCommon.WeatherPapyrus.Rain, [ScriptCommon.WeatherEMEVD.Rain, ScriptCommon.WeatherEMEVD.RainyClouds, ScriptCommon.WeatherEMEVD.ScatteredRain] },
+            { ScriptCommon.WeatherPapyrus.Ash, [ScriptCommon.WeatherEMEVD.Unknown18] },
+            { ScriptCommon.WeatherPapyrus.Blight, [ScriptCommon.WeatherEMEVD.Unknown19] },
+            { ScriptCommon.WeatherPapyrus.Snow, [ScriptCommon.WeatherEMEVD.Snow] },
+            { ScriptCommon.WeatherPapyrus.Blizzard, [ScriptCommon.WeatherEMEVD.HeavySnow, ScriptCommon.WeatherEMEVD.SnowyHeavyFog] }
+        };
+
         public RegionInfo(JsonNode json)
         {
             id = json["id"].GetValue<string>().ToLower().Trim();
@@ -474,44 +487,13 @@ namespace JortPob
                 float chance = property.Value.GetValue<float>();
                 if (chance == 0) { continue; } // gtfo
 
-                switch(w)
+                if (WeatherMap.TryGetValue(w, out var mappedWeathers))
                 {
-                    case ScriptCommon.WeatherPapyrus.Clear:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Default, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Cloudy:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.PuffyClouds, chance / 2f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyPuffyClouds, chance / 2f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Foggy:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Fog, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavyFog, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyFog, chance / 3f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Overcast:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.FlatClouds, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Rain:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Rain, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.RainyClouds, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.ScatteredRain, chance / 3f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Ash:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown18, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Blight:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown19, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Snow:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Snow, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Blizzard:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavySnow, chance / 2f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.SnowyHeavyFog, chance / 2f));
-                        break;
+                    foreach (var weather in mappedWeathers)
+                        weathers.Add((weather, chance / mappedWeathers.Length));
                 }
-
-
+                else
+                    Lort.Log($"### DISCARDED VALUE ### Weather type {w.ToString()} does not have a mapped value", Lort.Type.Debug);
             }
         }
 
