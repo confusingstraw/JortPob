@@ -1,4 +1,5 @@
 **Setup instructions**
+These are out of date due to some recent changes. I'll update them tommarow. Ask in discord if you need help for now.
 
 1. Pull the project: `git clone https://github.com/infernoplus/JortPob.git`
 
