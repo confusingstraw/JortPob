@@ -1,0 +1,17 @@
+﻿{
+	"comment": "Ebony Mail as Night's Cavalry Armor",
+	"type": "Armor",
+	"row": 230100,
+	"text": {
+		"name": "Ebony Mail",
+		"description": "A legendary ebony cuirass.",
+		"enchant": []
+	},
+	"data": {
+		"defenseFire": 35,
+		"defenseMagic": 30,
+		"defensePhysics": 34,
+		"defenseDark": 28,
+		"weight": 11.0
+	}
+}

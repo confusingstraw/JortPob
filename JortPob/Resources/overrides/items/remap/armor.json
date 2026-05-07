@@ -1,22 +1,619 @@
 {
-  "steel_helm": {
-    "type": "Armor",
-    "row": 1500000,
-    "comment": "Knight Armor Helm"
-  },
-  "steel_cuirass": {
-    "type": "Armor",
-    "row": 1500100,
-    "comment": "Knight Armor Torso"
-  },
-  "steel_gauntlet_left": {
-    "type": "Armor",
-    "row": 1500200,
-    "comment": "Knight Armor Gloves"
-  },
-  "steel_greaves": {
-    "type": "Armor",
-    "row": 1500300,
-    "comment": "Knight Armor Legs"
-  }
+    "steel_helm": {
+        "type": "Armor",
+        "row": 790000,
+        "comment": "Bloodhound Knight Helm"
+    },
+    "steel_cuirass": {
+        "type": "790100",
+        "row": 5130100,
+        "comment": "Bloodhound Knight Armor"
+    },
+    "steel_gauntlet_left": {
+        "type": "Armor",
+        "row": 790200,
+        "comment": "Bloodhound Knight Gauntlets"
+    },
+    "steel_greaves": {
+        "type": "Armor",
+        "row": 790300,
+        "comment": "Bloodhound Knight Greaves"
+    },
+    "bonemold_greaves": {
+        "type": "Armor",
+        "row": 690300,
+        "comment": "Royal Remains Greaves"
+    },
+    "bonemold_cuirass": {
+        "type": "Armor",
+        "row": 690100,
+        "comment": "Royal Remains Armor"
+    },
+    "bonemold_bracer_left": {
+        "type": "Armor",
+        "row": 690200,
+        "comment": "Royal Remains Gauntlets"
+    },
+    "bonemold_helm": {
+        "type": "Armor",
+        "row": 690000,
+        "comment": "Royal Remains Helmet"
+    },
+    "bonemold_armun-an_cuirass": {
+        "type": "Armor",
+        "row": 5200100,
+        "comment": "Death Knight Armor"
+    },
+    "bonemold_armun-an_helm": {
+        "type": "Armor",
+        "row": 5200000,
+        "comment": "Death Knight Helm"
+    },
+    "bonemold_gah-julan_cuirass": {
+        "type": "Armor",
+        "row": 5230100,
+        "comment": "Gravebird's Blackquill Armor"
+    },
+    "bonemold_gah-julan_helm": {
+        "type": "Armor",
+        "row": 5230000,
+        "comment": "Gravebird Helm"
+    },
+    "iron_greaves": {
+        "type": "Armor",
+        "row": 1500300,
+        "comment": "Knight Greaves"
+    },
+    "iron_cuirass": {
+        "type": "Armor",
+        "row": 660100,
+        "comment": "Vagabond Knight Armor"
+    },
+    "iron_gauntlet_left": {
+        "type": "Armor",
+        "row": 1500200,
+        "comment": "Knight Gauntlets"
+    },
+    "iron_helmet": {
+        "type": "Armor",
+        "row": 1101000,
+        "comment": "Greathelm"
+    },
+    "glass_greaves": {
+        "type": "Armor",
+        "row": 170300,
+        "comment": "Blaidd's Greaves"
+    },
+    "glass_cuirass": {
+        "type": "Armor",
+        "row": 171100,
+        "comment": "Blaidd's Armor (Altered)"
+    },
+    "glass_bracer_left": {
+        "type": "Armor",
+        "row": 350200,
+        "comment": "Fire Monk Gauntlets"
+    },
+    "glass_helm": {
+        "type": "Armor",
+        "row": 1300000,
+        "comment": "Nox Mirrorhelm"
+    },
+    "chitin greaves": {
+        "type": "Armor",
+        "row": 80300,
+        "comment": "Scaled Greaves"
+    },
+    "chitin cuirass": {
+        "type": "Armor",
+        "row": 81100,
+        "comment": "Scaled Armor (Altered)"
+    },
+    "chitin guantlet - left": {
+        "type": "Armor",
+        "row": 80200,
+        "comment": "Scaled Gauntlets"
+    },
+    "chitin helm": {
+        "type": "Armor",
+        "row": 80000,
+        "comment": "Scaled Helm"
+    },
+    "daedric_greaves": {
+        "type": "Armor",
+        "row": 5090300,
+        "comment": "Greaves of Night"
+    },
+    "daedric_cuirass": {
+        "type": "Armor",
+        "row": 5090100,
+        "comment": "Armor of Night"
+    },
+    "daedric_gauntlet_left": {
+        "type": "Armor",
+        "row": 5090200,
+        "comment": "Gauntlets of Night"
+    },
+    "daedric_fountain_helm": {
+        "type": "Armor",
+        "row": 230000,
+        "comment": "Night's Cavalry Helm"
+    },
+    "daedric_god_helm": {
+        "type": "Armor",
+        "row": 231000,
+        "comment": "Night's Cavalry Helm (Altered)"
+    },
+    "daedric_terrifying_helm": {
+        "type": "Armor",
+        "row": 5090000,
+        "comment": "Helm of Night"
+    },
+    "dwemer_greaves": {
+        "type": "Armor",
+        "row": 270300,
+        "comment": "Tree Sentinel Greaves"
+    },
+    "dwemer_cuirass": {
+        "type": "Armor",
+        "row": 271100,
+        "comment": "Tree Sentinel Armor (Altered)"
+    },
+    "dwemer_bracer_left": {
+        "type": "Armor",
+        "row": 270200,
+        "comment": "Tree Sentinel Gauntlets"
+    },
+    "dwemer_helm": {
+        "type": "Armor",
+        "row": 140000,
+        "comment": "Bull-Goat Helm"
+    },
+    "ebony_greaves": {
+        "type": "Armor",
+        "row": 760300,
+        "comment": "Maliketh's Greaves"
+    },
+    "ebony_cuirass": {
+        "type": "Armor",
+        "row": 761100,
+        "comment": "Maliketh's Armor (Altered)"
+    },
+    "ebony_bracer_left": {
+        "type": "Armor",
+        "row": 760200,
+        "comment": "Maliketh's Gauntlets"
+    },
+    "ebony_closed_helm": {
+        "type": "Armor",
+        "row": 760000,
+        "comment": "Maliketh's Helm"
+    },
+    "orcish_greaves": {
+        "type": "Armor",
+        "row": 5160300,
+        "comment": "Rakshasa Greaves"
+    },
+    "orcish_cuirass": {
+        "type": "Armor",
+        "row": 5160100,
+        "comment": "Rakshasa Armor"
+    },
+    "orcish_bracer_left": {
+        "type": "Armor",
+        "row": 5160200,
+        "comment": "Rakshasa Gauntlets"
+    },
+    "orcish_helm": {
+        "type": "Armor",
+        "row": 5160000,
+        "comment": "Rakshasa Helm"
+    },
+    "fur_greaves": {
+        "type": "Armor",
+        "row": 530300,
+        "comment": "Godskin Noble Trousers"
+    },
+    "fur_cuirass": {
+        "type": "Armor",
+        "row": 420100,
+        "comment": "Vulgar Militia Armor"
+    },
+    "fur_gauntlet_left": {
+        "type": "Armor",
+        "row": 540200,
+        "comment": "Depraved Perfumer Gloves"
+    },
+    "fur_helm": {
+        "type": "Armor",
+        "row": 1980000,
+        "comment": "Highwayman Hood"
+    },
+    "imperial_greaves": {
+        "type": "Armor",
+        "row": 1710300,
+        "comment": "Raya Lucarian Greaves"
+    },
+    "imperial cuirass_armor": {
+        "type": "Armor",
+        "row": 1761100,
+        "comment": "Gelmir Knight Armor (Altered)"
+    },
+    "imperial left gauntlet": {
+        "type": "Armor",
+        "row": 420200,
+        "comment": "Vulgar Militia Gauntlets"
+    },
+    "imperial helmet armor": {
+        "type": "Armor",
+        "row": 1730000,
+        "comment": "Radahn Soldier Helm"
+    },
+    "netch_leather_greaves": {
+        "type": "Armor",
+        "row": 1400300,
+        "comment": "Leather Boots"
+    },
+    "netch_leather_cuirass": {
+        "type": "Armor",
+        "row": 931100,
+        "comment": "Bandit Garb"
+    },
+    "netch_leather_gauntlet_left": {
+        "type": "Armor",
+        "row": 1400200,
+        "comment": "Leather Gloves"
+    },
+    "netch_leather_helm": {
+        "type": "Armor",
+        "row": 540000,
+        "comment": "Depraved Perfumer Headscarf"
+    },
+    "netch_leather_boiled_cuirass": {
+        "type": "Armor",
+        "row": 1400100,
+        "comment": "Leather Armor"
+    },
+    "netch_leather_boiled_helm": {
+        "type": "Armor",
+        "row": 420000,
+        "comment": "Vulgar Militia Helm"
+    },
+    "bloodworm_helm_unique": {
+        "type": "Armor",
+        "row": 5182000,
+        "comment": "Death Mask Helm"
+    },
+    "bonemold_chuzei_helm": {
+        "type": "Armor",
+        "row": 5253000,
+        "comment": "Divine Bird Helm"
+    },
+    "bonemold_founders_helm": {
+        "type": "Armor",
+        "row": 570000,
+        "comment": "Crucible Axe Helm"
+    },
+    "bonedancer gauntlet": {
+        "type": "Armor",
+        "row": 5080200,
+        "comment": "Dancer's Bracer"
+    },
+    "boneweave gauntlet": {
+        "type": "Armor",
+        "row": 5230200,
+        "comment": "Gravebird Bracelets"
+    },
+    "cephalopod_helm": {
+        "type": "Armor",
+        "row": 1110000,
+        "comment": "Octopus Head"
+    },
+    "chest of fire": {
+        "type": "Armor",
+        "row": 5180100,
+        "comment": "Fire Knight Armor"
+    },
+    "chitin_mask_helm": {
+        "type": "Armor",
+        "row": 5210000,
+        "comment": "Curseblade Mask"
+    },
+    "chitin_watchman_helm": {
+        "type": "Armor",
+        "row": 330000,
+        "comment": "Guardian Mask"
+    },
+    "cloth bracer left": {
+        "type": "Armor",
+        "row": 5070200,
+        "comment": "Braided Arm Wraps"
+    },
+    "demon cephalopod": {
+        "type": "Armor",
+        "row": 5290000,
+        "comment": "Divine Beast Head"
+    },
+    "demon helm": {
+        "type": "Armor",
+        "row": 5210000,
+        "comment": "Curseblade Mask"
+    },
+    "demon mole crab": {
+        "type": "Armor",
+        "row": 5330000,
+        "comment": "Imp Head (Lion)"
+    },
+    "devil cephalopod helm": {
+        "type": "Armor",
+        "row": 1090000,
+        "comment": "Silver Tear Mask"
+    },
+    "devil helm": {
+        "type": "Armor",
+        "row": 1890000,
+        "comment": "Omensmirk Mask"
+    },
+    "devil mole crab helm": {
+        "type": "Armor",
+        "row": 5320000,
+        "comment": "Greatjar"
+    },
+    "dragonscale_cuirass": {
+        "type": "Armor",
+        "row": 61100,
+        "comment": "Drake Knight Armor (Altered)"
+    },
+    "dragonscale_helm": {
+        "type": "Armor",
+        "row": 60000,
+        "comment": "Drake Knight Helm"
+    },
+    "dreugh_cuirass": {
+        "type": "Armor",
+        "row": 40100,
+        "comment": "Scale Armor"
+    },
+    "dreugh_helm": {
+        "type": "Armor",
+        "row": 970000,
+        "comment": "Omen Helm"
+    },
+    "dust_adept_helm": {
+        "type": "Armor",
+        "row": 5060000,
+        "comment": "High Priest Hat"
+    },
+    "ebony_closed_helm_fghl": {
+        "type": "Armor",
+        "row": 680000,
+        "comment": "White Mask"
+    },
+    "fiend helm": {
+        "type": "Armor",
+        "row": 5210000,
+        "comment": "Curseblade Mask"
+    },
+    "fur_bearskin_cuirass": {
+        "type": "Armor",
+        "row": 5020100,
+        "comment": "Iron Rivet Armor"
+    },
+    "fur_colovian_helm": {
+        "type": "Armor",
+        "row": 5020000,
+        "comment": "Pelt of Ralva"
+    },
+    "gauntlet_fists_l_unique": {
+        "type": "Armor",
+        "row": 5270200,
+        "comment": "Young Lion's Gauntlets"
+    },
+    "gauntlet_horny_fist_l": {
+        "type": "Armor",
+        "row": 5250200,
+        "comment": "Horned Warrior Gauntlets"
+    },
+    "gondolier_helm": {
+        "type": "Armor",
+        "row": 250000,
+        "comment": "Nomadic Merchant's Chapeau"
+    },
+    "heart wall": {
+        "type": "Armor",
+        "row": 5200100,
+        "comment": "Death Knight Armor"
+    },
+    "helm of holy fire": {
+        "type": "Armor",
+        "row": 5180000,
+        "comment": "Fire Knight Helm"
+    },
+    "helm of wounding": {
+        "type": "Armor",
+        "row": 210000,
+        "comment": "Briar Helm"
+    },
+    "icecap_unique": {
+        "type": "Armor",
+        "row": 1010000,
+        "comment": "Snow Witch Hat"
+    },
+    "imperial helmet armor_Dae_curse": {
+        "type": "Armor",
+        "row": 5140000,
+        "comment": "Messmer Soldier Helm"
+    },
+    "imperial_chain_coif_helm": {
+        "type": "Armor",
+        "row": 1100000,
+        "comment": "Chain Coif"
+    },
+    "imperial_chain_cuirass": {
+        "type": "Armor",
+        "row": 1100100,
+        "comment": "Chain Armor"
+    },
+    "imperial_chain_greaves": {
+        "type": "Armor",
+        "row": 1100300,
+        "comment": "Chain Leggings"
+    },
+    "imperial_studded_cuirass": {
+        "type": "Armor",
+        "row": 190100,
+        "comment": "Exile Armor"
+    },
+    "indoril cuirass": {
+        "type": "Armor",
+        "row": 340100,
+        "comment": "Cleanrot Armor"
+    },
+    "indoril helmet": {
+        "type": "Armor",
+        "row": 340000,
+        "comment": "Cleanrot Helm"
+    },
+    "indoril left gauntlet": {
+        "type": "Armor",
+        "row": 340200,
+        "comment": "Cleanrot Gauntlets"
+    },
+    "left cloth horny fist bracer": {
+        "type": "Armor",
+        "row": 5070200,
+        "comment": "Braided Arm Wraps"
+    },
+    "left gauntlet of the horny fist": {
+        "type": "Armor",
+    	"row": 360200,
+	    "comment": "Fire Prelate Gauntlets"
+    },
+    "left leather bracer": {
+        "type": "Armor",
+        "row": 5190200,
+        "comment": "Leather Arm Wraps"
+    },
+    "left_horny_fist_gauntlet": {
+        "type": "Armor",
+        "row": 5250200,
+        "comment": "Horned Warrior Gauntlets"
+    },
+    "merisan helm": {
+        "type": "Armor",
+        "row": 380000,
+        "comment": "Aristocrat Hat"
+    },
+    "merisan_cuirass": {
+        "type": "Armor",
+        "row": 380100,
+        "comment": "Aristocrat Coat"
+    },
+    "mole_crab_helm": {
+        "type": "Armor",
+        "row": 5320000,
+        "comment": "Greatjar"
+    },
+    "morag_tong_helm": {
+        "type": "Armor",
+        "row": 5280000,
+        "comment": "Shadow Militiaman Helm"
+    },
+    "Mountain Spirit": {
+        "type": "Armor",
+	    "row": 1070100,
+    	"useIcon": true,
+	    "comment": "Zamor Armor"
+    },
+    "newtscale_cuirass": {
+        "type": "Armor",
+        "row": 670100,
+        "useIcon": true,
+        "comment": "Blue Cloth Vest"
+    },
+    "nordic_iron_cuirass": {
+        "type": "Armor",
+        "row": 5020100,
+        "comment": "Iron Rivet Armor"
+    },
+    "nordic_iron_helm": {
+        "type": "Armor",
+        "row": 5021000,
+        "comment": "Fang Helm"
+    },
+    "nordic_ringmail_cuirass": {
+        "type": "Armor",
+        "row": 1101100,
+        "comment": "Eye Surcoat"
+    },
+    "redoran_master_helm": {
+        "type": "Armor",
+        "row": 571000,
+        "comment": "Crucible Tree Helm"
+    },
+    "silver_cuirass": {
+        "type": "Armor",
+        "row": 5260100,
+        "comment": "Rellana's Armor"
+    },
+    "silver_dukesguard_cuirass": {
+        "type": "Armor",
+        "row": 5002100,
+        "comment": "Oathseeker Knight Armor"
+    },
+    "silver_helm": {
+        "type": "Armor",
+        "row": 5260000,
+        "comment": "Rellana's Helm"
+    },
+    "slave_bracer_left": {
+        "type": "Armor",
+        "row": 5210200,
+        "comment": "Ascetic's Wrist Guards"
+    },
+    "storm helm": {
+        "type": "Armor",
+        "row": 240000,
+        "comment": "Blue Silver Mail Hood"
+    },
+    "templar bracer left": {
+        "type": "Armor",
+        "row": 5150200,
+        "comment": "Black Knight Gauntlets"
+    },
+    "templar_cuirass": {
+        "type": "Armor",
+        "row": 5150100,
+        "comment": "Black Knight Armor"
+    },
+    "templar_greaves": {
+        "type": "Armor",
+        "row": 5150300,
+        "comment": "Black Knight Greaves"
+    },
+    "templar_helmet_armor": {
+        "type": "Armor",
+        "row": 5150000,
+        "comment": "Black Knight Helm"
+    },
+    "the_chiding_cuirass": {
+        "type": "Armor",
+        "row": 5070100,
+        "comment": "Braided Cord Robe"
+    },
+    "trollbone_cuirass": {
+        "type": "Armor",
+        "row": 301100,
+        "comment": "Shaman Furs"
+    },
+    "trollbone_helm": {
+        "type": "Armor",
+        "row": 301000,
+        "comment": "Shining Horned Headband"
+    },
+    "velothian_helm": {
+        "type": "Armor",
+        "row": 1040000,
+        "comment": "Radiant Gold Mask"
+    }
 }

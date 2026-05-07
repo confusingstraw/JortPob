@@ -1,0 +1,20 @@
+﻿{
+	"comment": "Wraithguard as Golden Prosthetic with Wraithguard enchant",
+	"type": "Armor",
+	"row": 1970200,
+	"text": {
+		"name": "Wraithguard",
+		"description": "A divine gauntlet capable of guarding the bearer from impossible forces.",
+		"enchant": [ "Wraithguard." ]
+	},
+	"data": {
+		"residentSpEffectId": "wraithguard_en",
+		"defenseMagic": 40,
+		"defenseDark": 40,
+		"resistPoison": 100,
+		"resistBlood": 100,
+		"resistCurse": 100,
+		"resistMadness": 100,
+		"weight": 5.0
+	}
+}

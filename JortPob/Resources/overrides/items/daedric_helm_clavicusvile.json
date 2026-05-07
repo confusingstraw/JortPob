@@ -1,0 +1,17 @@
+﻿{
+	"comment": "Masque of Clavicus Vile as Curseblade Mask",
+	"type": "Armor",
+	"row": 5210000,
+	"text": {
+		"name": "Masque of Clavicus Vile",
+		"description": "A rare Daedric masque with an unsettling charm.",
+		"enchant": [ "Masque of Clavicus." ]
+	},
+	"data": {
+		"defenseMagic": 18,
+		"defenseDark": 22,
+		"resistMadness": 45,
+		"resistCurse": 45,
+		"weight": 2.2
+	}
+}

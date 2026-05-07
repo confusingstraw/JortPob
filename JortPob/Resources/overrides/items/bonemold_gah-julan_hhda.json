@@ -1,0 +1,13 @@
+﻿{
+	"comment": "Native Gah-Julan Helm as Black Wolf Mask",
+	"type": "Armor",
+	"row": 170000,
+	"text": {
+		"name": "Native Gah-Julan Bonemold Helm",
+		"description": "A disguised Gah-Julan helm.",
+		"enchant": []
+	},
+	"data": {
+		"weight": 3.5
+	}
+}

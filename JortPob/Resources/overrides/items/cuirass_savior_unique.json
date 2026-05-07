@@ -1,0 +1,15 @@
+﻿{
+	"comment": "Cuirass of the Savior's Hide as Raptor's Black Feathers",
+	"type": "Armor",
+	"row": 5020100,
+	"text": {
+		"name": "Cuirass of the Savior's Hide",
+		"description": "A Daedric cuirass that resists magic.",
+		"enchant": [ "Hircine's Blessing." ]
+	},
+	"data": {
+		"defenseMagic": 24,
+		"defenseDark": 22,
+		"weight": 7.0
+	}
+}

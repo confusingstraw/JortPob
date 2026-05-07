@@ -1,0 +1,16 @@
+﻿{
+	"comment": "Shield of the Undaunted as Beast Crest Heater Shield",
+	"type": "Weapon",
+	"row": 31280000,
+	"infusion": "None",
+	"upgrade": 4,
+	"skill": 30100,
+	"text": {
+		"name": "Shield of the Undaunted",
+		"description": "A shield awarded for courage.",
+		"enchant": [ "Fenester's Ward." ]
+	},
+	"data": {
+		"staminaGuardDef": 70
+	}
+}

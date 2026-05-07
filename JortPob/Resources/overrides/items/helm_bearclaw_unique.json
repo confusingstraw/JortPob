@@ -1,0 +1,18 @@
+﻿{
+	"comment": "Helm of Oreyn Bearclaw as Great Horned Headband",
+	"type": "Armor",
+	"row": 300000,
+	"text": {
+		"name": "Helm of Oreyn Bearclaw",
+		"description": "A legendary helm tied to Oreyn Bearclaw.",
+		"enchant": [ "Oreyn's Courage." ]
+	},
+	"data": {
+		"defensePhysics": 28,
+		"defenseSlash": 30,
+		"defenseBlow": 28,
+		"defenseThrust": 26,
+		"resistBlood": 55,
+		"weight": 6.0
+	}
+}

@@ -1,0 +1,13 @@
+﻿{
+	"comment": "Daedric Greaves as Greaves of Night",
+	"type": "Armor",
+	"row": 5090300,
+	"text": {
+		"name": "Daedric Greaves",
+		"description": "Daedric greaves made unnaturally light.",
+		"enchant": [ "Feather." ]
+	},
+	"data": {
+		"weight": 3.0
+	}
+}

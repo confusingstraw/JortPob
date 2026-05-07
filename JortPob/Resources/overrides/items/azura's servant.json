@@ -1,0 +1,15 @@
+﻿{
+	"comment": "Azura's Servant +5 with Shield Crash",
+	"type": "Weapon",
+	"row": 30150000,
+	"infusion": "Fire",
+	"upgrade": 5,
+	"skill": 30800,
+	"text": {
+		"name": "Azura's Servant",
+		"description": "A scorched shield that still radiates lingering heat.",
+		"enchant": [ "Fire affinity." ]
+	},
+	"data": {
+	}
+}

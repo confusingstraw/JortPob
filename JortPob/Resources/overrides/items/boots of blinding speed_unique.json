@@ -1,0 +1,13 @@
+﻿{
+	"comment": "Boots of Blinding Speed as Leather Boots",
+	"type": "Armor",
+	"row": 1400300,
+	"text": {
+		"name": "Boots of Blinding Speed",
+		"description": "A pair of enchanted boots that grant incredible speed",
+		"enchant": [ "Blinding Speed." ]
+	},
+	"data": {
+		"weight": 1.0
+	}
+}

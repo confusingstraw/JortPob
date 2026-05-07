@@ -1,0 +1,20 @@
+﻿{
+	"comment": "Jury-rigged Wraithguard as Golden Prosthetic with weaker Wraithguard enchant",
+	"type": "Armor",
+	"row": 1970200,
+	"text": {
+		"name": "Jury-rigged Wraithguard",
+		"description": "An unstable copy of Wraithguard, powerful but imperfect.",
+		"enchant": [ "Wraithguard." ]
+	},
+	"data": {
+		"residentSpEffectId": "wraithguard_en",
+		"defenseMagic": 30,
+		"defenseDark": 30,
+		"resistPoison": 65,
+		"resistBlood": 65,
+		"resistCurse": 65,
+		"resistMadness": 65,
+		"weight": 5.0
+	}
+}

@@ -1,0 +1,15 @@
+﻿{
+	"comment": "Dragonbone Cuirass as Drake Knight Armor",
+	"type": "Armor",
+	"row": 60100,
+	"text": {
+		"name": "Dragonbone Cuirass",
+		"description": "A legendary cuirass made from dragonbone.",
+		"enchant": [ "Dragon Aura." ]
+	},
+	"data": {
+		"defenseFire": 35,
+		"defensePhysics": 30,
+		"weight": 11.5
+	}
+}

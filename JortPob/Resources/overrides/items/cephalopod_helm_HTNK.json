@@ -1,0 +1,16 @@
+﻿{
+	"comment": "Gothren's Cephalopod Helm as Octopus Head",
+	"type": "Armor",
+	"row": 1110000,
+	"text": {
+		"name": "Gothren's Cephalopod Helm",
+		"description": "A strange Telvanni helm.",
+		"enchant": []
+	},
+	"data": {
+		"defenseMagic": 34,
+		"defenseDark": 28,
+		"resistSleep": 70,
+		"resistMadness": 70
+	}
+}
