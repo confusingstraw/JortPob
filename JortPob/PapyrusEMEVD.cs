@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using static JortPob.Papyrus;
-using static JortPob.Scripts.Script.Flag;
 
 namespace JortPob
 {
@@ -374,7 +373,7 @@ namespace JortPob
                         break;
 
                     case Call.Type.GetDeadCount:
-                        Script.Flag deadCountFlag = scriptManager.GetFlag(Designation.DeadCount, call.left.parameters[0].ToLower().Trim());
+                        Script.Flag deadCountFlag = scriptManager.GetFlag(Script.Flag.Designation.DeadCount, call.left.parameters[0].ToLower().Trim());
                         if (deadCountFlag == null) { break; } // happens during partial builds
                         if (call.right.type == Call.Type.Literal)
                         {
@@ -407,7 +406,7 @@ namespace JortPob
                             if (call.left.target == null) { target = content; }
                             else { target = layout.FindScriptReference(content, call.left.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
-                            Script.Flag dispFlag = scriptManager.GetFlag(Designation.Disposition, target);
+                            Script.Flag dispFlag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                             if (call.right.type == Call.Type.Literal)
                             {
                                 lines.Add(ResetConditionGroups());
@@ -1750,7 +1749,7 @@ namespace JortPob
                                 if (phaseTo == null) { break; } // Failed to find phase. Partial build thing
 
                                 // set phase
-                                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
+                                Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, target);
                                 lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded. spawn handler will enable char at new location if conditions met and loaded
                                 lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
                             }
@@ -2038,7 +2037,7 @@ namespace JortPob
 
                             BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target);
-                            Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content);
+                            Script.Flag fightFlag = scriptManager.GetFlag(Script.Flag.Designation.NpcInfight, content);
                             if (hostileFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);"); }
                             if (fightFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {fightFlag.id}, OFF);"); }
                             if(fightFlag == null && hostileFlag == null) { lines.Add($"SetCharacterTeamType({target.entity}, 26);"); } // fallback, sets team to player friendly
@@ -2211,7 +2210,7 @@ namespace JortPob
             if(content is PhasedNpcContent)      
             {
                 PhasedNpcContent pnpc = (PhasedNpcContent)content;
-                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, pnpc);
+                Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, pnpc);
                 lines.Insert(0, $"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {pnpc.phase});"); // if phased npc then only run script when npc is phased in
             }
             if(content is CharacterContent cc && cc.follower == true && !script.IsInterior())
