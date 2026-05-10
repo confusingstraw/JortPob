@@ -594,6 +594,27 @@ namespace JortPob.Common
             return envPoint;
         }
 
+        /* Create generic MapPoint */
+        public static MSBE.Region.MapPoint MapPoint()
+        {
+            MSBE.Region.MapPoint mapPoint = new()
+            {
+                Rotation = Vector3.Zero,
+                MapStudioLayer = 4294967295,
+                MapID = -1,
+                UnkE08 = 255,
+                UnkS04 = 0,
+                UnkS0C = -1,
+                UnkT04 = -1,
+                UnkT08 = -1,
+                UnkT0C = -1,
+                UnkT10 = -1,
+                UnkT14 = -1,
+                UnkT18 = -1
+            };
+            return mapPoint;
+        }
+
         public static MSBE.Event.Treasure Treasure()
         {
             MSBE.Event.Treasure treasure = new();

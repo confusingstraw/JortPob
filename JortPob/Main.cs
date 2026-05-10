@@ -613,7 +613,7 @@ namespace JortPob
                     {
                         foreach (Layout.MapPoint point in chunk.MapPoints)
                         {
-                            MSBE.Region.MapPoint mpr = new();
+                            MSBE.Region.MapPoint mpr = MakePart.MapPoint();
                             int paramId;
                             if (group.IsInterior)
                             {
@@ -631,21 +631,8 @@ namespace JortPob
                                 
                             }
                             mpr.Name = $"{point.name} placename";
-                            mpr.Rotation = Vector3.Zero;
                             mpr.RegionID = nextMPR++;
-                            mpr.MapStudioLayer = 4294967295;
                             mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, point, paramId);
-
-                            mpr.MapID = -1;
-                            mpr.UnkE08 = 255;
-                            mpr.UnkS04 = 0;
-                            mpr.UnkS0C = -1;
-                            mpr.UnkT04 = -1;
-                            mpr.UnkT08 = -1;
-                            mpr.UnkT0C = -1;
-                            mpr.UnkT10 = -1;
-                            mpr.UnkT14 = -1;
-                            mpr.UnkT18 = -1;
 
                             msb.Regions.MapPoints.Add(mpr);
                             if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
