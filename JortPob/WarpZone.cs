@@ -53,15 +53,15 @@ namespace JortPob
             debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"RegisterBonfire(18000001, 18001951, 0, 0, 0, 5);"));
             List<String> debugWarpCellList = new() { "Seyda Neen", "Balmora", "Tel Mora", "Pelagiad", "Caldera", "Khuul", "Gnisis", "Ald-ruhn", "Hla Oad" };
             int debugCounty = 0;
-            for (int i = 0; i < debugWarpCellList.Count(); i++)
+            for (int i = 0; i < debugWarpCellList.Count; i++)
             {
                 string areaName = debugWarpCellList[i];
                 Tile area = layout.GetTile(areaName);
-                if (area != null && area.warps.Count() > 0)
+                if (area != null && area.Warps.Count > 0)
                 {
                     MSBE.Part.Asset debugAsset = (MSBE.Part.Asset)(debugThingToDupe.DeepCopy());
                     debugAsset.ModelName = "AEG020_992"; // little candle
-                    debugAsset.Position = Vector3.Lerp(lineStart, lineEnd, (1f / debugWarpCellList.Count()) * i);
+                    debugAsset.Position = Vector3.Lerp(lineStart, lineEnd, (1f / debugWarpCellList.Count) * i);
                     debugAsset.EntityID = debugEntityIdNext++;
                     debugAsset.Name = $"{debugAsset.ModelName}_{9001 + debugCounty}";
                     debugAsset.UnkPartNames[4] = debugAsset.Name;
@@ -75,7 +75,7 @@ namespace JortPob
 
                     int actionButtonId = paramanager.GenerateActionButtonInteractParam($"Debug Warp: {areaName}");
                     debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"IfActionButtonInArea(MAIN, {actionButtonId}, {debugAsset.EntityID});"));
-                    debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WarpPlayer({area.map}, {area.coordinate.x}, {area.coordinate.y}, 0, {area.warps[0].id}, 0)"));
+                    debugWarpEvent.Instructions.Add(debugScript.AUTO.ParseAdd($"WarpPlayer({area.Map}, {area.Coordinates.x}, {area.Coordinates.y}, 0, {area.Warps[0].id}, 0)"));
 
                     debugScript.init.Instructions.Add(debugScript.AUTO.ParseAdd($"InitializeEvent(0, {debugEventFlag.id})"));
 

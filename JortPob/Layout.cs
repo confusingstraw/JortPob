@@ -71,7 +71,7 @@ namespace JortPob
                         int y1 = y * 2;
                         int x2 = x1 + 2;
                         int y2 = y1 + 2;
-                        if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
+                        if (tile.Coordinates.x >= x1 && tile.Coordinates.x < x2 && tile.Coordinates.y >= y1 && tile.Coordinates.y < y2)
                         {
                             big.AddTile(tile);
                         }
@@ -102,7 +102,7 @@ namespace JortPob
                         int y1 = y * 2;
                         int x2 = x1 + 2;
                         int y2 = y1 + 2;
-                        if (big.coordinate.x >= x1 && big.coordinate.x < x2 && big.coordinate.y >= y1 && big.coordinate.y < y2)
+                        if (big.Coordinates.x >= x1 && big.Coordinates.x < x2 && big.Coordinates.y >= y1 && big.Coordinates.y < y2)
                         {
                             huge.AddBig(big);
                         }
@@ -114,7 +114,7 @@ namespace JortPob
                         int y1 = y * 4;
                         int x2 = x1 + 4;
                         int y2 = y1 + 4;
-                        if (tile.coordinate.x >= x1 && tile.coordinate.x < x2 && tile.coordinate.y >= y1 && tile.coordinate.y < y2)
+                        if (tile.Coordinates.x >= x1 && tile.Coordinates.x < x2 && tile.Coordinates.y >= y1 && tile.Coordinates.y < y2)
                         {
                             huge.AddTile(tile);
                         }
@@ -327,7 +327,7 @@ namespace JortPob
                     if (tile == null) { line += "-"; }
                     else
                     {
-                        line += tile.assets.Count > 0 ? "X" : "~";
+                        line += tile.Assets.Count > 0 ? "X" : "~";
                     }
                 }
                 Lort.Log(line, Lort.Type.Debug);
@@ -393,10 +393,10 @@ namespace JortPob
                     {
                         InteriorGroup.Chunk to = FindChunk(door.warp.cell);
                         if (to == null) { door.warp = null; return; }      // caused by debug sometimes
-                        door.warp.map = to.group.map;
-                        door.warp.x = to.group.area;
-                        door.warp.y = to.group.unk;
-                        door.warp.block = to.group.block;
+                        door.warp.map = to.group.Map;
+                        door.warp.x = to.group.Area;
+                        door.warp.y = to.group.Unk;
+                        door.warp.block = to.group.Block;
                         door.warp.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
                         string areaName;
                         if (to.cell.name.Contains(",")) { areaName = to.cell.name.Split(",")[^1].Trim(); }
@@ -409,10 +409,10 @@ namespace JortPob
                     {
                         Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
                         if (to == null) { door.warp = null; return; }     // caused by debug sometimes
-                        door.warp.map = to.map;
-                        door.warp.x = to.coordinate.x;
-                        door.warp.y = to.coordinate.y;
-                        door.warp.block = to.block;
+                        door.warp.map = to.Map;
+                        door.warp.x = to.Coordinates.x;
+                        door.warp.y = to.Coordinates.y;
+                        door.warp.block = to.Block;
                         door.warp.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]");
                         door.warp.prompt = $"Exit";
                         to.AddWarp(door.warp);
@@ -432,10 +432,10 @@ namespace JortPob
                         {
                             InteriorGroup.Chunk to = FindChunk(travel.cell);
                             if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
-                            travel.map = to.group.map;
-                            travel.x = to.group.area;
-                            travel.y = to.group.unk;
-                            travel.block = to.group.block;
+                            travel.map = to.group.Map;
+                            travel.x = to.group.Area;
+                            travel.y = to.group.Unk;
+                            travel.block = to.group.Block;
                             travel.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
                             travel.name = to.cell.name;
                             travel.cost = Const.TRAVEL_DEFAULT_COST;
@@ -448,17 +448,17 @@ namespace JortPob
                             Tile to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
                             Cell cell = FindCell(travel.position);
                             if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
-                            travel.map = to.map;
-                            travel.x = to.coordinate.x;
-                            travel.y = to.coordinate.y;
-                            travel.block = to.block;
+                            travel.map = to.Map;
+                            travel.x = to.Coordinates.x;
+                            travel.y = to.Coordinates.y;
+                            travel.block = to.Block;
                             travel.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
                             travel.name = cell.name;
                             // calculate distance for cost of travel
                             if (from != null)
                             {
-                                Vector2 a = new(from.coordinate.x, from.coordinate.y);
-                                Vector2 b = new(to.coordinate.x, to.coordinate.y);
+                                Vector2 a = new(from.Coordinates.x, from.Coordinates.y);
+                                Vector2 b = new(to.Coordinates.x, to.Coordinates.y);
                                 travel.cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
                             }
                             else { travel.cost = Const.TRAVEL_DEFAULT_COST; }
@@ -472,13 +472,13 @@ namespace JortPob
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    foreach (DoorContent door in chunk.doors)
+                    foreach (DoorContent door in chunk.Doors)
                     {
                         HandleDoor(door);
                         if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
                     }
 
-                    foreach (NpcContent npc in chunk.npcs)
+                    foreach (NpcContent npc in chunk.NPCs)
                     {
                         HandleTravel(npc);
                     }
@@ -487,13 +487,13 @@ namespace JortPob
 
             foreach (Tile tile in tiles)
             {
-                foreach (DoorContent door in tile.doors)
+                foreach (DoorContent door in tile.Doors)
                 {
                     HandleDoor(door);
                     if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
                 }
 
-                foreach (NpcContent npc in tile.npcs)
+                foreach (NpcContent npc in tile.NPCs)
                 {
                     HandleTravel(npc, tile);
                 }
@@ -503,7 +503,7 @@ namespace JortPob
             /* default location name value for interiors */
             foreach (InteriorGroup group in interiors)
             {
-                int textId = int.Parse($"{group.map:D2}{group.area:D2}0");
+                int textId = int.Parse($"{group.Map:D2}{group.Area:D2}0");
                 text.SetLocation(textId, "Interior");
             }
             Lort.TaskIterate(); // Progress bar update
@@ -528,9 +528,9 @@ namespace JortPob
                 }
             }
 
-            foreach (Tile tile in tiles) { CheckWitnesses(tile.npcs); }
+            foreach (Tile tile in tiles) { CheckWitnesses(tile.NPCs); }
             foreach (InteriorGroup group in interiors) {
-                foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.npcs); }
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.NPCs); }
             }
             Lort.TaskIterate(); // Progress bar update
 
@@ -627,15 +627,15 @@ namespace JortPob
 
             foreach (Tile tile in tiles)
             {
-                foreach (NpcContent npc in tile.npcs) { ResolveShop(npc); }
-                foreach (CreatureContent creature in tile.creatures) { ResolveShop(creature); }
+                foreach (NpcContent npc in tile.NPCs) { ResolveShop(npc); }
+                foreach (CreatureContent creature in tile.Creatures) { ResolveShop(creature); }
             }
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    foreach (NpcContent npc in chunk.npcs) { ResolveShop(npc); }
-                    foreach (CreatureContent creature in chunk.creatures) { ResolveShop(creature); }
+                    foreach (NpcContent npc in chunk.NPCs) { ResolveShop(npc); }
+                    foreach (CreatureContent creature in chunk.Creatures) { ResolveShop(creature); }
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -795,7 +795,7 @@ namespace JortPob
                 foreach(BaseTile t in all)
                 {
                     BaseScript script = scriptManager.GetScript(t);
-                    if(DoReplacement(script, original, t.npcs)) { return; }
+                    if(DoReplacement(script, original, t.NPCs)) { return; }
                 }
 
                 foreach (InteriorGroup g in interiors)
@@ -803,7 +803,7 @@ namespace JortPob
                     foreach (InteriorGroup.Chunk c in g.chunks)
                     {
                         BaseScript script = scriptManager.GetScript(g);
-                        if (DoReplacement(script, original, c.npcs)) { return; }
+                        if (DoReplacement(script, original, c.NPCs)) { return; }
                     }
                 }
 
@@ -880,13 +880,13 @@ namespace JortPob
                     pnpc = new(npc, cell, position, new Vector3(0, rotation, 0), npc.entity, phase);
                     script = scriptManager.GetScript(tile);
                     pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
-                    tile.AddContent(cache, tile.cells[0], pnpc);
+                    tile.AddContent(cache, tile.Cells[0], pnpc);
                 }
                 else
                 {
                     pnpc = new(npc, chunk.cell, position, new Vector3(0, rotation, 0), npc.entity, phase);
                     script = scriptManager.GetScript(chunk.group);
-                    pnpc.relative = position + chunk.root - chunk.offset;
+                    pnpc.relative = position + chunk.Root - chunk.Offset;
                     pnpc.entity = script.CreateEntity(Script.EntityType.Enemy, pnpc.id);
                     chunk.AddContent(cache, pnpc);
                 }
@@ -1118,7 +1118,7 @@ namespace JortPob
 
             foreach(Tile tile in tiles)
             {
-                foreach(DoorContent door in tile.doors)
+                foreach(DoorContent door in tile.Doors)
                 {
                     if(door.warp != null)
                     {
@@ -1156,7 +1156,7 @@ namespace JortPob
         {
             foreach (HugeTile huge in huges)
             {
-                if (huge.coordinate == coordinate)
+                if (huge.Coordinates == coordinate)
                 {
                     return huge;
                 }
@@ -1192,7 +1192,7 @@ namespace JortPob
         {
             foreach(Tile tile in tiles)
             {
-                if(tile.coordinate == coordinate)
+                if(tile.Coordinates == coordinate)
                 {
                     return tile;
                 }
@@ -1205,7 +1205,7 @@ namespace JortPob
         {
             foreach(Tile tile in tiles)
             {
-                foreach(Cell cell in tile.cells)
+                foreach(Cell cell in tile.Cells)
                 {
                     if(cell.name == cellName)
                     {
@@ -1224,7 +1224,7 @@ namespace JortPob
             list.Add(60);
             foreach(InteriorGroup group in interiors)
             {
-                if (!list.Contains(group.map)) { list.Add(group.map); }
+                if (!list.Contains(group.Map)) { list.Add(group.Map); }
             }
 
             return list;
@@ -1343,7 +1343,7 @@ namespace JortPob
         public ScriptedPosition FindScriptedPosition(Vector3 position)
         {
             return tiles
-                .SelectMany(tile => tile.positions)
+                .SelectMany(tile => tile.Positions)
                 .FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
         }
 
@@ -1353,7 +1353,7 @@ namespace JortPob
             if (name == null) { return FindScriptedPosition(position); }  // if location = null then we assume its an exterior
 
             InteriorGroup.Chunk chunk = FindChunk(name);
-            return chunk?.positions.FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
+            return chunk?.Positions.FirstOrDefault(sp => Vector3.Distance(position, sp.position) < 0.1f);
         }
 
         /* Finds travel position that is in the same msb as the given content (used for patrol routes, patrol routes require travel point regions to be in the same msb) */
@@ -1362,12 +1362,12 @@ namespace JortPob
             BaseTile t = FindTile(content);
             if(t != null && t is Tile tile)
             {
-                return tile.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+                return tile.TravelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
             }
             else
             {
                 InteriorGroup.Chunk chunk = FindChunk(content);
-                return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+                return chunk?.TravelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
             }
         }
 
@@ -1375,7 +1375,7 @@ namespace JortPob
         public TravelPoint FindTravelable(Vector3 position)
         {
             return tiles
-                .SelectMany(tile => tile.travels)
+                .SelectMany(tile => tile.TravelPoints)
                 .FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
@@ -1385,7 +1385,7 @@ namespace JortPob
             if (name == null) { return FindTravelable(position); }  // if location = null then we assume its an exterior
 
             InteriorGroup.Chunk chunk = FindChunk(name);
-            return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+            return chunk?.TravelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
         /* Find all pathgridpoints within the radius of the given content */
@@ -1393,11 +1393,11 @@ namespace JortPob
         {
             List<PathGridPoint> source;
             BaseTile tile = FindTile(content);
-            if (tile != null && tile is Tile t) { source = t.paths; }
+            if (tile != null && tile is Tile t) { source = t.Paths; }
             else if (tile != null && tile is HugeTile huge) { return new(); }  // @TODO: This is the case where we attempt to lookup wander points for an CharacterContent that is msb promoted so it fails to find anything. In order to resolve this we will need to propogate pathgrid shit up to big/huge tiles. Big annoying cunt to do and minimal effect on gameplay so fix it later!
             else {
                 InteriorGroup.Chunk chunk = FindChunk(content);
-                source = chunk.paths;
+                source = chunk.Paths;
             }
 
             List<PathGridPoint> result = new();

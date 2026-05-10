@@ -1,5 +1,4 @@
-﻿using IronPython.Compiler.Ast;
-using JortPob.Common;
+﻿using JortPob.Common;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -25,8 +24,8 @@ namespace JortPob
         {
             Vector3 pos = position + Const.LAYOUT_COORDINATE_OFFSET;
 
-            float x1 = (coordinate.x * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y1 = (coordinate.y * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float x1 = (Coordinates.x * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float y1 = (Coordinates.y * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
             float x2 = x1 + (Const.TILE_SIZE * 4f);
             float y2 = y1 + (Const.TILE_SIZE * 4f);
 
@@ -40,7 +39,7 @@ namespace JortPob
 
         public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
-            cells.Add(cell);
+            Cells.Add(cell);
             BigTile big = GetBigTile(cell.center);
             if(big == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B01", Lort.Type.Debug); return; }
             big.AddCell(scriptManager, cell);
@@ -71,12 +70,12 @@ namespace JortPob
                     ModelInfo modelInfo = cache.GetModel(a.mesh);
                     if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
                     {
-                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float x = (Coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (Coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile tile = GetTile(cell.center);
                         if(tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
-                        content.load = tile.coordinate;
+                        content.load = tile.Coordinates;
                         base.AddContent(cache, cell, content);
                         tile.AddNav(cache, cell, content);
                         break;
@@ -85,11 +84,11 @@ namespace JortPob
                 case CharacterContent c:
                     if(c.follower)
                     {
-                        float x = (coordinate.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        float y = (coordinate.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float x = (Coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (Coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile tile = GetTile(c.position);
-                        content.load = tile.coordinate;
+                        content.load = tile.Coordinates;
                         base.AddContent(cache, cell, content);
                         break;
                     }
@@ -141,7 +140,7 @@ namespace JortPob
         public string GetRegion()
         {
             Dictionary<string, int> regions = new();
-            foreach (Cell cell in cells)
+            foreach (Cell cell in Cells)
             {
                 if (cell.region == null) { continue; }
                 string r = cell.region.Trim().ToLower();
@@ -149,7 +148,7 @@ namespace JortPob
                 else { regions.Add(r, 1); }
             }
 
-            if (regions.Count() <= 0) { return "Default Region"; } // no regions set so guh
+            if (regions.Count <= 0) { return "Default Region"; } // no regions set so guh
 
             string most = regions.Keys.First();
             foreach (KeyValuePair<string, int> kvp in regions)

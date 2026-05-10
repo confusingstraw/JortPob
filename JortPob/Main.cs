@@ -59,7 +59,7 @@ namespace JortPob
             void GenerateMSB(IMSBCompilableGroup group)
             {
                 // Just write empty tiles as empty msbs and scripts to prevent base game stuff from loading in the distance. Debug flag if you want to skip this behaviour
-                if (group.IsEmpty() && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior())) { return; }
+                if (group.IsEmpty() && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior)) { return; }
 
                 /* Generate msb from group */
                 MSBE msb = new();
@@ -67,28 +67,28 @@ namespace JortPob
 
                 BaseScript script = scriptManager.GetScript(group);
                 bool isTileType = group.GetType() == typeof(Tile);
-                LightManager lightManager = new(group.GetMap(), group.GetCoordinates().x, group.GetCoordinates().y, group.GetBlock());
+                LightManager lightManager = new(group.Map, group.Coordinates.x, group.Coordinates.y, group.Block);
                 ResourcePool pool = new(group, msb, lightManager, script);
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
 
                 /* Handle chunks */
-                List<IMSBCompilableChunk> chunks = group.GetChunks();
+                List<IMSBCompilableChunk> chunks = group.Chunks;
                 for (int i = 0; i < chunks.Count; i++)
                 {
                     IMSBCompilableChunk chunk = chunks[i];
                     MSBE.Part.Collision rootCollision = MakePart.Collision();
-                    if (group.IsInterior())
+                    if (group.IsInterior)
                     {
                         /* Interior MSB drawgroup */
                         uint chunkDrawGroup = (uint)0 | ((uint)1 << i);
 
                         /* Interior MSB chunk collision root */
-                        string collisionIndex = $"{group.GetCoordinates().x:D2}{group.GetCoordinates().y:D2}{nextC++:D2}";
+                        string collisionIndex = $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
                         rootCollision.Name = $"h{collisionIndex}_0000";
                         rootCollision.ModelName = $"h{collisionIndex}";
-                        rootCollision.Position = chunk.GetRoot() + Const.MSB_OFFSET - new Vector3(0f, chunk.GetBounds().Z, 0f);
+                        rootCollision.Position = chunk.Root + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Z, 0f);
                         rootCollision.Unk1.DisplayGroups[0] = 0;
                         rootCollision.Unk1.DisplayGroups[1] = chunkDrawGroup;
                         rootCollision.Unk1.CollisionMask[0] = 0;
@@ -99,9 +99,9 @@ namespace JortPob
                         /* Interior MSB shadow box */
                         ModelInfo shadowBoxModelInfo = cache.GetModel("interiorshadowbox");
                         MSBE.Part.Asset shadowBoxAsset = MakePart.Asset(shadowBoxModelInfo);
-                        shadowBoxAsset.Position = chunk.GetRoot() + Const.MSB_OFFSET;
+                        shadowBoxAsset.Position = chunk.Root + Const.MSB_OFFSET;
                         shadowBoxAsset.Rotation = Vector3.Zero;
-                        shadowBoxAsset.Scale = chunk.GetBounds();
+                        shadowBoxAsset.Scale = chunk.Bounds;
                         shadowBoxAsset.Unk1.DisplayGroups[0] = 0;
                         shadowBoxAsset.UnkPartNames[1] = rootCollision.Name;
                         shadowBoxAsset.UnkPartNames[3] = rootCollision.Name;
@@ -111,7 +111,7 @@ namespace JortPob
                     else if (isTileType)
                     {
                         Tile tile = (Tile)group;
-                        List<Tuple<Vector3, TerrainInfo>> terrains = tile.terrain;
+                        List<Tuple<Vector3, TerrainInfo>> terrains = tile.Terrain;
 
                         /* Add terrain */
                         foreach ((Vector3 position, TerrainInfo terrainInfo) in terrains)
@@ -121,7 +121,7 @@ namespace JortPob
                             // superoverworld msb is  handled by its own class -> OverworldManager
                             foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                             {
-                                string collisionIndex = $"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextC:D2}";
+                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC:D2}";
 
                                 MSBE.Part.Collision collision = MakePart.Collision();
                                 collision.Name = $"h{collisionIndex}_0000";
@@ -142,7 +142,7 @@ namespace JortPob
                                 CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
 
                                 /* Make collision for water splashing */
-                                string collisionIndex = $"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextC++:D2}";
+                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
                                 MSBE.Part.Collision collision = MakePart.WaterCollision();
                                 collision.Name = $"h{collisionIndex}_0000";
                                 collision.ModelName = $"h{collisionIndex}";
@@ -159,7 +159,7 @@ namespace JortPob
                                 if (cutoutInfo != null)
                                 {
                                     /* Make collision for swamp or lava splashy splashing, surface collision */
-                                    string collisionIndex = $"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{nextC++:D2}";
+                                    string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
                                     MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                                     collision.Name = $"h{collisionIndex}_0000";
                                     collision.ModelName = $"h{collisionIndex}";
@@ -179,7 +179,7 @@ namespace JortPob
                     }
 
                     /* Add assets */
-                    foreach (AssetContent content in chunk.GetAssets())
+                    foreach (AssetContent content in chunk.Assets)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -192,7 +192,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior()) {
+                        if (group.IsInterior) {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
                             asset.UnkPartNames[3] = rootCollision.Name;
@@ -201,7 +201,7 @@ namespace JortPob
                         /* Asset tileload config */
                         else if (group.GetType() == typeof(HugeTile) || group.GetType() == typeof(BigTile))
                         {
-                            asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.GetMap() };
+                            asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map };
                             asset.TileLoad.Unk04 = 13;
                             asset.TileLoad.CullingHeightBehavior = -1;
                         }
@@ -224,7 +224,7 @@ namespace JortPob
                             bed.EntityID = entityIds.bed;
                             bed.TalkID = character.GetESD(group.IdList(), msb, bedContent);
 
-                            if (group.IsInterior()) {
+                            if (group.IsInterior) {
                                 bed.CollisionPartName = rootCollision.Name;   
                             }
                             msb.Parts.Enemies.Add(bed);
@@ -240,7 +240,7 @@ namespace JortPob
                     }
 
                     /* Add doors */
-                    foreach (DoorContent content in chunk.GetDoors())
+                    foreach (DoorContent content in chunk.Doors)
                     {
                         if (content.warp == null && Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
 
@@ -253,7 +253,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
@@ -273,7 +273,7 @@ namespace JortPob
                     }
 
                     /* Add warp destinations for load doors */
-                    foreach (Layout.WarpDestination warp in chunk.GetWarps())
+                    foreach (Layout.WarpDestination warp in chunk.Warps)
                     {
                         MSBE.Part.Player player = MakePart.Player();
                         player.Position = warp.position + Const.MSB_OFFSET;
@@ -283,7 +283,7 @@ namespace JortPob
                     }
 
                     /* Add emitters */
-                    foreach (EmitterContent content in chunk.GetEmitters())
+                    foreach (EmitterContent content in chunk.Emitters)
                     {
                         /* Grab ModelInfo */
                         EmitterInfo emitterInfo = cache.GetEmitter(content.id);
@@ -299,7 +299,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(content.scale * 0.01f); // converting from 100-0 int scale to 1f-0f scale
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
@@ -319,19 +319,19 @@ namespace JortPob
                     }
 
                     /* Add lights */
-                    foreach (LightContent light in chunk.GetLights())
+                    foreach (LightContent light in chunk.Lights)
                     {
                         lightManager.CreateLight(light);
                     }
 
                     /* Create humanoid NPCs (c0000) */
-                    foreach (NpcContent npc in chunk.GetNPCs())
+                    foreach (NpcContent npc in chunk.NPCs)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
                         enemy.Position = npc.relative + Const.MSB_OFFSET;
                         enemy.Rotation = npc.rotation;
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             enemy.Unk1.DisplayGroups[0] = 0;
                             enemy.CollisionPartName = rootCollision.Name;
@@ -339,7 +339,7 @@ namespace JortPob
 
                         // If the npc is a deadbody we create a treasure on their body
                         List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(npc);
-                        if (npc.dead && inventory.Count() > 0)
+                        if (npc.dead && inventory.Count > 0)
                         {
                             MSBE.Event.Treasure treasure = MakePart.Treasure();
                             treasure.ItemLotID = param.GenerateDeadBodyItemLot(script, npc, inventory);
@@ -360,12 +360,12 @@ namespace JortPob
                         enemy.ThinkParamID = paramRows.think;
                         enemy.CharaInitID = paramRows.init;
 
-                        if (!group.IsInterior())
+                        if (!group.IsInterior)
                         {
                             /* Asset tileload config */
                             if (chunk.GetType() == typeof(HugeTile) || chunk.GetType() == typeof(BigTile))
                             {
-                                enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.GetMap() };
+                                enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map };
                                 //enemy.TileLoad.Unk04 = 13;
                             }
                         }
@@ -382,7 +382,7 @@ namespace JortPob
                     }
 
                     /* Creatures */
-                    foreach (CreatureContent creature in chunk.GetCreatures())
+                    foreach (CreatureContent creature in chunk.Creatures)
                     {
                         Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
 
@@ -390,7 +390,7 @@ namespace JortPob
                         enemy.Position = creature.relative + Const.MSB_OFFSET;
                         enemy.Rotation = creature.rotation;
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             enemy.Unk1.DisplayGroups[0] = 0;
                             enemy.CollisionPartName = rootCollision.Name;
@@ -413,7 +413,7 @@ namespace JortPob
                     }
 
                     /* Add items */
-                    foreach (ItemContent content in chunk.GetItems())
+                    foreach (ItemContent content in chunk.Items)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -429,7 +429,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
@@ -462,7 +462,7 @@ namespace JortPob
                     }
 
                     /* Add pickables */
-                    foreach (PickableContent content in chunk.GetPickables())
+                    foreach (PickableContent content in chunk.Pickables)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -475,7 +475,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(content.scale * 0.01f);  // converting from 100-0 int scale to 1f-0f scale
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
@@ -495,14 +495,14 @@ namespace JortPob
                     }
 
                     /* Add container */
-                    foreach (ContainerContent content in chunk.GetContainers())
+                    foreach (ContainerContent content in chunk.Containers)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
                         /* Grab ModelInfo + iteminfo */
                         List<(ItemManager.ItemInfo item, int quantity)> inventory = item.ResolveInventory(content);
                         ModelInfo modelInfo;
-                        if (inventory.Count() > 0) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
+                        if (inventory.Count > 0) { modelInfo = cache.GetModel(content.mesh, Const.DYNAMIC_ASSET); } // if we have a treasure for this assset it MUST be dynamic
                         else { modelInfo = cache.GetModel(content.mesh, content.scale); }  // otherwise it doesn't matter. treasure events can only work on dynamic assets for whatever reason
 
                         /* Make part */
@@ -511,7 +511,7 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior())
+                        if (group.IsInterior)
                         {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
@@ -520,7 +520,7 @@ namespace JortPob
                         }
 
                         /* Setup container treasure if it exists */
-                        if (inventory.Count() > 0)
+                        if (inventory.Count > 0)
                         {
                             MSBE.Event.Treasure treasure = MakePart.Treasure();
                             if (content.entity <= 0) { content.entity = script.CreateEntity(EntityType.Asset, content.id); }  // if this content does not yet have an entity id, give it one
@@ -544,7 +544,7 @@ namespace JortPob
                     }
 
                     /* Add scripted positions */
-                    foreach (Layout.ScriptedPosition sp in chunk.GetPositions())
+                    foreach (Layout.ScriptedPosition sp in chunk.Positions)
                     {
                         MSBE.Part.Player player = MakePart.Player();
                         player.Position = sp.relative + Const.MSB_OFFSET;
@@ -564,7 +564,7 @@ namespace JortPob
                     }
 
                     /* Add PathGridPoints */
-                    foreach (Layout.PathGridPoint point in chunk.GetPaths())
+                    foreach (Layout.PathGridPoint point in chunk.Paths)
                     {
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = point.name;
@@ -586,7 +586,7 @@ namespace JortPob
                     }
 
                     /* Add TravelPoints */
-                    foreach (Layout.TravelPoint travel in chunk.GetTravelPoints())
+                    foreach (Layout.TravelPoint travel in chunk.TravelPoints)
                     {
                         MSBE.Region.PatrolRoute region = new();
                         region.Name = travel.name;
@@ -608,22 +608,22 @@ namespace JortPob
                     }
 
                     /* Handle area names */
-                    if (isTileType || group.IsInterior())
+                    if (isTileType || group.IsInterior)
                     {
-                        foreach (Layout.MapPoint point in chunk.GetMapPoints())
+                        foreach (Layout.MapPoint point in chunk.MapPoints)
                         {
                             MSBE.Region.MapPoint mpr = new();
                             int paramId;
-                            if (group.IsInterior())
+                            if (group.IsInterior)
                             {
-                                paramId = int.Parse($"60{group.GetMap():D2}{group.GetCoordinates().x:D2}{nextMPR:D2}");
-                                mpr.Shape = new MSB.Shape.Box(chunk.GetBounds().X, chunk.GetBounds().Z, chunk.GetBounds().Y);
-                                mpr.Position = point.relative + Const.MSB_OFFSET - new Vector3(0f, chunk.GetBounds().Y / 2f, 0f);
-                                mpr.EntityID = scriptManager.areas[chunk.GetCells()[0]]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
+                                paramId = int.Parse($"60{group.Map:D2}{group.Coordinates.x:D2}{nextMPR:D2}");
+                                mpr.Shape = new MSB.Shape.Box(chunk.Bounds.X, chunk.Bounds.Z, chunk.Bounds.Y);
+                                mpr.Position = point.relative + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Y / 2f, 0f);
+                                mpr.EntityID = scriptManager.areas[chunk.Cells[0]]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
                             }
                             else
                             {
-                                paramId = int.Parse($"61{group.GetCoordinates().x:D2}{group.GetCoordinates().y:D2}{nextMPR:D2}");
+                                paramId = int.Parse($"61{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextMPR:D2}");
                                 mpr.Shape = new MSB.Shape.Sphere(point.radius);
                                 mpr.Position = point.relative + Const.MSB_OFFSET;
                                 mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
@@ -654,7 +654,7 @@ namespace JortPob
 
                 /* EnvMap & REM for interior */
                 // @TODO: make this per chunk so we can setup different rems for different interiors
-                if (group.IsInterior())
+                if (group.IsInterior)
                 {
                     /* Create envmap texture file */
                     int envId = 200;
@@ -672,12 +672,12 @@ namespace JortPob
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
                     envPoint.Name = $"Env_Point{envId.ToString("D3")}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
-                    envPoint.UnkMapID = new byte[] { (byte)group.GetMap(), (byte)group.GetCoordinates().x, (byte)group.GetCoordinates().y, (byte)group.GetBlock() };
+                    envPoint.UnkMapID = new byte[] { (byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block };
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
                 /* Auto resource */
-                AutoResource.Generate(group.GetMap(), group.GetCoordinates().x, group.GetCoordinates().y, group.GetBlock(), msb);
+                AutoResource.Generate(group.Map, group.Coordinates.x, group.Coordinates.y, group.Block, msb);
 
                 /* Done */
                 msbs.Add(pool);
@@ -711,7 +711,7 @@ namespace JortPob
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
                     tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
-                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
                 }
@@ -719,10 +719,10 @@ namespace JortPob
                 {
                     if (group.IsEmpty()) { continue; } // skip empty groups
 
-                    for (int i = 0; i < group.chunks.Count(); i++)
+                    for (int i = 0; i < group.chunks.Count; i++)
                     {
                         InteriorGroup.Chunk chunk = group.chunks[i];
-                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}-{i:D2}.obj");
                         if (Const.DEBUG_REUSE_FILES && File.Exists(objPath)) { objs.Add(objPath); continue; } // if debug_reuse is on, skip if file already created
                         chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                         objs.Add(objPath);
@@ -732,15 +732,15 @@ namespace JortPob
                 NavWorker.Go(objs);
 
                 /* After all the nav conversions are finshed we can now do nvas and nvbnds */
-                Lort.Log($"Binding {layout.tiles.Count() + layout.interiors.Count()} NVBNDs...", Lort.Type.Main);
-                Lort.NewTask("Binding NVBNDs", layout.tiles.Count() + layout.interiors.Count());
+                Lort.Log($"Binding {layout.tiles.Count + layout.interiors.Count} NVBNDs...", Lort.Type.Main);
+                Lort.NewTask("Binding NVBNDs", layout.tiles.Count + layout.interiors.Count);
                 foreach (BaseTile bt in layout.tiles)
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
 
                     /* Some vars */
-                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
-                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
+                    int nextNavId = int.Parse($"1{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}00000");
+                    string mid = $"{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}";
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
                     string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
                     string onavPath = Path.ChangeExtension(objPath, ".o.nav");
@@ -763,7 +763,7 @@ namespace JortPob
 
                     /* Add navmesh entry to NVA */
                     NVA.Navmesh navMesh = new();
-                    int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
+                    int nextN = int.Parse($"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{0:D2}");
                     navMesh.NameID = nextNavId;
                     navMesh.ModelID = nextN;
                     navMesh.IsConnectedNavmeshesInline = true;
@@ -790,16 +790,16 @@ namespace JortPob
                     nvbnd.Files.Add(obf);
 
                     /* Write Files */
-                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
-                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.Map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.Map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
                     Lort.TaskIterate();
                 }
                 foreach (InteriorGroup group in layout.interiors)
                 {
                     /* Some vars */
                     int bid = 10000;
-                    int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
-                    string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
+                    int nextNavId = int.Parse($"{group.Map:D2}{group.Area:D2}00000");
+                    string mid = $"{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}";
 
                     /* Create NVA */
                     SoulsFormats.NVA nva = new();
@@ -817,18 +817,18 @@ namespace JortPob
                     nvbnd.Compression = Compression.KRAK();
                     nvbnd.Version = "07D7R6";
 
-                    for (int i = 0; i < group.chunks.Count(); i++)
+                    for (int i = 0; i < group.chunks.Count; i++)
                     {
                         if (group.IsEmpty()) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
 
                         InteriorGroup.Chunk chunk = group.chunks[i];
-                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}-{i:D2}.obj");
                         string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
                         string onavPath = Path.ChangeExtension(objPath, ".o.nav");
 
                         /* Add navmesh entry to NVA */
                         NVA.Navmesh navMesh = new();
-                        int nextN = int.Parse($"{group.map:D2}{group.area:D2}{i:D2}");
+                        int nextN = int.Parse($"{group.Map:D2}{group.Area:D2}{i:D2}");
                         navMesh.NameID = nextNavId;
                         navMesh.ModelID = nextN;
                         navMesh.IsConnectedNavmeshesInline = true;
@@ -860,8 +860,8 @@ namespace JortPob
                     }
 
                     /* Write Files */
-                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
-                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.Map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.Map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
                     Lort.TaskIterate();
                 }
             }
@@ -869,8 +869,8 @@ namespace JortPob
 
             /* Compile Dialog as ESD and Papyrus as EMEVD now that main generation has finished */
             /* Compile Papyrus main global script and it's subscripts */
-            Lort.Log($"Processing {contentToCompile.Count()+1} scripts...", Lort.Type.Main);
-            Lort.NewTask("Processing Scripts", (contentToCompile.Count()+1)*3);
+            Lort.Log($"Processing {contentToCompile.Count + 1} scripts...", Lort.Type.Main);
+            Lort.NewTask("Processing Scripts", (contentToCompile.Count + 1) * 3);
 
             /* Initialize local variables first */
             if (!Const.DEBUG_SKIP_SCRIPTS)

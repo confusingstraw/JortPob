@@ -50,7 +50,7 @@ namespace JortPob
             string region = tile.GetRegion();
             WeatherData weatherData = GetWeatherData(region);
 
-            string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}"; // msb full name
+            string mid = $"{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}"; // msb full name
 
             Dictionary<string, int> levels = new();
             levels.Add("high", 64);
@@ -69,7 +69,7 @@ namespace JortPob
                     bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
-                    List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, envId, timeId, size, weatherData.rem);
+                    List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.Map, tile.Coordinates.x, tile.Coordinates.y, tile.Block, envId, timeId, size, weatherData.rem);
 
                     int bndId = 0;
                     foreach (Tuple<string, byte[]> texture in textures)
@@ -98,7 +98,7 @@ namespace JortPob
                         bnd.Files.Add(file);
                     }
 
-                    bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.map:D2}\m{mid}\m{mid}_envmap_{timeId:D2}_{level}_00.tpfbnd.dcx"));
+                    bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.Map:D2}\m{mid}\m{mid}_envmap_{timeId:D2}_{level}_00.tpfbnd.dcx"));
                 }
             }
 
@@ -121,7 +121,7 @@ namespace JortPob
                     ivBnd.Files.Add(ivFile);
                 }
 
-                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.map:D2}\m{mid}\\m{mid}_{level}.ivinfobnd.dcx"));
+                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{tile.Map:D2}\m{mid}\\m{mid}_{level}.ivinfobnd.dcx"));
             }
         }
 
@@ -129,7 +129,7 @@ namespace JortPob
         {
             WeatherData weatherData = group.GetWeather();
 
-            string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}"; // msb full name
+            string mid = $"{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}"; // msb full name
 
             Dictionary<string, int> levels = new();
             levels.Add("high", 64);
@@ -145,7 +145,7 @@ namespace JortPob
                 bnd.Compression = Compression.KRAK();
                 bnd.Version = "07D7R6";
 
-                List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(group.map, group.area, group.unk, group.block, envId, 0, size, weatherData.rem);
+                List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(group.Map, group.Area, group.Unk, group.Block, envId, 0, size, weatherData.rem);
 
                 int bndId = 0;
                 foreach (Tuple<string, byte[]> texture in textures)
@@ -174,7 +174,7 @@ namespace JortPob
                     bnd.Files.Add(file);
                 }
 
-                bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.map:D2}\m{mid}\m{mid}_envmap_{0:D2}_{level}_00.tpfbnd.dcx"));
+                bnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.Map:D2}\m{mid}\m{mid}_envmap_{0:D2}_{level}_00.tpfbnd.dcx"));
             }
 
 
@@ -194,7 +194,7 @@ namespace JortPob
                 ivFile.Name = $"N:\\GR\\data\\INTERROOT_win64\\map\\m{mid}\\tex\\Envmap\\{level}\\IvInfo\\m{mid}_GIIV{envId}_{0:D2}.ivInfo";
                 ivBnd.Files.Add(ivFile);
 
-                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.map:D2}\m{mid}\m{mid}_{level}.ivinfobnd.dcx"));
+                ivBnd.Write(Path.Combine(Const.OUTPUT_PATH, $@"map\m{group.Map:D2}\m{mid}\m{mid}_{level}.ivinfobnd.dcx"));
             }
         }
     }

@@ -17,23 +17,14 @@ namespace JortPob
         public BigTile big;
 
         public Obj nav;  // navmesh repersentation of this msb tile
-        public readonly List<PathGridPoint> paths; // mw uses these for nav. we are only using them for wander positions
-        public readonly List<TravelPoint> travels; // positions directly referenced in AiPackages
-
-        public override List<TravelPoint> GetTravelPoints()
-        {
-            return travels;
-        }
-        public override List<PathGridPoint> GetPaths()
-        {
-            return paths;
-        }
+        public override List<Layout.PathGridPoint> Paths { get; } // mw uses these for nav. we are only using them for wander positions
+        public override List<Layout.TravelPoint> TravelPoints { get; } // positions directly referenced in AiPackages
 
         public Tile(int m, int x, int y, int b) : base(m, x, y, b)
         {
             nav = new();
-            paths = new();
-            travels = new();
+            Paths = new();
+            TravelPoints = new();
         }
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
@@ -41,8 +32,8 @@ namespace JortPob
         {
             Vector3 pos = position + Const.LAYOUT_COORDINATE_OFFSET;
 
-            float x1 = (coordinate.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y1 = (coordinate.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float x1 = (Coordinates.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float y1 = (Coordinates.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
             float x2 = x1 + Const.TILE_SIZE;
             float y2 = y1 + Const.TILE_SIZE;
 
@@ -58,7 +49,7 @@ namespace JortPob
         public string GetRegion()
         {
             Dictionary<string, int> regions = new();
-            foreach(Cell cell in cells)
+            foreach(Cell cell in Cells)
             {
                 if (cell.region == null) { continue; }
                 string r = cell.region.Trim().ToLower();
@@ -66,7 +57,7 @@ namespace JortPob
                 else { regions.Add(r, 1); }
             }
 
-            if (regions.Count() <= 0) { return "Default Region"; } // no regions set so guh
+            if (regions.Count <= 0) { return "Default Region"; } // no regions set so guh
 
             string most = regions.Keys.First();
             foreach(KeyValuePair<string, int> kvp in regions)
@@ -89,34 +80,34 @@ namespace JortPob
 
         public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
-            cells.Add(cell);
+            Cells.Add(cell);
 
             /* Add cells pathgrid to the tile */
             BaseScript script = scriptManager.GetScript(this);
-            for (int i = 0; i < cell.paths.Count(); i++)
+            for (int i = 0; i < cell.paths.Count; i++)
             {
                 Vector3 path = cell.paths[i];
-                string name = $"PathGrid_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{cell.coordinate.x:D2}{cell.coordinate.y:D2}_{i:D4}";
-                float x = (coordinate.x * Const.TILE_SIZE);
-                float y = (coordinate.y * Const.TILE_SIZE);
+                string name = $"PathGrid_{Map:D2}{Coordinates.x:D2}{Coordinates.y:D2}_{cell.coordinate.x:D2}{cell.coordinate.y:D2}_{i:D4}";
+                float x = (Coordinates.x * Const.TILE_SIZE);
+                float y = (Coordinates.y * Const.TILE_SIZE);
                 Vector3 relative = (path + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                 Layout.PathGridPoint point = new(name,relative, script.CreateEntity(Script.EntityType.Region, $"PathGridPoint"));
-                paths.Add(point);
+                Paths.Add(point);
             }
         }
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
+            Terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
         }
 
         public void FinalizeTerrainNav()
         {
             Obj all = new();
-            foreach((Vector3 v, TerrainInfo t) in terrain)
+            foreach((Vector3 v, TerrainInfo t) in Terrain)
             {
                 Obj obj = new Obj(Path.Combine(Const.CACHE_PATH, t.obj));
                 all.add(obj, v, Vector3.Zero, 1f);
@@ -129,8 +120,8 @@ namespace JortPob
 
         public override void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
             content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
 
             AddNav(cache, cell, content);
@@ -143,8 +134,8 @@ namespace JortPob
             if (Const.DEBUG_SKIP_NAVMESH) { return; }
 
             /* Recalcualte relative for this tile because this content may be coming from a BigTile or HugeTile and the content.relative will not be valid in those cases */
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
             Vector3 relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
 
             switch (content)
@@ -160,43 +151,43 @@ namespace JortPob
 
         public void AddWarp(DoorContent.Warp warp)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
 
             Layout.WarpDestination dest = new((warp.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y), warp.rotation, warp.entity);
-            warps.Add(dest);
+            Warps.Add(dest);
         }
 
         public void AddMapPoint(Layout.MapPoint point)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
 
             point.relative = (point.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            points.Add(point);
+            MapPoints.Add(point);
         }
 
         public void AddScriptedPosition(BaseScript script, Vector3 position, float rot)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
 
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
-            uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position.ToString()}");
-            uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position.ToString()}");
-            positions.Add(new(position, relative, rotation, region, player, map, coordinate.x, coordinate.y, block));
+            uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position}");
+            uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position}");
+            Positions.Add(new(position, relative, rotation, region, player, Map, Coordinates.x, Coordinates.y, Block));
         }
         
         /* Add travelpoint */
         public void AddTravelPoint(BaseScript script, Vector3 point, float radius = -1f)
         {
-            float x = (coordinate.x * Const.TILE_SIZE);
-            float y = (coordinate.y * Const.TILE_SIZE);
+            float x = (Coordinates.x * Const.TILE_SIZE);
+            float y = (Coordinates.y * Const.TILE_SIZE);
             Vector3 relative = (point + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point.ToString()}");
-            TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count():D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
-            travels.Add(travel);
+            uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point}");
+            TravelPoint travel = new($"Travel_{Map:D2}{Coordinates.x:D2}{Coordinates.y:D2}_{TravelPoints.Count:D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
+            TravelPoints.Add(travel);
         }
 
         /* Converts all "Travel" positions to travelpoints */
@@ -209,18 +200,18 @@ namespace JortPob
                 {
                     if (package.type == CharacterContent.AiPackage.Type.Travel)
                     {
-                        float x = (coordinate.x * Const.TILE_SIZE);
-                        float y = (coordinate.y * Const.TILE_SIZE);
+                        float x = (Coordinates.x * Const.TILE_SIZE);
+                        float y = (Coordinates.y * Const.TILE_SIZE);
                         Vector3 relative = (package.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-                        uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position.ToString()}");
-                        TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count():D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
-                        travels.Add(travel);
+                        uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position}");
+                        TravelPoint travel = new($"Travel_{Map:D2}{Coordinates.x:D2}{Coordinates.y:D2}_{TravelPoints.Count:D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
+                        TravelPoints.Add(travel);
                     }
                 }
             }
 
-            foreach (NpcContent c in npcs) { HandleCharacterContent(c); }
-            foreach (CreatureContent c in creatures) { HandleCharacterContent(c); }
+            foreach (NpcContent c in NPCs) { HandleCharacterContent(c); }
+            foreach (CreatureContent c in Creatures) { HandleCharacterContent(c); }
         }
     }
 
@@ -228,163 +219,95 @@ namespace JortPob
 
     public abstract class BaseTile : IMSBCompilableGroup, IMSBCompilableChunk
     {
-        public readonly int map;
-        public readonly Int2 coordinate;
-        public readonly int block;
+        public int Map { get; init; }
+        public Int2 Coordinates { get; init; }
+        public int Block { get; init; }
 
-        public readonly List<Cell> cells;
+        public List<Cell> Cells { get; init; }
 
-        public readonly List<Tuple<Vector3, TerrainInfo>> terrain;
-        public readonly List<AssetContent> assets;
-        public readonly List<DoorContent> doors;
-        public readonly List<LightContent> lights;
-        public readonly List<EmitterContent> emitters;
-        public readonly List<CreatureContent> creatures;
-        public readonly List<NpcContent> npcs;
-        public readonly List<ContainerContent> containers;
-        public readonly List<PickableContent> pickables;
-        public readonly List<ItemContent> items;
+        public List<Tuple<Vector3, TerrainInfo>> Terrain { get; init; }
+        public List<AssetContent> Assets { get; init; }
+        public List<DoorContent> Doors { get; init; }
+        public List<LightContent> Lights { get; init; }
+        public List<EmitterContent> Emitters { get; init; }
+        public List<CreatureContent> Creatures { get; init; }
+        public List<NpcContent> NPCs { get; init; }
+        public List<ContainerContent> Containers { get; init; }
+        public List<PickableContent> Pickables { get; init; }
+        public List<ItemContent> Items { get; init; }
+        public List<Layout.WarpDestination> Warps { get; init; } // end points for load doors in other cells. also used by travel npcs
+        public List<Layout.MapPoint> MapPoints { get; init; }
+        public List<Layout.ScriptedPosition> Positions { get; init; } // used by scripts to target locations EX: 'PositionCell'
 
-        public readonly List<WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
-        public readonly List<MapPoint> points;
-        public readonly List<ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
-
-        public bool IsInterior()
+        public bool IsInterior { get; } = false;
+        public Vector3 Root
         {
-            return false;
+            get { return new Vector3(0); }  // not used but needed to satisfy interface
         }
-        public int GetMap()
+        public Vector3 Bounds
         {
-            return map;
+            get { return new Vector3(0); }  // not used but needed to satisfy interface
         }
-        public Int2 GetCoordinates()
+        public List<IMSBCompilableChunk> Chunks
         {
-            return coordinate;
+            get { return [this]; }
         }
-        public int GetBlock()
+        public virtual List<Layout.TravelPoint> TravelPoints
         {
-            return block;
+            get { return []; }
         }
-        public Vector3 GetRoot()
+        public virtual List<Layout.PathGridPoint> Paths
         {
-            return new Vector3(0);  // not used but needed to satisfy interface
-        }
-        public Vector3 GetBounds()
-        {
-            return new Vector3(0);  // not used but needed to satisfy interface
-        }
-        public List<IMSBCompilableChunk> GetChunks()
-        {
-            return [this];
-        }
-        public List<Cell> GetCells()
-        {
-            return cells;
-        }
-        public List<AssetContent> GetAssets()
-        {
-            return assets;
-        }
-        public List<DoorContent> GetDoors()
-        {
-            return doors;
-        }
-        public List<LightContent> GetLights()
-        {
-            return lights;
-        }
-        public List<EmitterContent> GetEmitters()
-        {
-            return emitters;
-        }
-        public List<CreatureContent> GetCreatures()
-        {
-            return creatures;
-        }
-        public List<NpcContent> GetNPCs()
-        {
-            return npcs;
-        }
-        public List<ContainerContent> GetContainers()
-        {
-            return containers;
-        }
-        public List<PickableContent> GetPickables()
-        {
-            return pickables;
-        }
-        public List<ItemContent> GetItems()
-        {
-            return items;
-        }
-        public List<WarpDestination> GetWarps()
-        {
-            return warps;
-        }
-        public List<ScriptedPosition> GetPositions()
-        {
-            return positions;
-        }
-        public List<MapPoint> GetMapPoints()
-        {
-            return points;
-        }
-        public virtual List<TravelPoint> GetTravelPoints()
-        {
-            return [];
-        }
-        public virtual List<PathGridPoint> GetPaths()
-        {
-            return [];
+            get { return []; }
         }
 
         public BaseTile(int m, int x, int y, int b)
         {
             /* Tile Data */
-            map = m;
-            coordinate = new(x, y);
-            block = b;
+            Map = m;
+            Coordinates = new(x, y);
+            Block = b;
 
             /* Tile Content Data */
-            cells = new();
-            terrain = new();
-            assets = new();
-            doors = new();
-            emitters = new();
-            lights = new();
-            creatures = new();
-            npcs = new();
-            containers = new();
-            pickables = new();
-            items = new();
+            Cells = new();
+            Terrain = new();
+            Assets = new();
+            Doors = new();
+            Emitters = new();
+            Lights = new();
+            Creatures = new();
+            NPCs = new();
+            Containers = new();
+            Pickables = new();
+            Items = new();
 
-            positions = new();
-            points = new();
-            warps = new();
+            Positions = new();
+            MapPoints = new();
+            Warps = new();
         }
 
         public int[] IdList()
         {
-            return [map, coordinate.x, coordinate.y, block];
+            return [Map, Coordinates.x, Coordinates.y, Block];
         }
 
         public bool IsEmpty()
         {
-            return cells.Count() <= 0 && terrain.Count() <= 0 && assets.Count() <= 0;
+            return Cells.Count <= 0 && Terrain.Count <= 0 && Assets.Count <= 0;
         }
 
         public IEnumerable<Content> GetAllContent()
         {
             IEnumerable<IEnumerable<Content>> all = [
-                assets,
-                doors,
-                emitters,
-                lights,
-                creatures,
-                npcs,
-                containers,
-                pickables,
-                items,
+                Assets,
+                Doors,
+                Emitters,
+                Lights,
+                Creatures,
+                NPCs,
+                Containers,
+                Pickables,
+                Items,
             ];
 
             foreach (IEnumerable<Content> enumerable in all)
@@ -404,23 +327,23 @@ namespace JortPob
             switch(content)
             {
                 case AssetContent a:
-                    assets.Add(a); break;
+                    Assets.Add(a); break;
                 case DoorContent d:
-                    doors.Add(d); break;
+                    Doors.Add(d); break;
                 case EmitterContent e:
-                    emitters.Add(e); break;
+                    Emitters.Add(e); break;
                 case LightContent l:
-                    lights.Add(l); break;
+                    Lights.Add(l); break;
                 case ContainerContent o:
-                    containers.Add(o); break;
+                    Containers.Add(o); break;
                 case PickableContent p:
-                    pickables.Add(p); break;
+                    Pickables.Add(p); break;
                 case ItemContent i:
-                    items.Add(i); break;
+                    Items.Add(i); break;
                 case NpcContent n:
-                    npcs.Add(n); break;
+                    NPCs.Add(n); break;
                 case CreatureContent c:
-                    creatures.Add(c); break;
+                    Creatures.Add(c); break;
                 default:
                     Lort.Log($" ## WARNING ## Unhandled Content class '{content.type}::{content.id}' fell through AddContent()", Lort.Type.Debug); break;
             }
