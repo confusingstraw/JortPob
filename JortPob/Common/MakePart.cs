@@ -754,6 +754,23 @@ namespace JortPob.Common
             return enemy;
         }
 
+        /* Creates a patrol route */
+        public static MSBE.Region.PatrolRoute PatrolRoute()
+        {
+            MSBE.Region.PatrolRoute patrolRoute = new()
+            {
+                Rotation = Vector3.Zero,
+                MapStudioLayer = 4294967295,
+                MapID = -1,
+                UnkE08 = 255,
+                UnkS04 = 0,
+                UnkS0C = -1,
+                UnkT00 = -1,
+                Unk40 = 0,
+            };
+            return patrolRoute;
+        }
+
         /* Deprecated, not used */
         public static MSBE.Event.PatrolInfo PatrolRandom(List<Layout.PathGridPoint> points)
         {

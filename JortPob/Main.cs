@@ -567,21 +567,12 @@ namespace JortPob
                     /* Add PathGridPoints */
                     foreach (Layout.PathGridPoint point in chunk.Paths)
                     {
-                        MSBE.Region.PatrolRoute region = new();
+                        MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = point.name;
                         region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
                         region.Position = point.position + Const.MSB_OFFSET;
-                        region.Rotation = Vector3.Zero;
                         region.RegionID = nextMPR++;
                         region.EntityID = point.entity;
-                        region.MapStudioLayer = 4294967295;
-
-                        region.MapID = -1;
-                        region.UnkE08 = 255;
-                        region.UnkS04 = 0;
-                        region.UnkS0C = -1;
-                        region.UnkT00 = -1;
-                        region.Unk40 = 0;
 
                         msb.Regions.PatrolRoutes.Add(region);
                     }
@@ -589,21 +580,12 @@ namespace JortPob
                     /* Add TravelPoints */
                     foreach (Layout.TravelPoint travel in chunk.TravelPoints)
                     {
-                        MSBE.Region.PatrolRoute region = new();
+                        MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = travel.name;
                         region.Shape = new MSB.Shape.Sphere(travel.radius);
                         region.Position = travel.relative + Const.MSB_OFFSET;
-                        region.Rotation = Vector3.Zero;
                         region.RegionID = nextMPR++;
                         region.EntityID = travel.entity;
-                        region.MapStudioLayer = 4294967295;
-
-                        region.MapID = -1;
-                        region.UnkE08 = 255;
-                        region.UnkS04 = 0;
-                        region.UnkS0C = -1;
-                        region.UnkT00 = -1;
-                        region.Unk40 = 0;
 
                         msb.Regions.PatrolRoutes.Add(region);
                     }
