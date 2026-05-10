@@ -62,8 +62,10 @@ namespace JortPob
                 if (group.IsEmpty() && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior)) { return; }
 
                 /* Generate msb from group */
-                MSBE msb = new();
-                msb.Compression = Compression.KRAK();
+                MSBE msb = new()
+                {
+                    Compression = Compression.KRAK()
+                };
 
                 BaseScript script = scriptManager.GetScript(group);
                 bool isTileType = group.GetType() == typeof(Tile);
@@ -72,6 +74,8 @@ namespace JortPob
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
+
+                string NewCollisionIndex() => $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
 
                 /* Handle chunks */
                 List<IMSBCompilableChunk> chunks = group.Chunks;
@@ -85,7 +89,7 @@ namespace JortPob
                         uint chunkDrawGroup = (uint)0 | ((uint)1 << i);
 
                         /* Interior MSB chunk collision root */
-                        string collisionIndex = $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
+                        string collisionIndex = NewCollisionIndex();
                         rootCollision.Name = $"h{collisionIndex}_0000";
                         rootCollision.ModelName = $"h{collisionIndex}";
                         rootCollision.Position = chunk.Root + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Z, 0f);
@@ -121,7 +125,7 @@ namespace JortPob
                             // superoverworld msb is  handled by its own class -> OverworldManager
                             foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                             {
-                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC:D2}";
+                                string collisionIndex = NewCollisionIndex();
 
                                 MSBE.Part.Collision collision = MakePart.Collision();
                                 collision.Name = $"h{collisionIndex}_0000";
@@ -130,8 +134,6 @@ namespace JortPob
 
                                 msb.Parts.Collisions.Add(collision);
                                 pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
-
-                                nextC++;
                             }
 
                             /* Add water collision if terrain 'hasWater' */
@@ -142,7 +144,7 @@ namespace JortPob
                                 CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
 
                                 /* Make collision for water splashing */
-                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
+                                string collisionIndex = NewCollisionIndex();
                                 MSBE.Part.Collision collision = MakePart.WaterCollision();
                                 collision.Name = $"h{collisionIndex}_0000";
                                 collision.ModelName = $"h{collisionIndex}";
@@ -159,7 +161,7 @@ namespace JortPob
                                 if (cutoutInfo != null)
                                 {
                                     /* Make collision for swamp or lava splashy splashing, surface collision */
-                                    string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
+                                    string collisionIndex = NewCollisionIndex();
                                     MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                                     collision.Name = $"h{collisionIndex}_0000";
                                     collision.ModelName = $"h{collisionIndex}";
@@ -192,7 +194,8 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior) {
+                        if (group.IsInterior)
+                        {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
                             asset.UnkPartNames[3] = rootCollision.Name;
@@ -201,7 +204,7 @@ namespace JortPob
                         /* Asset tileload config */
                         else if (group.GetType() == typeof(HugeTile) || group.GetType() == typeof(BigTile))
                         {
-                            asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map };
+                            asset.TileLoad.MapID = [(byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map];
                             asset.TileLoad.Unk04 = 13;
                             asset.TileLoad.CullingHeightBehavior = -1;
                         }
@@ -365,7 +368,7 @@ namespace JortPob
                             /* Asset tileload config */
                             if (chunk.GetType() == typeof(HugeTile) || chunk.GetType() == typeof(BigTile))
                             {
-                                enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map };
+                                enemy.TileLoad.MapID = [(byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map];
                                 //enemy.TileLoad.Unk04 = 13;
                             }
                         }
@@ -552,35 +555,28 @@ namespace JortPob
                         player.EntityID = sp.player;
                         msb.Parts.Players.Add(player);
 
-                        MSBE.Region.Other region = new();
-                        region.Name = $"ScriptedPosition:{sp.position}";
-                        region.Shape = new MSB.Shape.Point();
-                        region.Position = sp.relative + Const.MSB_OFFSET;
-                        region.Rotation = sp.rotation;
-                        region.RegionID = nextMPR++;
-                        region.EntityID = sp.region;
-                        region.MapStudioLayer = 4294967295;
+                        MSBE.Region.Other region = new()
+                        {
+                            Name = $"ScriptedPosition:{sp.position}",
+                            Shape = new MSB.Shape.Point(),
+                            Position = sp.relative + Const.MSB_OFFSET,
+                            Rotation = sp.rotation,
+                            RegionID = nextMPR++,
+                            EntityID = sp.region,
+                            MapStudioLayer = 4294967295
+                        };
                         msb.Regions.Add(region);
                     }
 
                     /* Add PathGridPoints */
                     foreach (Layout.PathGridPoint point in chunk.Paths)
                     {
-                        MSBE.Region.PatrolRoute region = new();
+                        MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = point.name;
                         region.Shape = new MSB.Shape.Sphere(Const.PATH_REGION_SIZE);
                         region.Position = point.position + Const.MSB_OFFSET;
-                        region.Rotation = Vector3.Zero;
                         region.RegionID = nextMPR++;
                         region.EntityID = point.entity;
-                        region.MapStudioLayer = 4294967295;
-
-                        region.MapID = -1;
-                        region.UnkE08 = 255;
-                        region.UnkS04 = 0;
-                        region.UnkS0C = -1;
-                        region.UnkT00 = -1;
-                        region.Unk40 = 0;
 
                         msb.Regions.PatrolRoutes.Add(region);
                     }
@@ -588,21 +584,12 @@ namespace JortPob
                     /* Add TravelPoints */
                     foreach (Layout.TravelPoint travel in chunk.TravelPoints)
                     {
-                        MSBE.Region.PatrolRoute region = new();
+                        MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = travel.name;
                         region.Shape = new MSB.Shape.Sphere(travel.radius);
                         region.Position = travel.relative + Const.MSB_OFFSET;
-                        region.Rotation = Vector3.Zero;
                         region.RegionID = nextMPR++;
                         region.EntityID = travel.entity;
-                        region.MapStudioLayer = 4294967295;
-
-                        region.MapID = -1;
-                        region.UnkE08 = 255;
-                        region.UnkS04 = 0;
-                        region.UnkS0C = -1;
-                        region.UnkT00 = -1;
-                        region.Unk40 = 0;
 
                         msb.Regions.PatrolRoutes.Add(region);
                     }
@@ -612,7 +599,7 @@ namespace JortPob
                     {
                         foreach (Layout.MapPoint point in chunk.MapPoints)
                         {
-                            MSBE.Region.MapPoint mpr = new();
+                            MSBE.Region.MapPoint mpr = MakePart.MapPoint();
                             int paramId;
                             if (group.IsInterior)
                             {
@@ -630,21 +617,8 @@ namespace JortPob
                                 
                             }
                             mpr.Name = $"{point.name} placename";
-                            mpr.Rotation = Vector3.Zero;
                             mpr.RegionID = nextMPR++;
-                            mpr.MapStudioLayer = 4294967295;
                             mpr.WorldMapPointParamID = param.GenerateWorldMapPoint(group, point, paramId);
-
-                            mpr.MapID = -1;
-                            mpr.UnkE08 = 255;
-                            mpr.UnkS04 = 0;
-                            mpr.UnkS0C = -1;
-                            mpr.UnkT04 = -1;
-                            mpr.UnkT08 = -1;
-                            mpr.UnkT0C = -1;
-                            mpr.UnkT10 = -1;
-                            mpr.UnkT14 = -1;
-                            mpr.UnkT18 = -1;
 
                             msb.Regions.MapPoints.Add(mpr);
                             if (point.important) { scriptManager.AddLocation(point.name, mpr.EntityID); }
@@ -663,16 +637,16 @@ namespace JortPob
 
                     /* Create an envbox */
                     MSBE.Region.EnvironmentMapEffectBox envBox = MakePart.EnvBox();
-                    envBox.Name = $"Env_Box{envId.ToString("D3")}";
+                    envBox.Name = $"Env_Box{envId:D3}";
                     envBox.Shape = new MSB.Shape.Box(size + crossfade, size + crossfade, size + crossfade);
                     envBox.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
                     envBox.TransitionDist = crossfade / 2f;
                     msb.Regions.EnvironmentMapEffectBoxes.Add(envBox);
 
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
-                    envPoint.Name = $"Env_Point{envId.ToString("D3")}";
+                    envPoint.Name = $"Env_Point{envId:D3}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
-                    envPoint.UnkMapID = new byte[] { (byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block };
+                    envPoint.UnkMapID = [(byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block];
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
