@@ -62,8 +62,10 @@ namespace JortPob
                 if (group.IsEmpty() && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior)) { return; }
 
                 /* Generate msb from group */
-                MSBE msb = new();
-                msb.Compression = Compression.KRAK();
+                MSBE msb = new()
+                {
+                    Compression = Compression.KRAK()
+                };
 
                 BaseScript script = scriptManager.GetScript(group);
                 bool isTileType = group.GetType() == typeof(Tile);
@@ -202,7 +204,7 @@ namespace JortPob
                         /* Asset tileload config */
                         else if (group.GetType() == typeof(HugeTile) || group.GetType() == typeof(BigTile))
                         {
-                            asset.TileLoad.MapID = new byte[] { (byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map };
+                            asset.TileLoad.MapID = [(byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map];
                             asset.TileLoad.Unk04 = 13;
                             asset.TileLoad.CullingHeightBehavior = -1;
                         }
@@ -366,7 +368,7 @@ namespace JortPob
                             /* Asset tileload config */
                             if (chunk.GetType() == typeof(HugeTile) || chunk.GetType() == typeof(BigTile))
                             {
-                                enemy.TileLoad.MapID = new byte[] { (byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map };
+                                enemy.TileLoad.MapID = [(byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map];
                                 //enemy.TileLoad.Unk04 = 13;
                             }
                         }
@@ -635,16 +637,16 @@ namespace JortPob
 
                     /* Create an envbox */
                     MSBE.Region.EnvironmentMapEffectBox envBox = MakePart.EnvBox();
-                    envBox.Name = $"Env_Box{envId.ToString("D3")}";
+                    envBox.Name = $"Env_Box{envId:D3}";
                     envBox.Shape = new MSB.Shape.Box(size + crossfade, size + crossfade, size + crossfade);
                     envBox.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
                     envBox.TransitionDist = crossfade / 2f;
                     msb.Regions.EnvironmentMapEffectBoxes.Add(envBox);
 
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
-                    envPoint.Name = $"Env_Point{envId.ToString("D3")}";
+                    envPoint.Name = $"Env_Point{envId:D3}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
-                    envPoint.UnkMapID = new byte[] { (byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block };
+                    envPoint.UnkMapID = [(byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block];
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
