@@ -684,6 +684,7 @@ namespace JortPob
                 Lort.TaskIterate(); // Progress bar update
             }
 
+            /* Generate exterior msbs from layout */
             Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.tiles.Count);
 
@@ -695,6 +696,7 @@ namespace JortPob
             /* Generate interior msbs from interiorgroups */
             Lort.Log($"Generating {layout.interiors.Count} interior msbs...", Lort.Type.Main);
             Lort.NewTask("Generating MSB", layout.interiors.Count);
+
             foreach (IMSBCompilableGroup group in layout.interiors)
             {
                 GenerateMSB(group);
