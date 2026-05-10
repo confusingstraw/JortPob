@@ -553,14 +553,16 @@ namespace JortPob
                         player.EntityID = sp.player;
                         msb.Parts.Players.Add(player);
 
-                        MSBE.Region.Other region = new();
-                        region.Name = $"ScriptedPosition:{sp.position}";
-                        region.Shape = new MSB.Shape.Point();
-                        region.Position = sp.relative + Const.MSB_OFFSET;
-                        region.Rotation = sp.rotation;
-                        region.RegionID = nextMPR++;
-                        region.EntityID = sp.region;
-                        region.MapStudioLayer = 4294967295;
+                        MSBE.Region.Other region = new()
+                        {
+                            Name = $"ScriptedPosition:{sp.position}",
+                            Shape = new MSB.Shape.Point(),
+                            Position = sp.relative + Const.MSB_OFFSET,
+                            Rotation = sp.rotation,
+                            RegionID = nextMPR++,
+                            EntityID = sp.region,
+                            MapStudioLayer = 4294967295
+                        };
                         msb.Regions.Add(region);
                     }
 
