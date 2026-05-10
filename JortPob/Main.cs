@@ -73,6 +73,8 @@ namespace JortPob
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
 
+                string NewCollisionIndex() => $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
+
                 /* Handle chunks */
                 List<IMSBCompilableChunk> chunks = group.Chunks;
                 for (int i = 0; i < chunks.Count; i++)
@@ -85,7 +87,7 @@ namespace JortPob
                         uint chunkDrawGroup = (uint)0 | ((uint)1 << i);
 
                         /* Interior MSB chunk collision root */
-                        string collisionIndex = $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
+                        string collisionIndex = NewCollisionIndex();
                         rootCollision.Name = $"h{collisionIndex}_0000";
                         rootCollision.ModelName = $"h{collisionIndex}";
                         rootCollision.Position = chunk.Root + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Z, 0f);
@@ -121,7 +123,7 @@ namespace JortPob
                             // superoverworld msb is  handled by its own class -> OverworldManager
                             foreach (CollisionInfo collisionInfo in terrainInfo.collision)
                             {
-                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC:D2}";
+                                string collisionIndex = NewCollisionIndex();
 
                                 MSBE.Part.Collision collision = MakePart.Collision();
                                 collision.Name = $"h{collisionIndex}_0000";
@@ -130,8 +132,6 @@ namespace JortPob
 
                                 msb.Parts.Collisions.Add(collision);
                                 pool.collisionIndices.Add(new Tuple<string, CollisionInfo>(collisionIndex, collisionInfo));
-
-                                nextC++;
                             }
 
                             /* Add water collision if terrain 'hasWater' */
@@ -142,7 +142,7 @@ namespace JortPob
                                 CollisionInfo waterCollisionInfo = waterInfo.GetCollision(terrainInfo.coordinate);
 
                                 /* Make collision for water splashing */
-                                string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
+                                string collisionIndex = NewCollisionIndex();
                                 MSBE.Part.Collision collision = MakePart.WaterCollision();
                                 collision.Name = $"h{collisionIndex}_0000";
                                 collision.ModelName = $"h{collisionIndex}";
@@ -159,7 +159,7 @@ namespace JortPob
                                 if (cutoutInfo != null)
                                 {
                                     /* Make collision for swamp or lava splashy splashing, surface collision */
-                                    string collisionIndex = $"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{nextC++:D2}";
+                                    string collisionIndex = NewCollisionIndex();
                                     MSBE.Part.Collision collision = MakePart.WaterCollision(); // also works for lava and poison
                                     collision.Name = $"h{collisionIndex}_0000";
                                     collision.ModelName = $"h{collisionIndex}";
@@ -192,7 +192,8 @@ namespace JortPob
                         asset.Rotation = content.rotation;
                         asset.Scale = new Vector3(modelInfo.UseScale() ? (content.scale * 0.01f) : 1f);
 
-                        if (group.IsInterior) {
+                        if (group.IsInterior)
+                        {
                             asset.Unk1.DisplayGroups[0] = 0;
                             asset.UnkPartNames[1] = rootCollision.Name;
                             asset.UnkPartNames[3] = rootCollision.Name;
