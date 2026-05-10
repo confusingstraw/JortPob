@@ -2,14 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Packaging;
 using System.Linq;
 using System.Numerics;
 using static JortPob.Layout;
 
 namespace JortPob
 {
-    public class InteriorGroup
+    public class InteriorGroup : IMSBCompilableGroup
     {
         public readonly int map;
         public readonly int area;
@@ -17,6 +16,27 @@ namespace JortPob
         public readonly int block;
 
         public readonly List<Chunk> chunks;
+
+        public int GetMap()
+        {
+            return map;
+        }
+        public Int2 GetCoordinates()
+        {
+            return new Int2(area, unk);
+        }
+        public int GetBlock()
+        {
+            return block;
+        }
+        public bool IsInterior()
+        {
+            return true;
+        }
+        public List<IMSBCompilableChunk> GetChunks()
+        {
+            return [.. chunks.Cast<IMSBCompilableChunk>()];
+        }
 
         public InteriorGroup(int m, int a, int u, int b)
         {
@@ -31,7 +51,7 @@ namespace JortPob
 
         public int[] IdList()
         {
-            return new int[] { map, area, unk, block };
+            return [map, area, unk, block];
         }
 
         public bool IsEmpty()
@@ -94,7 +114,7 @@ namespace JortPob
             }
         }
 
-        public class Chunk
+        public class Chunk : IMSBCompilableChunk
         {
             public readonly InteriorGroup group;
             public readonly Cell cell;
@@ -115,9 +135,87 @@ namespace JortPob
             public readonly List<PickableContent> pickables;
             public readonly List<ItemContent> items;
 
-            public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
-            public readonly List<Layout.ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
+            public readonly List<WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
+            public readonly List<ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
             public readonly List<TravelPoint> travels; // positions directly referenced in AiPackages
+
+            public bool IsInterior()
+            {
+                return true;
+            }
+            public Vector3 GetRoot()
+            {
+                return root;
+            }
+            public Vector3 GetBounds()
+            {
+                return bounds;
+            }
+            public List<Cell> GetCells()
+            {
+                return [cell];
+            }
+            public List<AssetContent> GetAssets()
+            {
+                return assets;
+            }
+            public List<DoorContent> GetDoors()
+            {
+                return doors;
+            }
+            public List<LightContent> GetLights()
+            {
+                return lights;
+            }
+            public List<EmitterContent> GetEmitters()
+            {
+                return emitters;
+            }
+            public List<CreatureContent> GetCreatures()
+            {
+                return creatures;
+            }
+            public List<NpcContent> GetNPCs()
+            {
+                return npcs;
+            }
+            public List<ContainerContent> GetContainers()
+            {
+                return containers;
+            }
+            public List<PickableContent> GetPickables()
+            {
+                return pickables;
+            }
+            public List<ItemContent> GetItems()
+            {
+                return items;
+            }
+            public List<WarpDestination> GetWarps()
+            {
+                return warps;
+            }
+            public List<ScriptedPosition> GetPositions()
+            {
+                return positions;
+            }
+            public List<TravelPoint> GetTravelPoints()
+            {
+                return travels;
+            }
+            public List<MapPoint> GetMapPoints()
+            {
+                // position, radius, and discovered are not used for anything here so they are 0 or null.
+                MapPoint mp = new(cell.name, new Vector3(0), 0, false, null, MapPoint.Icon.None)
+                {
+                    relative = root
+                };
+                return [mp];
+            }
+            public List<PathGridPoint> GetPaths()
+            {
+                return paths;
+            }
 
             public Chunk(ScriptManager scriptManager, Cache cache, InteriorGroup group, Cell cell, Vector3 root)
             {

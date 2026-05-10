@@ -16,32 +16,15 @@ namespace JortPob
         public BaseScript script;
         public List<Tuple<string, CollisionInfo>> collisionIndices;
 
-        /* Exterior cells */
-        public ResourcePool(BaseTile tile, MSBE msb, LightManager lights, BaseScript script = null)
+        /* Interior and Exterior cells */
+        public ResourcePool(IMSBCompilableGroup group, MSBE msb, LightManager lights, BaseScript script = null)
         {
-            id = new int[]
-            {
-                    tile.map, tile.coordinate.x, tile.coordinate.y, tile.block
-            };
+            id = [group.GetMap(), group.GetCoordinates().x, group.GetCoordinates().y, group.GetBlock()];
             mapIndices = new();
             collisionIndices = new();
             this.msb = msb;
             this.lights = lights;
             this.script = script;
-        }
-
-        /* Interior cells */
-        public ResourcePool(InteriorGroup group, MSBE msb, LightManager lights, BaseScript script = null)
-        {
-            id = new int[]
-            {
-                    group.map, group.area, group.unk, group.block
-            };
-            mapIndices = new();
-            this.msb = msb;
-            this.lights = lights;
-            this.script = script;
-            collisionIndices = new();
         }
 
         /* Super overworld */

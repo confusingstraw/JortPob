@@ -20,6 +20,15 @@ namespace JortPob
         public readonly List<PathGridPoint> paths; // mw uses these for nav. we are only using them for wander positions
         public readonly List<TravelPoint> travels; // positions directly referenced in AiPackages
 
+        public override List<TravelPoint> GetTravelPoints()
+        {
+            return travels;
+        }
+        public override List<PathGridPoint> GetPaths()
+        {
+            return paths;
+        }
+
         public Tile(int m, int x, int y, int b) : base(m, x, y, b)
         {
             nav = new();
@@ -217,7 +226,7 @@ namespace JortPob
 
 
 
-    public abstract class BaseTile
+    public abstract class BaseTile : IMSBCompilableGroup, IMSBCompilableChunk
     {
         public readonly int map;
         public readonly Int2 coordinate;
@@ -236,9 +245,98 @@ namespace JortPob
         public readonly List<PickableContent> pickables;
         public readonly List<ItemContent> items;
 
-        public readonly List<Layout.WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
-        public readonly List<Layout.MapPoint> points;
-        public readonly List<Layout.ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
+        public readonly List<WarpDestination> warps; // end points for load doors in other cells. also used by travel npcs
+        public readonly List<MapPoint> points;
+        public readonly List<ScriptedPosition> positions; // used by scripts to target locations EX: 'PositionCell'
+
+        public bool IsInterior()
+        {
+            return false;
+        }
+        public int GetMap()
+        {
+            return map;
+        }
+        public Int2 GetCoordinates()
+        {
+            return coordinate;
+        }
+        public int GetBlock()
+        {
+            return block;
+        }
+        public Vector3 GetRoot()
+        {
+            return new Vector3(0);  // not used but needed to satisfy interface
+        }
+        public Vector3 GetBounds()
+        {
+            return new Vector3(0);  // not used but needed to satisfy interface
+        }
+        public List<IMSBCompilableChunk> GetChunks()
+        {
+            return [this];
+        }
+        public List<Cell> GetCells()
+        {
+            return cells;
+        }
+        public List<AssetContent> GetAssets()
+        {
+            return assets;
+        }
+        public List<DoorContent> GetDoors()
+        {
+            return doors;
+        }
+        public List<LightContent> GetLights()
+        {
+            return lights;
+        }
+        public List<EmitterContent> GetEmitters()
+        {
+            return emitters;
+        }
+        public List<CreatureContent> GetCreatures()
+        {
+            return creatures;
+        }
+        public List<NpcContent> GetNPCs()
+        {
+            return npcs;
+        }
+        public List<ContainerContent> GetContainers()
+        {
+            return containers;
+        }
+        public List<PickableContent> GetPickables()
+        {
+            return pickables;
+        }
+        public List<ItemContent> GetItems()
+        {
+            return items;
+        }
+        public List<WarpDestination> GetWarps()
+        {
+            return warps;
+        }
+        public List<ScriptedPosition> GetPositions()
+        {
+            return positions;
+        }
+        public List<MapPoint> GetMapPoints()
+        {
+            return points;
+        }
+        public virtual List<TravelPoint> GetTravelPoints()
+        {
+            return [];
+        }
+        public virtual List<PathGridPoint> GetPaths()
+        {
+            return [];
+        }
 
         public BaseTile(int m, int x, int y, int b)
         {
