@@ -11,21 +11,14 @@ namespace JortPob
 {
     /* A Tile is what we call a single square on the Elden Ring cell grid. It's basically the Elden Ring version of a "cell" */
     [DebuggerDisplay("Tile m{map}_{coordinate.x}_{coordinate.y}_{block} :: [{cells.Count}] Cells")]
-    public class Tile : BaseTile
+    public class Tile(int m, int x, int y, int b) : BaseTile(m, x, y, b)
     {
         public HugeTile huge;
         public BigTile big;
 
-        public Obj nav;  // navmesh repersentation of this msb tile
-        public override List<Layout.PathGridPoint> Paths { get; } // mw uses these for nav. we are only using them for wander positions
-        public override List<Layout.TravelPoint> TravelPoints { get; } // positions directly referenced in AiPackages
-
-        public Tile(int m, int x, int y, int b) : base(m, x, y, b)
-        {
-            nav = new();
-            Paths = new();
-            TravelPoints = new();
-        }
+        public Obj nav = new();  // navmesh repersentation of this msb tile
+        public override List<Layout.PathGridPoint> Paths { get; } = [];
+        public override List<Layout.TravelPoint> TravelPoints { get; } = [];
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
@@ -48,7 +41,7 @@ namespace JortPob
         /* Returns averaged region of this tile. Each cell has a region set so the best we can do is see what region is most common among cells in this tile and return that */
         public string GetRegion()
         {
-            Dictionary<string, int> regions = new();
+            Dictionary<string, int> regions = [];
             foreach(Cell cell in Cells)
             {
                 if (cell.region == null) { continue; }
@@ -109,7 +102,7 @@ namespace JortPob
             Obj all = new();
             foreach((Vector3 v, TerrainInfo t) in Terrain)
             {
-                Obj obj = new Obj(Path.Combine(Const.CACHE_PATH, t.obj));
+                Obj obj = new(Path.Combine(Const.CACHE_PATH, t.obj));
                 all.add(obj, v, Vector3.Zero, 1f);
             }
             all.collapse(Obj.CollisionMaterial.Stock);
@@ -217,27 +210,27 @@ namespace JortPob
 
 
 
-    public abstract class BaseTile : IMSBCompilableGroup, IMSBCompilableChunk
+    public abstract class BaseTile(int m, int x, int y, int b) : IMSBCompilableGroup, IMSBCompilableChunk
     {
-        public int Map { get; init; }
-        public Int2 Coordinates { get; init; }
-        public int Block { get; init; }
+        public int Map { get; init; } = m;
+        public Int2 Coordinates { get; init; } = new(x, y);
+        public int Block { get; init; } = b;
 
-        public List<Cell> Cells { get; init; }
+        public List<Cell> Cells { get; init; } = [];
 
-        public List<Tuple<Vector3, TerrainInfo>> Terrain { get; init; }
-        public List<AssetContent> Assets { get; init; }
-        public List<DoorContent> Doors { get; init; }
-        public List<LightContent> Lights { get; init; }
-        public List<EmitterContent> Emitters { get; init; }
-        public List<CreatureContent> Creatures { get; init; }
-        public List<NpcContent> NPCs { get; init; }
-        public List<ContainerContent> Containers { get; init; }
-        public List<PickableContent> Pickables { get; init; }
-        public List<ItemContent> Items { get; init; }
-        public List<Layout.WarpDestination> Warps { get; init; } // end points for load doors in other cells. also used by travel npcs
-        public List<Layout.MapPoint> MapPoints { get; init; }
-        public List<Layout.ScriptedPosition> Positions { get; init; } // used by scripts to target locations EX: 'PositionCell'
+        public List<Tuple<Vector3, TerrainInfo>> Terrain { get; init; } = [];
+        public List<AssetContent> Assets { get; init; } = [];
+        public List<DoorContent> Doors { get; init; } = [];
+        public List<LightContent> Lights { get; init; } = [];
+        public List<EmitterContent> Emitters { get; init; } = [];
+        public List<CreatureContent> Creatures { get; init; } = [];
+        public List<NpcContent> NPCs { get; init; } = [];
+        public List<ContainerContent> Containers { get; init; } = [];
+        public List<PickableContent> Pickables { get; init; } = [];
+        public List<ItemContent> Items { get; init; } = [];
+        public List<Layout.WarpDestination> Warps { get; init; } = [];
+        public List<Layout.MapPoint> MapPoints { get; init; } = [];
+        public List<Layout.ScriptedPosition> Positions { get; init; } = [];
 
         public bool IsInterior { get; } = false;
         public Vector3 Root
@@ -259,31 +252,6 @@ namespace JortPob
         public virtual List<Layout.PathGridPoint> Paths
         {
             get { return []; }
-        }
-
-        public BaseTile(int m, int x, int y, int b)
-        {
-            /* Tile Data */
-            Map = m;
-            Coordinates = new(x, y);
-            Block = b;
-
-            /* Tile Content Data */
-            Cells = new();
-            Terrain = new();
-            Assets = new();
-            Doors = new();
-            Emitters = new();
-            Lights = new();
-            Creatures = new();
-            NPCs = new();
-            Containers = new();
-            Pickables = new();
-            Items = new();
-
-            Positions = new();
-            MapPoints = new();
-            Warps = new();
         }
 
         public int[] IdList()

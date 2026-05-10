@@ -8,14 +8,14 @@ using static JortPob.Layout;
 
 namespace JortPob
 {
-    public class InteriorGroup : IMSBCompilableGroup
+    public class InteriorGroup(int m, int a, int u, int b) : IMSBCompilableGroup
     {
-        public int Map { get; init; }
-        public int Area { get; init; }
-        public int Unk { get; init; }
-        public int Block { get; init; }
+        public int Map { get; init; } = m;
+        public int Area { get; init; } = a;
+        public int Unk { get; init; } = u;
+        public int Block { get; init; } = b;
 
-        public readonly List<Chunk> chunks;
+        public readonly List<Chunk> chunks = [];
 
         public Int2 Coordinates
         {
@@ -31,17 +31,6 @@ namespace JortPob
             {
                 return [.. chunks.Cast<IMSBCompilableChunk>()];
             }
-        }
-
-        public InteriorGroup(int m, int a, int u, int b)
-        {
-            /* Interior Data */
-            Map = m;
-            Area = a;
-            Unk = u;
-            Block = b;
-
-            chunks = new();
         }
 
         public int[] IdList()
@@ -83,7 +72,7 @@ namespace JortPob
                         Chunk c = chunks[i];
                         z_calc = Math.Max(z_calc, c.Root.Z + c.Bounds.Z);
                     }
-                    z_calc = z_calc + bounds.Z;
+                    z_calc += bounds.Z;
                 }
                 else
                 {
@@ -163,21 +152,21 @@ namespace JortPob
                 Offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
 
                 nav = new();
-                Paths = new();
-                TravelPoints = new();
+                Paths = [];
+                TravelPoints = [];
 
-                Assets = new();
-                Doors = new();
-                Emitters = new();
-                Lights = new();
-                Creatures = new();
-                NPCs = new();
-                Containers = new();
-                Pickables = new();
-                Items = new();
+                Assets = [];
+                Doors = [];
+                Emitters = [];
+                Lights = [];
+                Creatures = [];
+                NPCs = [];
+                Containers = [];
+                Pickables = [];
+                Items = [];
 
-                Warps = new();
-                Positions = new();
+                Warps = [];
+                Positions = [];
 
                 /* Add content */
                 foreach (Content content in cell.contents)
@@ -231,8 +220,8 @@ namespace JortPob
             {
                 Vector3 relative = position + Root - Offset;
                 Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
-                uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position.ToString()}");
-                uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position.ToString()}");
+                uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position}");
+                uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position}");
                 Positions.Add(new(position, relative, rotation, region, player, group.Map, group.Area, group.Unk, group.Block));
             }
 
