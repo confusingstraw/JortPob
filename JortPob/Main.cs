@@ -61,10 +61,10 @@ namespace JortPob
             /* Generate exterior msbs from layout */
             List<ResourcePool> msbs = new();
             
-            Lort.Log($"Generating {layout.tiles.Count} exterior msbs...", Lort.Type.Main);
-            Lort.NewTask("Generating MSB", layout.tiles.Count);
+            Lort.Log($"Generating {layout.TileCount} exterior msbs...", Lort.Type.Main);
+            Lort.NewTask("Generating MSB", layout.TileCount);
 
-            foreach (BaseTile tile in layout.all)
+            foreach (BaseTile tile in layout.AllTiles)
             {
                 // Just write empty tiles as empty msbs and scripts to prevent base game stuff from loading in the distance. Debug flag if you want to skip this behaviour
                 if (tile.IsEmpty() && Const.DEBUG_DONT_WRITE_BLANK_MSBS) { continue; }
@@ -559,9 +559,9 @@ namespace JortPob
             }
 
             /* Generate interior msbs from interiorgroups */
-            Lort.Log($"Generating {layout.interiors.Count} interior msbs...", Lort.Type.Main);
-            Lort.NewTask("Generating MSB", layout.interiors.Count);
-            foreach (InteriorGroup group in layout.interiors)
+            Lort.Log($"Generating {layout.InteriorCount} interior msbs...", Lort.Type.Main);
+            Lort.NewTask("Generating MSB", layout.InteriorCount);
+            foreach (InteriorGroup group in layout.Interiors)
             {
                 // Skip empty groups.
                 if (group.IsEmpty()) { continue; }
@@ -1059,7 +1059,7 @@ namespace JortPob
             if (!Const.DEBUG_SKIP_NAVMESH)
             {
                 List<string> objs = new();
-                foreach (BaseTile bt in layout.tiles)
+                foreach (BaseTile bt in layout.Tiles)
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
                     tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
@@ -1067,7 +1067,7 @@ namespace JortPob
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
                 }
-                foreach (InteriorGroup group in layout.interiors)
+                foreach (InteriorGroup group in layout.Interiors)
                 {
                     if (group.IsEmpty()) { continue; } // skip empty groups
 
@@ -1084,9 +1084,9 @@ namespace JortPob
                 NavWorker.Go(objs);
 
                 /* After all the nav conversions are finshed we can now do nvas and nvbnds */
-                Lort.Log($"Binding {layout.tiles.Count() + layout.interiors.Count()} NVBNDs...", Lort.Type.Main);
-                Lort.NewTask("Binding NVBNDs", layout.tiles.Count() + layout.interiors.Count());
-                foreach (BaseTile bt in layout.tiles)
+                Lort.Log($"Binding {layout.TileCount + layout.InteriorCount} NVBNDs...", Lort.Type.Main);
+                Lort.NewTask("Binding NVBNDs", layout.TileCount + layout.InteriorCount);
+                foreach (BaseTile bt in layout.Tiles)
                 {
                     if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
 
@@ -1146,7 +1146,7 @@ namespace JortPob
                     nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
                     Lort.TaskIterate();
                 }
-                foreach (InteriorGroup group in layout.interiors)
+                foreach (InteriorGroup group in layout.Interiors)
                 {
                     /* Some vars */
                     int bid = 10000;

@@ -146,6 +146,13 @@ namespace JortPob
             {
                 cost = 100;
             }
+
+            public void ApplyParams(int map, int x, int y, int block, uint entity, string name, int cost)
+            {
+                ApplyParams(map, x, y, block, entity, prompt);
+                this.name = name;
+                this.cost = cost;
+            }
         }
 
         public class Stats
@@ -677,6 +684,16 @@ namespace JortPob
                 cell = json["cell"].ToString().Trim();
                 if (cell == "") { cell = null; }
             }
+
+            public void ApplyParams(int map, int x, int y, int block, uint entity, string prompt)
+            {
+                this.map = map;
+                this.x = x;
+                this.y = y;
+                this.block = block;
+                this.entity = entity;
+                this.prompt = prompt;
+            }
         }
 
         public Warp warp;
@@ -689,6 +706,11 @@ namespace JortPob
             {
                 warp = new(json["destination"]);
             }
+        }
+
+        public void ApplyWarpParams(int map, int x, int y, int block, uint warpEntity, string prompt)
+        {
+            warp.ApplyParams(map, x, y, block, warpEntity, prompt);
         }
     }
 
