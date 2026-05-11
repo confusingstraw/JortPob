@@ -111,22 +111,22 @@ namespace JortPob
             public Vector3 Bounds { get; init; }
             public Vector3 Offset { get; init; } // size from center
 
-            public Obj nav;  // navmesh repersentation of this msb chunk
-            public List<Layout.PathGridPoint> Paths { get; init; } // mw uses these for nav. we are only using them for wander positions
+            public Obj nav = new();  // navmesh representation of this msb chunk
+            public List<Layout.PathGridPoint> Paths { get; init; } = []; // mw uses these for nav. we are only using them for wander positions
 
-            public List<AssetContent> Assets { get; init; }
-            public List<DoorContent> Doors { get; init; }
-            public List<LightContent> Lights { get; init; }
-            public List<EmitterContent> Emitters { get; init; }
-            public List<CreatureContent> Creatures { get; init; }
-            public List<NpcContent> NPCs { get; init; }
-            public List<ContainerContent> Containers { get; init; }
-            public List<PickableContent> Pickables { get; init; }
-            public List<ItemContent> Items { get; init; }
+            public List<AssetContent> Assets { get; init; } = [];
+            public List<DoorContent> Doors { get; init; } = [];
+            public List<LightContent> Lights { get; init; } = [];
+            public List<EmitterContent> Emitters { get; init; } = [];
+            public List<CreatureContent> Creatures { get; init; } = [];
+            public List<NpcContent> NPCs { get; init; } = [];
+            public List<ContainerContent> Containers { get; init; } = [];
+            public List<PickableContent> Pickables { get; init; } = [];
+            public List<ItemContent> Items { get; init; } = [];
 
-            public List<Layout.WarpDestination> Warps { get; init; } // end points for load doors in other cells. also used by travel npcs
-            public List<Layout.ScriptedPosition> Positions { get; init; } // used by scripts to target locations EX: 'PositionCell'
-            public List<Layout.TravelPoint> TravelPoints { get; init; } // positions directly referenced in AiPackages
+            public List<Layout.WarpDestination> Warps { get; init; } = []; // end points for load doors in other cells. also used by travel npcs
+            public List<Layout.ScriptedPosition> Positions { get; init; } = []; // used by scripts to target locations EX: 'PositionCell'
+            public List<Layout.TravelPoint> TravelPoints { get; init; } = []; // positions directly referenced in AiPackages
 
             public bool IsInterior { get; } = true;
 
@@ -146,27 +146,10 @@ namespace JortPob
             {
                 this.group = group;
                 this.cell = cell;
-                this.Root = root;
+                Root = root;
 
                 Bounds = cell.boundsMax - cell.boundsMin;
                 Offset = Vector3.Lerp(cell.boundsMin, cell.boundsMax, .5f);
-
-                nav = new();
-                Paths = [];
-                TravelPoints = [];
-
-                Assets = [];
-                Doors = [];
-                Emitters = [];
-                Lights = [];
-                Creatures = [];
-                NPCs = [];
-                Containers = [];
-                Pickables = [];
-                Items = [];
-
-                Warps = [];
-                Positions = [];
 
                 /* Add content */
                 foreach (Content content in cell.contents)

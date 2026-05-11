@@ -16,7 +16,7 @@ namespace JortPob
         public HugeTile huge;
         public BigTile big;
 
-        public Obj nav = new();  // navmesh repersentation of this msb tile
+        public Obj nav = new();  // navmesh representation of this msb tile
         public override List<Layout.PathGridPoint> Paths { get; } = [];
         public override List<Layout.TravelPoint> TravelPoints { get; } = [];
 
