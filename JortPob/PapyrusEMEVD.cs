@@ -55,6 +55,9 @@ namespace JortPob
             { Call.Type.ModIllusion, (SpeffManager.StatMod.Arcane, .33f) },
             { Call.Type.ModMercantile, (SpeffManager.StatMod.Arcane, .33f) },
             { Call.Type.ModSpeechcraft, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.SetHealth, (SpeffManager.StatMod.MaxHP, 1f) },
+            { Call.Type.SetMagicka, (SpeffManager.StatMod.MaxMP, 1f)  },
+            { Call.Type.SetFatigue, (SpeffManager.StatMod.MaxSP, 1f)  },
             { Call.Type.SetStrength, (SpeffManager.StatMod.Strength, 1f) },
             { Call.Type.SetIntelligence, (SpeffManager.StatMod.Intelligence, 1f) },
             { Call.Type.SetWillpower, (SpeffManager.StatMod.Mind, 1f) },
@@ -1509,7 +1512,7 @@ namespace JortPob
                                 var (statFlagName, mult) = PlayerModStatMappings[call.type];
                                 amount = (int)(amount * mult);
 
-                                Script.Flag statFlag = scriptManager.GetFlag(Designation.Hardcode, statFlagName);
+                                Script.Flag statFlag = scriptManager.GetFlag(Script.Flag.Designation.Hardcode, statFlagName);
                                 lines.Add($"EventValueOperation({statFlag.id}, {statFlag.Bits()}, {100 + amount}, 0, 1, 5);");  // the SetStat hks hack offsets value by 100 to allow lowering stats EX: 100 + (-5)
                             }
 

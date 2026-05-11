@@ -4,11 +4,11 @@
         "row": 790000,
         "comment": "Bloodhound Knight Helm"
     },
-    "steel_cuirass": {
-        "type": "790100",
-        "row": 5130100,
-        "comment": "Bloodhound Knight Armor"
-    },
+  "steel_cuirass": {
+    "type": "Armor",
+    "row": 5130100,
+    "comment": "Bloodhound Knight Armor"
+  },
     "steel_gauntlet_left": {
         "type": "Armor",
         "row": 790200,
