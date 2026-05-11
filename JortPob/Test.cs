@@ -140,7 +140,7 @@ namespace JortPob
 
 
             List<ResourcePool> pools = new();
-            foreach (BaseTile tile in layout.all)
+            foreach (BaseTile tile in layout.AllTiles)
             {
                 if (tile.Assets.Count <= 0 && tile.Terrain.Count <= 0) { continue; }   // Skip empty tiles.
 

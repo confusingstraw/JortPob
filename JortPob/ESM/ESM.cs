@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using JortPob.Worker;
 using System;
 using System.Collections.Concurrent;
@@ -6,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json.Nodes;
 using static JortPob.Dialog;
 
@@ -455,12 +457,90 @@ namespace JortPob
             hasDialogCache.Add(content.id, false);
             return false;
         }
+        
+        public ScriptReferenceMetadata GetScriptReferences()
+        {
+            /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
+            var allCalls = scripts
+                .SelectMany(p => p.GetCalls())
+                .Concat(dialog.SelectMany(d => d.GetCalls()))
+                .ToList();
+
+            HashSet<string> allReferences = [], toggleableRefs = [];  // able refs is objects targeted by Enable, Disable, and GetDisabled
+
+            foreach (Papyrus.Call call in allCalls)
+            {
+                // Grab record reference from target if exists
+                if (call.target != null && call.target != "player")
+                {
+                    allReferences.Add(call.target);
+
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.Enable:
+                        case Papyrus.Call.Type.Disable:
+                        case Papyrus.Call.Type.GetDisabled:
+                            toggleableRefs.Add(call.target);
+                            break;
+                        default: break;
+                    }
+                }
+
+                // Grab record reference from arguments if they exist
+                switch (call.type)
+                {
+                    case Papyrus.Call.Type.Cast:
+                        {
+                            string reference = call.parameters[1].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    case Papyrus.Call.Type.GetDistance:
+                        {
+                            string reference = call.parameters[0].ToLower().Trim();
+                            if (reference == "player") { break; }
+                            allReferences.Add(reference);
+                            break;
+                        }
+                    default: break;
+                }
+            }
+
+            toggleableRefs.UnionWith(
+                exterior.Concat(interior).SelectMany(cell => cell.contents)
+                    .Where(content => {
+                        var papyrus = GetPapyrus(content.papyrus);
+                        return papyrus != null && (papyrus.HasCall(Papyrus.Call.Type.Disable) ||
+                                                   papyrus.HasCall(Papyrus.Call.Type.Enable) ||
+                                                   papyrus.HasCall(Papyrus.Call.Type.GetDisabled));
+                    })
+                    .Select(content => content.id.ToLower().Trim())
+            );
+
+            return new ScriptReferenceMetadata(allCalls, allReferences, toggleableRefs);
+        }
     }
+
+    public record ScriptReferenceMetadata(List<Papyrus.Call> AllCalls, HashSet<string> AllReferences, HashSet<string> ToggleableReferences);
 
     public class RegionInfo
     {
         public readonly string id, name;
         public readonly List<(ScriptCommon.WeatherEMEVD weather, float chance)> weathers;
+
+        private static readonly Dictionary<ScriptCommon.WeatherPapyrus, ScriptCommon.WeatherEMEVD[]> WeatherMap = new()
+        {
+            { ScriptCommon.WeatherPapyrus.Clear, [ScriptCommon.WeatherEMEVD.Default]  },
+            { ScriptCommon.WeatherPapyrus.Cloudy, [ScriptCommon.WeatherEMEVD.PuffyClouds, ScriptCommon.WeatherEMEVD.WindyPuffyClouds] },
+            { ScriptCommon.WeatherPapyrus.Foggy, [ScriptCommon.WeatherEMEVD.Fog, ScriptCommon.WeatherEMEVD.HeavyFog, ScriptCommon.WeatherEMEVD.WindyFog] },
+            { ScriptCommon.WeatherPapyrus.Overcast, [ScriptCommon.WeatherEMEVD.FlatClouds] },
+            { ScriptCommon.WeatherPapyrus.Rain, [ScriptCommon.WeatherEMEVD.Rain, ScriptCommon.WeatherEMEVD.RainyClouds, ScriptCommon.WeatherEMEVD.ScatteredRain] },
+            { ScriptCommon.WeatherPapyrus.Ash, [ScriptCommon.WeatherEMEVD.Unknown18] },
+            { ScriptCommon.WeatherPapyrus.Blight, [ScriptCommon.WeatherEMEVD.Unknown19] },
+            { ScriptCommon.WeatherPapyrus.Snow, [ScriptCommon.WeatherEMEVD.Snow] },
+            { ScriptCommon.WeatherPapyrus.Blizzard, [ScriptCommon.WeatherEMEVD.HeavySnow, ScriptCommon.WeatherEMEVD.SnowyHeavyFog] }
+        };
 
         public RegionInfo(JsonNode json)
         {
@@ -474,44 +554,13 @@ namespace JortPob
                 float chance = property.Value.GetValue<float>();
                 if (chance == 0) { continue; } // gtfo
 
-                switch(w)
+                if (WeatherMap.TryGetValue(w, out var mappedWeathers))
                 {
-                    case ScriptCommon.WeatherPapyrus.Clear:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Default, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Cloudy:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.PuffyClouds, chance / 2f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyPuffyClouds, chance / 2f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Foggy:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Fog, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavyFog, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.WindyFog, chance / 3f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Overcast:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.FlatClouds, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Rain:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Rain, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.RainyClouds, chance / 3f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.ScatteredRain, chance / 3f));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Ash:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown18, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Blight:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Unknown19, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Snow:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.Snow, chance));
-                        break;
-                    case ScriptCommon.WeatherPapyrus.Blizzard:
-                        weathers.Add((ScriptCommon.WeatherEMEVD.HeavySnow, chance / 2f));
-                        weathers.Add((ScriptCommon.WeatherEMEVD.SnowyHeavyFog, chance / 2f));
-                        break;
+                    foreach (var weather in mappedWeathers)
+                        weathers.Add((weather, chance / mappedWeathers.Length));
                 }
-
-
+                else
+                    Lort.Log($"### DISCARDED VALUE ### Weather type {w.ToString()} does not have a mapped value", Lort.Type.Debug);
             }
         }
 

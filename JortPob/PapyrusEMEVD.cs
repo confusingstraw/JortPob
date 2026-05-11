@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -6,13 +7,146 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using static JortPob.Papyrus;
-using static JortPob.Script.Flag;
 
 namespace JortPob
 {
     public class PapyrusEMEVD
     {
         public static List<Call.Type> UNSUPPORTED_CALL_LIST = new(), UNSUPPORTED_CONDITIONAL_LIST = new(), UNSUPPORTED_SET_LIST = new();
+
+        // Covers Mod<stat> call types for NPCs and Set<stat> call types for PCs/NPCs
+        public static readonly Dictionary<Call.Type, (SpeffManager.StatMod, float)> NPCModStatMappings = new()
+        {
+            { Call.Type.ModHealth, (SpeffManager.StatMod.MaxHP, 1f) },
+            { Call.Type.ModMagicka, (SpeffManager.StatMod.MaxMP, 1f)  },
+            { Call.Type.ModFatigue, (SpeffManager.StatMod.MaxSP, 1f)  },
+            { Call.Type.ModStrength, (SpeffManager.StatMod.Strength, 1f)  },
+            { Call.Type.ModIntelligence, (SpeffManager.StatMod.Intelligence, 1f)  },
+            { Call.Type.ModWillpower, (SpeffManager.StatMod.Mind, 1f)  },
+            { Call.Type.ModAgility, (SpeffManager.StatMod.Dexterity, 1f)  },
+            { Call.Type.ModSpeed, (SpeffManager.StatMod.Dexterity, 1f) },
+            { Call.Type.ModEndurance, (SpeffManager.StatMod.Endurance, 1f)  },
+            { Call.Type.ModPersonality, (SpeffManager.StatMod.Arcane, 1f)  },
+            { Call.Type.ModLuck, (SpeffManager.StatMod.Arcane, 1f) },
+            { Call.Type.ModArmorer, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.ModAcrobatics, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.ModAxe, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.ModBluntWeapon, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.ModLongBlade, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.ModAlchemy, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.ModConjuration, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.ModEnchant, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.ModSecurity, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.ModAlteration, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.ModDestruction, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.ModMysticism, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.ModRestoration, (SpeffManager.StatMod.Faith, .33f) },
+            { Call.Type.ModAthletics, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModHandToHand, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModShortBlade, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModUnarmored, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModBlock, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModLightArmor, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModMarksman, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModSneak, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.ModHeavyArmor, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.ModMediumArmor, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.ModSpear, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.ModIllusion, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.ModMercantile, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.ModSpeechcraft, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.SetHealth, (SpeffManager.StatMod.MaxHP, 1f) },
+            { Call.Type.SetMagicka, (SpeffManager.StatMod.MaxMP, 1f)  },
+            { Call.Type.SetFatigue, (SpeffManager.StatMod.MaxSP, 1f)  },
+            { Call.Type.SetStrength, (SpeffManager.StatMod.Strength, 1f) },
+            { Call.Type.SetIntelligence, (SpeffManager.StatMod.Intelligence, 1f) },
+            { Call.Type.SetWillpower, (SpeffManager.StatMod.Mind, 1f) },
+            { Call.Type.SetAgility, (SpeffManager.StatMod.Dexterity, 1f) },
+            { Call.Type.SetSpeed, (SpeffManager.StatMod.Dexterity, 1f) },
+            { Call.Type.SetEndurance, (SpeffManager.StatMod.Endurance, 1f) },
+            { Call.Type.SetPersonality, (SpeffManager.StatMod.Arcane, 1f) },
+            { Call.Type.SetLuck, (SpeffManager.StatMod.Arcane, 1f) },
+            { Call.Type.SetArmorer, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.SetAcrobatics, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.SetAxe, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.SetBluntWeapon, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.SetLongBlade, (SpeffManager.StatMod.Strength, .33f) },
+            { Call.Type.SetAlchemy, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.SetConjuration, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.SetEnchant, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.SetSecurity, (SpeffManager.StatMod.Intelligence, .33f) },
+            { Call.Type.SetAlteration, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.SetDestruction, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.SetMysticism, (SpeffManager.StatMod.Mind, .33f) },
+            { Call.Type.SetRestoration, (SpeffManager.StatMod.Faith, .33f) },
+            { Call.Type.SetAthletics, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetHandToHand, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetShortBlade, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetUnarmored, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetBlock, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetLightArmor, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetMarksman, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetSneak, (SpeffManager.StatMod.Dexterity, .33f) },
+            { Call.Type.SetHeavyArmor, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.SetMediumArmor, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.SetSpear, (SpeffManager.StatMod.Endurance, .33f) },
+            { Call.Type.SetIllusion, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.SetMercantile, (SpeffManager.StatMod.Arcane, .33f) },
+            { Call.Type.SetSpeechcraft, (SpeffManager.StatMod.Arcane, .33f) },
+        };
+
+        // Just some convenient/memory efficient variables
+        private const string SetVigor = "SetVigor";
+        private const string SetMind = "SetMind";
+        private const string SetEndurance = "SetEndurance";
+        private const string SetStrength = "SetStrength";
+        private const string SetIntelligence = "SetIntelligence";
+        private const string SetDexterity = "SetDexterity";
+        private const string SetArcane = "SetArcane";
+        private const string SetFaith = "SetFaith";
+
+        // Covers Mod<stat> call types for PCs
+        public static readonly Dictionary<Call.Type, (string, float)> PlayerModStatMappings = new()
+        {
+            { Call.Type.ModHealth, (SetVigor, .1f) },
+            { Call.Type.ModMagicka, (SetMind, .1f) },
+            { Call.Type.ModFatigue, (SetEndurance, .1f) },
+            { Call.Type.ModStrength, (SetStrength, 1f) },
+            { Call.Type.ModIntelligence, (SetIntelligence, 1f) },
+            { Call.Type.ModWillpower, (SetMind, 1f) },
+            { Call.Type.ModAgility, (SetDexterity, 1f) },
+            { Call.Type.ModSpeed, (SetDexterity, 1f) },
+            { Call.Type.ModEndurance, (SetEndurance, 1f) },
+            { Call.Type.ModPersonality, (SetArcane, 1f) },
+            { Call.Type.ModLuck, (SetArcane, 1f) },
+            { Call.Type.ModArmorer, (SetStrength, .33f) },
+            { Call.Type.ModAcrobatics, (SetStrength, .33f) },
+            { Call.Type.ModAxe, (SetStrength, .33f) },
+            { Call.Type.ModBluntWeapon, (SetStrength, .33f) },
+            { Call.Type.ModLongBlade, (SetStrength, .33f) },
+            { Call.Type.ModAlchemy, (SetIntelligence, .33f) },
+            { Call.Type.ModConjuration, (SetIntelligence, .33f) },
+            { Call.Type.ModEnchant, (SetIntelligence, .33f) },
+            { Call.Type.ModSecurity, (SetIntelligence, .33f) },
+            { Call.Type.ModAlteration, (SetMind, .33f) },
+            { Call.Type.ModDestruction, (SetMind, .33f) },
+            { Call.Type.ModMysticism, (SetMind, .33f) },
+            { Call.Type.ModRestoration, (SetFaith, .33f) },
+            { Call.Type.ModAthletics, (SetDexterity, .33f) },
+            { Call.Type.ModHandToHand, (SetDexterity, .33f) },
+            { Call.Type.ModShortBlade, (SetDexterity, .33f) },
+            { Call.Type.ModUnarmored, (SetDexterity, .33f) },
+            { Call.Type.ModBlock, (SetDexterity, .33f) },
+            { Call.Type.ModLightArmor, (SetDexterity, .33f) },
+            { Call.Type.ModMarksman, (SetDexterity, .33f) },
+            { Call.Type.ModSneak, (SetDexterity, .33f) },
+            { Call.Type.ModHeavyArmor, (SetEndurance, .33f) },
+            { Call.Type.ModMediumArmor, (SetEndurance, .33f) },
+            { Call.Type.ModSpear, (SetEndurance, .33f) },
+            { Call.Type.ModIllusion, (SetArcane, .33f) },
+            { Call.Type.ModMercantile, (SetArcane, .33f) },
+            { Call.Type.ModSpeechcraft, (SetArcane, .33f) },
+        };
 
         public static void Compile(ESM esm, Layout layout, MSBE msb, MainSoundBank sound, ScriptManager scriptManager, Paramanager paramanager, ItemManager itemManager, SpeffManager speffManager, BaseScript script, Papyrus papyrus, Content content, Script.Flag subscriptRunFlag = null)
         {
@@ -373,7 +507,7 @@ namespace JortPob
                         break;
 
                     case Call.Type.GetDeadCount:
-                        Script.Flag deadCountFlag = scriptManager.GetFlag(Designation.DeadCount, call.left.parameters[0].ToLower().Trim());
+                        Script.Flag deadCountFlag = scriptManager.GetFlag(Script.Flag.Designation.DeadCount, call.left.parameters[0].ToLower().Trim());
                         if (deadCountFlag == null) { break; } // happens during partial builds
                         if (call.right.type == Call.Type.Literal)
                         {
@@ -406,7 +540,7 @@ namespace JortPob
                             if (call.left.target == null) { target = content; }
                             else { target = layout.FindScriptReference(content, call.left.target); }
                             if (target == null) { break; } // Failed to find script reference. Should only happen when making partial builds.
-                            Script.Flag dispFlag = scriptManager.GetFlag(Designation.Disposition, target);
+                            Script.Flag dispFlag = scriptManager.GetFlag(Script.Flag.Designation.Disposition, target);
                             if (call.right.type == Call.Type.Literal)
                             {
                                 lines.Add(ResetConditionGroups());
@@ -1357,94 +1491,15 @@ namespace JortPob
                             else if (call.target == "player") { target = null; entityId = 10000; }                         // case 2: target is player
                             else { target = layout.FindScriptReference(content, call.target); entityId = target.entity; } // case 3: target is a direct reference to an object record
 
+                            int amount = int.Parse(call.parameters[0]);
                             /* Not the player, modify stat via SPEFF */
                             if (entityId != 10000)
                             {
                                 BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
-                                int amount = int.Parse(call.parameters[0]);
-                                SpeffManager.StatMod statToMod;
-                                switch (call.type)
-                                {
-                                    /* Stats */
-                                    case Call.Type.ModHealth: statToMod = SpeffManager.StatMod.MaxHP; break;
-                                    case Call.Type.ModMagicka: statToMod = SpeffManager.StatMod.MaxMP; break;
-                                    case Call.Type.ModFatigue: statToMod = SpeffManager.StatMod.MaxSP; break;
-                                    /* Attributes */
-                                    case Call.Type.ModStrength: statToMod = SpeffManager.StatMod.Strength; break;
-                                    case Call.Type.ModIntelligence: statToMod = SpeffManager.StatMod.Intelligence; break;
-                                    case Call.Type.ModWillpower: statToMod = SpeffManager.StatMod.Mind; break;
-                                    case Call.Type.ModAgility: statToMod = SpeffManager.StatMod.Dexterity; break;
-                                    case Call.Type.ModSpeed: statToMod = SpeffManager.StatMod.Dexterity; break;
-                                    case Call.Type.ModEndurance: statToMod = SpeffManager.StatMod.Endurance; break;
-                                    case Call.Type.ModPersonality: statToMod = SpeffManager.StatMod.Arcane; break;
-                                    case Call.Type.ModLuck: statToMod = SpeffManager.StatMod.Arcane; break;
-                                    /* Skills */
-                                    case Call.Type.ModArmorer:
-                                    case Call.Type.ModAcrobatics:
-                                    case Call.Type.ModAxe:
-                                    case Call.Type.ModBluntWeapon:
-                                    case Call.Type.ModLongBlade:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Strength;
-                                            break;
-                                        }
-                                    case Call.Type.ModAlchemy:
-                                    case Call.Type.ModConjuration:
-                                    case Call.Type.ModEnchant:
-                                    case Call.Type.ModSecurity:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Intelligence;
-                                            break;
-                                        }
-                                    case Call.Type.ModAlteration:
-                                    case Call.Type.ModDestruction:
-                                    case Call.Type.ModMysticism:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Mind;
-                                            break;
-                                        }
-                                    case Call.Type.ModRestoration:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Faith;
-                                            break;
-                                        }
-                                    case Call.Type.ModAthletics:
-                                    case Call.Type.ModHandToHand:
-                                    case Call.Type.ModShortBlade:
-                                    case Call.Type.ModUnarmored:
-                                    case Call.Type.ModBlock:
-                                    case Call.Type.ModLightArmor:
-                                    case Call.Type.ModMarksman:
-                                    case Call.Type.ModSneak:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Dexterity;
-                                            break;
-                                        }
-                                    case Call.Type.ModHeavyArmor:
-                                    case Call.Type.ModMediumArmor:
-                                    case Call.Type.ModSpear:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Endurance;
-                                            break;
-                                        }
-                                    case Call.Type.ModIllusion:
-                                    case Call.Type.ModMercantile:
-                                    case Call.Type.ModSpeechcraft:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statToMod = SpeffManager.StatMod.Arcane;
-                                            break;
-                                        }
-                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
-                                }
-
+                                var (statToMod, mult) = NPCModStatMappings[call.type];
+                                amount = (int)(amount * mult);
+                                
                                 int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
                                 Script.Flag modStatFlag = areaScript.RegisterModStat(entityId, speffId);
 
@@ -1454,98 +1509,8 @@ namespace JortPob
                             /* For player, modify stats via HKS nonsense */
                             else
                             {
-                                string statFlagName;
-                                int amount = int.Parse(call.parameters[0]);
-
-                                switch (call.type)
-                                {
-                                    /* Stats */
-                                    case Call.Type.ModHealth:
-                                        amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
-                                        statFlagName = "SetVigor";
-                                        break;
-                                    case Call.Type.ModMagicka:
-                                        amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
-                                        statFlagName = "SetMind";
-                                        break;
-                                    case Call.Type.ModFatigue:
-                                        amount = (int)(amount * 0.1f); // direct stat values are heavily reducded
-                                        statFlagName = "SetEndurance";
-                                        break;
-                                    /* Attributes */
-                                    case Call.Type.ModStrength: statFlagName = "SetStrength"; break;
-                                    case Call.Type.ModIntelligence: statFlagName = "SetIntelligence"; break;
-                                    case Call.Type.ModWillpower: statFlagName = "SetMind"; break;
-                                    case Call.Type.ModAgility: statFlagName = "SetDexterity"; break;
-                                    case Call.Type.ModSpeed: statFlagName = "SetDexterity"; break;
-                                    case Call.Type.ModEndurance: statFlagName = "SetEndurance"; break;
-                                    case Call.Type.ModPersonality: statFlagName = "SetArcane"; break;
-                                    case Call.Type.ModLuck: statFlagName = "SetArcane"; break;
-                                    /* Skills */
-                                    case Call.Type.ModArmorer:
-                                    case Call.Type.ModAcrobatics:
-                                    case Call.Type.ModAxe:
-                                    case Call.Type.ModBluntWeapon:
-                                    case Call.Type.ModLongBlade:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetStrength";
-                                            break;
-                                        }
-                                    case Call.Type.ModAlchemy:
-                                    case Call.Type.ModConjuration:
-                                    case Call.Type.ModEnchant:
-                                    case Call.Type.ModSecurity:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetIntelligence";
-                                            break;
-                                        }
-                                    case Call.Type.ModAlteration:
-                                    case Call.Type.ModDestruction:
-                                    case Call.Type.ModMysticism:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetMind";
-                                            break;
-                                        }
-                                    case Call.Type.ModRestoration:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetFaith";
-                                            break;
-                                        }
-                                    case Call.Type.ModAthletics:
-                                    case Call.Type.ModHandToHand:
-                                    case Call.Type.ModShortBlade:
-                                    case Call.Type.ModUnarmored:
-                                    case Call.Type.ModBlock:
-                                    case Call.Type.ModLightArmor:
-                                    case Call.Type.ModMarksman:
-                                    case Call.Type.ModSneak:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetDexterity";
-                                            break;
-                                        }
-                                    case Call.Type.ModHeavyArmor:
-                                    case Call.Type.ModMediumArmor:
-                                    case Call.Type.ModSpear:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetEndurance";
-                                            break;
-                                        }
-                                    case Call.Type.ModIllusion:
-                                    case Call.Type.ModMercantile:
-                                    case Call.Type.ModSpeechcraft:
-                                        {
-                                            amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                            statFlagName = "SetArcane";
-                                            break;
-                                        }
-                                    default: throw new Exception("Invalid papyrus call type");  // unreachable
-                                }
+                                var (statFlagName, mult) = PlayerModStatMappings[call.type];
+                                amount = (int)(amount * mult);
 
                                 Script.Flag statFlag = scriptManager.GetFlag(Script.Flag.Designation.Hardcode, statFlagName);
                                 lines.Add($"EventValueOperation({statFlag.id}, {statFlag.Bits()}, {100 + amount}, 0, 1, 5);");  // the SetStat hks hack offsets value by 100 to allow lowering stats EX: 100 + (-5)
@@ -1749,7 +1714,7 @@ namespace JortPob
                                 if (phaseTo == null) { break; } // Failed to find phase. Partial build thing
 
                                 // set phase
-                                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, target);
+                                Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, target);
                                 lines.Add($"ChangeCharacterEnableState({target.entity}, 0);");   // disable target if loaded. spawn handler will enable char at new location if conditions met and loaded
                                 lines.Add($"EventValueOperation({phaseFlag.id}, {phaseFlag.Bits()}, {phaseTo.phase}, 0, 1, 5);");   // 5 is assign. assign phase
                             }
@@ -1757,14 +1722,14 @@ namespace JortPob
                         }
 
                     case Call.Type.PlayBink:
+                        if (!Const.DEBUG_SKIP_CUTSCENES)
                         {
-                            if (Const.DEBUG_SKIP_CUTSCENES) { break; }
                             string name = call.parameters[0].ToLower().Trim();
                             string path = Path.Combine(Const.MORROWIND_PATH, @"Data Files\video", name);
                             int cutscene = Cutscener.Create(path);
                             lines.Add($"PlayCutsceneToAll({cutscene}, 0);");
-                            break;
                         }
+                        break;
 
                     case Call.Type.SetHealth:
                     case Call.Type.SetMagicka:
@@ -1782,14 +1747,7 @@ namespace JortPob
                                 entityId = layout.FindScriptReference(content, call.target).entity;
                             }
 
-                            SpeffManager.StatMod statToMod;
-                            switch (call.type)
-                            {
-                                case Call.Type.SetHealth: statToMod = SpeffManager.StatMod.CurrentHP; break;
-                                case Call.Type.SetMagicka: statToMod = SpeffManager.StatMod.CurrentMP; break;
-                                case Call.Type.SetFatigue: statToMod = SpeffManager.StatMod.CurrentSP; break;
-                                default: throw new Exception("Invalid papyrus call type");  // unreachable
-                            }
+                            var (statToMod, _) = NPCModStatMappings[call.type];
 
                             int speffId = speffManager.CreateScriptedEffect(statToMod, value, call.RAW);
                             lines.Add($"SetSpEffect({entityId}, {speffId});");
@@ -1840,99 +1798,11 @@ namespace JortPob
 
                             BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
 
+                            var (statToMod, mult) = NPCModStatMappings[call.type];
                             int amount = int.Parse(call.parameters[0]);
-                            SpeffManager.StatMod statToMod;
-                            switch (call.type)
-                            {
-                                /* Attributes */
-                                case Call.Type.SetStrength: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Strength); statToMod = SpeffManager.StatMod.Strength; break;
-                                case Call.Type.SetIntelligence: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Intelligence); statToMod = SpeffManager.StatMod.Intelligence; break;
-                                case Call.Type.SetWillpower: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Willpower); statToMod = SpeffManager.StatMod.Mind; break;
-                                case Call.Type.SetAgility: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Agility); statToMod = SpeffManager.StatMod.Dexterity; break;
-                                case Call.Type.SetSpeed: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Speed); statToMod = SpeffManager.StatMod.Dexterity; break;
-                                case Call.Type.SetEndurance:amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Endurance); statToMod = SpeffManager.StatMod.Endurance; break;
-                                case Call.Type.SetPersonality: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Personality); statToMod = SpeffManager.StatMod.Arcane; break;
-                                case Call.Type.SetLuck: amount = amount - target.stats.Get(CharacterContent.Stats.Attribute.Luck); statToMod = SpeffManager.StatMod.Arcane; break;
-                                /* Skills */
-                                case Call.Type.SetArmorer:
-                                case Call.Type.SetAcrobatics:
-                                case Call.Type.SetAxe:
-                                case Call.Type.SetBluntWeapon:
-                                case Call.Type.SetLongBlade:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Strength;
-                                        break;
-                                    }
-                                case Call.Type.SetAlchemy:
-                                case Call.Type.SetConjuration:
-                                case Call.Type.SetEnchant:
-                                case Call.Type.SetSecurity:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Intelligence;
-                                        break;
-                                    }
-                                case Call.Type.SetAlteration:
-                                case Call.Type.SetDestruction:
-                                case Call.Type.SetMysticism:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Mind;
-                                        break;
-                                    }
-                                case Call.Type.SetRestoration:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Faith;
-                                        break;
-                                    }
-                                case Call.Type.SetAthletics:
-                                case Call.Type.SetHandToHand:
-                                case Call.Type.SetShortBlade:
-                                case Call.Type.SetUnarmored:
-                                case Call.Type.SetBlock:
-                                case Call.Type.SetLightArmor:
-                                case Call.Type.SetMarksman:
-                                case Call.Type.SetSneak:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Dexterity;
-                                        break;
-                                    }
-                                case Call.Type.SetHeavyArmor:
-                                case Call.Type.SetMediumArmor:
-                                case Call.Type.SetSpear:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Endurance;
-                                        break;
-                                    }
-                                case Call.Type.SetIllusion:
-                                case Call.Type.SetMercantile:
-                                case Call.Type.SetSpeechcraft:
-                                    {
-                                        CharacterContent.Stats.Skill skill = Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]);
-                                        amount = amount - target.stats.Get(skill);
-                                        amount = (int)(amount * 0.33f); // skill bonuses are reduced
-                                        statToMod = SpeffManager.StatMod.Arcane;
-                                        break;
-                                    }
-
-                                default: throw new Exception("Invalid papyrus call type");  // unreachable
-                            }
+                            var mod = target.stats.Get(Enum.Parse<CharacterContent.Stats.Skill>(call.type.ToString()[^3..]));
+                            amount -= mod;
+                            amount = (int)(amount * mult);
 
                             int speffId = speffManager.CreateScriptedEffect(statToMod, amount, call.RAW);
                             Script.Flag modStatFlag = areaScript.RegisterModStat(entityId, speffId);
@@ -2037,7 +1907,7 @@ namespace JortPob
 
                             BaseScript areaScript = scriptManager.FindScriptFor(layout, target);
                             Script.Flag hostileFlag = scriptManager.GetFlag(Script.Flag.Designation.Hostile, target);
-                            Script.Flag fightFlag = scriptManager.GetFlag(Designation.NpcInfight, content);
+                            Script.Flag fightFlag = scriptManager.GetFlag(Script.Flag.Designation.NpcInfight, content);
                             if (hostileFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {hostileFlag.id}, OFF);"); }
                             if (fightFlag != null) { lines.Add($"SetEventFlag(TargetEventFlagType.EventFlag, {fightFlag.id}, OFF);"); }
                             if(fightFlag == null && hostileFlag == null) { lines.Add($"SetCharacterTeamType({target.entity}, 26);"); } // fallback, sets team to player friendly
@@ -2210,7 +2080,7 @@ namespace JortPob
             if(content is PhasedNpcContent)      
             {
                 PhasedNpcContent pnpc = (PhasedNpcContent)content;
-                Script.Flag phaseFlag = scriptManager.GetFlag(Designation.Phase, pnpc);
+                Script.Flag phaseFlag = scriptManager.GetFlag(Script.Flag.Designation.Phase, pnpc);
                 lines.Insert(0, $"IfEventValue(MAIN, {phaseFlag.id}, {phaseFlag.Bits()}, 0, {pnpc.phase});"); // if phased npc then only run script when npc is phased in
             }
             if(content is CharacterContent cc && cc.follower == true && !script.IsInterior())

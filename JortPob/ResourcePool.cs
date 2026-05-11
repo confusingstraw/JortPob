@@ -1,4 +1,5 @@
-﻿using SoulsFormats;
+﻿using JortPob.Scripts;
+using SoulsFormats;
 using System;
 using System.Collections.Generic;
 using System.Linq;

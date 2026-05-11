@@ -1,5 +1,6 @@
 ﻿using FSParam;
 using JortPob.Common;
+using JortPob.Scripts;
 using JortPob.Worker;
 using SoulsFormats;
 using SoulsFormats.Cryptography;
@@ -675,7 +676,7 @@ namespace JortPob
             FsParam mapRegionParam = param[ParamType.MapGdRegionInfoParam];
 
             // Exterior msbs
-            foreach (Tile tile in layout.tiles)
+            foreach (Tile tile in layout.Tiles)
             {
                 if (tile.IsEmpty) { continue; } // skip empty tiles
 
@@ -698,7 +699,7 @@ namespace JortPob
             }
 
             // Interior msbs
-            foreach (InteriorGroup group in layout.interiors)
+            foreach (InteriorGroup group in layout.Interiors)
             {
                 if (group.IsEmpty) { continue; } // skip empty group
 

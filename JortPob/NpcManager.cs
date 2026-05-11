@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using JortPob.Worker;
 using SoulsFormats;
 using System;

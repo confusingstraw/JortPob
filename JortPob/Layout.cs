@@ -1,10 +1,13 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using SoulsFormats;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Microsoft.Scripting.Utils;
 using static JortPob.InteriorGroup;
 
 namespace JortPob
@@ -12,217 +15,78 @@ namespace JortPob
     /* Takes the Morrowind ESM cell grid and re-subdivides it into the Elden Ring tile grid */
     public class Layout
     {
-        public List<BaseTile> all;
-        public List<HugeTile> huges;
-        public List<BigTile> bigs;
-        public List<Tile> tiles;
+        private static readonly int MapId = 60;
 
-        public List<InteriorGroup> interiors;
+        private readonly List<HugeTile> huges = [];
+        private readonly List<BigTile> bigs = [];
+        private readonly List<Tile> tiles;
+
+        private readonly List<InteriorGroup> interiors = [];
+
+        // For now, we just expose IEnumerable in case we need to change the underlying implementation
+        public IEnumerable<BaseTile> AllTiles => [..tiles, ..bigs, ..huges];
+
+        public IEnumerable<Tile> Tiles => tiles;
+        public int TileCount => tiles.Count;
+
+        public IEnumerable<InteriorGroup> Interiors => interiors;
+        public int InteriorCount => interiors.Count;
 
         public Layout(Cache cache, ESM esm, Paramanager param, TextManager text, ScriptManager scriptManager)
         {
-            all = new();
-            huges = new();
-            bigs = new();
-            tiles = new();
-
-            interiors = new();
-
             Lort.Log("Generating layout...", Lort.Type.Main);
             Lort.NewTask("Generating Layout", 14);
 
             /* Generate tiles based off base game msb info... */
-            string msbdata = File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"));
-            string[] msblist = msbdata.Split(";");
+            var msbData = ProcessMsbList(
+                File.ReadAllText(Utility.ResourcePath(@"msb\msblist.txt"))
+                        .Split(";")
+                        .Select(msb => msb.Split(","))
+            ).ToList();
 
-            foreach (string msb in msblist)
-            {
-                string[] split = msb.Split(",");
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
+            tiles = msbData
+                .Where(t => t.b == 0 && t.m == MapId)
+                .Select(t => new Tile(t.m, t.x, t.y, t.b))
+                .ToList();
 
-                if (m == 60 && b == 0)
-                {
-                    Tile tile = new Tile(m, x, y, b);
-                    tiles.Add(tile);
-                    all.Add(tile);
-                }
-            }
             Lort.TaskIterate(); // Progress bar update
-
+            
             /* Generate BigTiles... */
-            foreach (string msb in msblist)
+            foreach (var (m, x, y, b) in msbData)
             {
-                string[] split = msb.Split(",");
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                if (m == 60 && b == 1)
-                {
-                    BigTile big = new BigTile(m, x, y, b);
-
-                    foreach (Tile tile in tiles)
-                    {
-                        int x1 = x * 2;
-                        int y1 = y * 2;
-                        int x2 = x1 + 2;
-                        int y2 = y1 + 2;
-                        if (tile.Coordinates.x >= x1 && tile.Coordinates.x < x2 && tile.Coordinates.y >= y1 && tile.Coordinates.y < y2)
-                        {
-                            big.AddTile(tile);
-                        }
-                    }
-
-                    bigs.Add(big);
-                    all.Add(big);
-                }
+                if (m != MapId || b != 1) continue;
+                BigTile big = new(m, x, y, b);
+                big.AddMatchingTiles(tiles);
+                bigs.Add(big);
             }
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate HugeTiles... */
-            foreach (string msb in msblist)
+            foreach (var (m, x, y, b) in msbData)
             {
-                string[] split = msb.Split(",");
-                int m = int.Parse(split[0]);
-                int x = int.Parse(split[1]);
-                int y = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                if (m == 60 && b == 2)
-                {
-                    HugeTile huge = new HugeTile(m, x, y, b);
-
-                    foreach (BigTile big in bigs)
-                    {
-                        int x1 = x * 2;
-                        int y1 = y * 2;
-                        int x2 = x1 + 2;
-                        int y2 = y1 + 2;
-                        if (big.Coordinates.x >= x1 && big.Coordinates.x < x2 && big.Coordinates.y >= y1 && big.Coordinates.y < y2)
-                        {
-                            huge.AddBig(big);
-                        }
-                    }
-
-                    foreach (Tile tile in tiles)
-                    {
-                        int x1 = x * 4;
-                        int y1 = y * 4;
-                        int x2 = x1 + 4;
-                        int y2 = y1 + 4;
-                        if (tile.Coordinates.x >= x1 && tile.Coordinates.x < x2 && tile.Coordinates.y >= y1 && tile.Coordinates.y < y2)
-                        {
-                            huge.AddTile(tile);
-                        }
-                    }
-
-                    huges.Add(huge);
-                    all.Add(huge);
-                }
+                if (m != MapId || b != 2) continue;
+                HugeTile huge = new(m, x, y, b);
+                huge.AddMatchingTiles(bigs);
+                huge.AddMatchingTiles(tiles);
+                huges.Add(huge);
             }
             Lort.TaskIterate(); // Progress bar update
 
             /* Generate Interior Groups */
-            foreach (string msb in msblist)
-            {
-                string[] split = msb.Split(",");
-                int m = int.Parse(split[0]);
-                int a = int.Parse(split[1]);
-                int u = int.Parse(split[2]);
-                int b = int.Parse(split[3]);
-
-                int[] validMaps = new int[]
-                {
-                    12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43
-                };
-
-                if (validMaps.Contains(m) && u == 0 && b == 0)
-                {
-                    InteriorGroup group = new InteriorGroup(m, a, u, b);
-                    interiors.Add(group);
-                }
-            }
+            HashSet<int> validMaps =
+                [12, 13, 14, 15, 16, 19, 20, 21, 22, 25, 28, 30, 31, 32, 34, 35, 39, 40, 41, 42, 43];
+            interiors = msbData
+                .Where(t => t is { y: 0, b: 0 } && validMaps.Contains(t.m))
+                .Select(t => {
+                    var (m, a, u, b) = t;
+                    return new InteriorGroup(m, a, u, b);
+                })
+                .ToList();
             Lort.TaskIterate(); // Progress bar update
 
             /* Part 1 of papyrus pre-process */
-            /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
-            List<Papyrus.Call> allCalls = new();
-            foreach (Papyrus papyrus in esm.scripts)
-            {
-                allCalls.AddRange(papyrus.GetCalls());
-            }
-
-            foreach (Dialog.DialogRecord dialog in esm.dialog)
-            {
-                allCalls.AddRange(dialog.GetCalls());
-            }
-
-            List<string> allReferences = new(), ableReferences = new();  // able refs is objects targeted by Enable, Disable, and GetDisabled
-            foreach (Papyrus.Call call in allCalls)
-            {
-                // Grab record reference from target if exists
-                if (call.target != null && call.target != "player")
-                {
-                    if (!allReferences.Contains(call.target)) { allReferences.Add(call.target); }
-
-                    switch (call.type)
-                    {
-                        case Papyrus.Call.Type.Enable:
-                        case Papyrus.Call.Type.Disable:
-                        case Papyrus.Call.Type.GetDisabled:
-                            if (!ableReferences.Contains(call.target)) { ableReferences.Add(call.target); }
-                            break;
-                        default: break;
-                    }
-                }
-
-                // Grab record reference from arguments if they exist
-                switch (call.type)
-                {
-                    case Papyrus.Call.Type.Cast:
-                        {
-                            string reference = call.parameters[1].ToLower().Trim();
-                            if (reference == "player") { break; }
-                            allReferences.Add(reference);
-                            break;
-                        }
-                    case Papyrus.Call.Type.GetDistance:
-                        {
-                            string reference = call.parameters[0].ToLower().Trim();
-                            if (reference == "player") { break; }
-                            allReferences.Add(reference);
-                            break;
-                        }
-                    default: break;
-                }
-            }
-
-            void PreProcessSelfDisableCalls(Cell cell)
-            {
-                foreach (Content content in cell.contents)
-                {
-                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
-                    if (
-                        papyrus != null &&
-                        (
-                            papyrus.HasCall(Papyrus.Call.Type.Disable) ||
-                            papyrus.HasCall(Papyrus.Call.Type.Enable) ||
-                            papyrus.HasCall(Papyrus.Call.Type.GetDisabled)
-                        )
-                    )
-                    {
-                        string contentId = content.id.ToLower().Trim();
-                        if (!ableReferences.Contains(contentId)) { ableReferences.Add(contentId); }
-                    }
-                }
-            }
-
-            foreach (Cell cell in esm.exterior) { PreProcessSelfDisableCalls(cell); }
-            foreach (Cell cell in esm.interior) { PreProcessSelfDisableCalls(cell); }
+            // able refs is objects targeted by Enable, Disable, and GetDisabled
+            var (allCalls, allReferences, toggleableReferences) = esm.GetScriptReferences();
             Lort.TaskIterate(); // Progress bar update
 
             /* MSB promotion pre-process step */
@@ -274,23 +138,6 @@ namespace JortPob
 
 
             /* Subdivide all cell content into tiles */
-            Content EmitterConversionCheck(Content content)
-            {
-                if (content.GetType() != typeof(AssetContent)) { return content; }
-                AssetContent assetContent = content as AssetContent;
-
-                /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
-                /* We can't really do this earlier than this point sadly because we need both the ESM loaded an cache built to be able to catch this corner case */
-                /* So we do it here */
-                ModelInfo modelInfo = cache.GetModel(assetContent.mesh);
-                if (!modelInfo.HasEmitter()) { return content; }
-
-                EmitterContent emitterContent = assetContent.ConvertToEmitter();
-                cache.AddConvertedEmitter(emitterContent);
-
-                return emitterContent;
-            }
-
             foreach (Cell cell in esm.exterior)
             {
                 HugeTile huge = GetHugeTile(cell.center);
@@ -307,9 +154,18 @@ namespace JortPob
 
                     foreach (Content content in cell.contents)
                     {
-                        Content c = EmitterConversionCheck(content); // checks if we need to convert an assetcontent into an emittercontent due to it having emitter nodes but no light data
+                        if (content is AssetContent assetContent)
+                        {
+                            /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
+                            /* We can't really do this earlier than this point sadly because we need both the ESM loaded and cache built to be able to catch this corner case */
+                            /* So we do it here */
+                            if (cache.GetModel(assetContent.mesh)?.HasEmitter() == true)
+                            {
+                                cache.AddConvertedEmitter(assetContent.ConvertToEmitter());
+                            }
+                        }
 
-                        huge.AddContent(cache, cell, c, allReferences.Contains(content.id.ToLower().Trim()));
+                        huge.AddContent(cache, cell, content, allReferences.Contains(content.id.ToLower().Trim()));
                     }
                 }
                 else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
@@ -373,114 +229,22 @@ namespace JortPob
                     scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
                 }
             }
-
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
-            Cell FindCell(Vector3 position)  // getting an ext cell by morrowind coordinates. used to find exterior cell name
-            {
-                int x = (int)Math.Floor(position.X / Const.CELL_SIZE);
-                int y = (int)Math.Floor(position.Z / Const.CELL_SIZE);
-                return esm.GetCellByGrid(new Int2(x, y));
-            }
-
-            void HandleDoor(DoorContent door)
-            {
-                if (door.warp != null)
-                {
-                    // Door goes to interior cell
-                    if (door.warp.cell != null)
-                    {
-                        InteriorGroup.Chunk to = FindChunk(door.warp.cell);
-                        if (to == null) { door.warp = null; return; }      // caused by debug sometimes
-                        door.warp.map = to.group.Map;
-                        door.warp.x = to.group.Area;
-                        door.warp.y = to.group.Unk;
-                        door.warp.block = to.group.Block;
-                        door.warp.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
-                        string areaName;
-                        if (to.cell.name.Contains(",")) { areaName = to.cell.name.Split(",")[^1].Trim(); }
-                        else { areaName = to.cell.name; }
-                        door.warp.prompt = $"Enter {areaName}";
-                        to.AddWarp(door.warp);
-                    }
-                    // Door goes to exterior cell
-                    else
-                    {
-                        Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
-                        if (to == null) { door.warp = null; return; }     // caused by debug sometimes
-                        door.warp.map = to.Map;
-                        door.warp.x = to.Coordinates.x;
-                        door.warp.y = to.Coordinates.y;
-                        door.warp.block = to.Block;
-                        door.warp.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]");
-                        door.warp.prompt = $"Exit";
-                        to.AddWarp(door.warp);
-                    }
-                }
-            }
-
-            void HandleTravel(NpcContent npc, Tile from = null)
-            {
-                if (npc.travel.Count() > 0)
-                {
-                    // Travel goes to interior cell
-                    for (int i = 0; i < npc.travel.Count; i++)
-                    {
-                        CharacterContent.Travel travel = npc.travel[i];
-                        if (travel.cell != null)
-                        {
-                            InteriorGroup.Chunk to = FindChunk(travel.cell);
-                            if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
-                            travel.map = to.group.Map;
-                            travel.x = to.group.Area;
-                            travel.y = to.group.Unk;
-                            travel.block = to.group.Block;
-                            travel.entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
-                            travel.name = to.cell.name;
-                            travel.cost = Const.TRAVEL_DEFAULT_COST;
-
-                            to.AddWarp(travel);
-                        }
-                        // Travel goes to exterior cell
-                        else
-                        {
-                            Tile to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
-                            Cell cell = FindCell(travel.position);
-                            if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
-                            travel.map = to.Map;
-                            travel.x = to.Coordinates.x;
-                            travel.y = to.Coordinates.y;
-                            travel.block = to.Block;
-                            travel.entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
-                            travel.name = cell.name;
-                            // calculate distance for cost of travel
-                            if (from != null)
-                            {
-                                Vector2 a = new(from.Coordinates.x, from.Coordinates.y);
-                                Vector2 b = new(to.Coordinates.x, to.Coordinates.y);
-                                travel.cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
-                            }
-                            else { travel.cost = Const.TRAVEL_DEFAULT_COST; }
-                            to.AddWarp(travel);
-                        }
-                    }
-                }
-            }
-
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks)
                 {
                     foreach (DoorContent door in chunk.Doors)
                     {
-                        HandleDoor(door);
+                        RegisterDoorWarp(door, scriptManager);
                         if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
                     }
 
                     foreach (NpcContent npc in chunk.NPCs)
                     {
-                        HandleTravel(npc);
+                        RegisterNpcWarp(esm, scriptManager, npc);
                     }
                 }
             }
@@ -489,13 +253,13 @@ namespace JortPob
             {
                 foreach (DoorContent door in tile.Doors)
                 {
-                    HandleDoor(door);
+                    RegisterDoorWarp(door, scriptManager);
                     if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
                 }
 
                 foreach (NpcContent npc in tile.NPCs)
                 {
-                    HandleTravel(npc, tile);
+                    RegisterNpcWarp(esm, scriptManager, npc, tile);
                 }
             }
             Lort.TaskIterate(); // Progress bar update
@@ -664,7 +428,7 @@ namespace JortPob
                         content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");
 
                         // talkable characters always get disable flags for simplicity. statically resolving dialog triggered self-disable calls is slow as hell
-                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || ableReferences.Contains(contentId))
+                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || toggleableReferences.Contains(contentId))
                         {
                             // Object disabled flag
                             Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
@@ -731,7 +495,7 @@ namespace JortPob
                 }
             }
 
-            foreach (BaseTile tile in all) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (BaseTile tile in AllTiles) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
@@ -792,7 +556,7 @@ namespace JortPob
                     return false;
                 }
 
-                foreach(BaseTile t in all)
+                foreach(BaseTile t in AllTiles)
                 {
                     BaseScript script = scriptManager.GetScript(t);
                     if(DoReplacement(script, original, t.NPCs)) { return; }
@@ -1072,7 +836,7 @@ namespace JortPob
             }
 
             // merge similar
-            List<string> pointNames = new();
+            HashSet<string> pointNames = new();
             List<MapPoint> importants = new();
             foreach(var kvp in mapPoints)
             {
@@ -1087,7 +851,7 @@ namespace JortPob
                     center += pos;
                 }
 
-                center = center * (1f / kvp.Value.Count());
+                center *= (1f / kvp.Value.Count());
 
                 MapPoint.Icon icon = Override.GetMapIcon(name);
                 if (icon == MapPoint.Icon.None) { continue; }  // skip these
@@ -1097,23 +861,6 @@ namespace JortPob
                 tile.AddMapPoint(mapPoint);
                 importants.Add(mapPoint);
                 pointNames.Add(name.ToLower().Trim());
-            }
-
-            // Search for interior doors to add markers for
-            bool IsInsideImportant(Vector3 position)  // checks if a position is inside of one of the important map points we created above. returns true if it is
-            {
-                foreach(MapPoint important in importants)
-                {
-                    if (Vector3.Distance(position, important.position) <= important.radius) { return true; }
-                }
-                return false;
-            }
-
-            bool AlreadyExists(string name)  // see if map point has already been made. some areas have multiple entrances or exits
-            {
-                if(pointNames.Contains(name.ToLower().Trim())) { return true; }
-                pointNames.Add(name.ToLower().Trim());
-                return false;
             }
 
             foreach(Tile tile in tiles)
@@ -1127,8 +874,14 @@ namespace JortPob
                         MapPoint.Icon icon = Override.GetMapIcon(name);
 
                         if (icon == MapPoint.Icon.None) { continue; }  // skip these
-                        if (IsInsideImportant(door.position)) { continue; } // skip these too!
-                        if (AlreadyExists(name)) { continue; }    // skip this one as well!
+
+                        // checks if a position is inside of one of the important map points we created above. skip these too!
+                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
+
+                        // see if map point has already been made. some areas have multiple entrances or exits
+                        var lowerName = name.ToLower().Trim();
+                        if(pointNames.Contains(lowerName)) { continue; }
+                        pointNames.Add(lowerName);
 
                         const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
                         Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
@@ -1138,6 +891,69 @@ namespace JortPob
                 }
             }
             Lort.TaskIterate(); // Progress bar update
+        }
+
+        private void RegisterDoorWarp(DoorContent door, ScriptManager scriptManager)
+        {
+            if (door.warp == null) { return; }
+
+            // Door goes to interior cell
+            if (door.warp.cell != null)
+            {
+                InteriorGroup.Chunk to = FindChunk(door.warp.cell);
+                if (to == null) { door.warp = null; return; }      // caused by debug sometimes
+                string areaName = to.cell.name.Contains(",") ? to.cell.name.Split(",")[^1].Trim() : to.cell.name;
+                uint entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->{door.warp.cell}");
+                door.ApplyWarpParams(to.group.Map, to.group.Area, to.group.Unk, to.group.Block,  entity, $"Enter {areaName}");
+                to.AddWarp(door.warp);
+            }
+            // Door goes to exterior cell
+            else
+            {
+                Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
+                if (to == null) { door.warp = null; return; }     // caused by debug sometimes
+                uint entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); 
+                door.ApplyWarpParams(to.Map, to.Coordinates.x, to.Coordinates.y,  to.Block, entity,  $"Exit");
+                to.AddWarp(door.warp);
+            }
+        }
+
+        private void RegisterNpcWarp(ESM esm, ScriptManager scriptManager, NpcContent npc, Tile from = null)
+        {
+            if (npc.travel.Count <= 0) return;
+
+            // Travel goes to interior cell
+            for (int i = 0; i < npc.travel.Count; i++)
+            {
+                var travel = npc.travel[i];
+                if (travel.cell != null)
+                {
+                    var to = FindChunk(travel.cell);
+                    if (to == null) { npc.travel.RemoveAt(i--); continue; }      // caused by debug sometimes
+                    var entity = scriptManager.GetScript(to.group).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->{travel.cell}");
+                    travel.ApplyParams(to.group.Map, to.group.Area, to.group.Unk, to.group.Block, entity, to.cell.name, Const.TRAVEL_DEFAULT_COST);
+                    to.AddWarp(travel);
+                }
+                // Travel goes to exterior cell
+                else
+                {
+                    var to = FindTile(travel.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
+                    var cell = esm.GetCellByPosition(travel.position); // this should be safe, assuming travel.position is a Morrowind coordinate
+                    if (to == null || cell == null) { npc.travel.RemoveAt(i--); continue; }     // caused by debug sometimes
+                    var entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"TravelDestination::{npc.cell.name}->exterior[{travel.x},{travel.y}]");
+                    int cost;
+                    // calculate distance for cost of travel
+                    if (from != null)
+                    {
+                        Vector2 a = new(from.Coordinates.x, from.Coordinates.y);
+                        Vector2 b = new(to.Coordinates.x, to.Coordinates.y);
+                        cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
+                    }
+                    else { cost = Const.TRAVEL_DEFAULT_COST; }
+                    travel.ApplyParams(to.Map, to.Coordinates.x, to.Coordinates.y, to.Block, entity, cell.name, cost);
+                    to.AddWarp(travel);
+                }
+            }
         }
 
         public HugeTile GetHugeTile(Vector3 position)
@@ -1234,7 +1050,7 @@ namespace JortPob
         /* These 2 funcs search by reference. It's finding where this specific content object is located */
         public BaseTile FindTile(Content source)
         {
-            foreach(BaseTile tile in all)
+            foreach(BaseTile tile in AllTiles)
             {
                 foreach (Content content in tile.GetAllContent())
                 {
@@ -1286,6 +1102,8 @@ namespace JortPob
         public Content FindScriptReference(Content source, string reference)
         {
             if (reference == null) { return null; }
+            
+            var lowerRef = reference.ToLower();
 
             if (source != null)
             {
@@ -1303,7 +1121,7 @@ namespace JortPob
 
                 foreach (Content content in local)
                 {
-                    if (content.id.ToLower() == reference.ToLower())
+                    if (content.id.ToLower() == lowerRef)
                     {
                         return content;
                     }
@@ -1311,11 +1129,11 @@ namespace JortPob
             }
 
             // not found in local area, search whole world now
-            foreach(BaseTile t in all)
+            foreach(BaseTile t in AllTiles)
             {
                 foreach(Content c in t.GetAllContent())
                 {
-                    if (c.id.ToLower() == reference.ToLower())
+                    if (c.id.ToLower() == lowerRef)
                     {
                         return c;
                     }
@@ -1328,7 +1146,7 @@ namespace JortPob
                 {
                     foreach(Content c in chunk.GetAllContent())
                     {
-                        if (c.id.ToLower() == reference.ToLower())
+                        if (c.id.ToLower() == lowerRef)
                         {
                             return c;
                         }
@@ -1406,6 +1224,18 @@ namespace JortPob
                 if (Vector3.Distance(content.relative, p.position) <= radius * Const.GLOBAL_SCALE) { result.Add(p); }
             }
             return result;
+        }
+
+        private static IEnumerable<(int m, int x, int y, int b)> ProcessMsbList(IEnumerable<string[]> msblist)
+        {
+            foreach (var split in msblist)
+            {
+                var m = int.Parse(split[0]);
+                var x = int.Parse(split[1]);
+                var y = int.Parse(split[2]);
+                var b = int.Parse(split[3]);
+                yield return (m, x, y, b);
+            }
         }
 
         public class MapPoint
