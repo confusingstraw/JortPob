@@ -1,4 +1,5 @@
 ﻿using JortPob.Common;
+using JortPob.Scripts;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -6,8 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
-using static JortPob.Script;
-using static JortPob.Script.Flag;
 
 namespace JortPob
 {
@@ -70,7 +69,7 @@ namespace JortPob
         }
 
         /* Supports phased routing */
-        public Flag GetFlag(Designation designation, Content content)
+        public Script.Flag GetFlag(Script.Flag.Designation designation, Content content)
         {
             if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
             {
@@ -80,21 +79,21 @@ namespace JortPob
         }
 
         /* Supports phased routing */
-        public Flag GetFlagLocal(Content content, string name)
+        public Script.Flag GetFlagLocal(Content content, string name)
         {
             if (content is PhasedNpcContent pnpc && routing.TryGetValue(pnpc, out var route))
             {
-                return GetFlag(Designation.Local, $"{route}.{name}");
+                return GetFlag(Script.Flag.Designation.Local, $"{route}.{name}");
             }
-            else { return GetFlag(Designation.Local, $"{content.entity.ToString()}.{name}"); }
+            else { return GetFlag(Script.Flag.Designation.Local, $"{content.entity.ToString()}.{name}"); }
         }
 
         /* Does not support phased routing */
-        public Flag GetFlag(Designation designation, string name)
+        public Script.Flag GetFlag(Script.Flag.Designation designation, string name)
         {
-            (Designation, string) lookupKey = FormatFlagLookupKey(designation, name.ToLower());
+            (Script.Flag.Designation, string) lookupKey = Script.FormatFlagLookupKey(designation, name.ToLower());
 
-            Flag f = common.FindFlagByLookupKey(lookupKey);
+            Script.Flag f = common.FindFlagByLookupKey(lookupKey);
             if (f != null) { return f; }
 
             foreach (BaseScript script in scripts)
@@ -120,8 +119,8 @@ namespace JortPob
             common.TimeHandler();
 
             // Create a one time event that sets some default flags at game startup + also moves player to debug area if they aren't there
-            Script.Flag gameInitEventFlag = common.CreateFlag(Category.Event, Flag.Type.Bit, Designation.Event, "Global:GameInitEvent");
-            Script.Flag gameInitFlag = common.CreateFlag(Category.Saved, Flag.Type.Bit, Designation.Hardcode, "GameInit");
+            Script.Flag gameInitEventFlag = common.CreateFlag(Script.Flag.Category.Event, Script.Flag.Type.Bit, Script.Flag.Designation.Event, "Global:GameInitEvent");
+            Script.Flag gameInitFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Hardcode, "GameInit");
             EMEVD.Event gameInitEvent = new();
             gameInitEvent.ID = gameInitEventFlag.id;
             gameInitEvent.Instructions.Add(common.AUTO.ParseAdd($"SkipIfEventFlag(1, OFF, TargetEventFlagType.EventFlag, {gameInitFlag.id});"));  // if init has been done
@@ -148,51 +147,51 @@ namespace JortPob
             common.init.Instructions.Add(common.AUTO.ParseAdd($"InitializeEvent(0, {gameInitEventFlag.id})"));  // initialize in common
 
             // A short for reputation, maybe could fit in a byte but lets just be safe here
-            common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.Reputation, "Reputation");
+            common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.Reputation, "Reputation");
 
             // Crime gold to be paid to guards
-            common.CreateFlag(Flag.Category.Saved, Flag.Type.Short, Flag.Designation.CrimeLevel, "CrimeLevel");
+            common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Short, Script.Flag.Designation.CrimeLevel, "CrimeLevel");
 
             // Arrest flat, set to true when a guard attempts to arrest you. Resets on game load. Makes it so guards attempt arrest once then just kill you if you resist
-            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.Arrest, "Arrest");
+            common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.Arrest, "Arrest");
 
             // Crime absolved flag
-            common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.CrimeAbsolved, "CrimeAbsolved"); // not temp since load screen happens if going to jail
-            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.ResetHostility, "ResetHostility");
+            common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.CrimeAbsolved, "CrimeAbsolved"); // not temp since load screen happens if going to jail
+            common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.ResetHostility, "ResetHostility");
 
             // Temp flag that is set when a guard is talking to the player, used to control some guard aggro stuff
-            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
+            common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.GuardIsGreeting, "GuardIsGreeting");
 
             // Temp flag that is set true when a player is talking with an npc, used to prevent idle/hello lines from nearby npcs while you are talking with someone
-            common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.PlayerIsTalking, "PlayerIsTalking");
+            common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.PlayerIsTalking, "PlayerIsTalking");
 
             // Temp flag that is set to the players current soul/rune count. For use when comparing your cash dosh money count in EMEVD
-            Script.Flag playerRuneCount = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Int, Flag.Designation.PlayerRuneCount, "PlayerRuneCount");
+            Script.Flag playerRuneCount = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Int, Script.Flag.Designation.PlayerRuneCount, "PlayerRuneCount");
 
             // Temp flags that are set for various player stats
-            Script.Flag playerMaxHP = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Short, Flag.Designation.PlayerStat, "MaxHP");
-            Script.Flag playerVigor = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Vigor");
-            Script.Flag playerMind = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Mind");
-            Script.Flag playerEndurance = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Endurance");
-            Script.Flag playerStrength = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Strength");
-            Script.Flag playerDexterity = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Dexterity");
-            Script.Flag playerIntelligence = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Intelligence");
-            Script.Flag playerFaith = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Faith");
-            Script.Flag playerArcane = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Byte, Flag.Designation.PlayerStat, "Arcane");
+            Script.Flag playerMaxHP = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Short, Script.Flag.Designation.PlayerStat, "MaxHP");
+            Script.Flag playerVigor = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Vigor");
+            Script.Flag playerMind = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Mind");
+            Script.Flag playerEndurance = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Endurance");
+            Script.Flag playerStrength = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Strength");
+            Script.Flag playerDexterity = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Dexterity");
+            Script.Flag playerIntelligence = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Intelligence");
+            Script.Flag playerFaith = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Faith");
+            Script.Flag playerArcane = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Byte, Script.Flag.Designation.PlayerStat, "Arcane");
 
             // Temp flags that if written to will modify player stats
-            Script.Flag setVigorFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetVigor");
-            Script.Flag setMindFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetMind");
-            Script.Flag setEnduranceFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetEndurance");
-            Script.Flag setStrengthFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetStrength");
-            Script.Flag setDexterityFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetDexterity");
-            Script.Flag setIntelligenceFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetIntelligence");
-            Script.Flag setFaithFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetFaith");
-            Script.Flag setArcaneFlag = common.CreateFlag(Category.Saved, Flag.Type.Byte, Designation.Hardcode, "SetArcane");
+            Script.Flag setVigorFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetVigor");
+            Script.Flag setMindFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetMind");
+            Script.Flag setEnduranceFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetEndurance");
+            Script.Flag setStrengthFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetStrength");
+            Script.Flag setDexterityFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetDexterity");
+            Script.Flag setIntelligenceFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetIntelligence");
+            Script.Flag setFaithFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetFaith");
+            Script.Flag setArcaneFlag = common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.Hardcode, "SetArcane");
 
 
             // Temp flag that is set true when a player is sneaking
-            Script.Flag playerIsSneakingFlag = common.CreateFlag(Flag.Category.Temporary, Flag.Type.Bit, Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
+            Script.Flag playerIsSneakingFlag = common.CreateFlag(Script.Flag.Category.Temporary, Script.Flag.Type.Bit, Script.Flag.Designation.PlayerIsSneaking, "PlayerIsSneaking");
 
             // One flag for each race. Single bit. Name of the flag to identify it by is the same as the enum name from CharacterContent.Race
             // Reason for doing 10 bits instead of a single byte is because I don't want to set an eventvalueflag from HKS becasue lua is a cursed language
@@ -200,7 +199,7 @@ namespace JortPob
             List<Script.Flag> raceFlags = new();
             foreach(JsonNode json in raceJson)
             {
-                raceFlags.Add(common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.PlayerRace, json["id"].GetValue<string>().Replace(" ", ""), 0));
+                raceFlags.Add(common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.PlayerRace, json["id"].GetValue<string>().Replace(" ", ""), 0));
             }
 
             // Crete the HKS file that will set the correct raceflag after character creation
@@ -485,10 +484,10 @@ namespace JortPob
             // Max rep seems to be 120, may need to cap it incase you can somehow overflow that
             foreach (FactionInfo faction in esm.factions)
             {
-                common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.FactionJoined, faction.id, 0);
-                common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Flag.Designation.FactionReputation, faction.id, 0);
-                common.CreateFlag(Flag.Category.Saved, Flag.Type.Byte, Flag.Designation.FactionRank, faction.id, 0);
-                common.CreateFlag(Flag.Category.Saved, Flag.Type.Bit, Flag.Designation.FactionExpelled, faction.id, 0);
+                common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.FactionJoined, faction.id, 0);
+                common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.FactionReputation, faction.id, 0);
+                common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.FactionRank, faction.id, 0);
+                common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.FactionExpelled, faction.id, 0);
             }
         }
 
@@ -646,7 +645,7 @@ namespace JortPob
         public void Write()
         {
             /* Debuggy thing */
-            List<Flag> allFlags = [.. common.flags];
+            List<Script.Flag> allFlags = [.. common.flags];
             foreach (BaseScript script in scripts)
             {
                 allFlags.AddRange(script.flags);
@@ -654,7 +653,7 @@ namespace JortPob
 
             /* Output a cheatsheet with every flag and it's id and starting value */
             List<string> flagInfo = new();
-            foreach (Flag flag in allFlags)
+            foreach (Script.Flag flag in allFlags)
             {
                 /* If the description of a flag looks like it's a number, its probably an entity id, search the entityIdMappings and see if we have some info on it to include in this file */
                 string desc = null;

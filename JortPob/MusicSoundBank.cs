@@ -71,8 +71,7 @@ namespace JortPob
         /* Handle Skyrim Music */
         public void ImportSkyrimMusic()
         {
-            if (!Directory.Exists(Const.SKYRIM_PATH)) { return; }
-            if (!Const.INCLUDE_SKYRIM_MUSIC) { return; }
+            if (!Const.INCLUDE_SKYRIM_MUSIC || !Directory.Exists(Const.SKYRIM_PATH)) { return; }
 
             string bsaPath = Path.Combine(Const.SKYRIM_PATH, "Data", "Skyrim - Sounds.bsa");
             string musicDir = Path.Combine(Const.OUTPUT_PATH, "cache", "music");
