@@ -68,7 +68,6 @@ namespace JortPob
                 };
 
                 BaseScript script = scriptManager.GetScript(group);
-                bool isTileType = group.GetType() == typeof(Tile);
                 LightManager lightManager = new(group.Map, group.Coordinates.x, group.Coordinates.y, group.Block);
                 ResourcePool pool = new(group, msb, lightManager, script);
 
@@ -112,9 +111,8 @@ namespace JortPob
                         shadowBoxAsset.UnkPartNames[5] = rootCollision.Name;
                         msb.Parts.Assets.Add(shadowBoxAsset);
                     }
-                    else if (isTileType)
+                    else if (group is Tile tile)
                     {
-                        Tile tile = (Tile)group;
                         List<Tuple<Vector3, TerrainInfo>> terrains = tile.Terrain;
 
                         /* Add terrain */
@@ -202,7 +200,7 @@ namespace JortPob
                             asset.UnkPartNames[5] = rootCollision.Name;
                         }
                         /* Asset tileload config */
-                        else if (group.GetType() == typeof(HugeTile) || group.GetType() == typeof(BigTile))
+                        else if (group is HugeTile || group is BigTile)
                         {
                             asset.TileLoad.MapID = [(byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map];
                             asset.TileLoad.Unk04 = 13;
@@ -595,7 +593,7 @@ namespace JortPob
                     }
 
                     /* Handle area names */
-                    if (isTileType || group.IsInterior)
+                    if (group is Tile || group.IsInterior)
                     {
                         foreach (Layout.MapPoint point in chunk.MapPoints)
                         {
