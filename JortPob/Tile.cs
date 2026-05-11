@@ -259,9 +259,9 @@ namespace JortPob
             return [Map, Coordinates.x, Coordinates.y, Block];
         }
 
-        public bool IsEmpty()
+        public bool IsEmpty
         {
-            return Cells.Count <= 0 && Terrain.Count <= 0 && Assets.Count <= 0;
+            get { return Cells.Count <= 0 && Terrain.Count <= 0 && Assets.Count <= 0; }
         }
 
         public IEnumerable<Content> GetAllContent()

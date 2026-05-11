@@ -59,7 +59,7 @@ namespace JortPob
             void GenerateMSB(IMSBCompilableGroup group)
             {
                 // Just write empty tiles as empty msbs and scripts to prevent base game stuff from loading in the distance. Debug flag if you want to skip this behaviour
-                if (group.IsEmpty() && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior)) { return; }
+                if (group.IsEmpty && (Const.DEBUG_DONT_WRITE_BLANK_MSBS || group.IsInterior)) { return; }
 
                 /* Generate msb from group */
                 MSBE msb = new()
@@ -681,7 +681,7 @@ namespace JortPob
                 List<string> objs = new();
                 foreach (BaseTile bt in layout.tiles)
                 {
-                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles and empty tiles
+                    if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles and empty tiles
                     tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
@@ -689,7 +689,7 @@ namespace JortPob
                 }
                 foreach (InteriorGroup group in layout.interiors)
                 {
-                    if (group.IsEmpty()) { continue; } // skip empty groups
+                    if (group.IsEmpty) { continue; } // skip empty groups
 
                     for (int i = 0; i < group.chunks.Count; i++)
                     {
@@ -708,7 +708,7 @@ namespace JortPob
                 Lort.NewTask("Binding NVBNDs", layout.tiles.Count + layout.interiors.Count);
                 foreach (BaseTile bt in layout.tiles)
                 {
-                    if (bt is not Tile tile || tile.IsEmpty()) { continue; } // skip big/huge tiles
+                    if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles
 
                     /* Some vars */
                     int nextNavId = int.Parse($"1{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}00000");
@@ -791,7 +791,7 @@ namespace JortPob
 
                     for (int i = 0; i < group.chunks.Count; i++)
                     {
-                        if (group.IsEmpty()) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
+                        if (group.IsEmpty) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
 
                         InteriorGroup.Chunk chunk = group.chunks[i];
                         string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}-{i:D2}.obj");

@@ -677,7 +677,7 @@ namespace JortPob
             // Exterior msbs
             foreach (Tile tile in layout.tiles)
             {
-                if (tile.IsEmpty()) { continue; } // skip empty tiles
+                if (tile.IsEmpty) { continue; } // skip empty tiles
 
                 string region = tile.GetRegion();
                 WeatherData weatherData = GetWeatherData(region);
@@ -700,7 +700,7 @@ namespace JortPob
             // Interior msbs
             foreach (InteriorGroup group in layout.interiors)
             {
-                if (group.IsEmpty()) { continue; } // skip empty group
+                if (group.IsEmpty) { continue; } // skip empty group
 
                 WeatherData weatherData = group.GetWeather();
 

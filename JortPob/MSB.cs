@@ -12,7 +12,7 @@ namespace JortPob
         int Block { get; }
         int[] IdList();
 
-        bool IsEmpty();
+        bool IsEmpty { get; }
         bool IsInterior { get; }
 
         List<IMSBCompilableChunk> Chunks { get; }  // Tiles will return a List containing itself only.

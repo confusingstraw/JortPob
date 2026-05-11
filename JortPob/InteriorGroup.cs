@@ -38,13 +38,16 @@ namespace JortPob
             return [Map, Area, Unk, Block];
         }
 
-        public bool IsEmpty()
+        public bool IsEmpty
         {
-            foreach(Chunk chunk in chunks)
+            get
             {
-                if (chunk.Assets.Count > 0) { return false; }
+                foreach(Chunk chunk in chunks)
+                {
+                    if (chunk.Assets.Count > 0) { return false; }
+                }
+                return true;
             }
-            return true;
         }
 
         public Paramanager.WeatherData GetWeather()
