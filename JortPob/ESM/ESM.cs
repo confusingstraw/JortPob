@@ -461,9 +461,10 @@ namespace JortPob
         public ScriptReferenceMetadata GetScriptReferences()
         {
             /* Find all objects targeted by script calls so we can make sure they are placd in regular tiles. Objects in Big/Huge tiles can't have script data */
-            IEnumerable<Papyrus.Call> allCalls = scripts
+            var allCalls = scripts
                 .SelectMany(p => p.GetCalls())
-                .Concat(dialog.SelectMany(d => d.GetCalls()));
+                .Concat(dialog.SelectMany(d => d.GetCalls()))
+                .ToList();
 
             HashSet<string> allReferences = [], toggleableRefs = [];  // able refs is objects targeted by Enable, Disable, and GetDisabled
 
@@ -517,11 +518,11 @@ namespace JortPob
                     .Select(content => content.id.ToLower().Trim())
             );
 
-            return new ScriptReferenceMetadata(allReferences, toggleableRefs);
+            return new ScriptReferenceMetadata(allCalls, allReferences, toggleableRefs);
         }
     }
 
-    public record ScriptReferenceMetadata(HashSet<string> AllReferences, HashSet<string> ToggleableReferences);
+    public record ScriptReferenceMetadata(List<Papyrus.Call> AllCalls, HashSet<string> AllReferences, HashSet<string> ToggleableReferences);
 
     public class RegionInfo
     {

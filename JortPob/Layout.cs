@@ -86,7 +86,7 @@ namespace JortPob
 
             /* Part 1 of papyrus pre-process */
             // able refs is objects targeted by Enable, Disable, and GetDisabled
-            var (allReferences, toggleableReferences) = esm.GetScriptReferences();
+            var (allCalls, allReferences, toggleableReferences) = esm.GetScriptReferences();
             Lort.TaskIterate(); // Progress bar update
 
             /* MSB promotion pre-process step */
@@ -495,7 +495,7 @@ namespace JortPob
                 }
             }
 
-            foreach (BaseTile tile in all) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
+            foreach (BaseTile tile in AllTiles) { PreprocessContent(scriptManager.GetScript(tile), tile.GetAllContent()); }
             foreach (InteriorGroup group in interiors)
             {
                 foreach (InteriorGroup.Chunk chunk in group.chunks) { PreprocessContent(scriptManager.GetScript(group), chunk.GetAllContent()); }
@@ -556,7 +556,7 @@ namespace JortPob
                     return false;
                 }
 
-                foreach(BaseTile t in all)
+                foreach(BaseTile t in AllTiles)
                 {
                     BaseScript script = scriptManager.GetScript(t);
                     if(DoReplacement(script, original, t.npcs)) { return; }
@@ -1050,7 +1050,7 @@ namespace JortPob
         /* These 2 funcs search by reference. It's finding where this specific content object is located */
         public BaseTile FindTile(Content source)
         {
-            foreach(BaseTile tile in all)
+            foreach(BaseTile tile in AllTiles)
             {
                 foreach (Content content in tile.GetAllContent())
                 {
@@ -1102,6 +1102,8 @@ namespace JortPob
         public Content FindScriptReference(Content source, string reference)
         {
             if (reference == null) { return null; }
+            
+            var lowerRef = reference.ToLower();
 
             if (source != null)
             {
@@ -1119,7 +1121,7 @@ namespace JortPob
 
                 foreach (Content content in local)
                 {
-                    if (content.id.ToLower() == reference.ToLower())
+                    if (content.id.ToLower() == lowerRef)
                     {
                         return content;
                     }
@@ -1127,11 +1129,11 @@ namespace JortPob
             }
 
             // not found in local area, search whole world now
-            foreach(BaseTile t in all)
+            foreach(BaseTile t in AllTiles)
             {
                 foreach(Content c in t.GetAllContent())
                 {
-                    if (c.id.ToLower() == reference.ToLower())
+                    if (c.id.ToLower() == lowerRef)
                     {
                         return c;
                     }
@@ -1144,7 +1146,7 @@ namespace JortPob
                 {
                     foreach(Content c in chunk.GetAllContent())
                     {
-                        if (c.id.ToLower() == reference.ToLower())
+                        if (c.id.ToLower() == lowerRef)
                         {
                             return c;
                         }
