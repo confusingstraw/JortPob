@@ -1,7 +1,8 @@
-{
-  "nuccius_ring": {
+[
+  {
+    "id": "nuccius_ring",
     "type": "Accessory",
     "row": 1020,
     "comment": "Vondius's cursed ring to Viridian Amber Medalion"
   }
-}
+]

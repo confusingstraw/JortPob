@@ -1,57 +1,64 @@
-{
-	"gold_001": {
-		"type": "Goods",
-		"row": 2900,
-		"text": {
-			"name": "Tiny Coin Pouch",
-			"description": "A tiny pouch of Runes.",
-			"effect": "Grants 200 Runes on use."
-		}
-	},
-	"gold_005": {
-		"type": "Goods",
-		"row": 2901,
-		"text": {
-			"name": "Small Coin Pouch",
-			"description": "A small pouch of Runes.",
-			"effect": "Grants 400 Runes on use."
-		}
-	},
-	"gold_010": {
-		"type": "Goods",
-		"row": 2902,
-		"text": {
-			"name": "Coin Pouch",
-			"description": "A pouch of Runes.",
-			"effect": "Grants 800 Runes on use."
-		}
-	},
-	"gold_025": {
-		"type": "Goods",
-		"row": 2904,
-		"text": {
-			"name": "Big Coin Pouch",
-			"description": "A big pouch of Runes.",
-			"effect": "Grants 1600 Runes on use."
-		}
-	},
-	"gold_100": {
-		"type": "Goods",
-		"row": 2910,
-		"text": {
-			"name": "Huge Coin Pouch",
-			"description": "A huge pouch of Runes.",
-			"effect": "Grants 6250 Runes on use."
-		}
-	},
-	"artifact_bittercup_01": {
-		"type": "Accessory",
-		"row": 1051,
-		"comment": "Remapping Bittercup to Radagon's Soreseal"
-	},
-	"misc_soulgem_azura": {
-		"type": "Accessory",
-		"row": 8000,
-		"comment": "Remapping Azura's Star to the Blessed Blue Dew Talisman"
-	}
-}
+[
+  {
+    "id": "gold_001",
+    "type": "Goods",
+    "row": 2900,
+    "text": {
+      "name": "Tiny Coin Pouch",
+      "description": "A tiny pouch of Runes.",
+      "effect": "Grants 200 Runes on use."
+    }
+  },
+  {
+    "id": "gold_005",
+    "type": "Goods",
+    "row": 2901,
+    "text": {
+      "name": "Small Coin Pouch",
+      "description": "A small pouch of Runes.",
+      "effect": "Grants 400 Runes on use."
+    }
+  },
+  {
+    "id": "gold_010",
+    "type": "Goods",
+    "row": 2902,
+    "text": {
+      "name": "Coin Pouch",
+      "description": "A pouch of Runes.",
+      "effect": "Grants 800 Runes on use."
+    }
+  },
+  {
+    "id": "gold_025",
+    "type": "Goods",
+    "row": 2904,
+    "text": {
+      "name": "Big Coin Pouch",
+      "description": "A big pouch of Runes.",
+      "effect": "Grants 1600 Runes on use."
+    }
+  },
+  {
+    "id": "gold_100",
+    "type": "Goods",
+    "row": 2910,
+    "text": {
+      "name": "Huge Coin Pouch",
+      "description": "A huge pouch of Runes.",
+      "effect": "Grants 6250 Runes on use."
+    }
+  },
+  {
+    "id": "artifact_bittercup_01",
+    "type": "Accessory",
+    "row": 1051,
+    "comment": "Remapping Bittercup to Radagon's Soreseal"
+  },
+  {
+    "id": "misc_soulgem_azura",
+    "type": "Accessory",
+    "row": 8000,
+    "comment": "Remapping Azura's Star to the Blessed Blue Dew Talisman"
+  }
+]

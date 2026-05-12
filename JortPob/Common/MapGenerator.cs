@@ -140,9 +140,9 @@ namespace JortPob.Common
             {
                 if (mapTileTpfBxf == null || mapTileTpfBxf.Files.Count == 0) throw new FileNotFoundException("Map files weren't loaded correctly");
 
-                BinderFile? l0File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L0_00_00_00000000"));
-                BinderFile? l1File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L1_00_00_00000000"));
-                BinderFile? l2File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L2_00_00_00000000"));
+                BinderFile l0File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L0_00_00_00000000"));
+                BinderFile l1File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L1_00_00_00000000"));
+                BinderFile l2File = mapTileTpfBxf.Files.FirstOrDefault(f => f.Name.Contains("MENU_MapTile_M00_L2_00_00_00000000"));
 
                 if (l0File != null)
                 {
@@ -227,7 +227,7 @@ namespace JortPob.Common
                     g.DrawImage(workingImage, 0, 0, targetSize, targetSize);
                 }
 
-                Bitmap? blankTile = zoomLevel switch
+                Bitmap blankTile = zoomLevel switch
                 {
                     ZoomLevel.L0 => blankTileL0,
                     ZoomLevel.L1 => blankTileL1,

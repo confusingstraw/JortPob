@@ -1842,17 +1842,6 @@ namespace JortPob
                                             return false;
                                         }
 
-                                        /* test the new edges of this triangle, skip outline edge */ // not used
-                                        bool BaseSkipIntersectTest(WetFace f)
-                                        {
-                                            foreach (WetEdge cutedge in cutout.Edges())
-                                            {
-                                                if (!cutedge.Intersection(new WetEdge(f.a, f.b), false).IsNaN()) { return true; }
-                                                if (!cutedge.Intersection(new WetEdge(f.c, f.b), false).IsNaN()) { return true; }
-                                            }
-                                            return false;
-                                        }
-
                                         /* Check if they are valid, then add them if they are */
                                         cutout.size -= 0.1f;
                                         if (nf1 != null && !nf1.IsIntersect(edges) && !nf1.IsDegenerate() && !InsideCutout(nf1) && !nf1.IsIntersect(cutout.Edges())) { newFaces.Add(nf1); edges.AddRange(nf1.Edges()); }
@@ -2440,6 +2429,11 @@ namespace JortPob
 
                 return false;
             }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(a, b);
+            }
         }
 
         public class WetEdge
@@ -2517,6 +2511,11 @@ namespace JortPob
                 }
 
                 return Vector3.NaN; // no intersection
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(a, b);
             }
         }
     }

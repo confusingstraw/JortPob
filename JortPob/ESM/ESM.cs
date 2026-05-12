@@ -386,17 +386,17 @@ namespace JortPob
             }
         }
 
-        public JobInfo? GetJob(string id) => jobs.FirstOrDefault(job => job.id == id.ToLower());
+        public JobInfo GetJob(string id) => jobs.FirstOrDefault(job => job.id == id.ToLower());
 
-        public RaceInfo? GetRace(string id) => races.FirstOrDefault(race => race.id == id.ToLower());
+        public RaceInfo GetRace(string id) => races.FirstOrDefault(race => race.id == id.ToLower());
 
-        public FactionInfo? GetFaction(string id) => factions.FirstOrDefault(faction => faction.id == id.ToLower());
+        public FactionInfo GetFaction(string id) => factions.FirstOrDefault(faction => faction.id == id.ToLower());
 
-        public SoundInfo? GetSound(string id) => sounds.FirstOrDefault(sound => sound.id == id.ToLower());
+        public SoundInfo GetSound(string id) => sounds.FirstOrDefault(sound => sound.id == id.ToLower());
 
-        public Papyrus? GetPapyrus(string? id) => id is null ? null : scripts.FirstOrDefault(script => script.id == id.ToLower());
+        public Papyrus GetPapyrus(string id) => id is null ? null : scripts.FirstOrDefault(script => script.id == id.ToLower());
 
-        public LeveledCreature? GetLeveledCreature(string id) => leveled.FirstOrDefault(lc => lc.id == id.ToLower());
+        public LeveledCreature GetLeveledCreature(string id) => leveled.FirstOrDefault(lc => lc.id == id.ToLower());
 
         /* Get dialog and character data for building esd */
         public List<Tuple<DialogRecord, List<DialogInfoRecord>>> GetDialog(ScriptManager scriptManager, CharacterContent npc)

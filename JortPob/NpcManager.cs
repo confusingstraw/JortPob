@@ -34,8 +34,6 @@ namespace JortPob
         private readonly Dictionary<string, int> topicText; // topic text id map
         private readonly List<EsdInfo> esds; // npcs, beds
 
-        private readonly Dictionary<string, int> npcParamMap, npcThinkParamMap;
-
         private int nextNpcParamId, nextNpcThinkParamId, nextCharInitId;  // increment by 10
         private int nextBedId;
 

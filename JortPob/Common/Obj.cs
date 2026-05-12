@@ -20,7 +20,7 @@ namespace JortPob.Common
 
         public Obj(string path)
         {
-            ObjG? last = null;
+            ObjG last = null;
             string[] data = File.ReadAllLines(path);
             foreach (string line in data)
             {

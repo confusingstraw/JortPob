@@ -42,38 +42,36 @@ namespace JortPob.Common
 
         public static void ModifyRow(FsParam.Row row, Dictionary<string, string> data)
         {
-            foreach (KeyValuePair<string, string> property in data)
+            foreach (var (key, value) in data)
             {
-                string key = property.Key;
-                string value = property.Value;
                 FsParam.Cell cell = (FsParam.Cell)row[key];
-                switch (cell.Value.GetType())
+                switch (cell.Value)
                 {
-                    case Type t when t == typeof(int):
+                    case int:
                         cell.SetValue(int.Parse(value));
                         break;
-                    case Type t when t == typeof(uint):
+                    case uint:
                         cell.SetValue(uint.Parse(value));
                         break;
-                    case Type t when t == typeof(ushort):
+                    case ushort:
                         cell.SetValue(ushort.Parse(value));
                         break;
-                    case Type t when t == typeof(short):
+                    case short:
                         cell.SetValue(short.Parse(value));
                         break;
-                    case Type t when t == typeof(byte):
+                    case byte:
                         cell.SetValue(byte.Parse(value));
                         break;
-                    case Type t when t == typeof(sbyte):
+                    case sbyte:
                         cell.SetValue(sbyte.Parse(value));
                         break;
-                    case Type t when t == typeof(float):
+                    case float:
                         cell.SetValue(float.Parse(value));
                         break;
-                    case Type t when t == typeof(bool):
+                    case bool:
                         cell.SetValue(bool.Parse(value));
                         break;
-                    case Type t when t == typeof(string):
+                    case string:
                         cell.SetValue(value);
                         break;
                     default:
