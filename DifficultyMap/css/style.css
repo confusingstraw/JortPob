@@ -57,6 +57,10 @@ input[type=range]::-ms-track {
     background: linear-gradient(to right, rgba(255, 0, 0, 0), rgba(255, 0, 0, 1));
 }
 
+#brush-size-picker {
+    background: blue;
+}
+
 #map-container {
     position: relative;
 }

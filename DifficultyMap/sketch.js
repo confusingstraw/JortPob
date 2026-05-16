@@ -48,7 +48,13 @@ async function setup() {
   alphaInput.addEventListener('input', (event) => {
     setAlpha(event.target.value);
   });
-  
+
+  const brushSizeInput = document.getElementById('brush-size-picker');
+  brushSize = brushSizeInput.value;
+  brushSizeInput.addEventListener('input', (event) => {
+    brushSize = brushSizeInput.value;
+  });
+
   document.getElementById('toggle-grid').addEventListener('click', () => {
     showGrid = !showGrid;
     drawGrid();
