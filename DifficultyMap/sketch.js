@@ -59,8 +59,12 @@ async function setup() {
     drawGrid();
   });
 
-  document.getElementById('export-png').addEventListener('click', () => {
-    exportPNG();
+  document.getElementById('export-drawing-png').addEventListener('click', () => {
+    exportDrawingPNG();
+  });
+
+  document.getElementById('export-canvas-png').addEventListener('click', () => {
+    exportCanvasPNG();
   });
 
   document.getElementById('export-json').addEventListener('click', () => {
@@ -159,12 +163,16 @@ function drawGrid() {
   }
 }
 
-function exportPNG() {
+function exportDrawingPNG() {
   exportBuffer.clear();
   exportBuffer.image(drawBuffer, 0, 0);
   
   // Save the combined image
   exportBuffer.get().save('difficulty_map.png');
+}
+
+function exportCanvasPNG() {
+  save('difficulty_map_full.png');
 }
 
 function exportJSON() {
