@@ -19,12 +19,16 @@
 
         <label id="brush-size-label" for="brush-size-picker">Brush Size: 35</label>
         <input type="range" id="brush-size-picker" name="brush-size" min="1" max="100" value="35">
-
-        <button id="toggle-grid">Toggle Grid</button>
-        <button id="toggle-difficulty">Toggle Difficulty</button>
-        <button id="export-drawing-png">Export Drawing PNG</button>
-        <button id="export-canvas-png">Export Canvas PNG</button>
-        <button id="export-json">Export JSON</button>
+        
+        <div id="brush-shape-container">
+            <button id="square-brush" class="toolbar-button">Square Brush</button>
+            <button id="circle-brush" class="toolbar-button">Circle Brush</button>
+        </div>
+        <button id="toggle-grid" class="toolbar-button">Toggle Grid</button>
+        <button id="toggle-difficulty" class="toolbar-button">Toggle Difficulty</button>
+        <button id="export-drawing-png" class="toolbar-button">Export Drawing PNG</button>
+        <button id="export-canvas-png" class="toolbar-button">Export Canvas PNG</button>
+        <button id="export-json" class="toolbar-button">Export JSON</button>
     </div>
     <div id="map-container"></div>
 </body>

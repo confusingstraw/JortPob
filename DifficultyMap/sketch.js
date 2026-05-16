@@ -5,6 +5,7 @@ const hueLimit = 250;
 let colorValue = 0;
 let alphaValue = 50;
 let brushSize = 35;
+let brushShape = 'circle'; // Default brush shape
 
 let showGrid = true;
 let showDifficulty = false;
@@ -50,9 +51,18 @@ async function setup() {
   });
 
   const brushSizeInput = document.getElementById('brush-size-picker');
-  brushSize = brushSizeInput.value;
+  setBrushSize(brushSizeInput.value);
   brushSizeInput.addEventListener('input', (event) => {
-    brushSize = brushSizeInput.value;
+    setBrushSize(event.target.value);
+  });
+
+  // Add event listeners for brush shape buttons
+  document.getElementById('square-brush').addEventListener('click', () => {
+    brushShape = 'square';
+  });
+
+  document.getElementById('circle-brush').addEventListener('click', () => {
+    brushShape = 'circle';
   });
 
   document.getElementById('toggle-grid').addEventListener('click', () => {
@@ -101,22 +111,39 @@ function setAlpha(value) {
   document.getElementById('alpha-label').textContent = `Alpha: ${alphaValue}`;
 }
 
+function setBrushSize(value) {
+  brushSize = parseInt(value);
+  document.getElementById('brush-size-label').textContent = `Brush Size: ${brushSize}px`;
+}
+
 function getDifficultyFromHue(col) {
   return Math.round(100 - (col / hueLimit * 100));
 }
 
 function mouseDragged() {
-  // Use erase mode to clear the area before drawing
-  drawBuffer.strokeWeight(brushSize);
   drawBuffer.erase();
-  drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY);
+  if (brushShape === 'circle') {
+    drawBuffer.strokeWeight(brushSize);
+    drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY);
+  } else if (brushShape === 'square') {
+    drawBuffer.noStroke();
+    drawBuffer.rect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
+  }
   drawBuffer.noErase();
 
-  // Draw on the buffer
-  drawBuffer.strokeWeight(brushSize);
-  drawBuffer.color(colorValue, 100, 100, alphaValue);
-  drawBuffer.stroke(colorValue, 100, 100, alphaValue);
-  drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY); // Draw a line at the mouse position
+  
+  
+  
+  if (brushShape === 'circle') {
+    drawBuffer.strokeWeight(brushSize);
+    drawBuffer.stroke(colorValue, 100, 100, alphaValue);
+    drawBuffer.noFill();
+    drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY);
+  } else if (brushShape === 'square') {
+    drawBuffer.noStroke();
+    drawBuffer.fill(colorValue, 100, 100, alphaValue);
+    drawBuffer.rect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
+  }
 }
 
 function mousePressed() {

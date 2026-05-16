@@ -73,7 +73,7 @@ input[type=range]::-ms-track {
     background: #fff;
 }
 
-button {
+.toolbar-button {
     background: #007BFF;
     color: white;
     border: none;
@@ -84,6 +84,6 @@ button {
     margin-top: 5px;
 }
 
-button:hover {
+.toolbar-button:hover {
     background: #0056b3;
 }
