@@ -11,14 +11,16 @@
 <body>
     <script src="sketch.js"></script>
     <div id="toolbar">
-        <label id="color-label" for="color-picker">Color:</label>
-        <input type="range" id="color-picker" name="color" min="0" max="175" value="0">
+        <label id="color-label" for="color-picker">Color: 0</label>
+        <input type="range" id="color-picker" name="color" min="0" max="100" value="0">
 
-        <label id="alpha-label" for="alpha-picker">Alpha:</label>
-        <input type="range" id="alpha-picker" name="alpha" min="0" max="255" value="127">
+        <label id="alpha-label" for="alpha-picker">Alpha: 50</label>
+        <input type="range" id="alpha-picker" name="alpha" min="0" max="100" value="50">
 
         <button id="toggle-grid">Toggle Grid</button>
+        <button id="toggle-difficulty">Toggle Difficulty</button>
         <button id="export-png">Export PNG</button>
+        <button id="export-json">Export JSON</button>
     </div>
     <div id="map-container"></div>
 </body>
