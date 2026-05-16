@@ -21,6 +21,7 @@ body {
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 10;
 }
 
 input[type=range] {
@@ -58,7 +59,6 @@ input[type=range]::-ms-track {
 
 #map-container {
     position: relative;
-    top: 100px;
 }
 
 #map-canvas {
@@ -70,9 +70,6 @@ input[type=range]::-ms-track {
 }
 
 #toggle-grid {
-    /* position: absolute;
-    top: 60px;
-    left: 20px; */
     background: #007BFF;
     color: white;
     border: none;
@@ -84,29 +81,4 @@ input[type=range]::-ms-track {
 
 #toggle-grid:hover {
     background: #0056b3;
-}
-
-#grid-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 800px; /* Match canvas dimensions */
-    height: 600px; /* Match canvas dimensions */
-    pointer-events: none; /* Allow interactions to pass through */
-    display: none; /* Initially hidden */
-}
-
-.grid-line {
-    position: absolute;
-    background: rgba(200, 200, 200, 0.5);
-}
-
-.grid-line.vertical {
-    width: 1px;
-    height: 100%;
-}
-
-.grid-line.horizontal {
-    height: 1px;
-    width: 100%;
 }

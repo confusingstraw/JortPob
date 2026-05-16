@@ -1,22 +1,29 @@
 let mapImg, croppedImg;
+let drawBuffer, gridBuffer;
+
 let colorValue = 0;
-let brushSize = 35;
-let showGrid = true;
-let gridSize = 25;
 let alphaValue = 127;
-let buffer;
+let brushSize = 35;
+
+let showGrid = false;
+let cellSize = 21;
+let gridXOffset = 30;
+let gridYOffset = 30;
 
 async function setup() {
   // Load the map image and crop it to the desired area
+  // Original size: 2317 x 1324px
   mapImg = await loadImage('/assets/map.png');
-  croppedImg = mapImg.get(400, 100 , mapImg.width - 900, mapImg.height - 300); 
+  croppedImg = mapImg.get(429, 78, mapImg.width - 1078, mapImg.height - 316); 
 
   let cnv = createCanvas(croppedImg.width, croppedImg.height);
   cnv.parent('map-container');
 
-  buffer = createGraphics(croppedImg.width, croppedImg.height);
-  buffer.clear();
-  buffer.colorMode(HSB, 255);
+  drawBuffer = createGraphics(croppedImg.width, croppedImg.height);
+  drawBuffer.clear();
+  drawBuffer.colorMode(HSB, 255);
+
+  gridBuffer = createGraphics(croppedImg.width, croppedImg.height);
 
   // Add event listeners to input fields
   const colorInput = document.getElementById('color-picker');
@@ -31,18 +38,13 @@ async function setup() {
     document.getElementById('alpha-label').textContent = `Alpha: ${alphaValue}`;
   });
   
-  document.addEventListener('DOMContentLoaded', () => {
-    const gridOverlay = document.getElementById('grid-overlay');
-    gridOverlay.style.display = 'none';
-
-    document.getElementById('toggle-grid').addEventListener('click', () => {
-      if (gridOverlay.style.display === 'none' || gridOverlay.style.display === '') {
-        gridOverlay.style.display = 'block';
-        createGridOverlay();
-      } else {
-        gridOverlay.style.display = 'none';
-      }
-    });
+  document.getElementById('toggle-grid').addEventListener('click', () => {
+    showGrid = !showGrid;
+    if (showGrid) {
+      createGridOverlay();
+    } else {
+      gridBuffer.clear();
+    }
   });
 }
 
@@ -51,21 +53,24 @@ function draw() {
   image(croppedImg, 0, 0);
 
   // Draw the highlighter buffer on top
-  image(buffer, 0, 0);
+  image(drawBuffer, 0, 0);
+
+  // Draw the grid buffer on top if the grid is visible
+  image(gridBuffer, 0, 0);
 }
 
 function mouseDragged() {
   // Use erase mode to clear the area before drawing
-  buffer.strokeWeight(brushSize);
-  buffer.erase();
-  buffer.line(mouseX, mouseY, pmouseX, pmouseY);
-  buffer.noErase();
+  drawBuffer.strokeWeight(brushSize);
+  drawBuffer.erase();
+  drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY);
+  drawBuffer.noErase();
 
   // Draw on the buffer
-  buffer.strokeWeight(brushSize);
-  buffer.color(colorValue, 255, 255, alphaValue);
-  buffer.stroke(colorValue, 255, 255, alphaValue);
-  buffer.line(mouseX, mouseY, pmouseX, pmouseY); // Draw a line at the mouse position
+  drawBuffer.strokeWeight(brushSize);
+  drawBuffer.color(colorValue, 255, 255, alphaValue);
+  drawBuffer.stroke(colorValue, 255, 255, alphaValue);
+  drawBuffer.line(mouseX, mouseY, pmouseX, pmouseY); // Draw a line at the mouse position
 }
 
 function mousePressed() {
@@ -74,29 +79,26 @@ function mousePressed() {
 }
 
 function createGridOverlay() {
-  const gridOverlay = document.getElementById('grid-overlay');
-  const mapContainer = document.getElementById('map-container');
+  let gridColor = color(215, 149, 39, 200);
+  gridBuffer.stroke(gridColor);
+  gridBuffer.strokeWeight(1);
 
-  // Align grid overlay with map container dimensions and position
-  const { width, height, top, left } = mapContainer.getBoundingClientRect();
-  gridOverlay.style.width = `${width}px`;
-  gridOverlay.style.height = `${height}px`;
-  gridOverlay.style.top = `${top}px`;
-  gridOverlay.style.left = `${left}px`;
-
-  gridOverlay.innerHTML = ''; // Clear existing grid lines
-
-  for (let x = 0; x < width; x += gridSize) {
-    const verticalLine = document.createElement('div');
-    verticalLine.classList.add('grid-line', 'vertical');
-    verticalLine.style.left = `${x}px`;
-    gridOverlay.appendChild(verticalLine);
+  // Draw vertical lines
+  for (let x = 0; x <= width; x += cellSize) {
+    gridBuffer.line(x, 0, x, height);
   }
 
-  for (let y = 0; y < height; y += gridSize) {
-    const horizontalLine = document.createElement('div');
-    horizontalLine.classList.add('grid-line', 'horizontal');
-    horizontalLine.style.top = `${y}px`;
-    gridOverlay.appendChild(horizontalLine);
+  // Draw horizontal lines
+  for (let y = 0; y <= height; y += cellSize) {
+    gridBuffer.line(0, y, width, y);
+  }
+
+  for (let x = 0; x < width; x += cellSize * 5) {
+    for (let y = 0; y < height; y += cellSize * 5) {
+      gridBuffer.textSize(6);
+      gridBuffer.fill(0, 255, 255, 240);
+      gridBuffer.noStroke();
+      gridBuffer.text(`${x/cellSize - gridXOffset}, ${y/cellSize - gridYOffset}`, x + 2, y - 2);
+    }
   }
 }
