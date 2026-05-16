@@ -8,15 +8,16 @@ let brushSize = 35;
 
 let showGrid = true;
 let showDifficulty = false;
-let cellSize = 21;
-let gridXOffset = 30;
-let gridYOffset = 30;
+// Coordinates of the top-left corner of the grid relative to the map image, in cell units
+const cellOffsetX = 28;
+const cellOffsetY = -27;
+const cellSize = 21;
 
 async function setup() {
   // Load the map image and crop it to the desired area
   // Original size: 2317 x 1324px
   mapImg = await loadImage('/assets/map.png');
-  croppedImg = mapImg.get(429, 57, mapImg.width - 1078, mapImg.height - 316); 
+  croppedImg = mapImg.get(471, 120, mapImg.width - 1246, mapImg.height - 400); 
 
   // Create canvas and buffers
   let cnv = createCanvas(croppedImg.width, croppedImg.height);
@@ -134,12 +135,12 @@ function drawGrid() {
     gridBuffer.line(0, y, width, y);
   }
 
-  for (let x = 0; x < width; x += cellSize * 5) {
-    for (let y = 0; y < height; y += cellSize * 5) {
+  for (let x = (cellOffsetX % 5) * cellSize; x < width; x += cellSize * 5) {
+    for (let y = (-cellOffsetY % 5) * cellSize; y < height; y += cellSize * 5) {
       gridBuffer.textSize(10);
       gridBuffer.fill(180, 100, 100, 240);
       gridBuffer.noStroke();
-      gridBuffer.text(`${x/cellSize - gridXOffset}, ${-(y/cellSize - gridYOffset)}`, x + 2, y + 19);
+      gridBuffer.text(`${x/cellSize - cellOffsetX}, ${-(y/cellSize + cellOffsetY)}`, x + 2, y + 19);
     }
   }
 
@@ -173,8 +174,8 @@ function exportJSON() {
     for (let y = 0; y < height; y += cellSize) {
       let difficulty = getAverageDifficulty(x, y, cellSize, cellSize);
       gridData.push({
-        x: x / cellSize - gridXOffset,
-        y: -(y / cellSize - gridYOffset),
+        x: x / cellSize - cellOffsetX,
+        y: -(y / cellSize + cellOffsetY),
         d: (difficulty / 100)  // Convert to a number between 0 and 1
       });
     }
