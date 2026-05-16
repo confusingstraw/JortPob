@@ -39,12 +39,7 @@ async function setup() {
   });
   
   document.getElementById('toggle-grid').addEventListener('click', () => {
-    showGrid = !showGrid;
-    if (showGrid) {
-      createGridOverlay();
-    } else {
-      gridBuffer.clear();
-    }
+    toggleGrid();
   });
 }
 
@@ -56,7 +51,9 @@ function draw() {
   image(drawBuffer, 0, 0);
 
   // Draw the grid buffer on top if the grid is visible
-  image(gridBuffer, 0, 0);
+  if (showGrid) {
+    image(gridBuffer, 0, 0);
+  }
 }
 
 function mouseDragged() {
@@ -76,6 +73,15 @@ function mouseDragged() {
 function mousePressed() {
   // Same behavior as dragging
   mouseDragged();
+}
+
+function toggleGrid() {
+  showGrid = !showGrid;
+  if (showGrid) {
+    createGridOverlay();
+  } else {
+    gridBuffer.clear();
+  }
 }
 
 function createGridOverlay() {
