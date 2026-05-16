@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elden Scrolls Difficulty Gradient Map Editor</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/p5.js"></script>
+    
+</head>
+<body>
+    <script src="sketch.js"></script>
+    <div id="toolbar">
+        <label id="color-label" for="color-picker">Color:</label>
+        <input type="range" id="color-picker" name="color" min="0" max="175" value="0">
+
+        <label id="alpha-label" for="alpha-picker">Alpha:</label>
+        <input type="range" id="alpha-picker" name="alpha" min="0" max="255" value="127">
+
+        <div>
+            <button id="toggle-grid">Toggle Grid</button>
+        </div>
+    </div>
+    <div id="map-container"></div>
+    <div id="grid-overlay"></div>
+</body>
+</html>

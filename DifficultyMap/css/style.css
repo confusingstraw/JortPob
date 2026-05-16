@@ -1,0 +1,112 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: rgb(117, 124, 176);
+}
+
+#toolbar {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 300px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+input[type=range] {
+  -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+  width: 100%; /* Specific width is required for Firefox. */
+  background: transparent; /* Otherwise white in Chrome */
+  margin: 5px 0;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+input[type=range]::-ms-track {
+  width: 100%;
+  cursor: pointer;
+
+  /* Hides the slider so custom styles can be added */
+  background: transparent; 
+  border-color: transparent;
+  color: transparent;
+}
+
+#color-picker {
+    background: linear-gradient(to right, blue, cyan, green, yellow, orange, red);
+}
+
+#alpha-picker {
+    background: linear-gradient(to right, rgba(255, 0, 0, 0), rgba(255, 0, 0, 1));
+}
+
+#map-container {
+    position: relative;
+    top: 100px;
+}
+
+#map-canvas {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    border: 2px solid #333;
+    background: #fff;
+}
+
+#toggle-grid {
+    /* position: absolute;
+    top: 60px;
+    left: 20px; */
+    background: #007BFF;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+#toggle-grid:hover {
+    background: #0056b3;
+}
+
+#grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 800px; /* Match canvas dimensions */
+    height: 600px; /* Match canvas dimensions */
+    pointer-events: none; /* Allow interactions to pass through */
+    display: none; /* Initially hidden */
+}
+
+.grid-line {
+    position: absolute;
+    background: rgba(200, 200, 200, 0.5);
+}
+
+.grid-line.vertical {
+    width: 1px;
+    height: 100%;
+}
+
+.grid-line.horizontal {
+    height: 1px;
+    width: 100%;
+}
