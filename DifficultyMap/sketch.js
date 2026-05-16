@@ -41,6 +41,10 @@ async function setup() {
   document.getElementById('toggle-grid').addEventListener('click', () => {
     toggleGrid();
   });
+
+  document.getElementById('export-png').addEventListener('click', () => {
+    exportPNG();
+  });
 }
 
 function draw() {
@@ -107,4 +111,16 @@ function createGridOverlay() {
       gridBuffer.text(`${x/cellSize - gridXOffset}, ${y/cellSize - gridYOffset}`, x + 2, y - 2);
     }
   }
+}
+
+function exportPNG() {
+  let exportBuffer = createGraphics(croppedImg.width, croppedImg.height);
+  exportBuffer.image(croppedImg, 0, 0);
+  exportBuffer.image(drawBuffer, 0, 0);
+  if (showGrid) {
+    exportBuffer.image(gridBuffer, 0, 0);
+  }
+  
+  // Save the combined image
+  exportBuffer.get().save('difficulty_map.png');
 }
