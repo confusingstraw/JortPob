@@ -86,6 +86,9 @@ async function setup() {
   document.getElementById('export-json').addEventListener('click', () => {
     exportJSON();
   });
+
+  let input = createFileInput(handleFile);
+  input.parent("toolbar");
 }
 
 function draw() {
@@ -131,9 +134,6 @@ function mouseDragged() {
   }
   drawBuffer.noErase();
 
-  
-  
-  
   if (brushShape === 'circle') {
     drawBuffer.strokeWeight(brushSize);
     drawBuffer.stroke(colorValue, 100, 100, alphaValue);
@@ -196,11 +196,18 @@ function drawGrid() {
   }
 }
 
+function handleFile(file) {
+  if (file.type === 'image') {
+    let img = createImg(file.data, '');
+    drawBuffer.clear();
+    drawBuffer.image(img, 0, 0);
+    img.hide(); // Hide the HTML element so only the canvas version shows
+  }
+}
+
 function exportDrawingPNG() {
   exportBuffer.clear();
   exportBuffer.image(drawBuffer, 0, 0);
-  
-  // Save the combined image
   exportBuffer.get().save('difficulty_map.png');
 }
 

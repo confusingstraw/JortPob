@@ -87,3 +87,8 @@ input[type=range]::-ms-track {
 .toolbar-button:hover {
     background: #0056b3;
 }
+
+#import-label {
+    display: block;
+    margin-top: 10px;
+}
