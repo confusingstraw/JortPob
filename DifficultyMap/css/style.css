@@ -99,6 +99,7 @@ input[type="range"]#alpha-picker::-moz-range-track {
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     margin-top: 5px;
+    transition: background 0.3s;
 }
 
 .toolbar-button:hover {
@@ -109,3 +110,20 @@ input[type="range"]#alpha-picker::-moz-range-track {
     display: block;
     margin-top: 10px;
 }
+
+input[type="file"]::file-selector-button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    margin-top: 5px;
+    transition: background 0.3s;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #0056b3;
+}
+
