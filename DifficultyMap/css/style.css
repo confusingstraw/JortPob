@@ -24,41 +24,58 @@ body {
     z-index: 10;
 }
 
-input[type=range] {
-  -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
-  width: 100%; /* Specific width is required for Firefox. */
-  background: transparent; /* Otherwise white in Chrome */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
   margin: 5px 0;
 }
 
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
+input[type="range"]::-webkit-slider-thumb {
+   -webkit-appearance: none;
+   appearance: none;
+   margin-top: -4px;
+   background-color: #007BFF;
+   height: 1rem;
+   width: 1rem;
+   border-radius: 50%;
 }
 
-input[type=range]:focus {
-  outline: none;
+input[type="range"]::-moz-range-thumb {
+   border: none;
+   background-color: #007BFF;
+   height: 1rem;
+   width: 1rem;
+   border-radius: 50%;
 }
 
-input[type=range]::-ms-track {
-  width: 100%;
-  cursor: pointer;
-
-  /* Hides the slider so custom styles can be added */
-  background: transparent; 
-  border-color: transparent;
-  color: transparent;
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #ddd;
+  height: 0.5rem;
+  border-radius: 0.5rem;
 }
 
-#color-picker {
+input[type="range"]::-moz-range-track {
+  background: #ddd;
+  height: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+input[type="range"]#color-picker::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, blue, cyan, green, yellow, orange, red);
+}
+
+input[type="range"]#color-picker::-moz-range-track {
     background: linear-gradient(to right, blue, cyan, green, yellow, orange, red);
 }
 
-#alpha-picker {
-    background: linear-gradient(to right, rgba(255, 0, 0, 0), rgba(255, 0, 0, 1));
+input[type="range"]#alpha-picker::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, rgba(255, 0, 0, 0), rgba(255, 0, 0, 1));
 }
 
-#brush-size-picker {
-    background: blue;
+input[type="range"]#alpha-picker::-moz-range-track {
+    background: linear-gradient(to right, rgba(255, 0, 0, 0), rgba(255, 0, 0, 1));
 }
 
 #map-container {
