@@ -56,7 +56,6 @@ async function setup() {
     setBrushSize(event.target.value);
   });
 
-  // Add event listeners for brush shape buttons
   document.getElementById('square-brush').addEventListener('click', () => {
     brushShape = 'square';
   });
@@ -87,8 +86,8 @@ async function setup() {
     exportJSON();
   });
 
-  let input = createFileInput(handleFile);
-  input.parent("toolbar");
+  let fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', handleFileInput);
 }
 
 function draw() {
@@ -196,13 +195,19 @@ function drawGrid() {
   }
 }
 
-function handleFile(file) {
-  if (file.type === 'image') {
-    let img = createImg(file.data, '');
-    drawBuffer.clear();
-    drawBuffer.image(img, 0, 0);
-    img.hide(); // Hide the HTML element so only the canvas version shows
-  }
+function handleFileInput(event) {
+  const file = event.target.files[0];
+  const reader = new FileReader();
+  
+  reader.onload = (e) => {
+      loadImage(e.target.result, (img) => {
+        drawBuffer.clear();
+        drawBuffer.image(img, 0, 0);
+      });
+  };
+
+  reader.readAsDataURL(file);
+  event.target.value = ''; // Clear the input so the same file can be re-uploaded if needed
 }
 
 function exportDrawingPNG() {
