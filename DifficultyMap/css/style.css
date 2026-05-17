@@ -10,6 +10,7 @@ body {
     align-items: center;
     min-height: 100vh;
     background: rgb(117, 124, 176);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 #toolbar {
