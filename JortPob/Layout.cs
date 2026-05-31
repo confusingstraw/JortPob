@@ -88,180 +88,23 @@ namespace JortPob
             // able refs is objects targeted by Enable, Disable, and GetDisabled
             var (allCalls, allReferences, toggleableReferences) = esm.GetScriptReferences();
             Lort.TaskIterate(); // Progress bar update
-
-            /* MSB promotion pre-process step */
-            /* Goal of this step is to identify all characters that have a "Follow" aipackage  or a "AiFollow" call that target them. */
-            void PreProcessFollow(Cell cell)
-            {
-                foreach (Content content in cell.contents)
-                {
-                    if (content is CharacterContent cc)
-                    {
-                        foreach (NpcContent.AiPackage package in cc.packages)
-                        {
-                            if (package.type == CharacterContent.AiPackage.Type.Follow && package.target == "player") { cc.follower = true; return; }
-                        }
-                    }
-                }
-            }
-            foreach (Cell cell in esm.exterior) { PreProcessFollow(cell); }  // handle ai packages part
-            foreach (Cell cell in esm.interior) { PreProcessFollow(cell); }
-
-            void SetFollowerFlagByRecordId(Cell cell, string id)
-            {
-                foreach (Content content in cell.contents)
-                {
-                    if (content is CharacterContent cc && content.id.Trim().ToLower() == id.Trim().ToLower())
-                    {
-                        cc.follower = true;
-                    }
-                }
-            }
-            foreach (Papyrus.Call call in allCalls) // Reusing "allCalls" list from above
-            {
-                // Grab record reference from target if exists
-                if (call.target != null && call.parameters.Count() > 0 && call.parameters[0].ToLower().Trim() == "player")
-                {
-                    switch (call.type)
-                    {
-                        case Papyrus.Call.Type.AiFollow:
-                        case Papyrus.Call.Type.AiFollowCell:
-                        case Papyrus.Call.Type.AiEscort:
-                        case Papyrus.Call.Type.AiEscortCell:
-                            foreach (Cell cell in esm.exterior) { SetFollowerFlagByRecordId(cell, call.target); }  // handle papyrus call part
-                            foreach (Cell cell in esm.interior) { SetFollowerFlagByRecordId(cell, call.target); }
-                            break;
-                        default: break;
-                    }
-                }
-            }
-
+            
+            SetFollowerFlags(esm, allCalls);
 
             /* Subdivide all cell content into tiles */
-            foreach (Cell cell in esm.exterior)
-            {
-                HugeTile huge = GetHugeTile(cell.center);
-                TerrainInfo terrain = cache.GetTerrain(cell.coordinate);
-                if (terrain != null)
-                {
-                    if (huge != null) { huge.AddTerrain(cell.center, terrain); }
-                    else { Lort.Log($" ## WARNING ## Terrain fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.region} :: B02", Lort.Type.Debug); }
-                }
-
-                if (huge != null)
-                {
-                    huge.AddCell(scriptManager, cell);
-
-                    foreach (Content content in cell.contents)
-                    {
-                        if (content is AssetContent assetContent)
-                        {
-                            /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
-                            /* We can't really do this earlier than this point sadly because we need both the ESM loaded and cache built to be able to catch this corner case */
-                            /* So we do it here */
-                            if (cache.GetModel(assetContent.mesh)?.HasEmitter() == true)
-                            {
-                                cache.AddConvertedEmitter(assetContent.ConvertToEmitter());
-                            }
-                        }
-
-                        huge.AddContent(cache, cell, content, allReferences.Contains(content.id.ToLower().Trim()));
-                    }
-                }
-                else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
-            }
+            PrepareCellTilesAndEmitters(cache, esm, scriptManager, allReferences);
             Lort.TaskIterate(); // Progress bar update
 
             /* Render an ASCII image of the tiles for verification! */
             Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
-            for (int y = 28; y < 66; y++)
-            {
-                string line = "";
-                for (int x = 30; x < 64; x++)
-                {
-                    Tile tile = GetTile(new Int2(x, y));
-                    if (tile == null) { line += "-"; }
-                    else
-                    {
-                        line += tile.assets.Count > 0 ? "X" : "~";
-                    }
-                }
-                Lort.Log(line, Lort.Type.Debug);
-            }
+            RenderWorldspaceAscii();
             Lort.TaskIterate(); // Progress bar update
 
-
-            /* Pre-sort interior cells by the number of beds they have (to avoid the 19 bed limit per msb) */
-            int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
-            List<Cell>[] cellPreSort = new List<Cell>[interiors.Count];
-
-            int CountBeds(List<Cell> cells) { return cells.Sum(cell => cell.BedCount()); }
-
-            for (int i = 0; i < cellPreSort.Length; i++) { cellPreSort[i] = new(); }  // initialize
-
-            foreach (Cell cell in esm.interior)
-            {
-                int beds = cell.BedCount();
-                bool fail = true;
-                foreach (List<Cell> cells in cellPreSort)
-                {
-                    if (cells.Count() >= partition) { continue; }                         // group must be less than the partition size of cells
-                    if (CountBeds(cells) + beds > Const.MAX_BEDS_PER_MSB) { continue; }  // number of beds in a group has to be 19 or less
-
-                    fail = false;
-                    cells.Add(cell);
-                    break;
-                }
-
-                if (fail) { throw new Exception("Too many beds! Oh god so many beds! Help!"); }
-            }
-
-            /* Subdivide all interior cells into groups */
-            for (int i = 0; i < cellPreSort.Length; i++)
-            {
-                InteriorGroup group = interiors[i];
-                List<Cell> cells = cellPreSort[i];
-                BaseScript script = scriptManager.GetScript(group);
-
-                foreach (Cell cell in cells)
-                {
-                    group.AddCell(scriptManager, cache, cell);
-                    scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
-                }
-            }
+            PrepareInteriorCells(cache, esm, scriptManager);
             Lort.TaskIterate(); // Progress bar update
 
             /* Resolve load doors and travel npcs */
-            foreach (InteriorGroup group in interiors)
-            {
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
-                {
-                    foreach (DoorContent door in chunk.doors)
-                    {
-                        RegisterDoorWarp(door, scriptManager);
-                        if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
-                    }
-
-                    foreach (NpcContent npc in chunk.npcs)
-                    {
-                        RegisterNpcWarp(esm, scriptManager, npc);
-                    }
-                }
-            }
-
-            foreach (Tile tile in tiles)
-            {
-                foreach (DoorContent door in tile.doors)
-                {
-                    RegisterDoorWarp(door, scriptManager);
-                    if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
-                }
-
-                foreach (NpcContent npc in tile.npcs)
-                {
-                    RegisterNpcWarp(esm, scriptManager, npc, tile);
-                }
-            }
+            ResolveDoorsAndWarps(esm, scriptManager);
             Lort.TaskIterate(); // Progress bar update
 
             /* default location name value for interiors */
@@ -272,136 +115,12 @@ namespace JortPob
             }
             Lort.TaskIterate(); // Progress bar update
 
-            /* Handle npc hasWitness flag */ // this check is very similar to and patially entwined with Script.GenerateCrimeEvents() and the ESD state HANDLECRIME
-            /* We can't determine witnesses at runtime so we just do some test now and determine if an npc has witneses to report crimes to */
-            void CheckWitnesses(List<NpcContent> npcs)
-            {
-                foreach (NpcContent npc in npcs)
-                {
-                    if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; break; }   // if an npc is naturally hostile to the player they don't report crimes lmao
-                    if (npc.IsGuard()) { npc.witness = CharacterContent.Witness.Guard; continue; }
-                    if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }
-                    foreach (NpcContent other in npcs)
-                    {
-                        if (npc == other) { continue; } // dont' self succ
-
-                        // guards get bonus range because I said so
-                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 50) { npc.witness = CharacterContent.Witness.Guard; break; }
-                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 15) { npc.witness = CharacterContent.Witness.Citizen; }
-                    }
-                }
-            }
-
-            foreach (Tile tile in tiles) { CheckWitnesses(tile.npcs); }
-            foreach (InteriorGroup group in interiors) {
-                foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.npcs); }
-            }
+            PrecomputeNpcWitnesses();
             Lort.TaskIterate(); // Progress bar update
 
             /* Statically resolve shop inventories for npcs (also creatures too) */
-            void ResolveShop(CharacterContent npc)
-            {
-                if (!npc.HasBarter()) { return; } // nope!
+            ResolveShops(esm);
 
-                bool WillBarter(CharacterContent npc, ESM.Type type)
-                {
-                    switch (type)
-                    {
-                        case ESM.Type.Armor:
-                            return npc.services.Contains(CharacterContent.Service.BartersArmor);
-                        case ESM.Type.Book:
-                            return npc.services.Contains(CharacterContent.Service.BartersBooks);
-                        case ESM.Type.Clothing:
-                            return npc.services.Contains(CharacterContent.Service.BartersClothing);
-                        case ESM.Type.Ingredient:
-                            return npc.services.Contains(CharacterContent.Service.BartersIngredients);
-                        case ESM.Type.Light:
-                            return npc.services.Contains(CharacterContent.Service.BartersLights);
-                        case ESM.Type.MiscItem:
-                            return npc.services.Contains(CharacterContent.Service.BartersMiscItems);
-                        case ESM.Type.Weapon:
-                            return npc.services.Contains(CharacterContent.Service.BartersWeapons);
-                        case ESM.Type.Probe:
-                            return npc.services.Contains(CharacterContent.Service.BartersProbes);
-                        case ESM.Type.Lockpick:
-                            return npc.services.Contains(CharacterContent.Service.BartersLockpicks);
-                        case ESM.Type.RepairItem:
-                            return npc.services.Contains(CharacterContent.Service.BartersRepairItems);
-                        case ESM.Type.Alchemy:
-                            return npc.services.Contains(CharacterContent.Service.BartersAlchemy);
-                        case ESM.Type.Apparatus:
-                            return npc.services.Contains(CharacterContent.Service.BartersApparatus);
-                        default:
-                            return false;
-                    }
-                }
-
-                Cell cell = npc.cell;
-                List<(string id, int quantity)> shopInv = new();
-
-                void AddOrIncrement(List<(string id, int quantity)> list, (string id, int quantity) tuple)
-                {
-                    for (int i = 0; i < list.Count(); i++)
-                    {
-                        (string id, int quantity) entry = list[i];
-                        if (entry.id.ToLower() == tuple.id.ToLower()) {
-                            list.RemoveAt(i);
-                            list.Add((entry.id, entry.quantity + tuple.quantity)); // can't increment value in a tuple because fuck
-                            return;
-                        }
-                    }
-                    list.Add(tuple);
-                }
-
-                foreach (ItemContent item in cell.items) // add loose items this npc owns
-                {
-                    if (item.ownerNpc == npc.id)
-                    {
-                        if (WillBarter(npc, item.type))
-                        {
-                            AddOrIncrement(shopInv, (item.id, 1));
-                        }
-                    }
-                }
-                foreach (ContainerContent container in cell.containers) // add containers this npc owns
-                {
-                    if (container.ownerNpc == npc.id)
-                    {
-                        foreach ((string id, int quantity) tuple in container.inventory)
-                        {
-                            Record record = esm.FindRecordById(tuple.id);
-                            if (WillBarter(npc, record.type))
-                            {
-                                AddOrIncrement(shopInv, tuple);
-                            }
-                        }
-                    }
-                }
-
-                foreach ((string id, int quantity) tuple in npc.inventory) // add own inventory to potential barter
-                {
-                    Record record = esm.FindRecordById(tuple.id);
-                    if (WillBarter(npc, record.type))
-                    {
-                        AddOrIncrement(shopInv, tuple);
-                    }
-                }
-                if (shopInv.Count() > 0) { npc.barter = shopInv; }
-            }
-
-            foreach (Tile tile in tiles)
-            {
-                foreach (NpcContent npc in tile.npcs) { ResolveShop(npc); }
-                foreach (CreatureContent creature in tile.creatures) { ResolveShop(creature); }
-            }
-            foreach (InteriorGroup group in interiors)
-            {
-                foreach (InteriorGroup.Chunk chunk in group.chunks)
-                {
-                    foreach (NpcContent npc in chunk.npcs) { ResolveShop(npc); }
-                    foreach (CreatureContent creature in chunk.creatures) { ResolveShop(creature); }
-                }
-            }
             Lort.TaskIterate(); // Progress bar update
 
             /* Part 2 of Papyrus preprocess */
@@ -504,8 +223,272 @@ namespace JortPob
 
             /* Preprocess papyrus calls like 'Position' that need a region placed at a location in the world */
             /* Also preprocess Position and PositionCell calls for npcs by creating "PhasedNPCs" */
+            PrepareScriptedPositions(cache, esm, param, scriptManager);
+
+            /* Process character aipackage positions */
+            foreach (Tile tile in tiles) { tile.ProcessTravelPoints(scriptManager); }
+            foreach (InteriorGroup group in interiors) { group.ProcessTravelPositions(scriptManager); }
+
+            /* Generate map point placements */
+            AddMapPointsOfInterest(esm, scriptManager);
+            Lort.TaskIterate(); // Progress bar update
+        }
+
+        private void PrecomputeNpcWitnesses()
+        {
+            /* Handle npc hasWitness flag */ // this check is very similar to and patially entwined with Script.GenerateCrimeEvents() and the ESD state HANDLECRIME
+            /* We can't determine witnesses at runtime so we just do some test now and determine if an npc has witneses to report crimes to */
+            void CheckWitnesses(List<NpcContent> npcs)
+            {
+                foreach (NpcContent npc in npcs)
+                {
+                    if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; break; }   // if an npc is naturally hostile to the player they don't report crimes lmao
+                    if (npc.IsGuard()) { npc.witness = CharacterContent.Witness.Guard; continue; }
+                    if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }
+                    foreach (NpcContent other in npcs)
+                    {
+                        if (npc == other) { continue; } // dont' self succ
+
+                        // guards get bonus range because I said so
+                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 50) { npc.witness = CharacterContent.Witness.Guard; break; }
+                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 15) { npc.witness = CharacterContent.Witness.Citizen; }
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles) { CheckWitnesses(tile.npcs); }
+            foreach (InteriorGroup group in interiors) {
+                foreach (InteriorGroup.Chunk chunk in group.chunks) { CheckWitnesses(chunk.npcs); }
+            }
+        }
+
+        private void ResolveDoorsAndWarps(ESM esm, ScriptManager scriptManager)
+        {
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    foreach (DoorContent door in chunk.doors)
+                    {
+                        RegisterDoorWarp(door, scriptManager);
+                        if (door.warp != null) { door.entity = scriptManager.GetScript(group).CreateEntity(Script.EntityType.Asset, $"DoorEntry::{door.cell.name}->{door.warp.cell}"); }
+                    }
+
+                    foreach (NpcContent npc in chunk.npcs)
+                    {
+                        RegisterNpcWarp(esm, scriptManager, npc);
+                    }
+                }
+            }
+
+            foreach (Tile tile in tiles)
+            {
+                foreach (DoorContent door in tile.doors)
+                {
+                    RegisterDoorWarp(door, scriptManager);
+                    if (door.warp != null) { door.entity = scriptManager.GetScript(tile).CreateEntity(Script.EntityType.Asset, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); }
+                }
+
+                foreach (NpcContent npc in tile.npcs)
+                {
+                    RegisterNpcWarp(esm, scriptManager, npc, tile);
+                }
+            }
+        }
+
+        private void RenderWorldspaceAscii()
+        {
+            for (int y = 28; y < 66; y++)
+            {
+                string line = "";
+                for (int x = 30; x < 64; x++)
+                {
+                    Tile tile = GetTile(new Int2(x, y));
+                    if (tile == null) { line += "-"; }
+                    else
+                    {
+                        line += tile.assets.Count > 0 ? "X" : "~";
+                    }
+                }
+                Lort.Log(line, Lort.Type.Debug);
+            }
+        }
+
+        private void PrepareInteriorCells(Cache cache, ESM esm, ScriptManager scriptManager)
+        {
+            int partition = (int)Math.Ceiling(esm.interior.Count / (float)interiors.Count);
+            List<Cell>[] cellPreSort = new List<Cell>[interiors.Count];
+
+            int CountBeds(List<Cell> cells) { return cells.Sum(cell => cell.BedCount()); }
+
+            for (int i = 0; i < cellPreSort.Length; i++) { cellPreSort[i] = new(); }  // initialize
+
+            /* Pre-sort interior cells by the number of beds they have (to avoid the 19 bed limit per msb) */
+            foreach (Cell cell in esm.interior)
+            {
+                int beds = cell.BedCount();
+                bool fail = true;
+                foreach (List<Cell> cells in cellPreSort)
+                {
+                    if (cells.Count() >= partition) { continue; }                         // group must be less than the partition size of cells
+                    if (CountBeds(cells) + beds > Const.MAX_BEDS_PER_MSB) { continue; }  // number of beds in a group has to be 19 or less
+
+                    fail = false;
+                    cells.Add(cell);
+                    break;
+                }
+
+                if (fail) { throw new Exception("Too many beds! Oh god so many beds! Help!"); }
+            }
+            
+            for (int i = 0; i < cellPreSort.Length; i++)
+            {
+                InteriorGroup group = interiors[i];
+                List<Cell> cells = cellPreSort[i];
+                BaseScript script = scriptManager.GetScript(group);
+
+                foreach (Cell cell in cells)
+                {
+                    group.AddCell(scriptManager, cache, cell);
+                    scriptManager.areas.Add(cell, script.CreateEntity(Script.EntityType.Region, $"cell {cell.name}"));
+                }
+            }
+        }
+
+        private void AddMapPointsOfInterest(ESM esm, ScriptManager scriptManager)
+        {
+            Dictionary<string, List<Vector3>> mapPoints = new();
+
+            // collect em all
+            foreach (Cell cell in esm.exterior)
+            {
+                if(!string.IsNullOrEmpty(cell.name))
+                {
+                    Landscape landscape = esm.GetLandscape(cell.coordinate);
+                    Vector3 center;
+                    if (landscape == null) { center = new(); }
+                    else { center = cell.center + new Vector3(0f, landscape.GetHeightAverage(), 0f); }
+
+                    if (mapPoints.ContainsKey(cell.name)) { mapPoints[cell.name].Add(center); }
+                    else { mapPoints.Add(cell.name, new() { center }); }
+                }
+            }
+
+            // merge similar
+            HashSet<string> pointNames = new();
+            List<MapPoint> importants = new();
+            foreach(var kvp in mapPoints)
+            {
+                string name = kvp.Key;                // name
+                Vector3 center = new();               // average of all points with same name
+                float radius = Const.CELL_SIZE / 2;   // minimum size for radius of map point is 1 cell
+
+                Vector3 first = kvp.Value.First();
+                foreach(Vector3 pos in kvp.Value)
+                {
+                    radius = Math.Max(radius, Vector3.Distance(first, pos));
+                    center += pos;
+                }
+
+                center *= (1f / kvp.Value.Count());
+
+                MapPoint.Icon icon = Override.GetMapIcon(name);
+                if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name);
+                Layout.MapPoint mapPoint = new(name, center, radius, true, discoverFlag, icon);
+                Tile tile = GetTile(center);
+                tile.AddMapPoint(mapPoint);
+                importants.Add(mapPoint);
+                pointNames.Add(name.ToLower().Trim());
+            }
+
+            foreach(Tile tile in tiles)
+            {
+                foreach(DoorContent door in tile.doors)
+                {
+                    if(door.warp != null)
+                    {
+                        string name = door.warp.cell;
+                        if (name.Contains(",")) { name = name.Split(",")[0].Trim(); } // Split area sub names so we just have the main area name. Changes things like "Shipwreck, Upper Level" to just "Shipwreck"
+                        MapPoint.Icon icon = Override.GetMapIcon(name);
+
+                        if (icon == MapPoint.Icon.None) { continue; }  // skip these
+
+                        // checks if a position is inside of one of the important map points we created above. skip these too!
+                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
+
+                        // see if map point has already been made. some areas have multiple entrances or exits
+                        var lowerName = name.ToLower().Trim();
+                        if(pointNames.Contains(lowerName)) { continue; }
+                        pointNames.Add(lowerName);
+
+                        const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
+                        Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
+                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE * UNIMPORTANT_SIZE_MODIFIER, false, discoverFlag, icon);
+                        tile.AddMapPoint(mapPoint);
+                    }
+                }
+            }
+        }
+
+        private void PrepareScriptedPositions(Cache cache, ESM esm, Paramanager param, ScriptManager scriptManager)
+        {
             Dictionary<NpcContent, int> phases = new();
 
+            foreach (Tile tile in tiles)
+            {
+                List<Content> allContent = tile.GetAllContent().ToList();
+                foreach(Content content in allContent)
+                {
+                    if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
+
+                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                    if (papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = papyrus.GetCalls();
+                    PreProcessScriptedPositions(content, calls, scriptManager, param, phases, esm, cache);
+                }
+            }
+
+            foreach (InteriorGroup group in interiors)
+            {
+                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                {
+                    List<Content> allContent = chunk.GetAllContent().ToList();
+                    foreach (Content content in allContent)
+                    {
+                        if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
+
+                        Papyrus papyrus = esm.GetPapyrus(content.papyrus);
+                        if (papyrus == null) { continue; }  // no script or failed to get script, skip
+
+                        List<Papyrus.Call> calls = papyrus.GetCalls();
+                        PreProcessScriptedPositions(content, calls, scriptManager, param, phases, esm, cache);
+                    }
+                }
+            }
+
+            foreach(Papyrus papyrus in esm.scripts)
+            {
+                foreach(Papyrus.Call call in papyrus.GetCalls(Papyrus.Call.Type.StartScript))
+                {
+                    Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
+                    if (subscript == null) { continue; }  // no script or failed to get script, skip
+
+                    List<Papyrus.Call> calls = subscript.GetCalls();
+                    PreProcessScriptedPositions(null, calls, scriptManager, param, phases, esm, cache);
+                }
+            }
+
+            foreach (Dialog.DialogRecord dialog in esm.dialog)
+            {
+                List<Papyrus.Call> calls = dialog.GetCalls();
+                PreProcessScriptedPositions(null, calls, scriptManager, param, phases, esm, cache); // null here means we cannot process self reference calls. will print error if we run into one
+            }
+        }
+
+        private void PreProcessScriptedPositions(Content content, List<Papyrus.Call> calls, ScriptManager scriptManager, Paramanager param, Dictionary<NpcContent, int> phases, ESM esm, Cache cache)
+        {
             void ReplaceNpc(NpcContent original, PhasedNpcContent replacement)
             {
                 // Find any registration scripts pointing at the original content and murder them. This is kind of a bandaid fix for some unanticipated side effects. It gets the job done but ew.
@@ -659,238 +642,299 @@ namespace JortPob
                 script.RegisterCharacter(param, pnpc, scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, pnpc.id));
                 script.RegisterNpcHostility(pnpc);
             }
-
-            void PreProcessScriptedPositions(Content content, List<Papyrus.Call> calls)
+                
+            foreach (Papyrus.Call call in calls)
             {
-                foreach (Papyrus.Call call in calls)
+                switch (call.type)
                 {
-                    switch (call.type)
+                    case Papyrus.Call.Type.Position:
                     {
-                        case Papyrus.Call.Type.Position:
-                            {
-                                // Find tile this position call is pointing too
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
-                                float rot = float.Parse(call.parameters[3]);
-                                Tile target = GetTile(position);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed Position call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                        // Find tile this position call is pointing too
+                        Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
+                        float rot = float.Parse(call.parameters[3]);
+                        Tile target = GetTile(position);
+                        if (target == null) { Lort.Log($"Failed to place region for preprocessed Position call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                // Add a point at this position that will become a region we can use in scripts later to warp the player around
-                                if (call.target == "player")
-                                {
-                                    BaseScript script = scriptManager.GetScript(target);
-                                    target.AddScriptedPosition(script, position, rot);
-                                }
-                                // Create a phased npc
-                                else
-                                {
-                                    HandleNpcPhase(target, null, position, rot, content, call);
-                                }
-                                break;
-                            }
-                        case Papyrus.Call.Type.PositionCell:
-                            {
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
-                                float rot = float.Parse(call.parameters[3]);
-                                string name = call.parameters[4];
-                                InteriorGroup.Chunk target = FindChunk(name);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed PositionCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                        // Add a point at this position that will become a region we can use in scripts later to warp the player around
+                        if (call.target == "player")
+                        {
+                            BaseScript script = scriptManager.GetScript(target);
+                            target.AddScriptedPosition(script, position, rot);
+                        }
+                        // Create a phased npc
+                        else
+                        {
+                            HandleNpcPhase(target, null, position, rot, content, call);
+                        }
+                        break;
+                    }
+                    case Papyrus.Call.Type.PositionCell:
+                    {
+                        Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
+                        float rot = float.Parse(call.parameters[3]);
+                        string name = call.parameters[4];
+                        InteriorGroup.Chunk target = FindChunk(name);
+                        if (target == null) { Lort.Log($"Failed to place region for preprocessed PositionCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                // Add a point at this position that will become a region we can use in scripts later to warp the player around
-                                if (call.target == "player")
-                                {
-                                    BaseScript script = scriptManager.GetScript(target.group);
-                                    target.AddScriptedPosition(script, position, rot);
-                                }
-                                // Create a phased npc
-                                else
-                                {
-                                    HandleNpcPhase(null, target, position, rot, content, call);
-                                }
-                                break;
-                            }
-                        case Papyrus.Call.Type.AiEscort:
-                        case Papyrus.Call.Type.AiFollow:
-                            {
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters, 2) * Const.GLOBAL_SCALE;
-                                Tile target = GetTile(position);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollow call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                        // Add a point at this position that will become a region we can use in scripts later to warp the player around
+                        if (call.target == "player")
+                        {
+                            BaseScript script = scriptManager.GetScript(target.group);
+                            target.AddScriptedPosition(script, position, rot);
+                        }
+                        // Create a phased npc
+                        else
+                        {
+                            HandleNpcPhase(null, target, position, rot, content, call);
+                        }
+                        break;
+                    }
+                    case Papyrus.Call.Type.AiEscort:
+                    case Papyrus.Call.Type.AiFollow:
+                    {
+                        Vector3 position = Utility.Vector3FromParameters(call.parameters, 2) * Const.GLOBAL_SCALE;
+                        Tile target = GetTile(position);
+                        if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollow call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                BaseScript script = scriptManager.GetScript(target);
-                                target.AddTravelPoint(script, position, 5f);
-                                break;
-                            }
-                        case Papyrus.Call.Type.AiEscortCell:
-                        case Papyrus.Call.Type.AiFollowCell:
-                            {
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters, 3) * Const.GLOBAL_SCALE;
-                                string name = call.parameters[1];
-                                InteriorGroup.Chunk target = FindChunk(name);
-                                if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollowCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                        BaseScript script = scriptManager.GetScript(target);
+                        target.AddTravelPoint(script, position, 5f);
+                        break;
+                    }
+                    case Papyrus.Call.Type.AiEscortCell:
+                    case Papyrus.Call.Type.AiFollowCell:
+                    {
+                        Vector3 position = Utility.Vector3FromParameters(call.parameters, 3) * Const.GLOBAL_SCALE;
+                        string name = call.parameters[1];
+                        InteriorGroup.Chunk target = FindChunk(name);
+                        if (target == null) { Lort.Log($"Failed to place region for preprocessed AiFollowCell call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                BaseScript script = scriptManager.GetScript(target.group);
-                                target.AddTravelPoint(script, position, 5f);
-                                break;
-                            }
-                        case Papyrus.Call.Type.AiTravel:
-                            {
-                                Content target;
-                                if(content == null) { target = FindScriptReference(null, call.target); } // attempt to resolve a dialog based call ref if possible, no guarantees though
-                                else { target = content; }
+                        BaseScript script = scriptManager.GetScript(target.group);
+                        target.AddTravelPoint(script, position, 5f);
+                        break;
+                    }
+                    case Papyrus.Call.Type.AiTravel:
+                    {
+                        Content target;
+                        if(content == null) { target = FindScriptReference(null, call.target); } // attempt to resolve a dialog based call ref if possible, no guarantees though
+                        else { target = content; }
 
-                                Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
-                                if(target == null || target.cell.IsExterior()) // failed reference resolve defaults to overworld
-                                {
-                                    Tile t = GetTile(position);
-                                    if (t == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                        Vector3 position = Utility.Vector3FromParameters(call.parameters) * Const.GLOBAL_SCALE;
+                        if(target == null || target.cell.IsExterior()) // failed reference resolve defaults to overworld
+                        {
+                            Tile t = GetTile(position);
+                            if (t == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                    BaseScript script = scriptManager.GetScript(t);
-                                    t.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
-                                }
-                                else
-                                {
-                                    string name = target.cell.name;
-                                    InteriorGroup.Chunk c = FindChunk(name);
-                                    if (c == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
+                            BaseScript script = scriptManager.GetScript(t);
+                            t.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
+                        }
+                        else
+                        {
+                            string name = target.cell.name;
+                            InteriorGroup.Chunk c = FindChunk(name);
+                            if (c == null) { Lort.Log($"Failed to place region for preprocessed AiTravel call -> '{call.RAW}'", Lort.Type.Debug); break; }
 
-                                    BaseScript script = scriptManager.GetScript(c.group);
-                                    c.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
-                                }
-                                break;
-                            }
-                        default: break; // do nothing
+                            BaseScript script = scriptManager.GetScript(c.group);
+                            c.AddTravelPoint(script, position, Const.PATH_REGION_SIZE);
+                        }
+                        break;
+                    }
+                    default: break; // do nothing
+                }
+            }
+        }
+
+        private void ResolveShops(ESM esm)
+        {
+            void SetupShop(CharacterContent npc)
+            {
+                if (!npc.HasBarter()) { return; } // nope!
+
+                bool WillBarter(CharacterContent npc, ESM.Type type)
+                {
+                    switch (type)
+                    {
+                        case ESM.Type.Armor:
+                            return npc.services.Contains(CharacterContent.Service.BartersArmor);
+                        case ESM.Type.Book:
+                            return npc.services.Contains(CharacterContent.Service.BartersBooks);
+                        case ESM.Type.Clothing:
+                            return npc.services.Contains(CharacterContent.Service.BartersClothing);
+                        case ESM.Type.Ingredient:
+                            return npc.services.Contains(CharacterContent.Service.BartersIngredients);
+                        case ESM.Type.Light:
+                            return npc.services.Contains(CharacterContent.Service.BartersLights);
+                        case ESM.Type.MiscItem:
+                            return npc.services.Contains(CharacterContent.Service.BartersMiscItems);
+                        case ESM.Type.Weapon:
+                            return npc.services.Contains(CharacterContent.Service.BartersWeapons);
+                        case ESM.Type.Probe:
+                            return npc.services.Contains(CharacterContent.Service.BartersProbes);
+                        case ESM.Type.Lockpick:
+                            return npc.services.Contains(CharacterContent.Service.BartersLockpicks);
+                        case ESM.Type.RepairItem:
+                            return npc.services.Contains(CharacterContent.Service.BartersRepairItems);
+                        case ESM.Type.Alchemy:
+                            return npc.services.Contains(CharacterContent.Service.BartersAlchemy);
+                        case ESM.Type.Apparatus:
+                            return npc.services.Contains(CharacterContent.Service.BartersApparatus);
+                        default:
+                            return false;
                     }
                 }
+
+                Cell cell = npc.cell;
+                List<(string id, int quantity)> shopInv = new();
+
+                void AddOrIncrement(List<(string id, int quantity)> list, (string id, int quantity) tuple)
+                {
+                    for (int i = 0; i < list.Count(); i++)
+                    {
+                        (string id, int quantity) entry = list[i];
+                        if (entry.id.ToLower() == tuple.id.ToLower()) {
+                            list.RemoveAt(i);
+                            list.Add((entry.id, entry.quantity + tuple.quantity)); // can't increment value in a tuple because fuck
+                            return;
+                        }
+                    }
+                    list.Add(tuple);
+                }
+
+                foreach (ItemContent item in cell.items) // add loose items this npc owns
+                {
+                    if (item.ownerNpc == npc.id)
+                    {
+                        if (WillBarter(npc, item.type))
+                        {
+                            AddOrIncrement(shopInv, (item.id, 1));
+                        }
+                    }
+                }
+                foreach (ContainerContent container in cell.containers) // add containers this npc owns
+                {
+                    if (container.ownerNpc == npc.id)
+                    {
+                        foreach ((string id, int quantity) tuple in container.inventory)
+                        {
+                            Record record = esm.FindRecordById(tuple.id);
+                            if (WillBarter(npc, record.type))
+                            {
+                                AddOrIncrement(shopInv, tuple);
+                            }
+                        }
+                    }
+                }
+
+                foreach ((string id, int quantity) tuple in npc.inventory) // add own inventory to potential barter
+                {
+                    Record record = esm.FindRecordById(tuple.id);
+                    if (WillBarter(npc, record.type))
+                    {
+                        AddOrIncrement(shopInv, tuple);
+                    }
+                }
+                if (shopInv.Count() > 0) { npc.barter = shopInv; }
             }
 
             foreach (Tile tile in tiles)
             {
-                List<Content> allContent = tile.GetAllContent().ToList();
-                foreach(Content content in allContent)
-                {
-                    if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
-
-                    Papyrus papyrus = esm.GetPapyrus(content.papyrus);
-                    if (papyrus == null) { continue; }  // no script or failed to get script, skip
-
-                    List<Papyrus.Call> calls = papyrus.GetCalls();
-                    PreProcessScriptedPositions(content, calls);
-                }
+                foreach (NpcContent npc in tile.npcs) { SetupShop(npc); }
+                foreach (CreatureContent creature in tile.creatures) { SetupShop(creature); }
             }
-
             foreach (InteriorGroup group in interiors)
             {
-                foreach(InteriorGroup.Chunk chunk in group.chunks)
+                foreach (InteriorGroup.Chunk chunk in group.chunks)
                 {
-                    List<Content> allContent = chunk.GetAllContent().ToList();
-                    foreach (Content content in allContent)
-                    {
-                        if (content is PhasedNpcContent) { continue; } // skip phased npcs as we don't want to re-process them
-
-                        Papyrus papyrus = esm.GetPapyrus(content.papyrus);
-                        if (papyrus == null) { continue; }  // no script or failed to get script, skip
-
-                        List<Papyrus.Call> calls = papyrus.GetCalls();
-                        PreProcessScriptedPositions(content, calls);
-                    }
+                    foreach (NpcContent npc in chunk.npcs) { SetupShop(npc); }
+                    foreach (CreatureContent creature in chunk.creatures) { SetupShop(creature); }
                 }
             }
+        }
 
-            foreach(Papyrus papyrus in esm.scripts)
-            {
-                foreach(Papyrus.Call call in papyrus.GetCalls(Papyrus.Call.Type.StartScript))
-                {
-                    Papyrus subscript = esm.GetPapyrus(call.parameters[0]);
-                    if (subscript == null) { continue; }  // no script or failed to get script, skip
-
-                    List<Papyrus.Call> calls = subscript.GetCalls();
-                    PreProcessScriptedPositions(null, calls);
-                }
-            }
-
-            foreach (Dialog.DialogRecord dialog in esm.dialog)
-            {
-                List<Papyrus.Call> calls = dialog.GetCalls();
-                PreProcessScriptedPositions(null, calls); // null here means we cannot process self reference calls. will print error if we run into one
-            }
-
-            /* Process character aipackage positions */
-            foreach (Tile tile in tiles) { tile.ProcessTravelPoints(scriptManager); }
-            foreach (InteriorGroup group in interiors) { group.ProcessTravelPositions(scriptManager); }
-
-            /* Generate map point placements */
-            Dictionary<string, List<Vector3>> mapPoints = new();
-
-            // collect em all
+        private void PrepareCellTilesAndEmitters(Cache cache, ESM esm, ScriptManager scriptManager, HashSet<string> allReferences)
+        {
             foreach (Cell cell in esm.exterior)
             {
-                if(!string.IsNullOrEmpty(cell.name))
+                HugeTile huge = GetHugeTile(cell.center);
+                TerrainInfo terrain = cache.GetTerrain(cell.coordinate);
+                if (terrain != null)
                 {
-                    Landscape landscape = esm.GetLandscape(cell.coordinate);
-                    Vector3 center;
-                    if (landscape == null) { center = new(); }
-                    else { center = cell.center + new Vector3(0f, landscape.GetHeightAverage(), 0f); }
-
-                    if (mapPoints.ContainsKey(cell.name)) { mapPoints[cell.name].Add(center); }
-                    else { mapPoints.Add(cell.name, new() { center }); }
-                }
-            }
-
-            // merge similar
-            HashSet<string> pointNames = new();
-            List<MapPoint> importants = new();
-            foreach(var kvp in mapPoints)
-            {
-                string name = kvp.Key;                // name
-                Vector3 center = new();               // average of all points with same name
-                float radius = Const.CELL_SIZE / 2;   // minimum size for radius of map point is 1 cell
-
-                Vector3 first = kvp.Value.First();
-                foreach(Vector3 pos in kvp.Value)
-                {
-                    radius = Math.Max(radius, Vector3.Distance(first, pos));
-                    center += pos;
+                    if (huge != null) { huge.AddTerrain(cell.center, terrain); }
+                    else { Lort.Log($" ## WARNING ## Terrain fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.region} :: B02", Lort.Type.Debug); }
                 }
 
-                center *= (1f / kvp.Value.Count());
-
-                MapPoint.Icon icon = Override.GetMapIcon(name);
-                if (icon == MapPoint.Icon.None) { continue; }  // skip these
-                Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name);
-                Layout.MapPoint mapPoint = new(name, center, radius, true, discoverFlag, icon);
-                Tile tile = GetTile(center);
-                tile.AddMapPoint(mapPoint);
-                importants.Add(mapPoint);
-                pointNames.Add(name.ToLower().Trim());
-            }
-
-            foreach(Tile tile in tiles)
-            {
-                foreach(DoorContent door in tile.doors)
+                if (huge != null)
                 {
-                    if(door.warp != null)
+                    huge.AddCell(scriptManager, cell);
+
+                    foreach (Content content in cell.contents)
                     {
-                        string name = door.warp.cell;
-                        if (name.Contains(",")) { name = name.Split(",")[0].Trim(); } // Split area sub names so we just have the main area name. Changes things like "Shipwreck, Upper Level" to just "Shipwreck"
-                        MapPoint.Icon icon = Override.GetMapIcon(name);
+                        if (content is AssetContent assetContent)
+                        {
+                            /* If an assetcontent has emitter nodes, we convert it to an emittercontent */
+                            /* We can't really do this earlier than this point sadly because we need both the ESM loaded and cache built to be able to catch this corner case */
+                            /* So we do it here */
+                            if (cache.GetModel(assetContent.mesh)?.HasEmitter() == true)
+                            {
+                                cache.AddConvertedEmitter(assetContent.ConvertToEmitter());
+                            }
+                        }
 
-                        if (icon == MapPoint.Icon.None) { continue; }  // skip these
+                        huge.AddContent(cache, cell, content, allReferences.Contains(content.id.ToLower().Trim()));
+                    }
+                }
+                else { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B02", Lort.Type.Debug); }
+            }
+        }
 
-                        // checks if a position is inside of one of the important map points we created above. skip these too!
-                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
-
-                        // see if map point has already been made. some areas have multiple entrances or exits
-                        var lowerName = name.ToLower().Trim();
-                        if(pointNames.Contains(lowerName)) { continue; }
-                        pointNames.Add(lowerName);
-
-                        const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
-                        Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
-                        Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE * UNIMPORTANT_SIZE_MODIFIER, false, discoverFlag, icon);
-                        tile.AddMapPoint(mapPoint);
+        private static void SetFollowerFlags(ESM esm, List<Papyrus.Call> allCalls)
+        {
+            /* MSB promotion pre-process step */
+            /* Goal of this step is to identify all characters that have a "Follow" aipackage  or a "AiFollow" call that target them. */
+            void PreProcessFollow(Cell cell)
+            {
+                foreach (Content content in cell.contents)
+                {
+                    if (content is CharacterContent cc)
+                    {
+                        foreach (NpcContent.AiPackage package in cc.packages)
+                        {
+                            if (package.type == CharacterContent.AiPackage.Type.Follow && package.target == "player") { cc.follower = true; return; }
+                        }
                     }
                 }
             }
-            Lort.TaskIterate(); // Progress bar update
+            foreach (Cell cell in esm.exterior) { PreProcessFollow(cell); }  // handle ai packages part
+            foreach (Cell cell in esm.interior) { PreProcessFollow(cell); }
+
+            void SetFollowerFlagByRecordId(Cell cell, string id)
+            {
+                foreach (Content content in cell.contents)
+                {
+                    if (content is CharacterContent cc && content.id.Trim().ToLower() == id.Trim().ToLower())
+                    {
+                        cc.follower = true;
+                    }
+                }
+            }
+
+            foreach (Papyrus.Call call in allCalls) // Reusing "allCalls" list from above
+            {
+                // Grab record reference from target if exists
+                if (call.target != null && call.parameters.Count() > 0 && call.parameters[0].ToLower().Trim() == "player")
+                {
+                    switch (call.type)
+                    {
+                        case Papyrus.Call.Type.AiFollow:
+                        case Papyrus.Call.Type.AiFollowCell:
+                        case Papyrus.Call.Type.AiEscort:
+                        case Papyrus.Call.Type.AiEscortCell:
+                            foreach (Cell cell in esm.exterior) { SetFollowerFlagByRecordId(cell, call.target); }  // handle papyrus call part
+                            foreach (Cell cell in esm.interior) { SetFollowerFlagByRecordId(cell, call.target); }
+                            break;
+                        default: break;
+                    }
+                }
+            }
         }
 
         private void RegisterDoorWarp(DoorContent door, ScriptManager scriptManager)
