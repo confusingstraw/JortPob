@@ -147,7 +147,7 @@ namespace JortPob
                         content.entity = areaScript.CreateEntity(entityType, $"{content.type}::{content.id}");
 
                         // talkable characters always get disable flags for simplicity. statically resolving dialog triggered self-disable calls is slow as hell
-                        if (content is NpcContent || (content is CreatureContent && esm.HasDialog((CreatureContent)content)) || toggleableReferences.Contains(contentId))
+                        if (content is NpcContent || (content is CreatureContent creatureContent && esm.HasDialog(creatureContent)) || toggleableReferences.Contains(contentId))
                         {
                             // Object disabled flag
                             Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
