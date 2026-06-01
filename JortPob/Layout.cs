@@ -150,7 +150,7 @@ namespace JortPob
                         if (content is NpcContent || (content is CreatureContent creatureContent && esm.HasDialog(creatureContent)) || toggleableReferences.Contains(contentId))
                         {
                             // Object disabled flag
-                            Script.Flag disableFlag = areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
+                            areaScript.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.Disabled, content);
                         }
                     }
 
