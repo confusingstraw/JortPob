@@ -181,7 +181,7 @@ namespace JortPob
                                 Script.Flag countFlag = scriptManager.common.GetOrCreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Byte, Script.Flag.Designation.DeadCount, character.id);
 
                                 // Humanoid NPCs or creatures that can talk
-                                if (character is NpcContent || (character is CreatureContent && !character.dead && esm.HasDialog((CreatureContent)character)))
+                                if (character is NpcContent || (character is CreatureContent creatureContent && !character.dead && esm.HasDialog(creatureContent)))
                                 {
                                     // Pre-Dead npcs get a special script to have their body just lay there. They do not get any flags or ESD stuff built
                                     if (character is NpcContent && character.dead) { areaScript.RegisterDeadNpc((NpcContent)character); }
