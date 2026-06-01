@@ -242,7 +242,7 @@ namespace JortPob
             {
                 foreach (NpcContent npc in npcs)
                 {
-                    if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; break; }   // if an npc is naturally hostile to the player they don't report crimes lmao
+                    if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; continue; }   // if an npc is naturally hostile to the player they don't report crimes lmao
                     if (npc.IsGuard()) { npc.witness = CharacterContent.Witness.Guard; continue; }
                     if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }
                     foreach (NpcContent other in npcs)
