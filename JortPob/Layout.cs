@@ -184,7 +184,7 @@ namespace JortPob
                                 if (character is NpcContent || (character is CreatureContent creatureContent && !character.dead && esm.HasDialog(creatureContent)))
                                 {
                                     // Pre-Dead npcs get a special script to have their body just lay there. They do not get any flags or ESD stuff built
-                                    if (character is NpcContent && character.dead) { areaScript.RegisterDeadNpc((NpcContent)character); }
+                                    if (character is NpcContent npcContent && character.dead) { areaScript.RegisterDeadNpc(npcContent); }
                                     // Create a bunch of stuff needed for NPCs to work
                                     else
                                     {
