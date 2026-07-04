@@ -21,16 +21,16 @@ id = 'elden-scrolls'
 source = 'mods\'
 
 [[natives]]
-path = 'mod\regbinmeme.dll'
+path = 'mods\regbinmeme.dll'
 
 [[natives]]
-path = 'mod\liveparam.dll'
+path = 'mods\liveparam.dll'
 
 [[natives]]
-path = 'mod\Scripts-Data-Exposer-FS.dll'
+path = 'mods\Scripts-Data-Exposer-FS.dll'
 
 [[natives]]
-path = 'mod\c0000fix.dll'
+path = 'mods\c0000fix.dll'
 ```
 
 Pic for reference:
