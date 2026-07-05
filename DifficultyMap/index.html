@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elden Scrolls Difficulty Gradient Map Editor</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/p5.min.js"></script>
+</head>
+<body>
+    <script src="sketch.js"></script>
+    <div id="toolbar">
+        <label id="color-label" for="color-picker">Color: 0</label>
+        <input type="range" id="color-picker" name="color" min="0" max="100" value="0">
+
+        <label id="alpha-label" for="alpha-picker">Alpha: 50</label>
+        <input type="range" id="alpha-picker" name="alpha" min="0" max="100" value="50">
+
+        <label id="brush-size-label" for="brush-size-picker">Brush Size: 35</label>
+        <input type="range" id="brush-size-picker" name="brush-size" min="1" max="100" value="35">
+
+        <button id="square-brush" class="toolbar-button">Square Brush</button>
+        <button id="circle-brush" class="toolbar-button">Circle Brush</button>
+        <button id="toggle-grid" class="toolbar-button">Toggle Grid</button>
+        <button id="toggle-difficulty" class="toolbar-button">Toggle Difficulty</button>
+        <button id="export-drawing-png" class="toolbar-button">Export Drawing PNG</button>
+        <button id="export-canvas-png" class="toolbar-button">Export Canvas PNG</button>
+        <button id="export-json" class="toolbar-button">Export JSON</button>
+
+        <label id="import-label" for="file-input" class="toolbar-button">Import PNG</label>
+        <input type="file" id="file-input" accept=".png">
+    </div>
+    <div id="map-container"></div>
+</body>
+</html>
