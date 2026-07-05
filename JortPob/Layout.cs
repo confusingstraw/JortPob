@@ -35,7 +35,7 @@ namespace JortPob
         public Layout(Cache cache, ESM esm, Paramanager param, TextManager text, ScriptManager scriptManager)
         {
             Lort.Log("Generating layout...", Lort.Type.Main);
-            Lort.NewTask("Generating Layout", 14);
+            Lort.NewTask("Generating Layout", 13);
 
             /* Generate tiles based off base game msb info... */
             var msbData = ProcessMsbList(
@@ -93,11 +93,6 @@ namespace JortPob
 
             /* Subdivide all cell content into tiles */
             PrepareCellTilesAndEmitters(cache, esm, scriptManager, allReferences);
-            Lort.TaskIterate(); // Progress bar update
-
-            /* Render an ASCII image of the tiles for verification! */
-            Lort.Log("Drawing ASCII art of worldspace map...", Lort.Type.Debug);
-            RenderWorldspaceAscii();
             Lort.TaskIterate(); // Progress bar update
 
             PrepareInteriorCells(cache, esm, scriptManager);
@@ -204,7 +199,7 @@ namespace JortPob
                                 {
                                     // Dead creatures not supported rn
                                     CreatureContent creature = content as CreatureContent;
-                                    if (creature.dead) { throw new Exception("Pre-Dead creatures not supported yet!"); }
+                                    if (creature.dead) { throw new Exception("Pre-Dead creatures not supported yet!"); }  // @TODO: add dead bodies for creatures with loot, prolly just a bone pile with items
                                     else { areaScript.RegisterCharacter(param, creature, countFlag); }
                                 }
                                 break;
@@ -238,20 +233,21 @@ namespace JortPob
         {
             /* Handle npc hasWitness flag */ // this check is very similar to and patially entwined with Script.GenerateCrimeEvents() and the ESD state HANDLECRIME
             /* We can't determine witnesses at runtime so we just do some test now and determine if an npc has witneses to report crimes to */
+            /* NOTE: There is a bug here where npcs in exterior tiles do not check nearby tiles. This means that a tile border acts as a barrier that crime reporting wont cross. This is likely a non-issue as tile borders almost never cross through towns but it's important to note! */
             void CheckWitnesses(List<NpcContent> npcs)
             {
                 foreach (NpcContent npc in npcs)
                 {
                     if (npc.IsHostile()) { npc.witness = CharacterContent.Witness.None; continue; }   // if an npc is naturally hostile to the player they don't report crimes lmao
                     if (npc.IsGuard()) { npc.witness = CharacterContent.Witness.Guard; continue; }
-                    if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }
+                    if (npc.alarm >= 50) { npc.witness = CharacterContent.Witness.Citizen; }  // iirc alarm is a dice roll from 0 to 100 to determine crime reporting. npcs are usually set to 0, 30, 70, or 100. i'm just going to make this a hard threshold instead for consistency
                     foreach (NpcContent other in npcs)
                     {
                         if (npc == other) { continue; } // dont' self succ
 
                         // guards get bonus range because I said so
-                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < 50) { npc.witness = CharacterContent.Witness.Guard; break; }
-                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < 15) { npc.witness = CharacterContent.Witness.Citizen; }
+                        if (other.IsGuard() && System.Numerics.Vector3.Distance(npc.position, other.position) < Const.CRIME_GUARD_REACT_RADIUS) { npc.witness = CharacterContent.Witness.Guard; break; }
+                        if (other.alarm >= 50 && System.Numerics.Vector3.Distance(npc.position, other.position) < Const.CRIME_CITIZEN_REACT_RADIUS) { npc.witness = CharacterContent.Witness.Citizen; }
                     }
                 }
             }
@@ -293,24 +289,6 @@ namespace JortPob
                 {
                     RegisterNpcWarp(esm, scriptManager, npc, tile);
                 }
-            }
-        }
-
-        private void RenderWorldspaceAscii()
-        {
-            for (int y = 28; y < 66; y++)
-            {
-                string line = "";
-                for (int x = 30; x < 64; x++)
-                {
-                    Tile tile = GetTile(new Int2(x, y));
-                    if (tile == null) { line += "-"; }
-                    else
-                    {
-                        line += tile.assets.Count > 0 ? "X" : "~";
-                    }
-                }
-                Lort.Log(line, Lort.Type.Debug);
             }
         }
 
@@ -414,17 +392,17 @@ namespace JortPob
 
                         if (icon == MapPoint.Icon.None) { continue; }  // skip these
 
-                        // checks if a position is inside of one of the important map points we created above. skip these too!
-                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
-
                         // see if map point has already been made. some areas have multiple entrances or exits
                         var lowerName = name.ToLower().Trim();
-                        if(pointNames.Contains(lowerName)) { continue; }
-                        pointNames.Add(lowerName);
+                        if (pointNames.Contains(lowerName)) { continue; }
+
+                        // checks if a position is inside of one of the important map points we created above. skip these too!
+                        if (importants.Any(p => Vector3.Distance(door.position, p.position) <= p.radius)) {  continue; }
 
                         const float UNIMPORTANT_SIZE_MODIFIER = 0.3f;
                         Script.Flag discoverFlag = scriptManager.common.CreateFlag(Script.Flag.Category.Saved, Script.Flag.Type.Bit, Script.Flag.Designation.DiscoverLocation, name); // if 2 doors go to the same interior we share the flag
                         Layout.MapPoint mapPoint = new(name, door.position, Const.CELL_SIZE * UNIMPORTANT_SIZE_MODIFIER, false, discoverFlag, icon);
+                        pointNames.Add(lowerName);
                         tile.AddMapPoint(mapPoint);
                     }
                 }

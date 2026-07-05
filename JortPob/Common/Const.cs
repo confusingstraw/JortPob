@@ -221,6 +221,10 @@ namespace JortPob.Common
         /// instead of 100 being "master" its 100 * X
         public static readonly float ALCHEMY_TIER_REQUIREMENT_SCALE = 0.45f;
 
+        /// various distances for crime detection
+        public static readonly float CRIME_CITIZEN_REACT_RADIUS = 15f;
+        public static readonly float CRIME_GUARD_REACT_RADIUS = 50f;
+
         #endregion
 
         #region Papyrus
