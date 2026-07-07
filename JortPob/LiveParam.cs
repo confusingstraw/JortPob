@@ -128,7 +128,8 @@ namespace FSParam
         {
             internal LiveParam Parent;
             public int ID { get; set; }
-            public string? Name { get; set; }
+            // May be null
+            public string Name { get; set; }
             internal uint DataIndex;
 
             public IEnumerable<Column> Cells => Parent.Cells;
@@ -149,7 +150,7 @@ namespace FSParam
 
             public PARAMDEF Def => Parent.AppliedParamdef;
 
-            internal Row(int id, string? name, LiveParam parent, uint dataIndex)
+            internal Row(int id, string name, LiveParam parent, uint dataIndex)
             {
                 ID = id;
                 Name = name;
@@ -183,7 +184,7 @@ namespace FSParam
                 clone.Parent._paramData.CopyData(Parent._paramData, DataIndex, clone.DataIndex);
             }
 
-            public bool DataEquals(Row? other)
+            public bool DataEquals(Row other)
             {
                 if (other == null)
                     return false;
@@ -546,7 +547,7 @@ namespace FSParam
             _rows.Insert(index, row);
         }
 
-        public int IndexOfRow(Row? row)
+        public int IndexOfRow(Row row)
         {
             if (row == null || row.Parent != this)
                 throw new ArgumentException();
@@ -746,7 +747,7 @@ namespace FSParam
             {
                 long nameOffset;
                 int id;
-                string? name = null;
+                string name = null;
                 uint dataIndex;
                 if (Format2D.HasFlag(FormatFlags1.LongDataOffset))
                 {
@@ -958,7 +959,7 @@ namespace FSParam
         /// Gets the index of the Row with ID id or returns null
         /// </summary>
         /// <param name="id">The ID of the row to find</param>
-        public Row? this[int id]
+        public Row this[int id]
         {
             get
             {
@@ -972,7 +973,7 @@ namespace FSParam
             }
         }
 
-        public Column? this[string name] => Cells.FirstOrDefault(cell => cell.Def.InternalName == name);
+        public Column this[string name] => Cells.FirstOrDefault(cell => cell.Def.InternalName == name);
         public static bool IsBitType(PARAMDEF.DefType type)
         {
             switch (type)

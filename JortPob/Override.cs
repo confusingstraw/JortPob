@@ -1,10 +1,12 @@
 ﻿using JortPob.Common;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace JortPob
 {
@@ -152,527 +154,157 @@ namespace JortPob
         public static void Initialize()
         {
             /* Load do_not_place overrides */
-            JsonNode jsonDoNotPlace = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")));
-            DO_NOT_PLACE = jsonDoNotPlace != null
-                ? jsonDoNotPlace.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
-                : [];
+            DO_NOT_PLACE = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Utility.ResourcePath(@"overrides\do_not_place.json")))
+                .Select(dnp => dnp.ToLower()).ToHashSet();
 
             /* Load static_collision overrides */
-            JsonNode jsonStaticCollision = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\static_collision.json")));
-            STATIC_COLLISION = jsonStaticCollision != null
-                ? jsonStaticCollision.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
-                : [];
+            STATIC_COLLISION = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Utility.ResourcePath(@"overrides\static_collision.json")))
+                .Select(sc => sc.ToLower()).ToHashSet();
 
             /* Load items_to_skip overrides */
-            JsonNode jsonItemsToSkip = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\items_to_skip.json")));
-            ITEMS_TO_SKIP = jsonItemsToSkip != null
-                ? jsonItemsToSkip.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
-                : [];
+            ITEMS_TO_SKIP = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Utility.ResourcePath(@"overrides\items_to_skip.json")))
+                .Select(its => its.ToLower()).ToHashSet();
 
             /* Load items_to_skip overrides */
-            JsonNode jsonCustomVoiceList = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\custom_voice_list.json")));
-            CUSTOM_VOICES = jsonCustomVoiceList != null
-                ? jsonCustomVoiceList.AsArray().Select(node => node.ToString().ToLower()).ToHashSet()
-                : [];
+            CUSTOM_VOICES = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Utility.ResourcePath(@"overrides\custom_voice_list.json")))
+                .Select(cv => cv.ToLower()).ToHashSet();
 
             /* Load character creation class overrides */
-            CHARACTER_CREATION_CLASS = new();
-            JsonArray jsonCharCreaClass = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json"))).AsArray();
-            foreach(JsonNode node in jsonCharCreaClass)
-            {
-                PlayerClass pc = new(node);
-                CHARACTER_CREATION_CLASS.Add(pc);
-            }
+            CHARACTER_CREATION_CLASS = JsonConvert.DeserializeObject<List<PlayerClass>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_class.json"))).ToList();
 
             /* Load character creation gift overrides */
-            CHARACTER_CREATION_GIFT = new();
-            JsonArray jsonCharCreaGift = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_gift.json"))).AsArray();
-            foreach (JsonNode node in jsonCharCreaGift)
-            {
-                Gift gift = new(node);
-                CHARACTER_CREATION_GIFT.Add(gift);
-            }
+            CHARACTER_CREATION_GIFT = JsonConvert.DeserializeObject<List<Gift>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_gift.json")));
 
             /* Load character creation race overrides */
-            CHARACTER_CREATION_RACE = JsonSerializer.Deserialize<List<PlayerRace>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_race.json")), new JsonSerializerOptions { IncludeFields = true });
+            CHARACTER_CREATION_RACE = JsonConvert.DeserializeObject<List<PlayerRace>>(File.ReadAllText(Utility.ResourcePath(@"overrides\character_creation_race.json")));
 
             /* Load alchemy recipe information */
-            ALCHEMY_INFOS = new();
-            JsonNode jsonAlchemyInfo = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\alchemy.json")));
-            foreach (var property in jsonAlchemyInfo.AsObject())
-            {
-                JsonNode jsonNode = property.Value;
-                AlchemyInfo alchy = new(property.Key, jsonNode);
-                ALCHEMY_INFOS.Add(alchy);
-            }
+            ALCHEMY_INFOS = JsonConvert.DeserializeObject<List<AlchemyInfo>>(File.ReadAllText(Utility.ResourcePath(@"overrides\alchemy.json")));
 
             /* Load weapon skill information list */
-            SKILL_INFOS = new();
-            JsonNode jsonSkillInfo = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\weapon_skill_info.json")));
-            foreach(JsonNode jsonNode in jsonSkillInfo.AsArray())
-            {
-                SkillInfo skillInfo = new(jsonNode);
-                SKILL_INFOS.Add(skillInfo);
-            }
+            SKILL_INFOS = JsonConvert.DeserializeObject<List<SkillInfo>>(File.ReadAllText(Utility.ResourcePath(@"overrides\weapon_skill_info.json")));
 
             /* Load spell remapping list */
-            SPELL_REMAPS_BY_ID = new();
-            JsonNode jsonSpellRemap = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\spell_remap.json")));
-            foreach (var property in jsonSpellRemap.AsObject())
-            {
-                JsonNode jsonNode = property.Value;
-                SpellRemap sprmo = new(property.Key, jsonNode);
-                SPELL_REMAPS_BY_ID.Add(sprmo.id, sprmo);
-            }
+            SPELL_REMAPS_BY_ID = JsonConvert.DeserializeObject<Dictionary<string, SpellRemap>>(File.ReadAllText(Utility.ResourcePath(@"overrides\spell_remap.json")));
 
             /* Load item remapping list */
-            ITEM_REMAPS_BY_ID = new();
-            string[] itemRemapFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\items\remap"));
-            foreach (string itemRemapFile in itemRemapFiles)
-            {
-                JsonNode itemRemapJson = JsonNode.Parse(File.ReadAllText(itemRemapFile));
-                foreach (var property in itemRemapJson.AsObject())
-                {
-                    JsonNode jsonNode = property.Value;
-                    ItemRemap itrmo = new(property.Key, jsonNode);
-                    ITEM_REMAPS_BY_ID.Add(itrmo.id, itrmo);
-                }
-            }
+            ITEM_REMAPS_BY_ID = Directory.GetFiles(Utility.ResourcePath(@"overrides\items\remap"))
+                .Select(file => JsonConvert.DeserializeObject<List<ItemRemap>>(File.ReadAllText(file)))
+                .SelectMany(list => list)
+                .ToDictionary(remap => remap.id);
 
             /* Load all item definitinos from resources/override/items */
-            string[] itemFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\items"));
-            ITEM_DEFINITIONS_BY_ID = new();
-            foreach (string itemFile in itemFiles)
-            {
-                ItemDefinition definition = new(itemFile);
-                ITEM_DEFINITIONS_BY_ID.Add(definition.id, definition);
-            }
+            ITEM_DEFINITIONS_BY_ID = Directory.GetFiles(Utility.ResourcePath(@"overrides\items"))
+                .Select(file =>
+                { 
+                    var obj = JsonConvert.DeserializeObject<ItemDefinition>(File.ReadAllText(file));
+                    obj.id = Path.GetFileNameWithoutExtension(file);
+                    return obj;
+                })
+                .ToDictionary(def => def.id);
 
             /* Load all speff definitinos from resources/override/speffs */
-            string[] speffFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\speffs"));
-            SPEFF_DEFINITIONS_BY_ID = new();
-            foreach (string speffFile in speffFiles)
-            {
-                SpeffDefinition definition = new(speffFile);
-                SPEFF_DEFINITIONS_BY_ID.Add(definition.id, definition);
-            }
+            SPEFF_DEFINITIONS_BY_ID = Directory.GetFiles(Utility.ResourcePath(@"overrides\speffs"))
+                .Select(file =>
+                {
+                    var obj = JsonConvert.DeserializeObject<SpeffDefinition>(File.ReadAllText(file));
+                    obj.id = Path.GetFileNameWithoutExtension(file);
+                    return obj;
+                })
+                .ToDictionary(def => def.id);
 
             /* Load enemy remap list */
-            ENEMY_REMAPS = new();
-            JsonNode jsonEnemyRemaps = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\enemy_remap.json")));
-            foreach (var property in jsonEnemyRemaps.AsObject())
-            {
-                JsonNode jsonNode = property.Value;
-                EnemyRemap enemyRemap = new(property.Key, jsonNode);
-                ENEMY_REMAPS.Add(enemyRemap);
-            }
+            ENEMY_REMAPS = JsonConvert.DeserializeObject<List<EnemyRemap>>(File.ReadAllText(Utility.ResourcePath(@"overrides\enemy_remap.json")));
 
             /* Load map icon overrides */
-            MAP_ICONS = new();
-            JsonNode jsonMapIcons = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\map_icons.json")));
-            foreach (var property in jsonMapIcons.AsObject())
-            {
-                string iconName = property.Value.GetValue<string>();
-                MAP_ICONS.Add(property.Key.ToLower().Trim(), Enum.Parse<Layout.MapPoint.Icon>(iconName));
-            }
+            MAP_ICONS = JsonConvert.DeserializeObject<Dictionary<string, Layout.MapPoint.Icon>>(File.ReadAllText(Utility.ResourcePath(@"overrides\map_icons.json")));
 
             /* Load hair id remap to elden ring hair part ids */
-            HAIR_REMAP = new();
-            JsonNode jsonHairRemap = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\face\hair.json")));
-            foreach (var property in jsonHairRemap.AsObject())
-            {
-                JsonNode node = property.Value;
-
-                string id = property.Key.ToLower().Trim();
-                byte partId = node["part"].GetValue<byte>();
-                string colorName = node["color"].GetValue<string>().Replace(" ", "");
-                Hair.Color color = Enum.Parse<Hair.Color>(colorName, true);
-
-                HAIR_REMAP.Add(id, new(partId, color));
-            }
+            HAIR_REMAP = JsonConvert.DeserializeObject<Dictionary<string, Hair>>(File.ReadAllText(Utility.ResourcePath(@"overrides\face\hair.json")));
 
             /* Load all json files in overrides/face and stick them in a dictionary for us to grab from */
-            FACE_REMAP = new();
-            string[] faceRemapFiles = Directory.GetFiles(Utility.ResourcePath(@"overrides\face"));
-            foreach (string faceRemapFile in faceRemapFiles)
-            {
-                string fileName = Path.GetFileNameWithoutExtension(faceRemapFile).ToLower().Trim();
-                if (fileName == "hair") { continue; } // skip hair json file
-
-                JsonNode faceRemapJson = JsonNode.Parse(File.ReadAllText(faceRemapFile));
-                FaceData faceData = new(fileName, faceRemapJson);
-                FACE_REMAP.Add(faceData.id, faceData);
-            }
+            FACE_REMAP = Directory.GetFiles(Utility.ResourcePath(@"overrides\face"))
+                .Where(file => Path.GetFileNameWithoutExtension(file).ToLower().Trim() != "hair")
+                .Select(file =>
+                {
+                    var obj = JsonConvert.DeserializeObject<FaceData>(File.ReadAllText(file));
+                    obj.id = Path.GetFileNameWithoutExtension(file);
+                    return obj;
+                })
+                .ToDictionary(remap => remap.id);
 
             /* Loading tips overrides */
-            LOADING_TIPS = new();
-            JsonNode jsonLoadingTips = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
-            foreach (var property in jsonLoadingTips.AsObject())
-            {
-                JsonNode jsonNode = property.Value;
-                LoadingTip loadingTip = new(property.Key, property.Value.GetValue<string>());
-                LOADING_TIPS.Add(loadingTip);
-            }
+            LOADING_TIPS = JsonConvert.DeserializeObject<List<LoadingTip>>(File.ReadAllText(Utility.ResourcePath(@"overrides\loading_tips.json")));
 
             /* Loading region bytes */
-            REGION = new();
-            JsonNode jsonRegion = JsonNode.Parse(File.ReadAllText(Utility.ResourcePath(@"overrides\region.json")));
-            foreach(var property in jsonRegion.AsObject())
-            {
-                string id = property.Key.ToLower().Trim();
-                byte value = property.Value.GetValue<byte>();
-                REGION.Add(id, value);
-            }
+            REGION = JsonConvert.DeserializeObject<Dictionary<string, byte>>(File.ReadAllText(Utility.ResourcePath(@"overrides\region.json")));
         }
 
         /* Classes for serializing */
-        public class PlayerClass
+        public record PlayerClass(string name, string description, Dictionary<string, int> data);
+
+        public record PlayerRace(string name, string description, byte id);
+
+        public record Gift(string name, string description, Dictionary<string, int> data);
+
+        public record AlchemyInfo(string comment, string id, CharacterContent.Stats.Tier tier, List<string> ingredients);
+
+        public record SkillInfo(string comment, int row, CharacterContent.Stats.Tier tier, int value, ItemText text)
         {
-            public string name, description;
-            public readonly Dictionary<string, int> data;
-
-            public PlayerClass(JsonNode json)
-            {
-                name = json["name"].GetValue<string>();
-                description = json["description"].GetValue<string>();
-
-                data = new();
-                foreach (var property in json["data"].AsObject())
-                {
-                    data.Add(property.Key, property.Value.GetValue<int>());
-                }
-            }
-        }
-
-        public class PlayerRace
-        {
-            public string name, description;
-            public byte id;  // this id matches the values of the CharacterContent.Race enums
-
-            public PlayerRace() { }
-        }
-
-        public class Gift
-        {
-            public string name, description;
-            public readonly Dictionary<string, int> data;
-
-            public Gift(JsonNode json)
-            {
-                name = json["name"].GetValue<string>();
-                description = json["description"].GetValue<string>();
-
-                data = new();
-                foreach (var property in json["data"].AsObject())
-                {
-                    data.Add(property.Key, property.Value.GetValue<int>());
-                }
-            }
-        }
-
-        public class AlchemyInfo
-        {
-            public readonly string comment;
-            public readonly string id;
-            public readonly CharacterContent.Stats.Tier tier;
-            public readonly List<string> ingredients;
-
-            public AlchemyInfo(string id, JsonNode json)
-            {
-                this.id = id;
-                comment = json["comment"]?.GetValue<string>();
-                tier = (CharacterContent.Stats.Tier)System.Enum.Parse(typeof(CharacterContent.Stats.Tier), json["tier"].GetValue<string>());
-
-                ingredients = new();
-                JsonArray jsonArray = json["ingredients"].AsArray();
-                for(int i=0;i<jsonArray.Count;i++)
-                {
-                    ingredients.Add(jsonArray[i].GetValue<string>());
-                }
-            }
-        }
-
-        public class SkillInfo
-        {
-            public readonly string comment;
-            public readonly int row;    // gemparam row
-            public readonly CharacterContent.Stats.Tier tier;  // strength and rarity of skill
-            public readonly int value;  // value is how much merchants will sell it for
-
-            public readonly ItemText text;
-
-            public SkillInfo(JsonNode json)
-            {
-                comment = json["comment"]?.GetValue<string>();
-                row = json["row"].GetValue<int>();
-                tier = (CharacterContent.Stats.Tier)System.Enum.Parse(typeof(CharacterContent.Stats.Tier), json["tier"].GetValue<string>());
-                value = json["value"].GetValue<int>();
-
-                if (json["text"] != null)
-                {
-                    text = new();
-                    text.name = json["text"]["name"] != null ? json["text"]["name"].GetValue<string>() : null;
-                    text.summary = json["text"]["summary"] != null ? json["text"]["summary"].GetValue<string>() : null;
-                    text.description = json["text"]["description"] != null ? json["text"]["description"].GetValue<string>() : null;
-                }
-                else
-                {
-                    text = null;
-                }
-            }
-
             public bool HasTextChanges()
             {
                 return text != null && (text.name != null || text.summary != null || text.description != null || text.effect != null);
             }
         }
 
-        public class SpellRemap
+        public record SpellRemap(string id, string comment, int row, ItemText text)
         {
-            public readonly string id, comment;
-            public readonly int row;  // both the GoodsParam for the spell item and the MagicParam for the actual spell share the same row so we good
-
-            public readonly ItemText text;
-
-            public SpellRemap(string id, JsonNode json)
-            {
-                this.id = id;
-                row = json["row"].GetValue<int>();
-                comment = json["comment"]?.GetValue<string>();
-
-                if (json["text"] != null)
-                {
-                    text = new();
-                    text.name = json["text"]["name"] != null ? json["text"]["name"].GetValue<string>() : null;
-                    text.summary = json["text"]["summary"] != null ? json["text"]["summary"].GetValue<string>() : null;
-                    text.description = json["text"]["description"] != null ? json["text"]["description"].GetValue<string>() : null;
-                }
-                else
-                {
-                    text = null;
-                }
-            }
-
             public bool HasTextChanges()
             {
                 return text != null && (text.name != null || text.summary != null || text.description != null || text.effect != null);
             }
         }
 
-        public class ItemRemap
+        public record ItemRemap(string id, string comment, ItemManager.Type type, int row, ItemManager.Infusion infusion, ItemText text, int skill = -1, int upgrade = 0)
         {
-            public readonly string id, comment;
-            public readonly ItemManager.Type type;
-            public readonly int row;
-
-            // these 3 fields are only used for the CustomWeapon type
-            public readonly ItemManager.Infusion infusion;
-            public readonly int skill, upgrade;
-
-            public readonly ItemText text;
-
-            public ItemRemap(string id, JsonNode json)
-            {
-                this.id = id;
-                type = (ItemManager.Type)System.Enum.Parse(typeof(ItemManager.Type), json["type"].GetValue<string>());
-                row = json["row"].GetValue<int>();
-                comment = json["comment"]?.GetValue<string>();
-
-                if (json["infusion"] != null)
-                {
-                    infusion = (ItemManager.Infusion)System.Enum.Parse(typeof(ItemManager.Infusion), json["infusion"].GetValue<string>());
-                }
-                else
-                {
-                    infusion = ItemManager.Infusion.None;
-                }
-
-                skill = json["skill"] != null ? json["skill"].GetValue<int>() : -1;
-                upgrade = json["upgrade"] != null ? json["upgrade"].GetValue<int>() : 0;
-
-                if (json["text"] != null)
-                {
-                    text = new();
-                    text.name = json["text"]["name"] != null ? json["text"]["name"].GetValue<string>() : null;
-                    text.summary = json["text"]["summary"] != null ? json["text"]["summary"].GetValue<string>() : null;
-                    text.description = json["text"]["description"] != null ? json["text"]["description"].GetValue<string>() : null;
-                    text.effect = json["text"]["effect"] != null ? json["text"]["effect"].GetValue<string>() : null;
-                    text.enchant = json["text"]["enchant"] != null ? json["text"]["enchant"].AsArray().Select(node => node.GetValue<string>()).ToArray() : null;
-                }
-                else
-                {
-                    text = null;
-                }
-            }
-
             public bool HasTextChanges()
             {
                 return text != null && (text.name != null || text.summary != null || text.description != null || text.effect != null);
             }
         }
 
-        public class ItemText
-        {
-            public string name, summary, description, effect;
-            public string[] enchant;
+        public record ItemText(string name, string summary, string description, string effect, string[] enchant);
 
-            public ItemText() { }
+        public record SpeffDefinition(string comment, int row, Dictionary<string, string> data,
+                                        SpeffManager.Speff.Effect.MagicEffect icon = SpeffManager.Speff.Effect.MagicEffect.None)
+        {
+            public string id { get; set; }
         }
 
-        public class SpeffDefinition
+        public record ItemDefinition(string comment, ItemManager.Type type, int row, ItemManager.Infusion infusion,
+                                    ItemText text, Dictionary<string, string> data, int skill = -1, int upgrade = 0, bool useIcon = false)
         {
-            public readonly string id, comment;
-            public readonly int row;
-
-            public readonly SpeffManager.Speff.Effect.MagicEffect icon; // buff icon to use. 'None' is valid
-
-            public readonly Dictionary<string, string> data;
-
-            public SpeffDefinition(string jsonPath)
-            {
-                id = Path.GetFileNameWithoutExtension(jsonPath);
-
-                JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
-
-                comment = json["comment"]?.GetValue<string>();
-                row = json["row"].GetValue<int>();
-
-                if (json["icon"] != null && json["icon"].GetValue<string>().Trim().ToLower() != "none")
-                {
-                    icon = (SpeffManager.Speff.Effect.MagicEffect)System.Enum.Parse(typeof(SpeffManager.Speff.Effect.MagicEffect), json["icon"].GetValue<string>());
-                }
-                else
-                {
-                    icon = SpeffManager.Speff.Effect.MagicEffect.None;
-                }
-
-                data = new();
-                foreach (var property in json["data"].AsObject())
-                {
-                    data.Add(property.Key, property.Value.ToString());
-                }
-            }
+            public string id { get; set; }
         }
 
-        public class ItemDefinition
+        public record EnemyRemapData(int row, Dictionary<string, string> data)
         {
-            public readonly string id, comment;
-            public readonly ItemManager.Type type;
-            public readonly int row;                   // row we copy as our base
-
-            // these 3 fields are only used for the CustomWeapon type
-            public readonly ItemManager.Infusion infusion;
-            public readonly int skill, upgrade;
-
-            public readonly bool useIcon; // use morrowind item icon if true, otherwise use whatever is set in the param
-
-            public readonly ItemText text;
-            public readonly Dictionary<string, string> data;
-
-            public ItemDefinition(string jsonPath)
-            {
-                id = Path.GetFileNameWithoutExtension(jsonPath);
-
-                JsonNode json = JsonNode.Parse(File.ReadAllText(jsonPath));
-
-                comment = json["comment"]?.GetValue<string>();
-                type = Enum.Parse<ItemManager.Type>(json["type"].GetValue<string>());
-                row = json["row"].GetValue<int>();
-
-                if (json["infusion"] != null)
-                {
-                    infusion = Enum.Parse<ItemManager.Infusion>(json["infusion"].GetValue<string>());
-                }
-                else
-                {
-                    infusion = ItemManager.Infusion.None;
-                }
-
-                skill = json["skill"] != null ? json["skill"].GetValue<int>() : -1;
-                upgrade = json["upgrade"] != null ? json["upgrade"].GetValue<int>() : 0;
-
-                useIcon = json["useIcon"] != null ? json["useIcon"].GetValue<bool>() : false;
-
-                text = new();
-                text.name = json["text"]["name"] != null ? json["text"]["name"].GetValue<string>() : null;
-                text.summary = json["text"]["summary"] != null ? json["text"]["summary"].GetValue<string>() : null;
-                text.description = json["text"]["description"] != null ? json["text"]["description"].GetValue<string>() : null;
-                text.effect = json["text"]["effect"] != null ? json["text"]["effect"].GetValue<string>() : null;
-                text.enchant = json["text"]["enchant"] != null ? json["text"]["enchant"].AsArray().Select(node => node.GetValue<string>()).ToArray() : null;
-
-                data = new();
-                foreach(var property in json["data"].AsObject())
-                {
-                    data.Add(property.Key, property.Value.ToString());
-                }
-            }
+            public EnemyRemapData(int row)
+                : this(row, new())
+            {}
         }
 
-        public class EnemyRemap
+        public record EnemyRemap(string id, string comment, string character, EnemyRemapData npc, EnemyRemapData think)
         {
-            public readonly string id, comment, character;
-            public readonly EnemyRemapData npc, think;
-
-            public EnemyRemap(string id, JsonNode json)
-            {
-                this.id = id.ToLower().Trim();
-                character = json["character"]?.GetValue<string>();
-                comment = json["comment"]?.GetValue<string>();
-
-                npc = new(json["npc"]);
-                think = new(json["think"]);
-            }
-
             /* Default constructor, points to a Goat */
             public EnemyRemap()
-            {
-                id = "DEFAULT";
-                character = "c6060";
-                comment = "Default constructor, used when no remap found. Creates a goat.";
-
-                npc = new(60600010);
-                think = new(60600000);
-            }
-
-            public class EnemyRemapData
-            {
-                public readonly int row;
-                public readonly Dictionary<string, string> data;
-
-                public EnemyRemapData(JsonNode json)
-                {
-                    row = json["row"].GetValue<int>();
-
-                    data = new();
-                    foreach (var property in json["data"].AsObject())
-                    {
-                        data.Add(property.Key, property.Value.ToString());
-                    }
-                }
-
-                public EnemyRemapData(int row)
-                {
-                    this.row = row;
-                    data = new();
-                }
-            }
+                : this("DEFAULT", "Default constructor, used when no remap found. Creates a goat.", "c6060", new(60600010), new(60600000))
+            {}
         }
 
-        public class FaceData
+        public record FaceData(Dictionary<string, byte> data)
         {
-            public readonly string id;
-            public readonly Dictionary<string, byte> data;
-
-            public FaceData(string id, JsonNode json)
-            {
-                this.id = id.ToLower().Trim();
-
-                data = new();
-                foreach (var property in json.AsObject())
-                {
-                    data.Add(property.Key, property.Value.GetValue<byte>());
-                }
-            }
+            public string id { get; set; }
         }
 
         public record Hair(byte part, Hair.Color color)
@@ -701,15 +333,6 @@ namespace JortPob
             }
         }
 
-        public class LoadingTip
-        {
-            public readonly string title, text;
-
-            public LoadingTip(string title, string text)
-            {
-                this.title = title;
-                this.text = text;
-            }
-        }
+        public record LoadingTip(string title, string text);
     }
 }

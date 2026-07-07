@@ -215,7 +215,7 @@ namespace JortPob.Common
                     // If processes succeeded but the file isn't there, something is wrong, we retry
                     throw new FileNotFoundException($"WEM file was not found after successful conversion: {wemPath}");
                 }
-                catch (Exception ex)
+                catch
                 {
                     // Keep retrying. Don't spam log after every failed generation as it's bloat.
                     // If we fail up to MAX_RETRY then we throw an exception and print log.

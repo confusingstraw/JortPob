@@ -16,11 +16,11 @@ namespace JortPob
         public readonly Cell cell;
 
         public readonly string id;   // record id
-        public readonly string? name; // can be null!
+        public readonly string name; // can be null!
         public readonly ESM.Type type;
 
         public uint entity;  // entity id, usually 0
-        public string? papyrus { get; private set; } // papyrus script id if it has one (usually null)
+        public string papyrus { get; private set; } // papyrus script id if it has one (usually null)
         public Vector3 relative;
         public Int2 load; // if a piece of content needs tile load data this is where it's stored
 
@@ -28,7 +28,7 @@ namespace JortPob
         public Vector3 rotation;
         public readonly int scale;  // scale in converted to a int where 100 = 1.0f scale. IE:clamp to nearest 1%. this is to group scale for asset generation.
 
-        public string? mesh;  // can be null!
+        public string mesh;  // can be null!
 
         public Content(Cell cell, JsonNode json, Record record)
         {

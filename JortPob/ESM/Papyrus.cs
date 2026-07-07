@@ -478,7 +478,7 @@ namespace JortPob
                     parameters = ps.ToArray();
                 }
                 // Handle variable
-                else if (!Enum.TryParse(typeof(Type), sanitize.Split(" ")[0], true, out object? callTest))
+                else if (!Enum.TryParse(typeof(Type), sanitize.Split(" ")[0], true, out object _))
                 {
                     type = Type.Variable;
                     parameters = Utility.StringAwareSplit(sanitize, ' ');
