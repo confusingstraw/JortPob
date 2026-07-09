@@ -20,7 +20,7 @@ namespace JortPob
         /* Interior and Exterior cells */
         public ResourcePool(IMSBCompilableGroup group, MSBE msb, LightManager lights, BaseScript script = null)
         {
-            id = [group.Map, group.Coordinates.x, group.Coordinates.y, group.Block];
+            id = [group.map, group.coordinates.x, group.coordinates.y, group.block];
             mapIndices = new();
             collisionIndices = new();
             this.msb = msb;

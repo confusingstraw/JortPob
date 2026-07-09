@@ -2086,7 +2086,7 @@ namespace JortPob
             if(content is CharacterContent cc && cc.follower == true && !script.IsInterior())
             {
                 BaseTile tile = layout.FindTile(content);
-                lines.Insert(0, $"IfMapLoaded(MAIN, {tile.Map}, {tile.Coordinates.x}, {tile.Coordinates.y}, {tile.Block});"); // if msb promoted character then only run script when the msb is loaded
+                lines.Insert(0, $"IfMapLoaded(MAIN, {tile.map}, {tile.coordinates.x}, {tile.coordinates.y}, {tile.block});"); // if msb promoted character then only run script when the msb is loaded
             }
 
             lines.Add($"EndUnconditionally(EventEndType.Restart);"); // mw scripts always restart

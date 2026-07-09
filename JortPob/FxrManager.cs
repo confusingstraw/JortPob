@@ -165,8 +165,8 @@ namespace JortPob
             foreach(InteriorGroup group in layout.Interiors)
             {
                 if (group.IsEmpty) { continue; }
-                if (maps.Contains(group.Map)) { continue; }
-                maps.Add(group.Map);
+                if (maps.Contains(group.map)) { continue; }
+                maps.Add(group.map);
             }
 
             Lort.Log($"Writing {maps.Count} FFX Binder files... ", Lort.Type.Main);

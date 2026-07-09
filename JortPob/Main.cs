@@ -69,13 +69,13 @@ namespace JortPob
                 };
 
                 BaseScript script = scriptManager.GetScript(group);
-                LightManager lightManager = new(group.Map, group.Coordinates.x, group.Coordinates.y, group.Block);
+                LightManager lightManager = new(group.map, group.coordinates.x, group.coordinates.y, group.block);
                 ResourcePool pool = new(group, msb, lightManager, script);
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
 
-                string NewCollisionIndex() => $"{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextC++:D2}";
+                string NewCollisionIndex() => $"{group.coordinates.x:D2}{group.coordinates.y:D2}{nextC++:D2}";
 
                 /* Handle chunks */
                 List<IMSBCompilableChunk> chunks = group.Chunks;
@@ -92,7 +92,7 @@ namespace JortPob
                         string collisionIndex = NewCollisionIndex();
                         rootCollision.Name = $"h{collisionIndex}_0000";
                         rootCollision.ModelName = $"h{collisionIndex}";
-                        rootCollision.Position = chunk.Root + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Z, 0f);
+                        rootCollision.Position = chunk.root + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Z, 0f);
                         rootCollision.Unk1.DisplayGroups[0] = 0;
                         rootCollision.Unk1.DisplayGroups[1] = chunkDrawGroup;
                         rootCollision.Unk1.CollisionMask[0] = 0;
@@ -103,9 +103,9 @@ namespace JortPob
                         /* Interior MSB shadow box */
                         ModelInfo shadowBoxModelInfo = cache.GetModel("interiorshadowbox");
                         MSBE.Part.Asset shadowBoxAsset = MakePart.Asset(shadowBoxModelInfo);
-                        shadowBoxAsset.Position = chunk.Root + Const.MSB_OFFSET;
+                        shadowBoxAsset.Position = chunk.root + Const.MSB_OFFSET;
                         shadowBoxAsset.Rotation = Vector3.Zero;
-                        shadowBoxAsset.Scale = chunk.Bounds;
+                        shadowBoxAsset.Scale = chunk.bounds;
                         shadowBoxAsset.Unk1.DisplayGroups[0] = 0;
                         shadowBoxAsset.UnkPartNames[1] = rootCollision.Name;
                         shadowBoxAsset.UnkPartNames[3] = rootCollision.Name;
@@ -114,7 +114,7 @@ namespace JortPob
                     }
                     else if (group is Tile tile)
                     {
-                        List<Tuple<Vector3, TerrainInfo>> terrains = tile.Terrain;
+                        List<Tuple<Vector3, TerrainInfo>> terrains = tile.terrain;
 
                         /* Add terrain */
                         foreach ((Vector3 position, TerrainInfo terrainInfo) in terrains)
@@ -180,7 +180,7 @@ namespace JortPob
                     }
 
                     /* Add assets */
-                    foreach (AssetContent content in chunk.Assets)
+                    foreach (AssetContent content in chunk.assets)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -203,7 +203,7 @@ namespace JortPob
                         /* Asset tileload config */
                         else if (group is HugeTile || group is BigTile)
                         {
-                            asset.TileLoad.MapID = [(byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.Map];
+                            asset.TileLoad.MapID = [(byte)0, (byte)content.load.y, (byte)content.load.x, (byte)group.map];
                             asset.TileLoad.Unk04 = 13;
                             asset.TileLoad.CullingHeightBehavior = -1;
                         }
@@ -242,7 +242,7 @@ namespace JortPob
                     }
 
                     /* Add doors */
-                    foreach (DoorContent content in chunk.Doors)
+                    foreach (DoorContent content in chunk.doors)
                     {
                         if (content.warp == null && Const.DEBUG_DISCARD_ANIMATED_DOORS) { continue; } // if the debug flag is set, skip any doors that are NOT load doors. useful for debugging until we get animated doors working
 
@@ -275,7 +275,7 @@ namespace JortPob
                     }
 
                     /* Add warp destinations for load doors */
-                    foreach (Layout.WarpDestination warp in chunk.Warps)
+                    foreach (Layout.WarpDestination warp in chunk.warps)
                     {
                         MSBE.Part.Player player = MakePart.Player();
                         player.Position = warp.position + Const.MSB_OFFSET;
@@ -285,7 +285,7 @@ namespace JortPob
                     }
 
                     /* Add emitters */
-                    foreach (EmitterContent content in chunk.Emitters)
+                    foreach (EmitterContent content in chunk.emitters)
                     {
                         /* Grab ModelInfo */
                         EmitterInfo emitterInfo = cache.GetEmitter(content.id);
@@ -321,13 +321,13 @@ namespace JortPob
                     }
 
                     /* Add lights */
-                    foreach (LightContent light in chunk.Lights)
+                    foreach (LightContent light in chunk.lights)
                     {
                         lightManager.CreateLight(light);
                     }
 
                     /* Create humanoid NPCs (c0000) */
-                    foreach (NpcContent npc in chunk.NPCs)
+                    foreach (NpcContent npc in chunk.npcs)
                     {
                         MSBE.Part.Enemy enemy = MakePart.Npc();
                         enemy.Position = npc.relative + Const.MSB_OFFSET;
@@ -367,7 +367,7 @@ namespace JortPob
                             /* Asset tileload config */
                             if (chunk.GetType() == typeof(HugeTile) || chunk.GetType() == typeof(BigTile))
                             {
-                                enemy.TileLoad.MapID = [(byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.Map];
+                                enemy.TileLoad.MapID = [(byte)0, (byte)npc.load.y, (byte)npc.load.x, (byte)group.map];
                                 //enemy.TileLoad.Unk04 = 13;
                             }
                         }
@@ -384,7 +384,7 @@ namespace JortPob
                     }
 
                     /* Creatures */
-                    foreach (CreatureContent creature in chunk.Creatures)
+                    foreach (CreatureContent creature in chunk.creatures)
                     {
                         Override.EnemyRemap remap = Override.GetEnemyRemap(creature.id);
 
@@ -415,7 +415,7 @@ namespace JortPob
                     }
 
                     /* Add items */
-                    foreach (ItemContent content in chunk.Items)
+                    foreach (ItemContent content in chunk.items)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -464,7 +464,7 @@ namespace JortPob
                     }
 
                     /* Add pickables */
-                    foreach (PickableContent content in chunk.Pickables)
+                    foreach (PickableContent content in chunk.pickables)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -497,7 +497,7 @@ namespace JortPob
                     }
 
                     /* Add container */
-                    foreach (ContainerContent content in chunk.Containers)
+                    foreach (ContainerContent content in chunk.containers)
                     {
                         if (Override.CheckDoNotPlace(content.mesh)) { continue; } // skip any meshes listed in the do_not_place override json
 
@@ -546,7 +546,7 @@ namespace JortPob
                     }
 
                     /* Add scripted positions */
-                    foreach (Layout.ScriptedPosition sp in chunk.Positions)
+                    foreach (Layout.ScriptedPosition sp in chunk.positions)
                     {
                         MSBE.Part.Player player = MakePart.Player();
                         player.Position = sp.relative + Const.MSB_OFFSET;
@@ -568,7 +568,7 @@ namespace JortPob
                     }
 
                     /* Add PathGridPoints */
-                    foreach (Layout.PathGridPoint point in chunk.Paths)
+                    foreach (Layout.PathGridPoint point in chunk.paths)
                     {
                         MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = point.name;
@@ -581,7 +581,7 @@ namespace JortPob
                     }
 
                     /* Add TravelPoints */
-                    foreach (Layout.TravelPoint travel in chunk.TravelPoints)
+                    foreach (Layout.TravelPoint travel in chunk.travelPoints)
                     {
                         MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = travel.name;
@@ -596,20 +596,20 @@ namespace JortPob
                     /* Handle area names */
                     if (group is Tile || group.IsInterior)
                     {
-                        foreach (Layout.MapPoint point in chunk.MapPoints)
+                        foreach (Layout.MapPoint point in chunk.mapPoints)
                         {
                             MSBE.Region.MapPoint mpr = MakePart.MapPoint();
                             int paramId;
                             if (group.IsInterior)
                             {
-                                paramId = int.Parse($"60{group.Map:D2}{group.Coordinates.x:D2}{nextMPR:D2}");
-                                mpr.Shape = new MSB.Shape.Box(chunk.Bounds.X, chunk.Bounds.Z, chunk.Bounds.Y);
-                                mpr.Position = point.relative + Const.MSB_OFFSET - new Vector3(0f, chunk.Bounds.Y / 2f, 0f);
-                                mpr.EntityID = scriptManager.areas[chunk.Cells[0]]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
+                                paramId = int.Parse($"60{group.map:D2}{group.coordinates.x:D2}{nextMPR:D2}");
+                                mpr.Shape = new MSB.Shape.Box(chunk.bounds.X, chunk.bounds.Z, chunk.bounds.Y);
+                                mpr.Position = point.relative + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
+                                mpr.EntityID = scriptManager.areas[chunk.cells[0]]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
                             }
                             else
                             {
-                                paramId = int.Parse($"61{group.Coordinates.x:D2}{group.Coordinates.y:D2}{nextMPR:D2}");
+                                paramId = int.Parse($"61{group.coordinates.x:D2}{group.coordinates.y:D2}{nextMPR:D2}");
                                 mpr.Shape = new MSB.Shape.Sphere(point.radius);
                                 mpr.Position = point.relative + Const.MSB_OFFSET;
                                 mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
@@ -645,12 +645,12 @@ namespace JortPob
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
                     envPoint.Name = $"Env_Point{envId:D3}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
-                    envPoint.UnkMapID = [(byte)group.Map, (byte)group.Coordinates.x, (byte)group.Coordinates.y, (byte)group.Block];
+                    envPoint.UnkMapID = [(byte)group.map, (byte)group.coordinates.x, (byte)group.coordinates.y, (byte)group.block];
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
                 /* Auto resource */
-                AutoResource.Generate(group.Map, group.Coordinates.x, group.Coordinates.y, group.Block, msb);
+                AutoResource.Generate(group.map, group.coordinates.x, group.coordinates.y, group.block, msb);
 
                 /* Done */
                 msbs.Add(pool);
@@ -684,7 +684,7 @@ namespace JortPob
                 {
                     if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles and empty tiles
                     tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
-                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}.obj");
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinates.x:D2}_{tile.coordinates.y:D2}_{tile.block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
                 }
@@ -695,7 +695,7 @@ namespace JortPob
                     for (int i = 0; i < group.chunks.Count; i++)
                     {
                         InteriorGroup.Chunk chunk = group.chunks[i];
-                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}-{i:D2}.obj");
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
                         if (Const.DEBUG_REUSE_FILES && File.Exists(objPath)) { objs.Add(objPath); continue; } // if debug_reuse is on, skip if file already created
                         chunk.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                         objs.Add(objPath);
@@ -712,8 +712,8 @@ namespace JortPob
                     if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles
 
                     /* Some vars */
-                    int nextNavId = int.Parse($"1{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}00000");
-                    string mid = $"{tile.Map:D2}_{tile.Coordinates.x:D2}_{tile.Coordinates.y:D2}_{tile.Block:D2}";
+                    int nextNavId = int.Parse($"1{tile.coordinates.x:D2}{tile.coordinates.y:D2}00000");
+                    string mid = $"{tile.map:D2}_{tile.coordinates.x:D2}_{tile.coordinates.y:D2}_{tile.block:D2}";
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
                     string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
                     string onavPath = Path.ChangeExtension(objPath, ".o.nav");
@@ -736,7 +736,7 @@ namespace JortPob
 
                     /* Add navmesh entry to NVA */
                     NVA.Navmesh navMesh = new();
-                    int nextN = int.Parse($"{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}{0:D2}");
+                    int nextN = int.Parse($"{tile.coordinates.x:D2}{tile.coordinates.y:D2}{0:D2}");
                     navMesh.NameID = nextNavId;
                     navMesh.ModelID = nextN;
                     navMesh.IsConnectedNavmeshesInline = true;
@@ -763,16 +763,16 @@ namespace JortPob
                     nvbnd.Files.Add(obf);
 
                     /* Write Files */
-                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.Map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
-                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.Map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{tile.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
                     Lort.TaskIterate();
                 }
                 foreach (InteriorGroup group in layout.Interiors)
                 {
                     /* Some vars */
                     int bid = 10000;
-                    int nextNavId = int.Parse($"{group.Map:D2}{group.Area:D2}00000");
-                    string mid = $"{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}";
+                    int nextNavId = int.Parse($"{group.map:D2}{group.area:D2}00000");
+                    string mid = $"{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}";
 
                     /* Create NVA */
                     SoulsFormats.NVA nva = new();
@@ -795,13 +795,13 @@ namespace JortPob
                         if (group.IsEmpty) { break; }  // if group is empty dont bother adding entries. just generate a blank nva/nvbnd
 
                         InteriorGroup.Chunk chunk = group.chunks[i];
-                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.Map:D2}_{group.Area:D2}_{group.Unk:D2}_{group.Block:D2}-{i:D2}.obj");
+                        string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{group.map:D2}_{group.area:D2}_{group.unk:D2}_{group.block:D2}-{i:D2}.obj");
                         string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
                         string onavPath = Path.ChangeExtension(objPath, ".o.nav");
 
                         /* Add navmesh entry to NVA */
                         NVA.Navmesh navMesh = new();
-                        int nextN = int.Parse($"{group.Map:D2}{group.Area:D2}{i:D2}");
+                        int nextN = int.Parse($"{group.map:D2}{group.area:D2}{i:D2}");
                         navMesh.NameID = nextNavId;
                         navMesh.ModelID = nextN;
                         navMesh.IsConnectedNavmeshesInline = true;
@@ -833,8 +833,8 @@ namespace JortPob
                     }
 
                     /* Write Files */
-                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.Map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
-                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.Map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
+                    nva.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nva.dcx"));
+                    nvbnd.Write(Path.Combine(Const.OUTPUT_PATH, "map", $"m{group.map:D2}", $"m{mid}", $"m{mid}.nvmhktbnd.dcx"));
                     Lort.TaskIterate();
                 }
             }

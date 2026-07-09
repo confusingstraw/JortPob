@@ -683,18 +683,18 @@ namespace JortPob
                 string region = tile.GetRegion();
                 WeatherData weatherData = GetWeatherData(region);
 
-                int id = int.Parse($"60{tile.Coordinates.x:D2}{tile.Coordinates.y:D2}00");
+                int id = int.Parse($"60{tile.coordinates.x:D2}{tile.coordinates.y:D2}00");
 
 
                 /* MapInfoParam */ // controls sky and weather and bgm and other stuff
-                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.Map} {tile.Coordinates.x} {tile.Coordinates.y} {tile.Block}", id);
+                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.map} {tile.coordinates.x} {tile.coordinates.y} {tile.block}", id);
                 rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
                 rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
                 rowA["MapAdditionalSoundBankId"].Value.SetValue(60000); // default (?)
                 AddOrReplaceRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
-                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.Map} {tile.Coordinates.x} {tile.Coordinates.y} {tile.Block}", id);
+                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.map} {tile.coordinates.x} {tile.coordinates.y} {tile.block}", id);
                 AddOrReplaceRow(mapRegionParam, rowB);
             }
 
@@ -705,16 +705,16 @@ namespace JortPob
 
                 WeatherData weatherData = group.GetWeather();
 
-                int id = int.Parse($"{group.Map:D2}{group.Area:D2}{group.Unk:D2}{group.Block:D2}");
+                int id = int.Parse($"{group.map:D2}{group.area:D2}{group.unk:D2}{group.block:D2}");
 
                 /* MapInfoParam */ // controls sky and weather
-                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw int m{group.Map} {group.Area} {group.Unk} {group.Block}", id);
+                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
                 rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
                 rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
                 AddOrReplaceRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
-                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw int m{group.Map} {group.Area} {group.Unk} {group.Block}", id);
+                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw int m{group.map} {group.area} {group.unk} {group.block}", id);
                 AddOrReplaceRow(mapRegionParam, rowB);
             }
         }
@@ -1202,9 +1202,9 @@ namespace JortPob
             row["iconId"].Value.SetValue((ushort)point.icon);
             row["altIconId"].Value.SetValue((ushort)point.icon);
 
-            row["areaNo"].Value.SetValue((byte)group.Map);
-            row["gridXNo"].Value.SetValue((byte)group.Coordinates.x);
-            row["gridZNo"].Value.SetValue((byte)group.Coordinates.y);
+            row["areaNo"].Value.SetValue((byte)group.map);
+            row["gridXNo"].Value.SetValue((byte)group.coordinates.x);
+            row["gridZNo"].Value.SetValue((byte)group.coordinates.y);
 
             row["posX"].Value.SetValue(point.relative.X);
             row["posY"].Value.SetValue(point.relative.Y);

@@ -142,12 +142,12 @@ namespace JortPob
             List<ResourcePool> pools = new();
             foreach (BaseTile tile in layout.AllTiles)
             {
-                if (tile.Assets.Count <= 0 && tile.Terrain.Count <= 0) { continue; }   // Skip empty tiles.
+                if (tile.assets.Count <= 0 && tile.terrain.Count <= 0) { continue; }   // Skip empty tiles.
 
                 ResourcePool pool = new(tile, null, null);
 
                 /* Add terrain */
-                foreach (Tuple<Vector3, TerrainInfo> tuple in tile.Terrain)
+                foreach (Tuple<Vector3, TerrainInfo> tuple in tile.terrain)
                 {
                     Vector3 position = tuple.Item1;
                     TerrainInfo terrainInfo = tuple.Item2;

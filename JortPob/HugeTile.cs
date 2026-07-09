@@ -19,8 +19,8 @@ namespace JortPob
         {
             Vector3 pos = position + Const.LAYOUT_COORDINATE_OFFSET;
 
-            float x1 = (Coordinates.x * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y1 = (Coordinates.y * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float x1 = (coordinates.x * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float y1 = (coordinates.y * 4f * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
             float x2 = x1 + (Const.TILE_SIZE * 4f);
             float y2 = y1 + (Const.TILE_SIZE * 4f);
 
@@ -34,7 +34,7 @@ namespace JortPob
 
         public override void AddCell(ScriptManager scriptManager, Cell cell)
         {
-            Cells.Add(cell);
+            cells.Add(cell);
             BigTile big = GetBigTile(cell.center);
             if(big == null) { Lort.Log($" ## WARNING ## Cell fell outside of reality [{cell.coordinate.x}, {cell.coordinate.y}] -- {cell.name} :: B01", Lort.Type.Debug); return; }
             big.AddCell(scriptManager, cell);
@@ -65,12 +65,12 @@ namespace JortPob
                     ModelInfo modelInfo = cache.GetModel(a.mesh);
                     if (modelInfo.size * (content.scale * 0.01f) > Const.CONTENT_SIZE_HUGE)
                     {
-                        float x = (Coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        float y = (Coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float x = (coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile tile = GetTile(cell.center);
                         if(tile == null) { break; } // Content fell outside of the bounds of any valid msbs. BAD!
-                        content.load = tile.Coordinates;
+                        content.load = tile.coordinates;
                         base.AddContent(cache, cell, content);
                         tile.AddNav(cache, cell, content);
                         break;
@@ -79,11 +79,11 @@ namespace JortPob
                 case CharacterContent c:
                     if(c.follower)
                     {
-                        float x = (Coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
-                        float y = (Coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float x = (coordinates.x * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
+                        float y = (coordinates.y * 4f * Const.TILE_SIZE) + (Const.TILE_SIZE * 1.5f);
                         content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         Tile tile = GetTile(c.position);
-                        content.load = tile.Coordinates;
+                        content.load = tile.coordinates;
                         base.AddContent(cache, cell, content);
                         break;
                     }
@@ -153,7 +153,7 @@ namespace JortPob
         public string GetRegion()
         {
             Dictionary<string, int> regions = new();
-            foreach (Cell cell in Cells)
+            foreach (Cell cell in cells)
             {
                 if (cell.region == null) { continue; }
                 string r = cell.region.Trim().ToLower();
