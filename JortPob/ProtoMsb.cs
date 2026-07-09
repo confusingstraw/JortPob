@@ -8,7 +8,7 @@ namespace JortPob
     public interface IMSBCompilableGroup
     {
         int map { get; }
-        Int2 coordinates { get; }
+        Int2 coordinate { get; }
         int block { get; }
         int[] IdList();
 
@@ -39,8 +39,8 @@ namespace JortPob
         List<ItemContent> items { get; }
         List<Layout.WarpDestination> warps { get; } // end points for load doors in other cells. also used by travel npcs
         List<Layout.ScriptedPosition> positions { get; } // used by scripts to target locations EX: 'PositionCell'
-        List<Layout.TravelPoint> travelPoints { get; } // positions directly referenced in AiPackages
+        List<Layout.TravelPoint> travels { get; } // positions directly referenced in AiPackages
         List<Layout.PathGridPoint> paths { get; }
-        List<Layout.MapPoint> mapPoints { get; }  // Each Chunk in an InteriorGroup will only return 1 MapPoint.
+        List<Layout.MapPoint> points { get; }  // Each Chunk in an InteriorGroup will only return 1 MapPoint.
     }
 }

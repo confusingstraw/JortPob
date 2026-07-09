@@ -913,7 +913,7 @@ namespace JortPob
                 Tile to = FindTile(door.warp.position);  // does not respect cell borders in tile msbs. likely a non-issue but kinda sketch ... @TODO:
                 if (to == null) { door.warp = null; return; }     // caused by debug sometimes
                 uint entity = scriptManager.GetScript(to).CreateEntity(Script.EntityType.Region, $"DoorExit::{door.cell.name}->exterior[{door.warp.x},{door.warp.y}]"); 
-                door.ApplyWarpParams(to.map, to.coordinates.x, to.coordinates.y,  to.block, entity,  $"Exit");
+                door.ApplyWarpParams(to.map, to.coordinate.x, to.coordinate.y,  to.block, entity,  $"Exit");
                 to.AddWarp(door.warp);
             }
         }
@@ -945,12 +945,12 @@ namespace JortPob
                     // calculate distance for cost of travel
                     if (from != null)
                     {
-                        Vector2 a = new(from.coordinates.x, from.coordinates.y);
-                        Vector2 b = new(to.coordinates.x, to.coordinates.y);
+                        Vector2 a = new(from.coordinate.x, from.coordinate.y);
+                        Vector2 b = new(to.coordinate.x, to.coordinate.y);
                         cost = (int)(Const.TRAVEL_DISTANCE_COST * Math.Max(1, Vector2.Distance(a, b)));
                     }
                     else { cost = Const.TRAVEL_DEFAULT_COST; }
-                    travel.ApplyParams(to.map, to.coordinates.x, to.coordinates.y, to.block, entity, cell.name, cost);
+                    travel.ApplyParams(to.map, to.coordinate.x, to.coordinate.y, to.block, entity, cell.name, cost);
                     to.AddWarp(travel);
                 }
             }
@@ -972,7 +972,7 @@ namespace JortPob
         {
             foreach (HugeTile huge in huges)
             {
-                if (huge.coordinates == coordinate)
+                if (huge.coordinate == coordinate)
                 {
                     return huge;
                 }
@@ -1008,7 +1008,7 @@ namespace JortPob
         {
             foreach(Tile tile in tiles)
             {
-                if(tile.coordinates == coordinate)
+                if(tile.coordinate == coordinate)
                 {
                     return tile;
                 }
@@ -1180,12 +1180,12 @@ namespace JortPob
             BaseTile t = FindTile(content);
             if(t != null && t is Tile tile)
             {
-                return tile.travelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+                return tile.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
             }
             else
             {
                 InteriorGroup.Chunk chunk = FindChunk(content);
-                return chunk?.travelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+                return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
             }
         }
 
@@ -1193,7 +1193,7 @@ namespace JortPob
         public TravelPoint FindTravelable(Vector3 position)
         {
             return tiles
-                .SelectMany(tile => tile.travelPoints)
+                .SelectMany(tile => tile.travels)
                 .FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
@@ -1203,7 +1203,7 @@ namespace JortPob
             if (name == null) { return FindTravelable(position); }  // if location = null then we assume its an exterior
 
             InteriorGroup.Chunk chunk = FindChunk(name);
-            return chunk?.travelPoints.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
+            return chunk?.travels.FirstOrDefault(tp => Vector3.Distance(position, tp.position) < 0.1f);
         }
 
         /* Find all pathgridpoints within the radius of the given content */

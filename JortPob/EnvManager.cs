@@ -50,7 +50,7 @@ namespace JortPob
             string region = tile.GetRegion();
             WeatherData weatherData = GetWeatherData(region);
 
-            string mid = $"{tile.map:D2}_{tile.coordinates.x:D2}_{tile.coordinates.y:D2}_{tile.block:D2}"; // msb full name
+            string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}"; // msb full name
 
             Dictionary<string, int> levels = new();
             levels.Add("high", 64);
@@ -69,7 +69,7 @@ namespace JortPob
                     bnd.Compression = Compression.KRAK();
                     bnd.Version = "07D7R6";
 
-                    List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.map, tile.coordinates.x, tile.coordinates.y, tile.block, envId, timeId, size, weatherData.rem);
+                    List<Tuple<string, byte[]>> textures = GenerateIrradianceTextures(tile.map, tile.coordinate.x, tile.coordinate.y, tile.block, envId, timeId, size, weatherData.rem);
 
                     int bndId = 0;
                     foreach (Tuple<string, byte[]> texture in textures)

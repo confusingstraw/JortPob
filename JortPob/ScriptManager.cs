@@ -60,7 +60,7 @@ namespace JortPob
         {
             if (!group.IsInterior && group.GetType() != typeof(Tile)) { return common; } // big/huge tiles return scriptcommon as their area scripts.
 
-            return GetScript(group.map, group.coordinates.x, group.coordinates.y, group.block);
+            return GetScript(group.map, group.coordinate.x, group.coordinate.y, group.block);
         }
 
         /* Supports phased routing */

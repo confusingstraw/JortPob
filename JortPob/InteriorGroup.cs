@@ -18,7 +18,7 @@ namespace JortPob
 
         public readonly List<Chunk> chunks = [];
 
-        public Int2 coordinates
+        public Int2 coordinate
         {
             get
             {
@@ -130,11 +130,11 @@ namespace JortPob
 
             public List<Layout.WarpDestination> warps { get; init; } = []; // end points for load doors in other cells. also used by travel npcs
             public List<Layout.ScriptedPosition> positions { get; init; } = []; // used by scripts to target locations EX: 'PositionCell'
-            public List<Layout.TravelPoint> travelPoints { get; init; } = []; // positions directly referenced in AiPackages
+            public List<Layout.TravelPoint> travels { get; init; } = []; // positions directly referenced in AiPackages
 
             public bool IsInterior { get; } = true;
 
-            public List<Layout.MapPoint> mapPoints
+            public List<Layout.MapPoint> points
             {
                 get
                 {
@@ -260,8 +260,8 @@ namespace JortPob
             {
                 Vector3 relative = point + root - offset;
                 uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point}");
-                TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travelPoints.Count:D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
-                travelPoints.Add(travel);
+                TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travels.Count:D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
+                travels.Add(travel);
             }
 
             /* Converts all "Travel" positions to scriptedpositions */
@@ -276,8 +276,8 @@ namespace JortPob
                         {
                             Vector3 relative = package.position + root - offset;
                             uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position}");
-                            TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travelPoints.Count:D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
-                            travelPoints.Add(travel);
+                            TravelPoint travel = new($"Travel_{group.map:D2}{group.area:D2}{group.unk:D2}_{SafeName()}_{travels.Count:D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
+                            travels.Add(travel);
                         }
                     }
                 }

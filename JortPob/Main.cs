@@ -69,13 +69,13 @@ namespace JortPob
                 };
 
                 BaseScript script = scriptManager.GetScript(group);
-                LightManager lightManager = new(group.map, group.coordinates.x, group.coordinates.y, group.block);
+                LightManager lightManager = new(group.map, group.coordinate.x, group.coordinate.y, group.block);
                 ResourcePool pool = new(group, msb, lightManager, script);
 
                 /* Misc Indices */
                 int nextC = 0, nextMPR = 0;
 
-                string NewCollisionIndex() => $"{group.coordinates.x:D2}{group.coordinates.y:D2}{nextC++:D2}";
+                string NewCollisionIndex() => $"{group.coordinate.x:D2}{group.coordinate.y:D2}{nextC++:D2}";
 
                 /* Handle chunks */
                 List<IMSBCompilableChunk> chunks = group.Chunks;
@@ -581,7 +581,7 @@ namespace JortPob
                     }
 
                     /* Add TravelPoints */
-                    foreach (Layout.TravelPoint travel in chunk.travelPoints)
+                    foreach (Layout.TravelPoint travel in chunk.travels)
                     {
                         MSBE.Region.PatrolRoute region = MakePart.PatrolRoute();
                         region.Name = travel.name;
@@ -596,20 +596,20 @@ namespace JortPob
                     /* Handle area names */
                     if (group is Tile || group.IsInterior)
                     {
-                        foreach (Layout.MapPoint point in chunk.mapPoints)
+                        foreach (Layout.MapPoint point in chunk.points)
                         {
                             MSBE.Region.MapPoint mpr = MakePart.MapPoint();
                             int paramId;
                             if (group.IsInterior)
                             {
-                                paramId = int.Parse($"60{group.map:D2}{group.coordinates.x:D2}{nextMPR:D2}");
+                                paramId = int.Parse($"60{group.map:D2}{group.coordinate.x:D2}{nextMPR:D2}");
                                 mpr.Shape = new MSB.Shape.Box(chunk.bounds.X, chunk.bounds.Z, chunk.bounds.Y);
                                 mpr.Position = point.relative + Const.MSB_OFFSET - new Vector3(0f, chunk.bounds.Y / 2f, 0f);
                                 mpr.EntityID = scriptManager.areas[chunk.cells[0]]; // entity ids for area covering regions are generated early in build (Layout.cs constructor) but only assigned now
                             }
                             else
                             {
-                                paramId = int.Parse($"61{group.coordinates.x:D2}{group.coordinates.y:D2}{nextMPR:D2}");
+                                paramId = int.Parse($"61{group.coordinate.x:D2}{group.coordinate.y:D2}{nextMPR:D2}");
                                 mpr.Shape = new MSB.Shape.Sphere(point.radius);
                                 mpr.Position = point.relative + Const.MSB_OFFSET;
                                 mpr.EntityID = script.CreateEntity(EntityType.Region, point.name);
@@ -645,12 +645,12 @@ namespace JortPob
                     MSBE.Region.EnvironmentMapPoint envPoint = MakePart.EnvPoint();
                     envPoint.Name = $"Env_Point{envId:D3}";
                     envPoint.Position = new Vector3(0f, size * -0.5f, 0f) + Const.MSB_OFFSET;
-                    envPoint.UnkMapID = [(byte)group.map, (byte)group.coordinates.x, (byte)group.coordinates.y, (byte)group.block];
+                    envPoint.UnkMapID = [(byte)group.map, (byte)group.coordinate.x, (byte)group.coordinate.y, (byte)group.block];
                     msb.Regions.EnvironmentMapPoints.Add(envPoint);
                 }
 
                 /* Auto resource */
-                AutoResource.Generate(group.map, group.coordinates.x, group.coordinates.y, group.block, msb);
+                AutoResource.Generate(group.map, group.coordinate.x, group.coordinate.y, group.block, msb);
 
                 /* Done */
                 msbs.Add(pool);
@@ -684,7 +684,7 @@ namespace JortPob
                 {
                     if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles and empty tiles
                     tile.FinalizeTerrainNav(); // does some stuff to finish up nav repersentation scene of the tile
-                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinates.x:D2}_{tile.coordinates.y:D2}_{tile.block:D2}.obj");
+                    string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}.obj");
                     tile.nav.collapse(Obj.CollisionMaterial.Stock).optimize().write(objPath);
                     objs.Add(objPath);
                 }
@@ -712,8 +712,8 @@ namespace JortPob
                     if (bt is not Tile tile || tile.IsEmpty) { continue; } // skip big/huge tiles
 
                     /* Some vars */
-                    int nextNavId = int.Parse($"1{tile.coordinates.x:D2}{tile.coordinates.y:D2}00000");
-                    string mid = $"{tile.map:D2}_{tile.coordinates.x:D2}_{tile.coordinates.y:D2}_{tile.block:D2}";
+                    int nextNavId = int.Parse($"1{tile.coordinate.x:D2}{tile.coordinate.y:D2}00000");
+                    string mid = $"{tile.map:D2}_{tile.coordinate.x:D2}_{tile.coordinate.y:D2}_{tile.block:D2}";
                     string objPath = Path.Combine(Const.CACHE_PATH, $@"nav\m{mid}.obj");
                     string nnavPath = Path.ChangeExtension(objPath, ".n.nav");
                     string onavPath = Path.ChangeExtension(objPath, ".o.nav");
@@ -736,7 +736,7 @@ namespace JortPob
 
                     /* Add navmesh entry to NVA */
                     NVA.Navmesh navMesh = new();
-                    int nextN = int.Parse($"{tile.coordinates.x:D2}{tile.coordinates.y:D2}{0:D2}");
+                    int nextN = int.Parse($"{tile.coordinate.x:D2}{tile.coordinate.y:D2}{0:D2}");
                     navMesh.NameID = nextNavId;
                     navMesh.ModelID = nextN;
                     navMesh.IsConnectedNavmeshesInline = true;

@@ -19,15 +19,15 @@ namespace JortPob
 
         public Obj nav = new();  // navmesh representation of this msb tile
         public override List<Layout.PathGridPoint> paths { get; } = [];
-        public override List<Layout.TravelPoint> travelPoints { get; } = [];
+        public override List<Layout.TravelPoint> travels { get; } = [];
 
         /* Checks ABSOLUTE POSITION! This is the position of an object from the ESM accounting for the layout offset! */
         public bool PositionInside(Vector3 position)
         {
             Vector3 pos = position + Const.LAYOUT_COORDINATE_OFFSET;
 
-            float x1 = (coordinates.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
-            float y1 = (coordinates.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float x1 = (coordinate.x * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
+            float y1 = (coordinate.y * Const.TILE_SIZE) - (Const.TILE_SIZE * 0.5f);
             float x2 = x1 + Const.TILE_SIZE;
             float y2 = y1 + Const.TILE_SIZE;
 
@@ -81,9 +81,9 @@ namespace JortPob
             for (int i = 0; i < cell.paths.Count; i++)
             {
                 Vector3 path = cell.paths[i];
-                string name = $"PathGrid_{map:D2}{coordinates.x:D2}{coordinates.y:D2}_{cell.coordinate.x:D2}{cell.coordinate.y:D2}_{i:D4}";
-                float x = (coordinates.x * Const.TILE_SIZE);
-                float y = (coordinates.y * Const.TILE_SIZE);
+                string name = $"PathGrid_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{cell.coordinate.x:D2}{cell.coordinate.y:D2}_{i:D4}";
+                float x = (coordinate.x * Const.TILE_SIZE);
+                float y = (coordinate.y * Const.TILE_SIZE);
                 Vector3 relative = (path + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                 Layout.PathGridPoint point = new(name,relative, script.CreateEntity(Script.EntityType.Region, $"PathGridPoint"));
                 paths.Add(point);
@@ -92,8 +92,8 @@ namespace JortPob
 
         public void AddTerrain(Vector3 position, TerrainInfo terrainInfo)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             terrain.Add(new Tuple<Vector3, TerrainInfo>(relative, terrainInfo));
         }
@@ -114,8 +114,8 @@ namespace JortPob
 
         public override void AddContent(Cache cache, Cell cell, Content content, bool forceFallThrough = false)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
             content.relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
 
             AddNav(cache, cell, content);
@@ -128,8 +128,8 @@ namespace JortPob
             if (Const.DEBUG_SKIP_NAVMESH) { return; }
 
             /* Recalcualte relative for this tile because this content may be coming from a BigTile or HugeTile and the content.relative will not be valid in those cases */
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
             Vector3 relative = (content.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
 
             switch (content)
@@ -145,8 +145,8 @@ namespace JortPob
 
         public void AddWarp(DoorContent.Warp warp)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
 
             Layout.WarpDestination dest = new((warp.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y), warp.rotation, warp.entity);
             warps.Add(dest);
@@ -154,34 +154,34 @@ namespace JortPob
 
         public void AddMapPoint(Layout.MapPoint point)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
 
             point.relative = (point.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
-            mapPoints.Add(point);
+            points.Add(point);
         }
 
         public void AddScriptedPosition(BaseScript script, Vector3 position, float rot)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
 
             Vector3 relative = (position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             Vector3 rotation = new Vector3(0, rot, 0); // @TODO: THIS IS WRONG!
             uint region = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Region:{position}");
             uint player = script.CreateEntity(Script.EntityType.Region, $"ScriptedPosition:Player:{position}");
-            positions.Add(new(position, relative, rotation, region, player, map, coordinates.x, coordinates.y, block));
+            positions.Add(new(position, relative, rotation, region, player, map, coordinate.x, coordinate.y, block));
         }
         
         /* Add travelpoint */
         public void AddTravelPoint(BaseScript script, Vector3 point, float radius = -1f)
         {
-            float x = (coordinates.x * Const.TILE_SIZE);
-            float y = (coordinates.y * Const.TILE_SIZE);
+            float x = (coordinate.x * Const.TILE_SIZE);
+            float y = (coordinate.y * Const.TILE_SIZE);
             Vector3 relative = (point + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
             uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{point}");
-            TravelPoint travel = new($"Travel_{map:D2}{coordinates.x:D2}{coordinates.y:D2}_{travelPoints.Count:D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
-            travelPoints.Add(travel);
+            TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count:D4}", point, relative, radius == -1f ? Const.PATH_REGION_SIZE : radius, region);
+            travels.Add(travel);
         }
 
         /* Converts all "Travel" positions to travelpoints */
@@ -194,12 +194,12 @@ namespace JortPob
                 {
                     if (package.type == CharacterContent.AiPackage.Type.Travel)
                     {
-                        float x = (coordinates.x * Const.TILE_SIZE);
-                        float y = (coordinates.y * Const.TILE_SIZE);
+                        float x = (coordinate.x * Const.TILE_SIZE);
+                        float y = (coordinate.y * Const.TILE_SIZE);
                         Vector3 relative = (package.position + Const.LAYOUT_COORDINATE_OFFSET) - new Vector3(x, 0, y);
                         uint region = script.CreateEntity(Script.EntityType.Region, $"Travel:Region:{package.position}");
-                        TravelPoint travel = new($"Travel_{map:D2}{coordinates.x:D2}{coordinates.y:D2}_{travelPoints.Count:D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
-                        travelPoints.Add(travel);
+                        TravelPoint travel = new($"Travel_{map:D2}{coordinate.x:D2}{coordinate.y:D2}_{travels.Count:D4}", package.position, relative, Const.PATH_REGION_SIZE, region);
+                        travels.Add(travel);
                     }
                 }
             }
@@ -214,7 +214,7 @@ namespace JortPob
     public abstract class BaseTile(int m, int x, int y, int b) : IMSBCompilableGroup, IMSBCompilableChunk
     {
         public int map { get; init; } = m;
-        public Int2 coordinates { get; init; } = new(x, y);
+        public Int2 coordinate { get; init; } = new(x, y);
         public int block { get; init; } = b;
 
         public List<Cell> cells { get; init; } = [];
@@ -230,7 +230,7 @@ namespace JortPob
         public List<PickableContent> pickables { get; init; } = [];
         public List<ItemContent> items { get; init; } = [];
         public List<Layout.WarpDestination> warps { get; init; } = [];
-        public List<Layout.MapPoint> mapPoints { get; init; } = [];
+        public List<Layout.MapPoint> points { get; init; } = [];
         public List<Layout.ScriptedPosition> positions { get; init; } = [];
 
         public bool IsInterior { get; } = false;
@@ -246,7 +246,7 @@ namespace JortPob
         {
             get { return [this]; }
         }
-        public virtual List<Layout.TravelPoint> travelPoints
+        public virtual List<Layout.TravelPoint> travels
         {
             get { return []; }
         }
@@ -257,7 +257,7 @@ namespace JortPob
 
         public int[] IdList()
         {
-            return [map, coordinates.x, coordinates.y, block];
+            return [map, coordinate.x, coordinate.y, block];
         }
 
         public bool IsEmpty
@@ -327,13 +327,13 @@ namespace JortPob
          */
         protected IEnumerable<T> FilterTilesToAdd<T>(IEnumerable<T> tilesToAdd, int scaleFactor, int padding) where T: BaseTile
         {
-            var x1 = coordinates.x * scaleFactor;
-            var y1 = coordinates.y * scaleFactor;
+            var x1 = coordinate.x * scaleFactor;
+            var y1 = coordinate.y * scaleFactor;
             var x2 = x1 + padding;
             var y2 = y1 + padding;
 
             return tilesToAdd.Where(t =>
-                t.coordinates.x >= x1 && t.coordinates.x < x2 && t.coordinates.y >= y1 && t.coordinates.y < y2);
+                t.coordinate.x >= x1 && t.coordinate.x < x2 && t.coordinate.y >= y1 && t.coordinate.y < y2);
         }
     }
 }

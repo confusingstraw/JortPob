@@ -683,18 +683,18 @@ namespace JortPob
                 string region = tile.GetRegion();
                 WeatherData weatherData = GetWeatherData(region);
 
-                int id = int.Parse($"60{tile.coordinates.x:D2}{tile.coordinates.y:D2}00");
+                int id = int.Parse($"60{tile.coordinate.x:D2}{tile.coordinate.y:D2}00");
 
 
                 /* MapInfoParam */ // controls sky and weather and bgm and other stuff
-                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.map} {tile.coordinates.x} {tile.coordinates.y} {tile.block}", id);
+                FsParam.Row rowA = CloneRow(mapInfoParam[weatherData.MapInfoParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
                 rowA["BgmPlaceInfo"].Value.SetValue((short)0); // set bgm to limgrave
                 rowA["EnvPlaceInfo"].Value.SetValue((short)0); // set env to limgrave as well
                 rowA["MapAdditionalSoundBankId"].Value.SetValue(60000); // default (?)
                 AddOrReplaceRow(mapInfoParam, rowA);
 
                 /* MapRegionParam */ // controls gparam
-                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.map} {tile.coordinates.x} {tile.coordinates.y} {tile.block}", id);
+                FsParam.Row rowB = CloneRow(mapRegionParam[weatherData.MapRegionParamId], $"mw ext m{tile.map} {tile.coordinate.x} {tile.coordinate.y} {tile.block}", id);
                 AddOrReplaceRow(mapRegionParam, rowB);
             }
 
@@ -1203,8 +1203,8 @@ namespace JortPob
             row["altIconId"].Value.SetValue((ushort)point.icon);
 
             row["areaNo"].Value.SetValue((byte)group.map);
-            row["gridXNo"].Value.SetValue((byte)group.coordinates.x);
-            row["gridZNo"].Value.SetValue((byte)group.coordinates.y);
+            row["gridXNo"].Value.SetValue((byte)group.coordinate.x);
+            row["gridZNo"].Value.SetValue((byte)group.coordinate.y);
 
             row["posX"].Value.SetValue(point.relative.X);
             row["posY"].Value.SetValue(point.relative.Y);
